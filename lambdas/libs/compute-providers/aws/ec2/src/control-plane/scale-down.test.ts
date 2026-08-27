@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RunnerInfo, RunnerType } from '../../../../core';
 import { createEc2ScaleDownProvider } from './scale-down';
 import { listEC2Runners, tag, terminateRunner, untag } from '../runners';
-import type { Ec2RunnerOperations } from '../runners';
+import type { Ec2RunnerResourceOperations } from '../runners';
 
 vi.mock('../runners', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../runners')>();
@@ -20,7 +20,7 @@ const mockListRunners = vi.mocked(listEC2Runners);
 const mockTagRunner = vi.mocked(tag);
 const mockTerminateRunner = vi.mocked(terminateRunner);
 const mockUntagRunner = vi.mocked(untag);
-const runnerOperations: Ec2RunnerOperations = {
+const runnerOperations: Ec2RunnerResourceOperations = {
   list: mockListRunners,
   create: vi.fn(),
   terminate: mockTerminateRunner,

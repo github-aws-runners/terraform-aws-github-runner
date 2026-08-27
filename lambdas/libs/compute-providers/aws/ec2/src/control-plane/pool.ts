@@ -7,59 +7,54 @@ import type {
   RunnerInfo,
   RunnerStatus,
 } from '../../../../core';
-import { bootTimeExceeded, type Ec2RunnerOperations } from '../runners';
+import { bootTimeExceeded, type Ec2RunnerResourceOperations } from '../runners';
 import { createRunners, loadEc2ProviderConfig } from './runner-config';
 
 const logger = createChildLogger('pool');
 
-async function listEc2PoolRunners(
-  runnerOperations: Ec2RunnerOperations,
-  { environment, runnerOwner, runnerType }: ListPoolRunnersInput,
-): Promise<RunnerInfo[]> {
-  return await runnerOperations.list({
-    environment,
-    runnerOwner,
-    runnerType,
-    statuses: ['running'],
-  });
-}
-
-async function createEc2PoolRunners(
-  { githubRunnerConfig, numberOfRunners, githubInstallationClient }: CreatePoolRunnersInput,
-  createStartRunnerConfig: CreateStartRunnerConfig,
-  runnerOperations: Ec2RunnerOperations,
-): Promise<string[]> {
-  const config = loadEc2ProviderConfig();
-
-  const { instances } = await createRunners(
-    runnerOperations,
-    githubRunnerConfig,
-    {
-      ec2instanceCriteria: config.ec2instanceCriteria,
-      environment: config.environment,
-      launchTemplateName: config.launchTemplateName,
-      subnets: config.subnets,
-      amiIdSsmParameterName: config.amiIdSsmParameterName,
-      tracingEnabled: config.tracingEnabled,
-      onDemandFailoverOnError: config.onDemandFailoverOnError,
-      scaleErrors: config.scaleErrors,
-    },
-    numberOfRunners,
-    githubInstallationClient,
-    createStartRunnerConfig,
-    'pool-lambda',
-  );
-  return instances;
-}
-
 export function createEc2PoolProvider(
+  runnerOperations: Ec2RunnerResourceOperations,
   createStartRunnerConfig: CreateStartRunnerConfig,
-  runnerOperations: Ec2RunnerOperations,
 ): Omit<PoolComputeProvider<RunnerInfo>, 'type'> {
   return {
-    listRunners: (input) => listEc2PoolRunners(runnerOperations, input),
+    async listRunners({ environment, runnerOwner, runnerType }: ListPoolRunnersInput): Promise<RunnerInfo[]> {
+      return await runnerOperations.list({
+        environment,
+        runnerOwner,
+        runnerType,
+        statuses: ['running'],
+      });
+    },
+
     countAvailableRunners: calculateEc2PoolSize,
-    createRunners: (input) => createEc2PoolRunners(input, createStartRunnerConfig, runnerOperations),
+
+    async createRunners({
+      githubRunnerConfig,
+      numberOfRunners,
+      githubInstallationClient,
+    }: CreatePoolRunnersInput): Promise<string[]> {
+      const config = loadEc2ProviderConfig();
+
+      const { instances } = await createRunners(
+        runnerOperations,
+        githubRunnerConfig,
+        {
+          ec2instanceCriteria: config.ec2instanceCriteria,
+          environment: config.environment,
+          launchTemplateName: config.launchTemplateName,
+          subnets: config.subnets,
+          amiIdSsmParameterName: config.amiIdSsmParameterName,
+          tracingEnabled: config.tracingEnabled,
+          onDemandFailoverOnError: config.onDemandFailoverOnError,
+          scaleErrors: config.scaleErrors,
+        },
+        numberOfRunners,
+        githubInstallationClient,
+        createStartRunnerConfig,
+        'pool-lambda',
+      );
+      return instances;
+    },
   };
 }
 

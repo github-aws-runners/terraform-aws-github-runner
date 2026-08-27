@@ -1,6 +1,6 @@
 import type { Octokit } from '@octokit/rest';
 import type { CreateGitHubRunnerConfig, CreateStartRunnerConfig, RunnerInfo } from '../../../../core';
-import { bootTimeExceeded, type Ec2RunnerOperations } from '../runners';
+import { bootTimeExceeded, type Ec2RunnerResourceOperations } from '../runners';
 import { calculateEc2PoolSize, createEc2PoolProvider } from './pool';
 import { createRunners, type Ec2ProviderConfig, loadEc2ProviderConfig } from './runner-config';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -19,12 +19,12 @@ const mockCreateRunners = vi.mocked(createRunners);
 const mockLoadProviderConfig = vi.mocked(loadEc2ProviderConfig);
 
 const runnerOperations = {
-  list: vi.fn<Ec2RunnerOperations['list']>(),
-  create: vi.fn<Ec2RunnerOperations['create']>(),
-  terminate: vi.fn<Ec2RunnerOperations['terminate']>(),
-  tag: vi.fn<Ec2RunnerOperations['tag']>(),
-  untag: vi.fn<Ec2RunnerOperations['untag']>(),
-} satisfies Ec2RunnerOperations;
+  list: vi.fn<Ec2RunnerResourceOperations['list']>(),
+  create: vi.fn<Ec2RunnerResourceOperations['create']>(),
+  terminate: vi.fn<Ec2RunnerResourceOperations['terminate']>(),
+  tag: vi.fn<Ec2RunnerResourceOperations['tag']>(),
+  untag: vi.fn<Ec2RunnerResourceOperations['untag']>(),
+} satisfies Ec2RunnerResourceOperations;
 
 describe('calculateEc2PoolSize', () => {
   beforeEach(() => {
@@ -114,7 +114,7 @@ describe('createEc2PoolProvider', () => {
   it('lists only running instances managed for the requested pool', async () => {
     const runners: RunnerInfo[] = [{ id: 'i-running', owner: 'owner', type: 'Org' }];
     runnerOperations.list.mockResolvedValue(runners);
-    const provider = createEc2PoolProvider(createStartRunnerConfig, runnerOperations);
+    const provider = createEc2PoolProvider(runnerOperations, createStartRunnerConfig);
 
     await expect(
       provider.listRunners({
@@ -137,7 +137,7 @@ describe('createEc2PoolProvider', () => {
       retryableErrorCount: 0,
       nonRetryableErrorCount: 0,
     });
-    const provider = createEc2PoolProvider(createStartRunnerConfig, runnerOperations);
+    const provider = createEc2PoolProvider(runnerOperations, createStartRunnerConfig);
 
     await expect(
       provider.createRunners({

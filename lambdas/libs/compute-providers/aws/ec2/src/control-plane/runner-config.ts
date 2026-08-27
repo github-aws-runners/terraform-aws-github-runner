@@ -11,7 +11,7 @@ import { Octokit } from '@octokit/rest';
 import type { Tag } from '@aws-sdk/client-ec2';
 import yn from 'yn';
 
-import type { Ec2RunnerOperations } from '../runners';
+import type { Ec2RunnerResourceOperations } from '../runners';
 import type { RunnerInputParameters } from '../runners.d';
 
 const logger = createChildLogger('ec2-runners');
@@ -61,7 +61,7 @@ export function loadEc2ProviderConfig(): Ec2ProviderConfig {
 }
 
 export async function createRunners(
-  runnerOperations: Ec2RunnerOperations,
+  runnerOperations: Ec2RunnerResourceOperations,
   githubRunnerConfig: CreateGitHubRunnerConfig,
   ec2RunnerConfig: CreateEC2RunnerConfig,
   numberOfRunners: number,
@@ -127,7 +127,10 @@ export async function createRunners(
   return result;
 }
 
-async function terminateFailedInstances(runnerOperations: Ec2RunnerOperations, instanceIds: string[]): Promise<void> {
+async function terminateFailedInstances(
+  runnerOperations: Ec2RunnerResourceOperations,
+  instanceIds: string[],
+): Promise<void> {
   for (const instanceId of instanceIds) {
     try {
       await runnerOperations.terminate(instanceId);
@@ -140,7 +143,7 @@ async function terminateFailedInstances(runnerOperations: Ec2RunnerOperations, i
   }
 }
 
-function createEc2StartRunnerConfigOptions(runnerOperations: Ec2RunnerOperations): StartRunnerConfigOptions {
+function createEc2StartRunnerConfigOptions(runnerOperations: Ec2RunnerResourceOperations): StartRunnerConfigOptions {
   return {
     getSsmParameterTags: (instanceId) => [{ Key: 'InstanceId', Value: instanceId }],
     onJitConfigCreated: async (instanceId, metadata) =>
@@ -149,7 +152,7 @@ function createEc2StartRunnerConfigOptions(runnerOperations: Ec2RunnerOperations
 }
 
 async function tagEc2RunnerMetadata(
-  runnerOperations: Ec2RunnerOperations,
+  runnerOperations: Ec2RunnerResourceOperations,
   instanceId: string,
   metadata: GitHubRunnerMetadata,
 ): Promise<void> {

@@ -36,7 +36,7 @@ export interface Ec2RunnerRequestContext {
   readonly signal: AbortSignal | undefined;
 }
 
-export interface Ec2RunnerOperations {
+export interface Ec2RunnerResourceOperations {
   list(filters?: Ec2ListRunnerFilters): Promise<RunnerInfo[]>;
   create(runnerParameters: RunnerInputParameters): Promise<CreateRunnerResult>;
   terminate(instanceId: string): Promise<void>;
@@ -45,7 +45,7 @@ export interface Ec2RunnerOperations {
 }
 
 export interface Ec2RunnerClient {
-  forRequest(context: Ec2RunnerRequestContext): Ec2RunnerOperations;
+  forRequest(context: Ec2RunnerRequestContext): Ec2RunnerResourceOperations;
 }
 
 async function runWithRequestSignal<TResult>(
@@ -70,9 +70,9 @@ export function createEc2RunnerClient(ec2Client: EC2Client): Ec2RunnerClient {
   };
 }
 
-let defaultRunnerOperations: Ec2RunnerOperations | undefined;
+let defaultRunnerOperations: Ec2RunnerResourceOperations | undefined;
 
-function getDefaultRunnerOperations(): Ec2RunnerOperations {
+function getDefaultRunnerOperations(): Ec2RunnerResourceOperations {
   defaultRunnerOperations ??= createEc2RunnerClient(
     getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION })),
   ).forRequest({ signal: undefined });

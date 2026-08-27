@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { parseEc2OverrideConfig } from './dynamic-labels';
 import { EC2_TAG_VALUE_MAX_LENGTH, RUNNER_LABELS_TAG_MAX_COUNT } from './runner-config';
 import { createRunner, listEC2Runners, tag, terminateRunner } from '../runners';
-import type { Ec2RunnerOperations } from '../runners';
+import type { Ec2RunnerResourceOperations } from '../runners';
 import type { RunnerInputParameters } from '../runners.d';
 import { createEc2ScaleUpProvider } from './scale-up';
 
@@ -30,14 +30,14 @@ const githubClient = {} as Octokit;
 const runnerOwner = 'Codertocat';
 const repositoryRunnerOwner = 'Codertocat/hello-world';
 const cleanEnv = process.env;
-const runnerOperations: Ec2RunnerOperations = {
+const runnerOperations: Ec2RunnerResourceOperations = {
   list: mockListRunners,
   create: mockCreateRunner,
   terminate: mockTerminateRunner,
   tag: mockTag,
   untag: vi.fn(),
 };
-const provider = createEc2ScaleUpProvider(mockCreateStartRunnerConfig, runnerOperations, new EC2Client({}));
+const provider = createEc2ScaleUpProvider(runnerOperations, new EC2Client({}), mockCreateStartRunnerConfig);
 
 interface CreateProviderRunnersOptions {
   labels?: string[];
