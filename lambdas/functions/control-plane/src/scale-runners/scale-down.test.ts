@@ -2,6 +2,7 @@ import type { Octokit } from '@octokit/rest';
 import { RequestError } from '@octokit/request-error';
 import moment from 'moment';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { defaultComputeProvider } from '@aws-github-runner/compute-providers/provider-types';
 
 import { controlPlaneProviderRegistry } from '../control-plane-providers';
 import * as ghAuth from '../github/auth';
@@ -33,13 +34,12 @@ const mockOctokit = {
 };
 
 const mockComputeProvider = {
-  type: 'ec2',
   list: vi.fn(),
   bootTimeExceeded: vi.fn(),
   markOrphan: vi.fn(),
   unmarkOrphan: vi.fn(),
   terminate: vi.fn(),
-} satisfies ScaleDownComputeProvider;
+} satisfies Omit<ScaleDownComputeProvider, 'type'>;
 
 const mockedResolveCapability = vi.spyOn(controlPlaneProviderRegistry, 'capability');
 const mockedAppAuth = vi.mocked(ghAuth.createGithubAppAuth);
@@ -177,7 +177,7 @@ describe('Scale down runners', () => {
     process.env.ENVIRONMENT = ENVIRONMENT;
     process.env.MINIMUM_RUNNING_TIME_IN_MINUTES = MINIMUM_TIME_RUNNING_IN_MINUTES.toString();
     process.env.RUNNER_BOOT_TIME_IN_MINUTES = MINIMUM_BOOT_TIME.toString();
-    process.env.COMPUTE_PROVIDER_TYPE = mockComputeProvider.type;
+    process.env.COMPUTE_PROVIDER_TYPE = defaultComputeProvider;
 
     vi.clearAllMocks();
     githubCache.clients.clear();

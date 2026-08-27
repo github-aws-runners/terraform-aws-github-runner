@@ -16,6 +16,7 @@ import type {
   CreateScaleUpRunnersInput,
   ScaleUpComputeProvider,
 } from './types';
+import { defaultComputeProvider } from '@aws-github-runner/compute-providers/provider-types';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Octokit } from '@octokit/rest';
@@ -57,12 +58,11 @@ const mockSSMClient = mockClient(SSMClient);
 const mockSSMgetParameter = vi.mocked(getParameter);
 const mockPublishRetryMessage = vi.mocked(publishRetryMessage);
 const testProviderState = { provider: 'test' };
-const mockComputeProvider: ScaleUpComputeProvider = {
-  type: 'ec2',
+const mockComputeProvider = {
   resolveLabelsForRunners: vi.fn(),
   getCurrentRunners: vi.fn(),
   createRunners: vi.fn(),
-};
+} satisfies Omit<ScaleUpComputeProvider, 'type'>;
 const mockResolveLabelsForRunners = vi.mocked(mockComputeProvider.resolveLabelsForRunners);
 const mockGetCurrentRunners = vi.mocked(mockComputeProvider.getCurrentRunners);
 const mockCreateRunners = vi.mocked(mockComputeProvider.createRunners);
@@ -928,7 +928,7 @@ describe('scaleUp with GHES', () => {
       expect(rejectedMessages).toHaveLength(3); // All 3 messages should be rejected
     });
 
-    it('Should handle partial EC2 instance creation failures', async () => {
+    it('handles partial runner creation failures', async () => {
       mockCreateRunner.mockImplementation(async () => createRunnerResult(['i-12345'], 2)); // Only creates 1 instead of requested 3
 
       const messages = createTestMessages(3);
@@ -938,7 +938,7 @@ describe('scaleUp with GHES', () => {
       expect(rejectedMessages).toEqual(['message-0', 'message-1']);
     });
 
-    it('Should reject only retryable partial EC2 instance creation failures', async () => {
+    it('rejects only retryable partial runner creation failures', async () => {
       mockCreateRunner.mockResolvedValue(createRunnerResult(['i-12345'], 1, 1));
 
       const messages = createTestMessages(3);
@@ -947,7 +947,7 @@ describe('scaleUp with GHES', () => {
       expect(rejectedMessages).toEqual(['message-0']);
     });
 
-    it('does not retry partial EC2 instance creation failures that are not retryable', async () => {
+    it('does not retry non-retryable partial runner creation failures', async () => {
       mockCreateRunner.mockImplementation(async () => createRunnerResult(['i-12345'], 0, 2));
 
       const rejectedMessages = await scaleUpModule.scaleUp(createTestMessages(3));
@@ -1379,7 +1379,7 @@ describe('scaleUp with public GH', () => {
       expect(rejectedMessages).toHaveLength(3); // All 3 messages should be rejected
     });
 
-    it('Should handle partial EC2 instance creation failures', async () => {
+    it('handles partial runner creation failures', async () => {
       mockCreateRunner.mockImplementation(async () => createRunnerResult(['i-12345'], 2)); // Only creates 1 instead of requested 3
 
       const messages = createTestMessages(3);
@@ -1857,7 +1857,7 @@ describe('scaleUp with Github Data Residency', () => {
       expect(rejectedMessages).toHaveLength(4); // 5 requested - 1 created = 4 rejected
     });
 
-    it('Should handle partial EC2 instance creation failures', async () => {
+    it('handles partial runner creation failures', async () => {
       mockCreateRunner.mockImplementation(async () => createRunnerResult(['i-12345'], 2)); // Only creates 1 instead of requested 3
 
       const messages = createTestMessages(3);
@@ -2148,12 +2148,12 @@ describe('Retry mechanism tests', () => {
 });
 
 describe('compute provider selection', () => {
-  it('defaults scale-up to EC2 when no compute provider is configured', async () => {
+  it('uses the default compute provider when none is configured', async () => {
     delete process.env.COMPUTE_PROVIDER_TYPE;
 
     await scaleUpModule.scaleUp(TEST_DATA);
 
-    expect(mockedResolveCapability).toHaveBeenCalledWith('ec2', 'scaleUp');
+    expect(mockedResolveCapability).toHaveBeenCalledWith(defaultComputeProvider, 'scaleUp');
   });
 
   it('rejects unsupported scale-up provider types', async () => {

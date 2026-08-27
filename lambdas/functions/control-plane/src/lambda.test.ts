@@ -276,14 +276,14 @@ describe('Test scale down lambda wrapper.', () => {
 describe('Adjust pool.', () => {
   it('Receive message to adjust pool.', async () => {
     vi.mocked(adjust).mockResolvedValue();
-    await expect(adjustPool({ poolSize: 2, type: 'ec2' }, context)).resolves.not.toThrow();
+    await expect(adjustPool({ poolSize: 2 }, context)).resolves.not.toThrow();
   });
 
   it('Handle error for adjusting pool.', async () => {
     const error = new Error('Handle error for adjusting pool.');
     vi.mocked(adjust).mockRejectedValue(error);
     const logSpy = vi.spyOn(logger, 'error');
-    await adjustPool({ poolSize: 0, type: 'ec2' }, context);
+    await adjustPool({ poolSize: 0 }, context);
     expect(logSpy).toHaveBeenCalledWith(`Handle error for adjusting pool. ${error.message}`, { error });
   });
 });
