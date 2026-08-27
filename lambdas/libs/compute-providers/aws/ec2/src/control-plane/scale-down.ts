@@ -1,14 +1,14 @@
 import type { ScaleDownComputeProvider } from '../../../../core';
 import { bootTimeExceeded, type Ec2RunnerResourceOperations } from '../runners';
 
-export function createEc2ScaleDownProvider(
-  runnerOperations: Ec2RunnerResourceOperations,
+export function createEc2ScaleDownCapability(
+  ec2Operations: Ec2RunnerResourceOperations,
 ): Omit<ScaleDownComputeProvider, 'type'> {
   return {
-    list: (environment, orphan) => runnerOperations.list({ environment, orphan }),
+    list: (environment, orphan) => ec2Operations.list({ environment, orphan }),
     bootTimeExceeded,
-    markOrphan: (id) => runnerOperations.tag(id, [{ Key: 'ghr:orphan', Value: 'true' }]),
-    unmarkOrphan: (id) => runnerOperations.untag(id, [{ Key: 'ghr:orphan', Value: 'true' }]),
-    terminate: (id) => runnerOperations.terminate(id),
+    markOrphan: (id) => ec2Operations.tag(id, [{ Key: 'ghr:orphan', Value: 'true' }]),
+    unmarkOrphan: (id) => ec2Operations.untag(id, [{ Key: 'ghr:orphan', Value: 'true' }]),
+    terminate: (id) => ec2Operations.terminate(id),
   };
 }

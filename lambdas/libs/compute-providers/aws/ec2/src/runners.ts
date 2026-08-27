@@ -9,7 +9,7 @@ import {
   RunInstancesCommand,
   type RunInstancesCommandInput,
   RunInstancesCommandOutput,
-  EC2Client,
+  type EC2Client,
   FleetLaunchTemplateOverridesRequest,
   FleetOnDemandAllocationStrategy,
   SpotAllocationStrategy,
@@ -17,12 +17,12 @@ import {
   TerminateInstancesCommand,
   _InstanceType,
 } from '@aws-sdk/client-ec2';
-import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
-import { getTracedAWSV3Client, tracer } from '@aws-github-runner/aws-powertools-util';
+import { createChildLogger, tracer } from '@aws-github-runner/aws-powertools-util';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import moment from 'moment';
 
 import type { CreateRunnerResult, RunnerInfo } from '../../../core';
+import { getDefaultBlockDeviceNameFromLaunchTemplate } from './launch-template';
 import type { Ec2ListRunnerFilters, Ec2OverrideConfig, RunnerInputParameters } from './runners.d';
 
 const logger = createChildLogger('runners');
@@ -44,8 +44,12 @@ export interface Ec2RunnerResourceOperations {
   untag(instanceId: string, tags: Tag[]): Promise<void>;
 }
 
+export interface Ec2RunnerProvisioningOperations extends Ec2RunnerResourceOperations {
+  getDefaultBlockDeviceNameFromLaunchTemplate(launchTemplateName: string): Promise<string>;
+}
+
 export interface Ec2RunnerClient {
-  forRequest(context: Ec2RunnerRequestContext): Ec2RunnerResourceOperations;
+  forRequest(context: Ec2RunnerRequestContext): Ec2RunnerProvisioningOperations;
 }
 
 async function runWithRequestSignal<TResult>(
@@ -59,33 +63,24 @@ async function runWithRequestSignal<TResult>(
 export function createEc2RunnerClient(ec2Client: EC2Client): Ec2RunnerClient {
   return {
     forRequest: ({ signal }) => ({
-      list: (filters) => runWithRequestSignal(signal, () => listRunners(ec2Client, filters, signal)),
+      list: (filters) => runWithRequestSignal(signal, () => listEc2Runners(ec2Client, filters, signal)),
       create: (runnerParameters) =>
         runWithRequestSignal(signal, () => createEc2Runner(ec2Client, runnerParameters, signal)),
       terminate: (instanceId) => runWithRequestSignal(signal, () => terminateEc2Runner(ec2Client, instanceId, signal)),
       tag: (instanceId, tags) => runWithRequestSignal(signal, () => tagEc2Runner(ec2Client, instanceId, tags, signal)),
       untag: (instanceId, tags) =>
         runWithRequestSignal(signal, () => untagEc2Runner(ec2Client, instanceId, tags, signal)),
+      getDefaultBlockDeviceNameFromLaunchTemplate: (launchTemplateName) =>
+        runWithRequestSignal(signal, () =>
+          getDefaultBlockDeviceNameFromLaunchTemplate(ec2Client, launchTemplateName, signal),
+        ),
     }),
   };
 }
 
-let defaultRunnerOperations: Ec2RunnerResourceOperations | undefined;
-
-function getDefaultRunnerOperations(): Ec2RunnerResourceOperations {
-  defaultRunnerOperations ??= createEc2RunnerClient(
-    getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION })),
-  ).forRequest({ signal: undefined });
-  return defaultRunnerOperations;
-}
-
 type FleetError = NonNullable<CreateFleetResult['Errors']>[number];
 
-export async function listEC2Runners(filters: Ec2ListRunnerFilters | undefined = undefined): Promise<RunnerInfo[]> {
-  return await getDefaultRunnerOperations().list(filters);
-}
-
-async function listRunners(
+async function listEc2Runners(
   ec2Client: EC2Client,
   filters: Ec2ListRunnerFilters | undefined,
   signal: AbortSignal | undefined,
@@ -167,10 +162,6 @@ function getRunnerInfo(runningInstances: DescribeInstancesResult) {
   return runners;
 }
 
-export async function terminateRunner(instanceId: string): Promise<void> {
-  await getDefaultRunnerOperations().terminate(instanceId);
-}
-
 async function terminateEc2Runner(
   ec2Client: EC2Client,
   instanceId: string,
@@ -181,10 +172,6 @@ async function terminateEc2Runner(
   logger.debug(`Runner ${instanceId} has been terminated.`);
 }
 
-export async function tag(instanceId: string, tags: Tag[]): Promise<void> {
-  await getDefaultRunnerOperations().tag(instanceId, tags);
-}
-
 async function tagEc2Runner(
   ec2Client: EC2Client,
   instanceId: string,
@@ -193,10 +180,6 @@ async function tagEc2Runner(
 ): Promise<void> {
   logger.debug(`Tagging '${instanceId}'`, { tags });
   await ec2Client.send(new CreateTagsCommand({ Resources: [instanceId], Tags: tags }), { abortSignal: signal });
-}
-
-export async function untag(instanceId: string, tags: Tag[]): Promise<void> {
-  await getDefaultRunnerOperations().untag(instanceId, tags);
 }
 
 async function untagEc2Runner(
@@ -378,10 +361,6 @@ function buildRunInstancesOverrides(
   }
 
   return overrides;
-}
-
-export async function createRunner(runnerParameters: RunnerInputParameters): Promise<CreateRunnerResult> {
-  return await getDefaultRunnerOperations().create(runnerParameters);
 }
 
 async function createEc2Runner(
