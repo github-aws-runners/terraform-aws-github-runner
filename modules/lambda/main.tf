@@ -3,7 +3,7 @@ locals {
 
   lambda_environment_variables = {
     ENVIRONMENT                              = var.lambda.prefix
-    LOG_LEVEL                                = var.lambda.log_level
+    LOG_LEVEL                                = upper(var.lambda.log_level)
     PREFIX                                   = var.lambda.prefix
     POWERTOOLS_LOGGER_LOG_EVENT              = var.lambda.log_level == "debug" ? "true" : "false"
     POWERTOOLS_SERVICE_NAME                  = var.lambda.name
