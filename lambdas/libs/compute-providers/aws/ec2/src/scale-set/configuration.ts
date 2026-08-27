@@ -1,7 +1,7 @@
 import type { Tag as SsmTag } from '@aws-sdk/client-ssm';
 
 import type { Ec2OverrideConfig, RunnerInputParameters } from '../runners.d';
-import { isRecord, NonRetryableScaleSetError } from './reconcile';
+import { isRecord, Ec2ScaleSetValidationError } from './reconcile';
 
 const SPOT_ALLOCATION_STRATEGIES = new Set([
   'lowest-price',
@@ -24,7 +24,6 @@ export interface Ec2ScaleSetProviderConfig {
   amiIdSsmParameterName?: string;
   tracingEnabled?: boolean;
   onDemandFailoverOnError?: string[];
-  scaleErrors: string[];
   useDedicatedHost?: boolean;
   ssmKmsKeyId?: string;
   ssmParameterTags?: SsmTag[];
@@ -40,20 +39,20 @@ export interface CreateEc2ScaleSetProviderInput {
 function rejectUnknownKeys(value: Record<string, unknown>, allowedKeys: ReadonlySet<string>, name: string): void {
   const unknownKey = Object.keys(value).find((key) => !allowedKeys.has(key));
   if (unknownKey !== undefined) {
-    throw new NonRetryableScaleSetError(`Unsupported EC2 scale-set configuration field '${name}.${unknownKey}'`);
+    throw new Ec2ScaleSetValidationError(`Unsupported EC2 scale-set configuration field '${name}.${unknownKey}'`);
   }
 }
 
 function requireString(value: unknown, name: string, pattern: RegExp, maximumLength: number): string {
   if (typeof value !== 'string' || value.length === 0 || value.length > maximumLength || !pattern.test(value)) {
-    throw new NonRetryableScaleSetError(`Invalid EC2 scale-set configuration field '${name}'`);
+    throw new Ec2ScaleSetValidationError(`Invalid EC2 scale-set configuration field '${name}'`);
   }
   return value;
 }
 
 function requirePossiblyEmptyString(value: unknown, name: string, pattern: RegExp, maximumLength: number): string {
   if (typeof value !== 'string' || value.length > maximumLength || !pattern.test(value)) {
-    throw new NonRetryableScaleSetError(`Invalid EC2 scale-set configuration field '${name}'`);
+    throw new Ec2ScaleSetValidationError(`Invalid EC2 scale-set configuration field '${name}'`);
   }
   return value;
 }
@@ -66,7 +65,7 @@ function optionalString(value: unknown, name: string, pattern: RegExp, maximumLe
 function optionalBoolean(value: unknown, name: string): boolean | undefined {
   if (value === undefined) return undefined;
   if (typeof value !== 'boolean') {
-    throw new NonRetryableScaleSetError(`Invalid EC2 scale-set configuration field '${name}'`);
+    throw new Ec2ScaleSetValidationError(`Invalid EC2 scale-set configuration field '${name}'`);
   }
   return value;
 }
@@ -79,11 +78,11 @@ function requireStringArray(
   allowEmpty = false,
 ): string[] {
   if (!Array.isArray(value) || (!allowEmpty && value.length === 0) || value.length > 100) {
-    throw new NonRetryableScaleSetError(`Invalid EC2 scale-set configuration field '${name}'`);
+    throw new Ec2ScaleSetValidationError(`Invalid EC2 scale-set configuration field '${name}'`);
   }
   const parsed = value.map((item, index) => requireString(item, `${name}[${index}]`, pattern, maximumItemLength));
   if (new Set(parsed).size !== parsed.length) {
-    throw new NonRetryableScaleSetError(`EC2 scale-set configuration field '${name}' contains duplicate values`);
+    throw new Ec2ScaleSetValidationError(`EC2 scale-set configuration field '${name}' contains duplicate values`);
   }
   return parsed;
 }
@@ -91,14 +90,14 @@ function requireStringArray(
 function parseInstanceTypePriorities(value: unknown): Record<string, number> | undefined {
   if (value === undefined) return undefined;
   if (!isRecord(value)) {
-    throw new NonRetryableScaleSetError("Invalid EC2 scale-set configuration field 'instanceTypePriorities'");
+    throw new Ec2ScaleSetValidationError("Invalid EC2 scale-set configuration field 'instanceTypePriorities'");
   }
 
   const result = Object.create(null) as Record<string, number>;
   for (const [instanceType, priority] of Object.entries(value)) {
     requireString(instanceType, 'instanceTypePriorities key', /^[a-z0-9][a-z0-9.-]*$/, 64);
     if (typeof priority !== 'number' || !Number.isSafeInteger(priority) || priority < 0 || priority > 1000) {
-      throw new NonRetryableScaleSetError(
+      throw new Ec2ScaleSetValidationError(
         `Invalid EC2 scale-set configuration priority for instance type '${instanceType}'`,
       );
     }
@@ -109,12 +108,12 @@ function parseInstanceTypePriorities(value: unknown): Record<string, number> | u
 
 function requireSsmTagValue(value: unknown): string {
   if (typeof value !== 'string' || value.length > 256) {
-    throw new NonRetryableScaleSetError("Invalid EC2 scale-set configuration field 'ssmParameterTags.Value'");
+    throw new Ec2ScaleSetValidationError("Invalid EC2 scale-set configuration field 'ssmParameterTags.Value'");
   }
   for (const character of value) {
     const codePoint = character.codePointAt(0)!;
     if (codePoint < 32 || codePoint === 127) {
-      throw new NonRetryableScaleSetError("Invalid EC2 scale-set configuration field 'ssmParameterTags.Value'");
+      throw new Ec2ScaleSetValidationError("Invalid EC2 scale-set configuration field 'ssmParameterTags.Value'");
     }
   }
   return value;
@@ -123,7 +122,7 @@ function requireSsmTagValue(value: unknown): string {
 function parseEc2OverrideConfig(value: unknown): Ec2OverrideConfig | undefined {
   if (value === undefined) return undefined;
   if (!isRecord(value)) {
-    throw new NonRetryableScaleSetError("Invalid EC2 scale-set configuration field 'ec2OverrideConfig'");
+    throw new Ec2ScaleSetValidationError("Invalid EC2 scale-set configuration field 'ec2OverrideConfig'");
   }
 
   const supportedKeys = new Set([
@@ -137,7 +136,7 @@ function parseEc2OverrideConfig(value: unknown): Ec2OverrideConfig | undefined {
     'ImageId',
   ]);
   if (Object.keys(value).some((key) => !supportedKeys.has(key))) {
-    throw new NonRetryableScaleSetError('EC2 scale-set configuration contains an unsupported launch override');
+    throw new Ec2ScaleSetValidationError('EC2 scale-set configuration contains an unsupported launch override');
   }
 
   const weightedCapacity = value.WeightedCapacity;
@@ -147,7 +146,7 @@ function parseEc2OverrideConfig(value: unknown): Ec2OverrideConfig | undefined {
     ['Priority', priority],
   ] as const) {
     if (number !== undefined && (typeof number !== 'number' || !Number.isFinite(number) || number < 0)) {
-      throw new NonRetryableScaleSetError(`Invalid EC2 scale-set configuration field '${name}'`);
+      throw new Ec2ScaleSetValidationError(`Invalid EC2 scale-set configuration field '${name}'`);
     }
   }
 
@@ -181,19 +180,19 @@ function parseEc2OverrideConfig(value: unknown): Ec2OverrideConfig | undefined {
 function parseSsmTags(value: unknown): SsmTag[] | undefined {
   if (value === undefined) return undefined;
   if (!Array.isArray(value) || value.length > 45) {
-    throw new NonRetryableScaleSetError("Invalid EC2 scale-set configuration field 'ssmParameterTags'");
+    throw new Ec2ScaleSetValidationError("Invalid EC2 scale-set configuration field 'ssmParameterTags'");
   }
 
   const tags: SsmTag[] = [];
   const keys = new Set<string>();
   for (const item of value) {
     if (!isRecord(item)) {
-      throw new NonRetryableScaleSetError("Invalid EC2 scale-set configuration field 'ssmParameterTags'");
+      throw new Ec2ScaleSetValidationError("Invalid EC2 scale-set configuration field 'ssmParameterTags'");
     }
     const key = requireString(item.Key, 'ssmParameterTags.Key', /^[A-Za-z0-9_.:/=+@-]+$/, 128);
     const tagValue = requireSsmTagValue(item.Value);
     if (key.toLowerCase().startsWith('aws:') || keys.has(key)) {
-      throw new NonRetryableScaleSetError(`Invalid or duplicate SSM tag key '${key}'`);
+      throw new Ec2ScaleSetValidationError(`Invalid or duplicate SSM tag key '${key}'`);
     }
     keys.add(key);
     tags.push({ Key: key, Value: tagValue });
@@ -203,7 +202,7 @@ function parseSsmTags(value: unknown): SsmTag[] | undefined {
 
 export function parseEc2ScaleSetProviderConfig(value: unknown): Ec2ScaleSetProviderConfig {
   if (!isRecord(value)) {
-    throw new NonRetryableScaleSetError('EC2 scale-set provider configuration must be an object');
+    throw new Ec2ScaleSetValidationError('EC2 scale-set provider configuration must be an object');
   }
   rejectUnknownKeys(
     value,
@@ -219,7 +218,6 @@ export function parseEc2ScaleSetProviderConfig(value: unknown): Ec2ScaleSetProvi
       'amiIdSsmParameterName',
       'tracingEnabled',
       'onDemandFailoverOnError',
-      'scaleErrors',
       'useDedicatedHost',
       'ssmKmsKeyId',
       'ssmParameterTags',
@@ -227,7 +225,7 @@ export function parseEc2ScaleSetProviderConfig(value: unknown): Ec2ScaleSetProvi
     'configuration',
   );
   if (!isRecord(value.ec2instanceCriteria)) {
-    throw new NonRetryableScaleSetError("Invalid EC2 scale-set configuration field 'ec2instanceCriteria'");
+    throw new Ec2ScaleSetValidationError("Invalid EC2 scale-set configuration field 'ec2instanceCriteria'");
   }
   rejectUnknownKeys(
     value.ec2instanceCriteria,
@@ -243,7 +241,7 @@ export function parseEc2ScaleSetProviderConfig(value: unknown): Ec2ScaleSetProvi
 
   const targetCapacityType = value.ec2instanceCriteria.targetCapacityType;
   if (targetCapacityType !== 'on-demand' && targetCapacityType !== 'spot') {
-    throw new NonRetryableScaleSetError("Invalid EC2 scale-set configuration field 'targetCapacityType'");
+    throw new Ec2ScaleSetValidationError("Invalid EC2 scale-set configuration field 'targetCapacityType'");
   }
   const instanceAllocationStrategy = requireString(
     value.ec2instanceCriteria.instanceAllocationStrategy,
@@ -254,7 +252,7 @@ export function parseEc2ScaleSetProviderConfig(value: unknown): Ec2ScaleSetProvi
   const allowedAllocationStrategies =
     targetCapacityType === 'spot' ? SPOT_ALLOCATION_STRATEGIES : ON_DEMAND_ALLOCATION_STRATEGIES;
   if (!allowedAllocationStrategies.has(instanceAllocationStrategy)) {
-    throw new NonRetryableScaleSetError(
+    throw new Ec2ScaleSetValidationError(
       `Invalid allocation strategy '${instanceAllocationStrategy}' for '${targetCapacityType}' capacity`,
     );
   }
@@ -305,7 +303,6 @@ export function parseEc2ScaleSetProviderConfig(value: unknown): Ec2ScaleSetProvi
       128,
       true,
     ),
-    scaleErrors: requireStringArray(value.scaleErrors ?? [], 'scaleErrors', /^[A-Za-z0-9._-]+$/, 128, true),
     useDedicatedHost: optionalBoolean(value.useDedicatedHost, 'useDedicatedHost'),
     ssmKmsKeyId: optionalString(value.ssmKmsKeyId, 'ssmKmsKeyId', /^[A-Za-z0-9_:/+=,.@-]+$/, 2048),
     ssmParameterTags: parseSsmTags(value.ssmParameterTags),
@@ -315,35 +312,35 @@ export function parseEc2ScaleSetProviderConfig(value: unknown): Ec2ScaleSetProvi
 export function validateFactoryInput(input: CreateEc2ScaleSetProviderInput): void {
   requireString(input.runnerConfigName, 'runnerConfigName', /^[A-Za-z0-9][A-Za-z0-9._-]*$/, 128);
   if (!Number.isSafeInteger(input.scaleSetId) || input.scaleSetId <= 0) {
-    throw new NonRetryableScaleSetError('scaleSetId must be a positive safe integer');
+    throw new Ec2ScaleSetValidationError('scaleSetId must be a positive safe integer');
   }
   validateCanonicalGitHubScope(input.githubScope);
 }
 
 function validateCanonicalGitHubScope(value: unknown): string {
   if (typeof value !== 'string' || value.length === 0 || value.length > 2048) {
-    throw new NonRetryableScaleSetError('githubScope must be a canonical HTTPS GitHub configuration URL');
+    throw new Ec2ScaleSetValidationError('githubScope must be a canonical HTTPS GitHub configuration URL');
   }
   let url: URL;
   try {
     url = new URL(value);
   } catch {
-    throw new NonRetryableScaleSetError('githubScope must be a canonical HTTPS GitHub configuration URL');
+    throw new Ec2ScaleSetValidationError('githubScope must be a canonical HTTPS GitHub configuration URL');
   }
   if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) {
-    throw new NonRetryableScaleSetError('githubScope must be a canonical HTTPS GitHub configuration URL');
+    throw new Ec2ScaleSetValidationError('githubScope must be a canonical HTTPS GitHub configuration URL');
   }
   const parts = url.pathname
     .replace(/^\/+|\/+$/g, '')
     .split('/')
     .filter(Boolean);
   if (parts.length < 1 || parts.length > 2 || (parts[0].toLowerCase() === 'enterprises' && parts.length !== 2)) {
-    throw new NonRetryableScaleSetError('githubScope must be a canonical HTTPS GitHub configuration URL');
+    throw new Ec2ScaleSetValidationError('githubScope must be a canonical HTTPS GitHub configuration URL');
   }
   url.pathname = `/${parts.join('/')}`;
   const canonical = url.toString().replace(/\/$/, '');
   if (canonical !== value) {
-    throw new NonRetryableScaleSetError('githubScope must be a canonical HTTPS GitHub configuration URL');
+    throw new Ec2ScaleSetValidationError('githubScope must be a canonical HTTPS GitHub configuration URL');
   }
   return value;
 }

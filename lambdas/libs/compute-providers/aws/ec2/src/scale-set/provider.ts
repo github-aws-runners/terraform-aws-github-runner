@@ -64,7 +64,7 @@ export function createEc2ScaleSetProvider(
   };
   validateFactoryInput(normalizedInput);
   const clients = createClients(normalizedInput.configuration, dependencies);
-  const runnerClient = createEc2RunnerClient(clients.ec2Client, clients.ssmClient);
+  const runnerClient = createEc2RunnerClient(clients.ec2Client);
   const now = dependencies.now ?? Date.now;
 
   return {

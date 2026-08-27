@@ -97,11 +97,18 @@ describe('EC2 scale-set scale up', () => {
     );
 
     expect(result).toMatchObject({
-      status: 'non_retryable_error',
+      status: 'error',
       currentRunners: 0,
       actions: { launched: 0, terminated: 1 },
-      errors: [expect.objectContaining({ operation: 'generate_jit_configuration', retryable: false })],
     });
+    expect(result.errors).toEqual([
+      {
+        operation: 'generate_jit_configuration',
+        code: 'INVALID_CONFIGURATION',
+        runnerName: `runner-${instanceId}`,
+        resourceId: instanceId,
+      },
+    ]);
     expect(removeRunner).not.toHaveBeenCalled();
     expect(ssmMock).not.toHaveReceivedCommand(PutParameterCommand);
     expect(ec2Mock).toHaveReceivedCommandWith(TerminateInstancesCommand, { InstanceIds: [instanceId] });
@@ -118,11 +125,18 @@ describe('EC2 scale-set scale up', () => {
     const result = await createTestProvider().reconcile(createRequest({ removeRunner }));
 
     expect(result).toMatchObject({
-      status: 'retryable_error',
+      status: 'error',
       currentRunners: 1,
       actions: { launched: 0, terminated: 0, retainedUnknown: 1 },
-      errors: [expect.objectContaining({ operation: 'publish_jit_configuration', code: 'TimeoutError' })],
     });
+    expect(result.errors).toEqual([
+      {
+        operation: 'publish_jit_configuration',
+        code: 'TimeoutError',
+        runnerName: `runner-${instanceId}`,
+        resourceId: instanceId,
+      },
+    ]);
     expect(JSON.stringify(result)).not.toContain('redacted secret');
     expect(removeRunner).not.toHaveBeenCalled();
     expect(ec2Mock).not.toHaveReceivedCommand(TerminateInstancesCommand);
@@ -139,14 +153,39 @@ describe('EC2 scale-set scale up', () => {
     const result = await createTestProvider().reconcile(createRequest({ removeRunner }));
 
     expect(result).toMatchObject({
-      status: 'retryable_error',
+      status: 'error',
       currentRunners: 1,
       actions: { launched: 0, terminated: 0, retainedUnknown: 1 },
     });
+    expect(result.errors).toEqual([
+      {
+        operation: 'publish_jit_configuration',
+        code: 'ThrottlingException',
+        runnerName: `runner-${instanceId}`,
+        resourceId: instanceId,
+      },
+    ]);
     expect(ssmMock).toHaveReceivedCommandWith(DeleteParameterCommand, {
       Name: `${config.jitConfigParameterPath}/${instanceId}`,
     });
     expect(removeRunner).not.toHaveBeenCalled();
     expect(ec2Mock).not.toHaveReceivedCommand(TerminateInstancesCommand);
   });
+
+  it.each(['ThrottlingException', 'InvalidParameterValue'])(
+    'collapses EC2 launch failure %s into one scale-set error',
+    async (errorCode) => {
+      ec2Mock.on(DescribeInstancesCommand).resolves({});
+      ec2Mock.on(CreateFleetCommand).resolves({ Errors: [{ ErrorCode: errorCode }] });
+
+      const result = await createTestProvider().reconcile(createRequest());
+
+      expect(result).toMatchObject({
+        status: 'error',
+        currentRunners: 0,
+        actions: { launched: 0, terminated: 0 },
+      });
+      expect(result.errors).toEqual([{ operation: 'launch', code: 'EC2_LAUNCH_FAILED' }]);
+    },
+  );
 });
