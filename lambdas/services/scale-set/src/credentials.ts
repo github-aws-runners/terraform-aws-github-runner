@@ -17,8 +17,17 @@ export interface ParameterStore {
 
 interface GitHubAppCredentials {
   appId: string;
-  installationId: number;
+  installationId?: number;
   privateKey: string;
+}
+
+interface GitHubAppInstallation {
+  id?: unknown;
+  account?: { login?: unknown };
+}
+
+interface GitHubAppInstallationsResponse {
+  installations?: unknown;
 }
 
 const MAX_PRIVATE_KEY_BYTES = 64 * 1024;
@@ -54,28 +63,83 @@ export async function loadGitHubAppCredentials(
   references: GitHubAppParameterReferences,
   parameterStore: ParameterStore,
 ): Promise<GitHubAppCredentials> {
-  const values = await parameterStore.get([
-    references.appIdParameterName,
-    references.installationIdParameterName,
-    references.privateKeyParameterName,
-  ]);
+  const names = [references.appIdParameterName, references.privateKeyParameterName];
+  if (references.installationIdParameterName !== undefined) names.splice(1, 0, references.installationIdParameterName);
+  const values = await parameterStore.get(names);
   const appId = requiredParameter(values, references.appIdParameterName).trim();
   if (!/^[A-Za-z0-9_-]{1,128}$/.test(appId)) {
     throw new ScaleSetConfigurationError('GitHub App ID parameter is invalid');
   }
-  const installationIdRaw = requiredParameter(values, references.installationIdParameterName).trim();
-  if (!/^\d+$/.test(installationIdRaw)) {
-    throw new ScaleSetConfigurationError('GitHub App installation ID parameter must be a positive integer');
-  }
-  const installationId = Number(installationIdRaw);
-  if (!Number.isSafeInteger(installationId) || installationId <= 0) {
-    throw new ScaleSetConfigurationError('GitHub App installation ID parameter must be a positive integer');
+  let installationId: number | undefined;
+  if (references.installationIdParameterName !== undefined) {
+    const installationIdRaw = values.get(references.installationIdParameterName)?.trim();
+    if (installationIdRaw !== undefined && installationIdRaw !== '') {
+      if (!/^\d+$/.test(installationIdRaw)) {
+        throw new ScaleSetConfigurationError('GitHub App installation ID parameter must be a positive integer');
+      }
+      installationId = Number(installationIdRaw);
+      if (!Number.isSafeInteger(installationId) || installationId <= 0) {
+        throw new ScaleSetConfigurationError('GitHub App installation ID parameter must be a positive integer');
+      }
+    }
   }
   return {
     appId,
     installationId,
     privateKey: decodePrivateKey(requiredParameter(values, references.privateKeyParameterName)),
   };
+}
+
+async function discoverGitHubAppInstallationId(
+  credentials: Pick<GitHubAppCredentials, 'appId' | 'privateKey'>,
+  target: string,
+  apiBaseUrl: string,
+  fetchImplementation: ScaleSetFetch,
+): Promise<number> {
+  const appRequest = request.defaults({ baseUrl: apiBaseUrl, request: { fetch: fetchImplementation } });
+  const appAuth = createAppAuth({
+    appId: credentials.appId,
+    privateKey: credentials.privateKey,
+    request: appRequest,
+  });
+  const appAuthentication = await appAuth({ type: 'app' });
+  for (let page = 1; page <= 100; page += 1) {
+    const url = new URL('/app/installations', `${apiBaseUrl}/`);
+    url.searchParams.set('per_page', '100');
+    url.searchParams.set('page', String(page));
+    const response = await fetchImplementation(url, {
+      headers: {
+        Accept: 'application/vnd.github+json',
+        Authorization: `Bearer ${appAuthentication.token}`,
+        'User-Agent': 'github-aws-runners/scale-set-controller',
+      },
+    });
+    if (!response.ok) {
+      throw new ScaleSetConfigurationError(`GitHub App installation discovery failed with HTTP ${response.status}`);
+    }
+    let payload: GitHubAppInstallationsResponse;
+    try {
+      payload = (await response.json()) as GitHubAppInstallationsResponse;
+    } catch (error) {
+      throw new ScaleSetConfigurationError('GitHub App installation discovery returned invalid JSON', { cause: error });
+    }
+    if (!Array.isArray(payload.installations)) {
+      throw new ScaleSetConfigurationError('GitHub App installation discovery returned an invalid response');
+    }
+    for (const value of payload.installations as unknown[]) {
+      if (typeof value !== 'object' || value === null || Array.isArray(value)) continue;
+      const candidate = value as GitHubAppInstallation;
+      if (
+        Number.isSafeInteger(candidate.id) &&
+        typeof candidate.account?.login === 'string' &&
+        candidate.account.login.toLowerCase() === target.toLowerCase()
+      ) {
+        return candidate.id as number;
+      }
+    }
+    if (payload.installations.length < 100) break;
+  }
+  throw new ScaleSetConfigurationError(`GitHub App is not installed for ${JSON.stringify(target)}`);
 }
 
 export async function createGitHubAppAccessTokenProvider(
@@ -94,26 +158,46 @@ export async function createGitHubAppAccessTokenProvider(
         auth: ReturnType<typeof createAppAuth>;
       }
     | undefined;
+  let discovered:
+    | {
+        fingerprint: string;
+        installationId: number;
+      }
+    | undefined;
 
   return async () => {
     // Reload references for rotation visibility, but preserve the Octokit auth
     // instance while credentials are unchanged so its installation-token cache
     // remains effective.
     const credentials = await loadGitHubAppCredentials(references, parameterStore);
-    const fingerprint = createHash('sha256')
+    const credentialFingerprint = createHash('sha256')
       .update(credentials.appId)
-      .update('\u0000')
-      .update(String(credentials.installationId))
       .update('\u0000')
       .update(credentials.privateKey)
       .digest('base64url');
+    const target = parsedConfig.organization ?? parsedConfig.enterprise;
+    if (credentials.installationId === undefined && target === undefined) {
+      throw new ScaleSetConfigurationError(
+        'GitHub App installation discovery requires an organization or enterprise URL',
+      );
+    }
+    let installationId = credentials.installationId;
+    if (installationId === undefined) {
+      if (discovered?.fingerprint === credentialFingerprint) {
+        installationId = discovered.installationId;
+      } else {
+        installationId = await discoverGitHubAppInstallationId(credentials, target!, apiBaseUrl, fetchImplementation);
+        discovered = { fingerprint: credentialFingerprint, installationId };
+      }
+    }
+    const fingerprint = `${credentialFingerprint}\u0000${installationId}`;
     if (cached?.fingerprint !== fingerprint) {
       cached = {
         fingerprint,
-        installationId: credentials.installationId,
+        installationId,
         auth: createAppAuth({
           appId: credentials.appId,
-          installationId: credentials.installationId,
+          installationId,
           privateKey: credentials.privateKey,
           request: request.defaults({ baseUrl: apiBaseUrl, request: { fetch: fetchImplementation } }),
         }),

@@ -8,7 +8,7 @@ export type JsonValue = JsonPrimitive | JsonValue[] | { readonly [key: string]: 
 
 export interface GitHubAppParameterReferences {
   appIdParameterName: string;
-  installationIdParameterName: string;
+  installationIdParameterName?: string;
   privateKeyParameterName: string;
 }
 
@@ -299,15 +299,20 @@ function validateJsonValue(value: unknown, path: string, depth = 0, counter = { 
 function parseGitHubApp(value: unknown, path: string): GitHubAppParameterReferences {
   const record = objectValue(value, path);
   exactKeys(record, ['appIdParameterName', 'installationIdParameterName', 'privateKeyParameterName'], path);
+  const installationIdParameterName = optionalString(record, 'installationIdParameterName', path);
   return {
     appIdParameterName: validateSsmParameterName(
       requiredString(record, 'appIdParameterName', path),
       `${path}.appIdParameterName`,
     ),
-    installationIdParameterName: validateSsmParameterName(
-      requiredString(record, 'installationIdParameterName', path),
-      `${path}.installationIdParameterName`,
-    ),
+    ...(installationIdParameterName === undefined
+      ? {}
+      : {
+          installationIdParameterName: validateSsmParameterName(
+            installationIdParameterName,
+            `${path}.installationIdParameterName`,
+          ),
+        }),
     privateKeyParameterName: validateSsmParameterName(
       requiredString(record, 'privateKeyParameterName', path),
       `${path}.privateKeyParameterName`,
