@@ -77,6 +77,51 @@ describe('GitHub App credentials', () => {
     expect(secondAuth).toHaveBeenCalledTimes(1);
   });
 
+  it('discovers the installation ID from the configured organization when SSM does not provide one', async () => {
+    const store: ParameterStore = {
+      get: vi.fn().mockResolvedValue(
+        new Map([
+          ['/app/id', '123'],
+          ['/app/key', encodedKey('abc')],
+        ]),
+      ),
+    };
+    const appAuth = vi.fn().mockResolvedValue({ token: 'app-jwt' });
+    const installationAuth = vi
+      .fn()
+      .mockResolvedValue({ token: 'installation-token', expiresAt: '2099-01-01T00:00:00Z' });
+    const fetchImplementation = vi.fn<ScaleSetFetch>().mockResolvedValue(
+      new Response(JSON.stringify({ installations: [{ id: 456, account: { login: 'example' } }] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+    authMocks.createAppAuth.mockReturnValueOnce(appAuth).mockReturnValueOnce(installationAuth);
+
+    const provider = await createGitHubAppAccessTokenProvider(
+      { appIdParameterName: '/app/id', privateKeyParameterName: '/app/key' },
+      'https://github.com/example',
+      false,
+      store,
+      fetchImplementation,
+    );
+
+    await expect(provider()).resolves.toMatchObject({ token: 'installation-token' });
+    await expect(provider()).resolves.toMatchObject({ token: 'installation-token' });
+    expect(appAuth).toHaveBeenCalledWith({ type: 'app' });
+    expect(installationAuth).toHaveBeenCalledWith({ type: 'installation', installationId: 456 });
+    expect(appAuth).toHaveBeenCalledTimes(1);
+    expect(fetchImplementation).toHaveBeenCalledTimes(1);
+    expect(fetchImplementation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        href: 'https://api.github.com/app/installations?per_page=100&page=1',
+      }),
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: 'Bearer app-jwt' }),
+      }),
+    );
+  });
+
   it.each([
     [new Map([['/app/id', '123']]), 'was not returned'],
     [

@@ -32,15 +32,13 @@ The service reads every direct child under the SSM path with paginated `GetParam
   "githubConfigUrl": "https://github.com/example",
   "scaleSetName": "linux-x64",
   "runnerGroupName": "self-hosted-linux",
-  "expectedRunnerGroupId": null,
   "minRunners": 0,
   "maxRunners": 20,
   "bootTimeoutMinutes": 10,
   "sslVerify": true,
   "githubApp": {
     "appIdParameterName": "/runners/github-app/id",
-    "privateKeyParameterName": "/runners/github-app/key",
-    "installationIdParameterName": "/runners/github-app/installation-id"
+    "privateKeyParameterName": "/runners/github-app/key"
   },
   "computeProvider": {
     "type": "ec2",
@@ -66,7 +64,7 @@ The service reads every direct child under the SSM path with paginated `GetParam
 
 `scaleSetName` and `runnerGroupName` are the GitHub names supplied by the operator. The service resolves both numeric IDs through the configured GitHub Actions service endpoint at startup; `scaleSetId` is only an optional legacy pin for an already-known ID. `expectedRunnerGroupId` can be omitted or null; when supplied, it is treated as an additional consistency check. If the named scale set does not exist, startup fails with a configuration error; this service does not create GitHub scale sets implicitly. Optional fields are `scaleSetId`, `expectedRunnerGroupId`, `sessionOwner`, `workFolder`, `forceGhes`, `sslVerify`, and `userAgent`. `sslVerify` defaults to `true`; when false, the service uses a reconciler-scoped Undici dispatcher for both GitHub App token and scale-set requests without changing `NODE_TLS_REJECT_UNAUTHORIZED` or the global dispatcher. `userAgent` becomes the `system` identity inside the required structured scale-set protocol User-Agent rather than replacing that header. `bootTimeoutMinutes` defaults to `10`; it is orchestration-owned and is passed to the selected compute provider on every reconciliation.
 
-GitHub App values are reloaded from SSM whenever an installation token is requested, so key rotation does not require a task restart. A SHA-256 credential fingerprint keeps the same Octokit auth instance—and its token cache—while the values remain unchanged, and replaces it after rotation. Private keys, installation tokens, message-session tokens, message bodies, and JIT configurations are never accepted as manifest values and are redacted from logs.
+GitHub App ID and private-key values are reloaded from SSM whenever an installation token is requested, so key rotation does not require a task restart. `installationIdParameterName` is optional; when it is absent or its parameter is not present, the service creates a short-lived App JWT and discovers the installation by matching the configured organization or enterprise account through `GET /app/installations`. This works with GitHub.com, GHES, and GitHub Enterprise Cloud data-residency API hosts derived from `githubConfigUrl`. A SHA-256 credential fingerprint keeps the same Octokit auth instance—and its token cache—while the values remain unchanged, and replaces it after rotation. Private keys, installation tokens, App JWTs, message-session tokens, message bodies, and JIT configurations are never accepted as manifest values and are redacted from logs.
 
 `SCALE_SET_CONTROLLER_MANIFEST` is supported only as a bounded local/test convenience. It contains `{ "version": 1, "groupName": "...", "reconcilers": [...] }` and uses the same reconciler objects.
 
