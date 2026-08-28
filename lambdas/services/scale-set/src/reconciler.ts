@@ -439,7 +439,18 @@ export class ScaleSetReconciler {
     validateProviderResult(result, desiredRunners);
     throwIfProviderError(result);
     if (result.needsRunnerInventory) {
-      const inventory = await this.loadScaleSetInventory(client, signal);
+      let inventory: readonly GitHubScaleSetRunnerState[];
+      try {
+        inventory = await this.loadScaleSetInventory(client, signal);
+      } catch (error) {
+        if (!isScaleSetHttpError(error) || error.status !== 404) throw error;
+        this.log('warn', 'scale_set_runner_inventory_unavailable', {
+          ...httpErrorLogAttributes(error),
+          error,
+        });
+        this.logReconciliationResult(result, desiredRunners);
+        return;
+      }
       result = await this.reconcileProvider(provider, {
         desiredRunners,
         bootTimeoutMinutes: this.config.bootTimeoutMinutes,
@@ -455,6 +466,10 @@ export class ScaleSetReconciler {
         );
       }
     }
+    this.logReconciliationResult(result, desiredRunners);
+  }
+
+  private logReconciliationResult(result: ScaleSetReconcileResult, desiredRunners: number): void {
     this.log('info', 'scale_set_reconciled', {
       computeProviderType: this.config.computeProvider.type,
       desiredRunners,
@@ -471,7 +486,6 @@ export class ScaleSetReconciler {
         retainedBusy: result.actions.retainedBusy,
         retainedUnknown: result.actions.retainedUnknown,
       });
-      return;
     }
   }
 
