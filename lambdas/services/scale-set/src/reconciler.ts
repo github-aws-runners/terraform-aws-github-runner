@@ -42,6 +42,7 @@ export type ScaleSetReconcilerClient = Pick<
   | 'listGitHubRunners'
   | 'listRunners'
   | 'removeRunner'
+  | 'createRunnerScaleSet'
   | 'setSystemInfo'
   | 'systemInfo'
 >;
@@ -258,10 +259,32 @@ export class ScaleSetReconciler {
     if (this.config.scaleSetId === undefined && runnerGroupId === undefined) {
       throw new ScaleSetConfigurationError('runner group ID was not resolved');
     }
-    const configuredScaleSet =
+    let configuredScaleSet =
       this.config.scaleSetId === undefined
         ? await client.getRunnerScaleSet(runnerGroupId as number, this.config.scaleSetName, { signal })
         : await client.getRunnerScaleSetById(this.config.scaleSetId, { signal });
+    if (configuredScaleSet === null && runnerGroupId !== undefined && this.config.scaleSetId === undefined) {
+      this.log('info', 'scale_set_registering', {
+        runnerConfigName: this.config.runnerConfigName,
+        scaleSetName: this.config.scaleSetName,
+        runnerGroupId,
+      });
+      try {
+        configuredScaleSet = await client.createRunnerScaleSet(
+          {
+            name: this.config.scaleSetName,
+            runnerGroupId,
+            labels: [{ name: this.config.scaleSetName }],
+            runnerSetting: {},
+          },
+          { signal },
+        );
+      } catch (error) {
+        const existingScaleSet = await client.getRunnerScaleSet(runnerGroupId, this.config.scaleSetName, { signal });
+        if (existingScaleSet === null) throw error;
+        configuredScaleSet = existingScaleSet;
+      }
+    }
     if (configuredScaleSet === null || configuredScaleSet.id === undefined) {
       throw new ScaleSetConfigurationError(
         `GitHub runner scale set ${JSON.stringify(this.config.scaleSetName)} was not found`,
