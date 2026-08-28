@@ -1,4 +1,8 @@
-import type { MessageSessionClient, RunnerScaleSetMessage } from '@aws-github-runner/github-actions-scale-set';
+import {
+  ScaleSetHttpError,
+  type MessageSessionClient,
+  type RunnerScaleSetMessage,
+} from '@aws-github-runner/github-actions-scale-set';
 import type { ScaleSetComputeProvider, ScaleSetReconcileResult } from '@aws-github-runner/compute-providers/scale-set';
 
 import type { ScaleSetReconcilerConfig, ScaleSetServiceConfig } from './config';
@@ -297,6 +301,47 @@ describe('ScaleSetReconciler', () => {
     expect(reconcile.mock.calls[0]?.[0]).toEqual(expect.objectContaining({ runnerInventoryComplete: false }));
     expect(client.listGitHubRunners).toHaveBeenCalledTimes(1);
     expect(client.listRunners).toHaveBeenCalledTimes(1);
+  });
+
+  it('retains capacity and retries after a runner inventory 404 during recovery', async () => {
+    const abort = new AbortController();
+    const inventoryError = new ScaleSetHttpError({
+      method: 'GET',
+      url: 'https://api.github.com/orgs/example/actions/runners',
+      status: 404,
+      statusText: 'Not Found',
+      headers: new Headers(),
+      responseBody: '',
+    });
+    const reconcile = vi.fn().mockResolvedValue(
+      result({
+        status: 'retained',
+        currentRunners: 1,
+        needsRunnerInventory: true,
+        actions: { launched: 0, terminated: 0, retainedBusy: 0, retainedUnknown: 1 },
+      }),
+    );
+    const session = {
+      session: { statistics: message().statistics },
+      getMessage: vi.fn(async () => {
+        abort.abort();
+        throw new DOMException('aborted', 'AbortError');
+      }),
+      close: vi.fn(),
+    };
+    const { client, dependencies } = fixture({ session, reconcile });
+    vi.mocked(client.listGitHubRunners).mockRejectedValue(inventoryError);
+    const status = reporter();
+
+    await new ScaleSetReconciler(config, serviceConfig, dependencies).run(abort.signal, status);
+
+    expect(status.markFailed).not.toHaveBeenCalled();
+    expect(reconcile).toHaveBeenCalledTimes(1);
+    expect(dependencies.logger.warn).toHaveBeenCalledWith(
+      'scale_set_runner_inventory_unavailable',
+      expect.objectContaining({ requestMethod: 'GET', requestStatus: 404, requestCode: 'NOT_FOUND' }),
+    );
+    expect(client.listGitHubRunners).toHaveBeenCalledTimes(1);
   });
 
   it('rejects a provider that requests another inventory after the complete second pass', async () => {
