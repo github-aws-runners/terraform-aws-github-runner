@@ -27,10 +27,6 @@ interface GitHubAppInstallation {
   account?: { login?: unknown };
 }
 
-interface GitHubAppInstallationsResponse {
-  installations?: unknown;
-}
-
 const MAX_PRIVATE_KEY_BYTES = 64 * 1024;
 
 function requiredParameter(values: ReadonlyMap<string, string>, name: string): string {
@@ -118,16 +114,16 @@ async function discoverGitHubAppInstallationId(
     if (!response.ok) {
       throw new ScaleSetConfigurationError(`GitHub App installation discovery failed with HTTP ${response.status}`);
     }
-    let payload: GitHubAppInstallationsResponse;
+    let payload: unknown;
     try {
-      payload = (await response.json()) as GitHubAppInstallationsResponse;
+      payload = await response.json();
     } catch (error) {
       throw new ScaleSetConfigurationError('GitHub App installation discovery returned invalid JSON', { cause: error });
     }
-    if (!Array.isArray(payload.installations)) {
+    if (!Array.isArray(payload)) {
       throw new ScaleSetConfigurationError('GitHub App installation discovery returned an invalid response');
     }
-    for (const value of payload.installations as unknown[]) {
+    for (const value of payload as unknown[]) {
       if (typeof value !== 'object' || value === null || Array.isArray(value)) continue;
       const candidate = value as GitHubAppInstallation;
       if (
@@ -138,7 +134,7 @@ async function discoverGitHubAppInstallationId(
         return candidate.id as number;
       }
     }
-    if (payload.installations.length < 100) break;
+    if (payload.length < 100) break;
   }
   throw new ScaleSetConfigurationError(`GitHub App is not installed for ${JSON.stringify(target)}`);
 }
