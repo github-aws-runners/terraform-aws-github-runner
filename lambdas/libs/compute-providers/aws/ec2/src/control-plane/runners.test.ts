@@ -615,6 +615,70 @@ describe('create runner', () => {
     });
   });
 
+  it('uses InstanceRequirements without static InstanceType overrides', async () => {
+    const instanceRequirements = {
+      VCpuCount: { Min: 4, Max: 8 },
+      MemoryMiB: { Min: 8192, Max: 16384 },
+      AllowedInstanceTypes: ['c7i.*', 'm7i.*'],
+    };
+
+    await createRunner({
+      ...createRunnerConfig(defaultRunnerConfig),
+      ec2OverrideConfig: { InstanceRequirements: instanceRequirements },
+    });
+
+    expect(mockEC2Client).toHaveReceivedCommandWith(CreateFleetCommand, {
+      LaunchTemplateConfigs: [
+        {
+          LaunchTemplateSpecification: {
+            LaunchTemplateName: 'lt-1',
+            Version: '$Default',
+          },
+          Overrides: [
+            {
+              InstanceRequirements: instanceRequirements,
+              SubnetId: 'subnet-123',
+            },
+            {
+              InstanceRequirements: instanceRequirements,
+              SubnetId: 'subnet-456',
+            },
+          ],
+        },
+      ],
+      SpotOptions: {
+        AllocationStrategy: SpotAllocationStrategy.CAPACITY_OPTIMIZED,
+      },
+      TagSpecifications: expect.any(Array),
+      TargetCapacitySpecification: {
+        DefaultTargetCapacityType: 'spot',
+        TotalTargetCapacity: 1,
+      },
+      Type: 'instant',
+    });
+  });
+
+  it('rejects conflicting InstanceType and InstanceRequirements overrides', async () => {
+    await expect(
+      createRunner({
+        ...createRunnerConfig(defaultRunnerConfig),
+        ec2OverrideConfig: {
+          InstanceType: 'c7i.xlarge',
+          InstanceRequirements: {
+            VCpuCount: { Min: 4 },
+            MemoryMiB: { Min: 8192 },
+          },
+        },
+      }),
+    ).resolves.toEqual({
+      instances: [],
+      retryableErrorCount: 0,
+      nonRetryableErrorCount: 1,
+    });
+
+    expect(mockEC2Client).not.toHaveReceivedCommand(CreateFleetCommand);
+  });
+
   it('overrides ImageId when specified in ec2OverrideConfig', async () => {
     await createRunner({
       ...createRunnerConfig(defaultRunnerConfig),
