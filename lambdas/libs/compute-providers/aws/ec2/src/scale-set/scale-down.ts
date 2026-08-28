@@ -77,7 +77,7 @@ export async function scaleDown(
       if (!request.runnerInventoryComplete) state.needsRunnerInventory = true;
     } else if (isBusyState(githubState)) {
       state.actions.retainedBusy++;
-    } else if (isSafeScaleDownState(githubState)) {
+    } else if (isSafeScaleDownState(githubState, request.recoveryOnly)) {
       candidates.push({ runner, githubState });
     } else {
       retainUnknown(state, runner.instanceId);

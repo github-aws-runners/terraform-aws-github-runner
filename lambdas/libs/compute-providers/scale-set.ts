@@ -52,6 +52,8 @@ export type RemoveScaleSetRunner = (input: RemoveScaleSetRunnerInput) => Promise
 
 export interface ScaleSetReconcileRequest {
   desiredRunners: number;
+  /** Recovery-only mode never launches capacity; it only removes confirmed idle runners. */
+  recoveryOnly?: boolean;
   /** Orchestration-owned handoff window before exact runner inventory is required. */
   bootTimeoutMinutes: number;
   /** True only when runnerStates contains the controller's complete, freshly joined Actions and GitHub inventory. */
