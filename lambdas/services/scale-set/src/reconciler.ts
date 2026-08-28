@@ -267,7 +267,16 @@ export class ScaleSetReconciler {
     }
 
     try {
+      this.log('info', 'scale_set_runner_inventory_loading', {
+        githubConfigUrl: this.config.githubConfigUrl,
+        githubApiMode: this.config.forceGhes ? 'ghes' : 'hosted',
+        inventorySources: ['actions_service', 'github_rest'],
+      });
       const inventory = await this.loadScaleSetInventory(client, signal);
+      this.log('info', 'scale_set_runner_inventory_loaded', {
+        githubConfigUrl: this.config.githubConfigUrl,
+        runnerCount: inventory.length,
+      });
       const result = await this.reconcileProvider(provider, {
         desiredRunners: 0,
         recoveryOnly: true,
@@ -288,6 +297,13 @@ export class ScaleSetReconciler {
     } catch (error) {
       if (signal.aborted) return;
       this.log('warn', 'scale_set_recovery_failed', {
+        failureStage: 'github_runner_inventory_or_ec2_recovery',
+        githubConfigUrl: this.config.githubConfigUrl,
+        githubApiMode: this.config.forceGhes ? 'ghes' : 'hosted',
+        diagnosis:
+          isScaleSetHttpError(error) && error.status === 404
+            ? 'github_endpoint_not_found_or_app_not_authorized'
+            : undefined,
         computeProviderType: this.config.computeProvider.type,
         ...httpErrorLogAttributes(error),
         error,
@@ -429,10 +445,23 @@ export class ScaleSetReconciler {
     if (result.needsRunnerInventory) {
       let inventory: readonly GitHubScaleSetRunnerState[];
       try {
+        this.log('info', 'scale_set_runner_inventory_loading', {
+          githubConfigUrl: this.config.githubConfigUrl,
+          githubApiMode: this.config.forceGhes ? 'ghes' : 'hosted',
+          inventorySources: ['actions_service', 'github_rest'],
+        });
         inventory = await this.loadScaleSetInventory(client, signal);
+        this.log('info', 'scale_set_runner_inventory_loaded', {
+          githubConfigUrl: this.config.githubConfigUrl,
+          runnerCount: inventory.length,
+        });
       } catch (error) {
         if (!isScaleSetHttpError(error) || error.status !== 404) throw error;
         this.log('warn', 'scale_set_runner_inventory_unavailable', {
+          failureStage: 'github_runner_inventory',
+          githubConfigUrl: this.config.githubConfigUrl,
+          githubApiMode: this.config.forceGhes ? 'ghes' : 'hosted',
+          diagnosis: 'github_endpoint_not_found_or_app_not_authorized',
           ...httpErrorLogAttributes(error),
           error,
         });
