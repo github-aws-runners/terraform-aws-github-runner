@@ -27,22 +27,10 @@ import type { Ec2RunnerCreateResult, Ec2RunnerFailureCode } from './runner-creat
 import type { Ec2ListRunnerFilters, Ec2OverrideConfig, RunnerInputParameters } from './runners.d';
 
 const logger = createChildLogger('runners');
-const BASE_RUNNER_TAG_KEYS = new Set(['ghr:Application', 'ghr:created_by', 'ghr:Type', 'ghr:Owner', 'ghr:trace_id']);
 
 interface Ec2Filter {
   Name: string;
   Values: string[];
-}
-
-function appendOrchestrationRunnerTags(tags: Tag[], orchestrationTags: readonly Tag[] | undefined): void {
-  const keys = new Set(BASE_RUNNER_TAG_KEYS);
-  for (const tag of orchestrationTags ?? []) {
-    if (!tag.Key || tag.Value === undefined || keys.has(tag.Key)) {
-      throw new Error(`Orchestration runner tag '${tag.Key ?? ''}' is invalid or duplicates a provider-owned tag`);
-    }
-    keys.add(tag.Key);
-    tags.push({ Key: tag.Key, Value: tag.Value });
-  }
 }
 
 export interface Ec2RunnerRequestContext {
@@ -563,8 +551,6 @@ async function createInstances(
     { Key: 'ghr:Type', Value: runnerParameters.runnerType },
     { Key: 'ghr:Owner', Value: runnerParameters.runnerOwner },
   ];
-  appendOrchestrationRunnerTags(tags, runnerParameters.orchestrationTags);
-
   if (runnerParameters.tracingEnabled) {
     const traceId = tracer.getRootXrayTraceId();
     tags.push({ Key: 'ghr:trace_id', Value: traceId! });
@@ -649,8 +635,6 @@ async function createInstancesWithRunInstances(
     { Key: 'ghr:Type', Value: runnerParameters.runnerType },
     { Key: 'ghr:Owner', Value: runnerParameters.runnerOwner },
   ];
-  appendOrchestrationRunnerTags(tags, runnerParameters.orchestrationTags);
-
   if (runnerParameters.tracingEnabled) {
     const traceId = tracer.getRootXrayTraceId();
     tags.push({ Key: 'ghr:trace_id', Value: traceId! });

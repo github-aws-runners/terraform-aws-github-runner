@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import { parseEc2ScaleSetProviderConfig } from './configuration';
-import { EC2_SCALE_SET_ID_TAG } from './inventory';
 import { config } from './test/fixtures';
 
 describe('EC2 scale-set provider configuration', () => {
@@ -26,15 +25,5 @@ describe('EC2 scale-set provider configuration', () => {
     [{ ...config, bootTimeoutMinutes: 10 }],
   ])('rejects invalid or unsupported values instead of forwarding them to AWS', (invalid) => {
     expect(() => parseEc2ScaleSetProviderConfig(invalid)).toThrow();
-  });
-
-  it('does not expose configurable EC2 ownership or lifecycle tags', () => {
-    expect(Object.keys(config)).not.toContain('orchestrationTags');
-    expect(() =>
-      parseEc2ScaleSetProviderConfig({
-        ...config,
-        orchestrationTags: [{ Key: EC2_SCALE_SET_ID_TAG, Value: 'another-scale-set' }],
-      }),
-    ).toThrow("Unsupported EC2 scale-set configuration field 'configuration.orchestrationTags'");
   });
 });

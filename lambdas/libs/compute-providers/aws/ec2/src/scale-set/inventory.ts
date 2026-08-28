@@ -58,7 +58,6 @@ export function ownershipTags(input: CreateEc2ScaleSetProviderInput): Tag[] {
     { Key: EC2_RUNNER_CONFIG_TAG, Value: input.runnerConfigName },
     { Key: EC2_SCALE_SET_ID_TAG, Value: String(input.scaleSetId) },
     { Key: EC2_GITHUB_SCOPE_HASH_TAG, Value: githubScopeHash(input.githubScope) },
-    { Key: EC2_SCALE_SET_STATE_TAG, Value: 'provisioning' },
   ];
 }
 

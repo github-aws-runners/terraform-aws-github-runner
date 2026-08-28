@@ -169,6 +169,7 @@ async function configureLaunchedRunner(
 
   try {
     await runners.tag(instanceId, [
+      ...ownershipTags(input),
       { Key: EC2_RUNNER_NAME_TAG, Value: jit.runnerName },
       { Key: EC2_GITHUB_RUNNER_ID_TAG, Value: String(jit.runnerId) },
       { Key: EC2_SCALE_SET_STATE_TAG, Value: 'publishing' },
@@ -230,7 +231,6 @@ export async function scaleUp(
       tracingEnabled: input.configuration.tracingEnabled,
       onDemandFailoverOnError: input.configuration.onDemandFailoverOnError,
       useDedicatedHost: input.configuration.useDedicatedHost,
-      orchestrationTags: ownershipTags(input),
     });
   } catch (error) {
     throwIfAborted(request.signal, error);

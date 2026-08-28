@@ -6,7 +6,6 @@ import {
   _InstanceType,
   Placement,
   FleetBlockDeviceMappingRequest,
-  type Tag,
 } from '@aws-sdk/client-ec2';
 import type { ListRunnerFilters, RunnerSource, RunnerType } from '../../../core';
 
@@ -48,6 +47,4 @@ export interface RunnerInputParameters {
   tracingEnabled?: boolean;
   onDemandFailoverOnError?: string[];
   useDedicatedHost?: boolean;
-  /** Orchestrator-owned tags applied to instances, volumes, and fleets. */
-  orchestrationTags?: readonly Tag[];
 }
