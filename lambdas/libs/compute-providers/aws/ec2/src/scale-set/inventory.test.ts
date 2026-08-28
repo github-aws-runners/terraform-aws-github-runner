@@ -61,7 +61,6 @@ describe('EC2 scale-set inventory', () => {
     expect(result).toMatchObject({
       status: 'converged',
       currentRunners: 1,
-      needsRunnerInventory: false,
       actions: { launched: 0, retainedUnknown: 0 },
     });
     expect(ec2Mock).not.toHaveReceivedCommand(CreateFleetCommand);
@@ -81,40 +80,23 @@ describe('EC2 scale-set inventory', () => {
     );
 
     expect(result).toMatchObject({
-      status: 'retained',
+      status: 'converged',
       currentRunners: 1,
-      needsRunnerInventory: true,
-      actions: { launched: 0, retainedUnknown: 1 },
+      actions: { launched: 0, retainedUnknown: 0 },
     });
     expect(ec2Mock).not.toHaveReceivedCommand(CreateFleetCommand);
   });
 
-  it('requests a complete inventory for an old handoff, then counts only its exact online identity', async () => {
+  it('counts tagged capacity after the boot window without public runner inventory', async () => {
     const instance = ownedInstance('i-old', { runnerId: 101, runnerName: 'runner-i-old' });
     ec2Mock.on(DescribeInstancesCommand).resolves({ Reservations: [{ Instances: [instance] }] });
-    const computeProvider = createTestProvider({ now: () => new Date('2026-08-24T10:10:00Z').getTime() });
-
-    const firstPass = await computeProvider.reconcile(createRequest());
-
-    expect(firstPass).toMatchObject({
-      status: 'retained',
-      currentRunners: 1,
-      needsRunnerInventory: true,
-      actions: { launched: 0, retainedUnknown: 1 },
-    });
-    expect(ec2Mock).not.toHaveReceivedCommand(CreateFleetCommand);
-
-    const secondPass = await computeProvider.reconcile(
-      createRequest({
-        runnerInventoryComplete: true,
-        runnerStates: [githubState(101, 'runner-i-old', { status: 'online', lifecycle: 'unknown' })],
-      }),
+    const result = await createTestProvider({ now: () => new Date('2026-08-24T10:10:00Z').getTime() }).reconcile(
+      createRequest({ busyRunners: 1 }),
     );
 
-    expect(secondPass).toMatchObject({
+    expect(result).toMatchObject({
       status: 'converged',
       currentRunners: 1,
-      needsRunnerInventory: false,
       actions: { launched: 0, retainedUnknown: 0 },
     });
     expect(ec2Mock).not.toHaveReceivedCommand(CreateFleetCommand);
@@ -135,7 +117,6 @@ describe('EC2 scale-set inventory', () => {
     expect(result).toMatchObject({
       status: 'converged',
       currentRunners: 1,
-      needsRunnerInventory: false,
       actions: { launched: 0, retainedUnknown: 0 },
     });
   });

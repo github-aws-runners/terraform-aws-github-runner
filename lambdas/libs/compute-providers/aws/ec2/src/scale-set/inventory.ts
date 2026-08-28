@@ -206,23 +206,6 @@ export function servingCapacity(
   const serving: OwnedEc2Runner[] = [];
 
   for (const runner of runners) {
-    const githubState = matchingRunnerState(runner, runnerStateIndex, input.scaleSetId);
-    if (request.recoveryOnly) {
-      if (
-        githubState !== undefined &&
-        (githubState.status === 'online' || githubState.status === 'offline') &&
-        typeof githubState.busy === 'boolean'
-      ) {
-        // Recovery gets a fresh public GitHub status and may classify an
-        // offline, non-busy runner as removable. Unknown and busy identities
-        // remain in the scale-down classifier and are retained there.
-        serving.push(runner);
-      } else {
-        retainUnknown(state, runner.instanceId);
-      }
-      continue;
-    }
-
     if (runner.scaleSetState !== 'config-published') {
       // An interrupted publication may already have been consumed. Preserve it,
       // but do not let it suppress replacement capacity indefinitely.
@@ -230,6 +213,7 @@ export function servingCapacity(
       continue;
     }
 
+    const githubState = matchingRunnerState(runner, runnerStateIndex, input.scaleSetId);
     if (githubState !== undefined && isConfirmedServingState(githubState)) {
       serving.push(runner);
       continue;
@@ -239,26 +223,25 @@ export function servingCapacity(
       continue;
     }
 
-    retainUnknown(state, runner.instanceId);
-    if (!request.runnerInventoryComplete) {
-      // Treat the stale handoff provisionally as serving until the controller
-      // supplies one complete joined inventory. This avoids a blind replacement
-      // before GitHub identity can be checked.
-      state.needsRunnerInventory = true;
+    // A config-published EC2 instance is provider-owned capacity. The exact
+    // Actions-service identity is used only when removing it; no public
+    // GitHub runner inventory is needed to count capacity.
+    if (runner.githubRunnerId !== undefined && runner.runnerName !== undefined) {
       serving.push(runner);
+      continue;
     }
+
+    retainUnknown(state, runner.instanceId);
+    // Unknown lifecycle state is not allowed to suppress replacement capacity.
+    // Aggregate busy state still protects scale-down, while tagged EC2
+    // inventory remains the source of current provider-owned capacity.
   }
 
   return serving;
 }
 
-export function isSafeScaleDownState(state: ScaleSetRunnerState, recoveryOnly = false): boolean {
-  return (
-    (state.lifecycle === 'completed' && state.busy !== true) ||
-    (state.lifecycle !== 'started' &&
-      (state.status === 'online' || (recoveryOnly && state.status === 'offline')) &&
-      state.busy === false)
-  );
+export function isSafeScaleDownState(state: ScaleSetRunnerState): boolean {
+  return state.busy === false || (state.lifecycle === 'completed' && state.busy !== true);
 }
 
 export function isBusyState(state: ScaleSetRunnerState): boolean {

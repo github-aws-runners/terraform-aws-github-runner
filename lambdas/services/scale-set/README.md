@@ -71,39 +71,25 @@ GitHub App ID and private-key values are reloaded from SSM whenever an installat
 
 Runtime settings:
 
-| Environment variable                          | Default      |
-| --------------------------------------------- | ------------ |
-| `SCALE_SET_HEALTH_PORT`                       | `8080`       |
-| `SCALE_SET_HEALTH_STALE_AFTER_SECONDS`        | `180`        |
-| `SCALE_SET_SHUTDOWN_TIMEOUT_SECONDS`          | `110`        |
-| `SCALE_SET_SESSION_CLOSE_TIMEOUT_SECONDS`     | `10`         |
-| `SCALE_SET_RECONNECT_INITIAL_BACKOFF_SECONDS` | `1`          |
-| `SCALE_SET_RECONNECT_MAX_BACKOFF_SECONDS`     | `30`         |
-| `SCALE_SET_CONTROLLER_MODE`                   | `controller` |
-| `SCALE_SET_JANITOR_INTERVAL_SECONDS`          | `300`        |
-
-Set `SCALE_SET_CONTROLLER_MODE=janitor` in a separate container or task. Janitor mode does not open a message
-session and does not create a missing scale set. Each pass lists EC2 instances through the exact ownership tags,
-joins the Actions-service runner identity with the public GitHub runner status, removes only an exact runner whose
-fresh status is explicitly not busy, and terminates the matching EC2 instance only after GitHub removal succeeds. Busy,
-unknown-status, mismatched, missing, and otherwise unknown runners are retained. Run this
-process independently from the controller so it can clean idle capacity after a controller failure; do not run both
-modes against the same scale set unless the janitor is deliberately being used as the recovery owner.
+| Environment variable                          | Default |
+| --------------------------------------------- | ------- |
+| `SCALE_SET_HEALTH_PORT`                       | `8080`  |
+| `SCALE_SET_HEALTH_STALE_AFTER_SECONDS`        | `180`   |
+| `SCALE_SET_SHUTDOWN_TIMEOUT_SECONDS`          | `110`   |
+| `SCALE_SET_SESSION_CLOSE_TIMEOUT_SECONDS`     | `10`    |
+| `SCALE_SET_RECONNECT_INITIAL_BACKOFF_SECONDS` | `1`     |
+| `SCALE_SET_RECONNECT_MAX_BACKOFF_SECONDS`     | `30`    |
+| `LOG_LEVEL`                                   | `info`  |
 
 ## Reconciliation and health
 
-Demand is calculated as `max(totalAssignedJobs, min(maxRunners, minRunners + totalAssignedJobs))`. The maximum therefore bounds requested idle capacity without ever requesting scale-down below work GitHub has already assigned. Job-started and job-completed messages maintain a bounded in-memory lifecycle cache. State is unknown after restart unless GitHub provides an exact runner match, and the compute provider must retain unknown or busy runners.
+Demand is calculated as `max(totalAssignedJobs, min(maxRunners, minRunners + totalAssignedJobs))`. The maximum therefore bounds requested idle capacity without ever requesting scale-down below work GitHub has already assigned. Job-started and job-completed messages maintain a bounded in-memory lifecycle cache. After a restart, lifecycle state is unknown, but provider-owned EC2 tags still identify current capacity. The aggregate scale-set busy count protects unknown runners from scale-down until it reaches zero. Runner deletion executes inside the serialized reconcile loop and re-checks the exact Actions-service runner identity by name before removal.
 
-The public GitHub runner inventory is not fetched on ordinary steady-state or scale-up polls. A compute provider explicitly requests one bounded, owner-scope inventory refresh when it needs to verify old handed-off capacity or perform safe scale-down; owner inventory is briefly shared across reconcilers. The first provider pass is marked lifecycle-only and the second is explicitly marked inventory-complete, so the provider cannot mistake a post-restart gap for an authoritative absence. Runner deletion executes inside the serialized reconcile loop, re-fetches the Actions identity by name, and then performs a fresh public GitHub lookup to verify the exact ID/name and confirm the runner is not busy before issuing the delete.
+The public GitHub runner inventory is not fetched by the scale-set service. The selected compute provider reconciles its own capacity inventory, while the scale-set session remains the source of demand and aggregate busy-runner statistics. This keeps the service aligned with the upstream scale-set API and supports GitHub.com, GHES, and data-residency endpoints without relying on a separate public REST runner endpoint.
 
 Messages follow the upstream scale-set listener order: acknowledge first, then acquire available jobs, update lifecycle state, and reconcile compute. Provider failures therefore stop that reconciler after the message has been acknowledged; provider results expose one error outcome rather than the control-plane scaling retry classification. A typed busy/unknown retention remains a successful reconciliation. Session and transport failures are handled separately by bounded client retries or session recreation.
 
-The EC2 provider counts a `config-published` instance as serving only during the orchestration request's boot window (`bootTimeoutMinutes`, default `10`) or after an exact online or `JobStarted` identity is observed. After the window, offline or unknown capacity is retained rather than terminated, and the complete inventory pass allows it to stop suppressing a replacement. Instances left in an earlier or unknown publication state are also retained for operator recovery and never terminated speculatively. EC2 ownership includes a SHA-256 hash of the canonical GitHub configuration scope, preventing the same runner-config name and numeric scale-set ID in another GitHub scope from colliding. A bounded one-instance physical surge may replace ambiguous capacity; once that ceiling is reached, the provider reports retained capacity instead of creating an unbounded replacement loop.
-
-The recovery janitor intentionally has a stricter destructive boundary than normal reconciliation: it only acts on
-an exact EC2 ownership match plus an exact Actions runner ID/name match plus a fresh GitHub `busy: false` response.
-It treats an unavailable GitHub inventory as unknown and leaves the instance untouched. The GitHub App therefore
-needs organization `Self-hosted runners: Read & write` permission for the final status lookup and removal.
+The EC2 provider uses the tagged, `config-published` EC2 instances as its capacity inventory. The GitHub Actions scale-set session supplies `desiredRunners` through `totalAssignedJobs` and the aggregate `totalBusyRunners` count. When capacity is above desired and the aggregate busy count is zero, tagged runners may be removed through the Actions service and their matching EC2 instances terminated; busy, contradictory, or unknown identities are retained. The provider uses the boot window (`bootTimeoutMinutes`, default `10`) for newly launched instances and keeps interrupted publication states from being counted as serving. EC2 ownership includes a SHA-256 hash of the canonical GitHub configuration scope, preventing the same runner-config name and numeric scale-set ID in another GitHub scope from colliding. No public GitHub REST runner inventory call is required.
 
 - `GET /healthz` reports controller liveness and is used by Docker/ECS. External GitHub outages remain live but degraded to avoid restart loops.
 - `GET /readyz` reports readiness and returns 503 unless every reconciler is ready.
@@ -114,23 +100,6 @@ Build from the repository root:
 
 ```shell
 docker build --target runtime -f lambdas/services/scale-set/Dockerfile -t scale-set-controller .
-```
-
-For local recovery, start the janitor as a separate container. The profile file must be mounted inside the container
-and the profile's IAM identity must be allowed to describe and terminate only the tagged runner instances, plus read
-the configured SSM parameters:
-
-```shell
-docker run --rm --name scale-set-janitor --no-healthcheck \
-  -e SCALE_SET_CONTROLLER_MODE=janitor \
-  -e SCALE_SET_JANITOR_INTERVAL_SECONDS=300 \
-  -e AWS_REGION=eu-west-1 \
-  -e AWS_DEFAULT_REGION=eu-west-1 \
-  -e AWS_PROFILE=forge-ops-dev \
-  -e AWS_SDK_LOAD_CONFIG=1 \
-  -v "$HOME/.aws:/home/node/.aws:ro" \
-  -e SCALE_SET_CONTROLLER_MANIFEST="$(<controller-manifest.json)" \
-  scale-set-controller
 ```
 
 The image supports `linux/amd64` and `linux/arm64`, uses a digest-pinned multi-stage Node image, runs as the unprivileged `node` user, includes a Node-based health check, and does not require filesystem writes. Deploy with a read-only root filesystem, all Linux capabilities dropped, no Docker socket, and only the task-role permissions required by the selected group.

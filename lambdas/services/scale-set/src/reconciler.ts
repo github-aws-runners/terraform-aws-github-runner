@@ -3,11 +3,9 @@ import {
   isScaleSetHttpError,
   ScaleSetProtocolError,
   type AccessToken,
-  type GitHubRunnerReference,
   type MessageSessionClient,
   type RunnerScaleSetMessage,
   type RunnerScaleSetStatistic,
-  type ScaleSetRunnerState as GitHubScaleSetRunnerState,
 } from '@aws-github-runner/github-actions-scale-set';
 import type {
   ScaleSetComputeProvider,
@@ -24,7 +22,6 @@ import type { ScaleSetReconcilerStatusReporter } from './health';
 import type { ScaleSetLogger } from './logger';
 
 const MAX_JIT_CONFIGURATION_BYTES = 1024 * 1024;
-const SCALE_SET_INVENTORY_TTL_MS = 60_000;
 
 export interface ScaleSetComputeProviderFactory {
   create(type: string, input: ScaleSetComputeProviderFactoryInput): ScaleSetComputeProvider;
@@ -34,13 +31,10 @@ export type ScaleSetReconcilerClient = Pick<
   GitHubActionsScaleSetClient,
   | 'createMessageSessionClient'
   | 'generateJitRunnerConfig'
-  | 'getGitHubRunner'
   | 'getRunnerGroupByName'
   | 'getRunnerScaleSet'
   | 'getRunnerScaleSetById'
   | 'getRunnerByName'
-  | 'listGitHubRunners'
-  | 'listRunners'
   | 'removeRunner'
   | 'createRunnerScaleSet'
   | 'setSystemInfo'
@@ -55,37 +49,7 @@ export interface ScaleSetReconcilerDependencies {
   sleep(delayMs: number, signal: AbortSignal): Promise<void>;
   random(): number;
   closeSignal(timeoutMs: number): AbortSignal;
-  runnerInventory: ScaleSetRunnerInventoryCache;
   parameterStore: ParameterStore;
-}
-
-export interface ScaleSetRunnerInventoryCache {
-  get(key: string, loader: () => Promise<readonly GitHubRunnerReference[]>): Promise<readonly GitHubRunnerReference[]>;
-}
-
-export class TtlScaleSetRunnerInventoryCache implements ScaleSetRunnerInventoryCache {
-  private readonly entries = new Map<string, { expiresAt: number; value: Promise<readonly GitHubRunnerReference[]> }>();
-
-  constructor(
-    private readonly ttlMs = 60_000,
-    private readonly now: () => number = Date.now,
-  ) {}
-
-  async get(
-    key: string,
-    loader: () => Promise<readonly GitHubRunnerReference[]>,
-  ): Promise<readonly GitHubRunnerReference[]> {
-    const current = this.entries.get(key);
-    if (current !== undefined && current.expiresAt > this.now()) return await current.value;
-    const value = loader();
-    this.entries.set(key, { expiresAt: this.now() + this.ttlMs, value });
-    try {
-      return await value;
-    } catch (error) {
-      if (this.entries.get(key)?.value === value) this.entries.delete(key);
-      throw error;
-    }
-  }
 }
 
 interface LifecycleObservation {
@@ -113,7 +77,6 @@ export class ScaleSetProviderReconciliationError extends Error {
 export class ScaleSetReconciler {
   private readonly lifecycle = new Map<string, LifecycleObservation>();
   private readonly lifecycleLimit: number;
-  private inventory?: { expiresAt: number; value: Promise<readonly GitHubScaleSetRunnerState[]> };
   private resolvedScaleSetId?: number;
   private resolvedRunnerGroupId?: number;
 
@@ -134,10 +97,13 @@ export class ScaleSetReconciler {
     try {
       const accessTokenProvider = await this.dependencies.createAccessTokenProvider(this.config);
       client = this.dependencies.createClient(this.config, accessTokenProvider);
-      const resolved = await this.resolveScaleSet(client, signal, true);
+      const resolved = await this.resolveScaleSet(client, signal);
       this.resolvedScaleSetId = resolved.scaleSetId;
       this.resolvedRunnerGroupId = resolved.runnerGroupId;
       client.setSystemInfo({ ...client.systemInfo, scaleSetId: resolved.scaleSetId });
+      this.log('debug', 'scale_set_compute_provider_loading', {
+        computeProviderType: this.config.computeProvider.type,
+      });
       provider = this.dependencies.computeProviders.create(this.config.computeProvider.type, {
         runnerConfigName: this.config.runnerConfigName,
         scaleSetId: resolved.scaleSetId,
@@ -145,6 +111,9 @@ export class ScaleSetReconciler {
         configuration: this.config.computeProvider.configuration,
       });
       this.log('info', 'scale_set_compute_provider_created', {
+        computeProviderType: this.config.computeProvider.type,
+      });
+      this.log('debug', 'scale_set_compute_provider_loaded', {
         computeProviderType: this.config.computeProvider.type,
       });
     } catch (error) {
@@ -174,6 +143,10 @@ export class ScaleSetReconciler {
         session = await client.createMessageSessionClient(this.scaleSetId, this.config.sessionOwner, { signal });
         status.markSessionReady();
         this.log('info', 'scale_set_session_created');
+        this.log('debug', 'scale_set_session_scale_set_loaded', {
+          scaleSetName: session.session.runnerScaleSet?.name,
+          scaleSetLabels: session.session.runnerScaleSet?.labels?.map(({ name, type }) => ({ name, type })),
+        });
         let latestStatistics = session.session.statistics ?? undefined;
         let lastMessageId = 0;
         if (latestStatistics !== undefined) {
@@ -239,82 +212,9 @@ export class ScaleSetReconciler {
     status.markStopping();
   }
 
-  /** Run one independent recovery pass without opening a message session or creating a scale set. */
-  async recover(signal: AbortSignal): Promise<void> {
-    let provider: ScaleSetComputeProvider;
-    let client: ScaleSetReconcilerClient;
-    try {
-      const accessTokenProvider = await this.dependencies.createAccessTokenProvider(this.config);
-      client = this.dependencies.createClient(this.config, accessTokenProvider);
-      const resolved = await this.resolveScaleSet(client, signal, false);
-      this.resolvedScaleSetId = resolved.scaleSetId;
-      this.resolvedRunnerGroupId = resolved.runnerGroupId;
-      client.setSystemInfo({ ...client.systemInfo, scaleSetId: resolved.scaleSetId });
-      provider = this.dependencies.computeProviders.create(this.config.computeProvider.type, {
-        runnerConfigName: this.config.runnerConfigName,
-        scaleSetId: resolved.scaleSetId,
-        githubScope: this.config.githubConfigUrl,
-        configuration: this.config.computeProvider.configuration,
-      });
-    } catch (error) {
-      if (signal.aborted) return;
-      this.log('warn', 'scale_set_recovery_initialization_failed', {
-        computeProviderType: this.config.computeProvider.type,
-        ...httpErrorLogAttributes(error),
-        error,
-      });
-      return;
-    }
-
-    try {
-      this.log('info', 'scale_set_runner_inventory_loading', {
-        githubConfigUrl: this.config.githubConfigUrl,
-        githubApiMode: this.config.forceGhes ? 'ghes' : 'hosted',
-        inventorySources: ['actions_service', 'github_rest'],
-      });
-      const inventory = await this.loadScaleSetInventory(client, signal);
-      this.log('info', 'scale_set_runner_inventory_loaded', {
-        githubConfigUrl: this.config.githubConfigUrl,
-        runnerCount: inventory.length,
-      });
-      const result = await this.reconcileProvider(provider, {
-        desiredRunners: 0,
-        recoveryOnly: true,
-        bootTimeoutMinutes: this.config.bootTimeoutMinutes,
-        runnerInventoryComplete: true,
-        runnerStates: this.mergeLifecycle(inventory),
-        ...this.createReconcileCallbacks(client, signal),
-      });
-      validateProviderResult(result, 0);
-      throwIfProviderError(result);
-      this.log('info', 'scale_set_recovery_reconciled', {
-        computeProviderType: this.config.computeProvider.type,
-        currentRunners: result.currentRunners,
-        status: result.status,
-        actions: result.actions,
-        errorCount: result.errors.length,
-      });
-    } catch (error) {
-      if (signal.aborted) return;
-      this.log('warn', 'scale_set_recovery_failed', {
-        failureStage: 'github_runner_inventory_or_ec2_recovery',
-        githubConfigUrl: this.config.githubConfigUrl,
-        githubApiMode: this.config.forceGhes ? 'ghes' : 'hosted',
-        diagnosis:
-          isScaleSetHttpError(error) && error.status === 404
-            ? 'github_endpoint_not_found_or_app_not_authorized'
-            : undefined,
-        computeProviderType: this.config.computeProvider.type,
-        ...httpErrorLogAttributes(error),
-        error,
-      });
-    }
-  }
-
   private async resolveScaleSet(
     client: ScaleSetReconcilerClient,
     signal: AbortSignal,
-    registerMissing: boolean,
   ): Promise<{ scaleSetId: number; runnerGroupId?: number }> {
     let runnerGroupId = this.config.expectedRunnerGroupId;
     if (this.config.runnerGroupName !== undefined) {
@@ -346,12 +246,7 @@ export class ScaleSetReconciler {
       this.config.scaleSetId === undefined
         ? await client.getRunnerScaleSet(runnerGroupId as number, this.config.scaleSetName, { signal })
         : await client.getRunnerScaleSetById(this.config.scaleSetId, { signal });
-    if (
-      registerMissing &&
-      configuredScaleSet === null &&
-      runnerGroupId !== undefined &&
-      this.config.scaleSetId === undefined
-    ) {
+    if (configuredScaleSet === null && runnerGroupId !== undefined && this.config.scaleSetId === undefined) {
       this.log('info', 'scale_set_registering', {
         runnerConfigName: this.config.runnerConfigName,
         scaleSetName: this.config.scaleSetName,
@@ -390,6 +285,10 @@ export class ScaleSetReconciler {
       scaleSetName: this.config.scaleSetName,
       scaleSetId: configuredScaleSet.id,
       runnerGroupId,
+    });
+    this.log('debug', 'scale_set_labels_resolved', {
+      scaleSetName: configuredScaleSet.name,
+      scaleSetLabels: configuredScaleSet.labels?.map(({ name, type }) => ({ name, type })),
     });
     return { scaleSetId: configuredScaleSet.id, runnerGroupId };
   }
@@ -433,56 +332,15 @@ export class ScaleSetReconciler {
       this.config.maxRunners,
     );
     const callbacks = this.createReconcileCallbacks(client, signal);
-    let result = await this.reconcileProvider(provider, {
+    const result = await this.reconcileProvider(provider, {
       desiredRunners,
+      busyRunners: statistics.totalBusyRunners,
       bootTimeoutMinutes: this.config.bootTimeoutMinutes,
-      runnerInventoryComplete: false,
       runnerStates: this.lifecycleStates(),
       ...callbacks,
     });
     validateProviderResult(result, desiredRunners);
     throwIfProviderError(result);
-    if (result.needsRunnerInventory) {
-      let inventory: readonly GitHubScaleSetRunnerState[];
-      try {
-        this.log('info', 'scale_set_runner_inventory_loading', {
-          githubConfigUrl: this.config.githubConfigUrl,
-          githubApiMode: this.config.forceGhes ? 'ghes' : 'hosted',
-          inventorySources: ['actions_service', 'github_rest'],
-        });
-        inventory = await this.loadScaleSetInventory(client, signal);
-        this.log('info', 'scale_set_runner_inventory_loaded', {
-          githubConfigUrl: this.config.githubConfigUrl,
-          runnerCount: inventory.length,
-        });
-      } catch (error) {
-        if (!isScaleSetHttpError(error) || error.status !== 404) throw error;
-        this.log('warn', 'scale_set_runner_inventory_unavailable', {
-          failureStage: 'github_runner_inventory',
-          githubConfigUrl: this.config.githubConfigUrl,
-          githubApiMode: this.config.forceGhes ? 'ghes' : 'hosted',
-          diagnosis: 'github_endpoint_not_found_or_app_not_authorized',
-          ...httpErrorLogAttributes(error),
-          error,
-        });
-        this.logReconciliationResult(result, desiredRunners);
-        return;
-      }
-      result = await this.reconcileProvider(provider, {
-        desiredRunners,
-        bootTimeoutMinutes: this.config.bootTimeoutMinutes,
-        runnerInventoryComplete: true,
-        runnerStates: this.mergeLifecycle(inventory),
-        ...callbacks,
-      });
-      validateProviderResult(result, desiredRunners);
-      throwIfProviderError(result);
-      if (result.needsRunnerInventory) {
-        throw new ScaleSetProtocolError(
-          'scale-set compute provider requested inventory after a complete inventory pass',
-        );
-      }
-    }
     this.logReconciliationResult(result, desiredRunners);
   }
 
@@ -541,18 +399,9 @@ export class ScaleSetReconciler {
         ) {
           return { status: 'retained_unknown' as const };
         }
-        const githubRunner = await client.getGitHubRunner(expected.runnerId, { signal: callbackSignal });
-        if (githubRunner === null) return { status: 'retained_unknown' as const };
-        if (githubRunner.id !== expected.runnerId || githubRunner.name !== expected.runnerName) {
-          return { status: 'retained_unknown' as const };
-        }
-        if (
-          typeof githubRunner.busy !== 'boolean' ||
-          (githubRunner.status !== 'online' && githubRunner.status !== 'offline')
-        ) {
-          return { status: 'retained_unknown' as const };
-        }
-        if (githubRunner.busy) return { status: 'retained_busy' as const };
+        // Busy state comes from the aggregate scale-set statistics. The
+        // Actions-service runner reference above remains the exact identity
+        // check; no public GitHub REST runner call is required.
         try {
           await client.removeRunner(runner.id, { signal: callbackSignal });
         } catch (error) {
@@ -591,8 +440,7 @@ export class ScaleSetReconciler {
     this.log('info', 'scale_set_compute_provider_reconcile_started', {
       computeProviderType: this.config.computeProvider.type,
       desiredRunners: request.desiredRunners,
-      recoveryOnly: request.recoveryOnly ?? false,
-      runnerInventoryComplete: request.runnerInventoryComplete,
+      busyRunners: request.busyRunners,
     });
     try {
       return await provider.reconcile(request);
@@ -601,8 +449,7 @@ export class ScaleSetReconciler {
       this.log('error', 'scale_set_compute_provider_reconcile_failed', {
         computeProviderType: this.config.computeProvider.type,
         desiredRunners: request.desiredRunners,
-        recoveryOnly: request.recoveryOnly ?? false,
-        runnerInventoryComplete: request.runnerInventoryComplete,
+        busyRunners: request.busyRunners,
         error,
       });
       throw new ScaleSetProviderReconciliationError(undefined, { cause: error });
@@ -641,62 +488,12 @@ export class ScaleSetReconciler {
     }
   }
 
-  private mergeLifecycle(inventory: readonly GitHubScaleSetRunnerState[]): ScaleSetRunnerState[] {
-    const result = inventory.map((runner): ScaleSetRunnerState => {
-      const observation = this.lifecycle.get(runner.runnerName);
-      const lifecycle =
-        observation !== undefined &&
-        observation.runnerId === runner.runnerId &&
-        observation.scaleSetId === runner.scaleSetId
-          ? observation.lifecycle
-          : 'unknown';
-      return { ...runner, lifecycle };
-    });
-    const identities = new Set(result.map((runner) => `${runner.runnerId}\u0000${runner.runnerName}`));
-    for (const observation of this.lifecycle.values()) {
-      if (identities.has(`${observation.runnerId}\u0000${observation.runnerName}`)) continue;
-      result.push({ ...observation, status: 'unknown', busy: undefined });
-    }
-    return result;
-  }
-
   private lifecycleStates(): ScaleSetRunnerState[] {
     return [...this.lifecycle.values()].map((observation) => ({
       ...observation,
       status: 'unknown',
       busy: undefined,
     }));
-  }
-
-  private inventoryCacheKey(): string {
-    const app = this.config.githubApp;
-    return [
-      this.config.githubConfigUrl,
-      app.appIdParameterName,
-      app.installationIdParameterName,
-      app.privateKeyParameterName,
-    ].join('\u0000');
-  }
-
-  private async loadScaleSetInventory(
-    client: ScaleSetReconcilerClient,
-    signal: AbortSignal,
-  ): Promise<readonly GitHubScaleSetRunnerState[]> {
-    if (this.inventory !== undefined && this.inventory.expiresAt > Date.now()) return await this.inventory.value;
-    const value = Promise.all([
-      client.listRunners({ signal }),
-      this.dependencies.runnerInventory.get(
-        this.inventoryCacheKey(),
-        async () => await client.listGitHubRunners({ signal }),
-      ),
-    ]).then(([actionsRunners, githubRunners]) => joinRunnerInventory(actionsRunners, githubRunners, this.scaleSetId));
-    this.inventory = { expiresAt: Date.now() + SCALE_SET_INVENTORY_TTL_MS, value };
-    try {
-      return await value;
-    } catch (error) {
-      if (this.inventory?.value === value) this.inventory = undefined;
-      throw error;
-    }
   }
 
   private async closeSession(session: Pick<MessageSessionClient, 'close'>): Promise<void> {
@@ -707,7 +504,11 @@ export class ScaleSetReconciler {
     }
   }
 
-  private log(level: 'info' | 'warn' | 'error', event: string, attributes: Record<string, unknown> = {}): void {
+  private log(
+    level: 'debug' | 'info' | 'warn' | 'error',
+    event: string,
+    attributes: Record<string, unknown> = {},
+  ): void {
     this.dependencies.logger[level](event, {
       groupRunnerConfig: this.config.runnerConfigName,
       scaleSetId: this.resolvedScaleSetId,
@@ -760,14 +561,7 @@ export function validateProviderResult(result: ScaleSetReconcileResult, desiredR
     throw new ScaleSetProtocolError('scale-set compute provider returned an invalid reconciliation result');
   }
   const record = value as Record<string, unknown>;
-  const resultFields = new Set([
-    'status',
-    'desiredRunners',
-    'currentRunners',
-    'needsRunnerInventory',
-    'actions',
-    'errors',
-  ]);
+  const resultFields = new Set(['status', 'desiredRunners', 'currentRunners', 'actions', 'errors']);
   if (Object.keys(record).some((key) => !resultFields.has(key))) {
     throw new ScaleSetProtocolError('scale-set compute provider returned an invalid reconciliation result');
   }
@@ -777,9 +571,6 @@ export function validateProviderResult(result: ScaleSetReconcileResult, desiredR
   }
   if (record.desiredRunners !== desiredRunners || !boundedCount(record.currentRunners)) {
     throw new ScaleSetProtocolError('scale-set compute provider returned invalid capacity counts');
-  }
-  if (typeof record.needsRunnerInventory !== 'boolean') {
-    throw new ScaleSetProtocolError('scale-set compute provider returned an invalid inventory signal');
   }
   const actions = record.actions;
   if (typeof actions !== 'object' || actions === null || Array.isArray(actions)) {
@@ -830,7 +621,7 @@ export function validateProviderResult(result: ScaleSetReconcileResult, desiredR
   let expectedStatus: ScaleSetReconcileResult['status'] = 'converged';
   if (record.errors.length > 0 || (record.currentRunners as number) < desiredRunners) {
     expectedStatus = 'error';
-  } else if (record.needsRunnerInventory || (record.currentRunners as number) > desiredRunners) {
+  } else if ((record.currentRunners as number) > desiredRunners) {
     expectedStatus = 'retained';
   }
   if (record.status !== expectedStatus) {
@@ -874,33 +665,4 @@ function httpErrorLogAttributes(error: unknown): Record<string, unknown> {
     requestStatus: error.status,
     requestCode: error.code,
   };
-}
-
-function joinRunnerInventory(
-  actionsRunners: readonly { id: number; name: string; runnerScaleSetId: number }[],
-  githubRunners: readonly GitHubRunnerReference[],
-  scaleSetId: number,
-): GitHubScaleSetRunnerState[] {
-  const githubById = new Map<number, GitHubRunnerReference>();
-  const duplicateIds = new Set<number>();
-  for (const runner of githubRunners) {
-    if (githubById.has(runner.id)) duplicateIds.add(runner.id);
-    else githubById.set(runner.id, runner);
-  }
-  return actionsRunners
-    .filter((runner) => runner.runnerScaleSetId === scaleSetId)
-    .map((runner) => {
-      const githubRunner = duplicateIds.has(runner.id) ? undefined : githubById.get(runner.id);
-      const exact = githubRunner?.name === runner.name;
-      return {
-        runnerId: runner.id,
-        runnerName: runner.name,
-        scaleSetId: runner.runnerScaleSetId,
-        status:
-          exact && (githubRunner.status === 'online' || githubRunner.status === 'offline')
-            ? githubRunner.status
-            : 'unknown',
-        busy: exact && typeof githubRunner.busy === 'boolean' ? githubRunner.busy : undefined,
-      };
-    });
 }

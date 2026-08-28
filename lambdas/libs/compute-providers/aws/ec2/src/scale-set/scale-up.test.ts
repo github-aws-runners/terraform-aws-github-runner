@@ -31,7 +31,6 @@ describe('EC2 scale-set scale up', () => {
       status: 'converged',
       desiredRunners: 1,
       currentRunners: 1,
-      needsRunnerInventory: false,
       actions: { launched: 1, terminated: 0, retainedBusy: 0, retainedUnknown: 0 },
       errors: [],
     });

@@ -100,8 +100,8 @@ export function jitResult(instanceId = 'i-1234567890abcdef0'): GenerateScaleSetJ
 export function createRequest(overrides: Partial<ScaleSetReconcileRequest> = {}): ScaleSetReconcileRequest {
   return {
     desiredRunners: 1,
+    busyRunners: 0,
     bootTimeoutMinutes: 10,
-    runnerInventoryComplete: false,
     runnerStates: [],
     signal,
     generateJitConfiguration: vi.fn().mockResolvedValue(jitResult()),

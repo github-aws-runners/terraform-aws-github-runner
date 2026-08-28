@@ -40,7 +40,6 @@ async function terminateKnownIdleRunner(
   }
   if (removalResult.status !== 'removed') {
     retainUnknown(state, runner.instanceId);
-    if (!request.runnerInventoryComplete) state.needsRunnerInventory = true;
     return false;
   }
 
@@ -72,16 +71,34 @@ export async function scaleDown(
 
   for (const runner of runners) {
     const githubState = matchingRunnerState(runner, runnerStateIndex, input.scaleSetId);
+    const hasContradictoryState = runner.runnerName !== undefined && runnerStateIndex.byName.has(runner.runnerName);
     if (!githubState) {
-      retainUnknown(state, runner.instanceId);
-      if (!request.runnerInventoryComplete) state.needsRunnerInventory = true;
+      if (
+        !hasContradictoryState &&
+        request.busyRunners === 0 &&
+        runner.githubRunnerId !== undefined &&
+        runner.runnerName !== undefined
+      ) {
+        candidates.push({
+          runner,
+          githubState: {
+            runnerId: runner.githubRunnerId,
+            runnerName: runner.runnerName,
+            scaleSetId: input.scaleSetId,
+            status: 'unknown',
+            busy: false,
+            lifecycle: 'unknown',
+          },
+        });
+      } else {
+        retainUnknown(state, runner.instanceId);
+      }
     } else if (isBusyState(githubState)) {
       state.actions.retainedBusy++;
-    } else if (isSafeScaleDownState(githubState, request.recoveryOnly)) {
+    } else if (isSafeScaleDownState(githubState)) {
       candidates.push({ runner, githubState });
     } else {
       retainUnknown(state, runner.instanceId);
-      if (!request.runnerInventoryComplete) state.needsRunnerInventory = true;
     }
   }
 

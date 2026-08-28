@@ -20,6 +20,10 @@ export class ScaleSetController {
   }
 
   async run(signal: AbortSignal): Promise<void> {
+    this.controllerLogger.debug('scale_set_reconcilers_starting', {
+      reconcilerCount: this.manifest.reconcilers.length,
+      runnerConfigNames: this.manifest.reconcilers.map(({ runnerConfigName }) => runnerConfigName),
+    });
     const completions = this.manifest.reconcilers.map(async (config) => {
       const status = this.health.reporter(config.runnerConfigName);
       try {
@@ -38,14 +42,6 @@ export class ScaleSetController {
     if (!signal.aborted) await waitForAbort(signal);
     this.health.markStopping();
     await Promise.all(completions);
-  }
-
-  async recover(signal: AbortSignal): Promise<void> {
-    await Promise.all(
-      this.manifest.reconcilers.map(async (config) => {
-        await new ScaleSetReconciler(config, this.serviceConfig, this.dependencies).recover(signal);
-      }),
-    );
   }
 }
 

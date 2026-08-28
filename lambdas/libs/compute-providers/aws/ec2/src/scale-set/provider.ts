@@ -16,8 +16,8 @@ import {
   safeError,
   throwIfAborted,
   validateBootTimeout,
+  validateBusyRunners,
   validateDesiredRunners,
-  validateInventorySignal,
 } from './reconcile';
 import { scaleDown } from './scale-down';
 import { scaleUp } from './scale-up';
@@ -72,8 +72,8 @@ export function createEc2ScaleSetProvider(
       request.signal.throwIfAborted();
       const validationError =
         validateDesiredRunners(request.desiredRunners) ??
-        validateBootTimeout(request.bootTimeoutMinutes) ??
-        validateInventorySignal(request.runnerInventoryComplete);
+        validateBusyRunners(request.busyRunners) ??
+        validateBootTimeout(request.bootTimeoutMinutes);
       if (validationError) {
         const state = emptyState(0);
         state.errors.push(validationError);
@@ -94,13 +94,7 @@ export function createEc2ScaleSetProvider(
       const state = emptyState(ownedRunners.length);
       const servingRunners = servingCapacity(normalizedInput, ownedRunners, request, state, now());
 
-      if (request.recoveryOnly) {
-        if (!request.runnerInventoryComplete) {
-          state.needsRunnerInventory = true;
-        } else if (servingRunners.length > 0) {
-          await scaleDown(normalizedInput, servingRunners, servingRunners.length, request, state, runnerOperations);
-        }
-      } else if (servingRunners.length < request.desiredRunners) {
+      if (servingRunners.length < request.desiredRunners) {
         const capacityDeficit = request.desiredRunners - servingRunners.length;
         const availableReplacementSlots = Math.max(
           0,
