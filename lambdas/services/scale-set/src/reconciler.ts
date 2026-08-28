@@ -151,6 +151,7 @@ export class ScaleSetReconciler {
       status.markFailed(error);
       this.log('error', 'scale_set_reconciler_initialization_failed', {
         computeProviderType: this.config.computeProvider.type,
+        ...httpErrorLogAttributes(error),
         error,
       });
       return;
@@ -210,7 +211,10 @@ export class ScaleSetReconciler {
         if (signal.aborted) break;
         if (isFatalReconcilerError(error)) {
           status.markFailed(error);
-          this.log('error', 'scale_set_reconciler_failed', { error });
+          this.log('error', 'scale_set_reconciler_failed', {
+            ...httpErrorLogAttributes(error),
+            error,
+          });
           return;
         }
         consecutiveFailures = madeProgress ? 1 : consecutiveFailures + 1;
@@ -749,6 +753,16 @@ function isFatalReconcilerError(error: unknown): boolean {
   if (error instanceof ScaleSetProviderReconciliationError) return true;
   if (!isScaleSetHttpError(error)) return false;
   return error.status >= 400 && error.status < 500 && ![408, 409, 425, 429].includes(error.status);
+}
+
+function httpErrorLogAttributes(error: unknown): Record<string, unknown> {
+  if (!isScaleSetHttpError(error)) return {};
+  return {
+    requestMethod: error.method,
+    requestUrl: error.url,
+    requestStatus: error.status,
+    requestCode: error.code,
+  };
 }
 
 function joinRunnerInventory(
