@@ -15,8 +15,9 @@ export interface GitHubAppParameterReferences {
 export interface ScaleSetReconcilerConfig {
   schemaVersion: 1;
   runnerConfigName: string;
-  scaleSetId: number;
-  expectedScaleSetName: string;
+  scaleSetId?: number;
+  scaleSetName: string;
+  runnerGroupName?: string;
   expectedRunnerGroupId?: number;
   githubConfigUrl: string;
   githubApp: GitHubAppParameterReferences;
@@ -340,7 +341,9 @@ export function parseScaleSetReconcilerConfig(
       'schemaVersion',
       'runnerConfigName',
       'scaleSetId',
+      'scaleSetName',
       'expectedScaleSetName',
+      'runnerGroupName',
       'expectedRunnerGroupId',
       'githubConfigUrl',
       'githubApp',
@@ -377,14 +380,28 @@ export function parseScaleSetReconcilerConfig(
     record.expectedRunnerGroupId === undefined || record.expectedRunnerGroupId === null
       ? undefined
       : integer(record, 'expectedRunnerGroupId', path, 1, MAX_SCALE_SET_CAPACITY);
+  const runnerGroupName =
+    record.runnerGroupName === undefined
+      ? undefined
+      : validateScaleSetName(requiredString(record, 'runnerGroupName', path), `${path}.runnerGroupName`);
+  if (record.scaleSetName !== undefined && record.expectedScaleSetName !== undefined) {
+    throw new ScaleSetConfigurationError(`${path} must configure only one of scaleSetName or expectedScaleSetName`);
+  }
+  const scaleSetName = validateScaleSetName(
+    requiredString(record, record.scaleSetName === undefined ? 'expectedScaleSetName' : 'scaleSetName', path),
+    `${path}.scaleSetName`,
+  );
+  const scaleSetId =
+    record.scaleSetId === undefined ? undefined : integer(record, 'scaleSetId', path, 1, MAX_SCALE_SET_CAPACITY);
+  if (scaleSetId === undefined && runnerGroupName === undefined) {
+    throw new ScaleSetConfigurationError(`${path}.runnerGroupName is required when scaleSetId is omitted`);
+  }
   return {
     schemaVersion: 1,
     runnerConfigName,
-    scaleSetId: integer(record, 'scaleSetId', path, 1, MAX_SCALE_SET_CAPACITY),
-    expectedScaleSetName: validateScaleSetName(
-      requiredString(record, 'expectedScaleSetName', path),
-      `${path}.expectedScaleSetName`,
-    ),
+    ...(scaleSetId === undefined ? {} : { scaleSetId }),
+    scaleSetName,
+    ...(runnerGroupName === undefined ? {} : { runnerGroupName }),
     ...(expectedRunnerGroupId === undefined ? {} : { expectedRunnerGroupId }),
     githubConfigUrl: validateGitHubConfigUrl(
       requiredString(record, 'githubConfigUrl', path),
@@ -460,20 +477,24 @@ export function parseScaleSetControllerManifest(input: string | unknown): ScaleS
 
 export function validateUniqueReconcilers(reconcilers: readonly ScaleSetReconcilerConfig[]): void {
   const names = new Set<string>();
-  const scopedScaleSetIds = new Set<string>();
+  const scopedScaleSets = new Set<string>();
   for (const reconciler of reconcilers) {
     if (names.has(reconciler.runnerConfigName)) {
       throw new ScaleSetConfigurationError(
         `runner config ${JSON.stringify(reconciler.runnerConfigName)} is duplicated`,
       );
     }
-    const scopedScaleSetId = `${reconciler.githubConfigUrl}\u0000${reconciler.scaleSetId}`;
-    if (scopedScaleSetIds.has(scopedScaleSetId)) {
+    const scopedScaleSet = [
+      reconciler.githubConfigUrl,
+      reconciler.runnerGroupName ?? String(reconciler.expectedRunnerGroupId ?? ''),
+      reconciler.scaleSetName,
+    ].join('\u0000');
+    if (scopedScaleSets.has(scopedScaleSet)) {
       throw new ScaleSetConfigurationError(
-        `scale set ID ${reconciler.scaleSetId} is duplicated within GitHub scope ${JSON.stringify(reconciler.githubConfigUrl)}`,
+        `scale set ${JSON.stringify(reconciler.scaleSetName)} is duplicated within GitHub scope ${JSON.stringify(reconciler.githubConfigUrl)}`,
       );
     }
     names.add(reconciler.runnerConfigName);
-    scopedScaleSetIds.add(scopedScaleSetId);
+    scopedScaleSets.add(scopedScaleSet);
   }
 }
