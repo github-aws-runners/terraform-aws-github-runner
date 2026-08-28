@@ -60,6 +60,14 @@ export interface RunnerLabelResolution<TState = unknown> {
   state: TState;
 }
 
+/** Signals that runner labels are permanently invalid and must not be retried. */
+export class InvalidRunnerLabelsError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'InvalidRunnerLabelsError';
+  }
+}
+
 export interface CreateRunnerResult {
   instances: string[];
   retryableErrorCount: number;

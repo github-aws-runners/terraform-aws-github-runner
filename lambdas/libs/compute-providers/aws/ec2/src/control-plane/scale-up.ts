@@ -4,7 +4,11 @@ import yn from 'yn';
 
 import type { Ec2RunnerProvisioningOperations } from '../runners';
 import type { Ec2OverrideConfig } from '../runners.d';
-import { parseEc2OverrideConfig, shouldLoadLaunchTemplateBlockDeviceName } from './dynamic-labels';
+import {
+  parseEc2OverrideConfig,
+  shouldLoadLaunchTemplateBlockDeviceName,
+  validateEc2OverrideConfig,
+} from './dynamic-labels';
 import { createRunners, loadEc2ProviderConfig } from './runner-creation';
 import type { CreateEC2RunnerConfig } from './runner-creation';
 
@@ -40,6 +44,7 @@ async function resolveEc2ScaleUpRunnerLabels(
 
     ec2OverrideConfig = parseEc2OverrideConfig(dynamicEC2Labels, defaultBlockDeviceName);
     if (ec2OverrideConfig) {
+      validateEc2OverrideConfig(ec2OverrideConfig);
       logger.debug('EC2 override config parsed from labels', { ec2OverrideConfig });
     }
   }

@@ -285,8 +285,19 @@ function generateFleetOverrides(
 
   // Use override values if available, otherwise use parameter arrays
   const subnetsToUse = ec2OverrideConfig?.SubnetId ? [ec2OverrideConfig.SubnetId] : subnetIds;
-  const instanceTypesToUse = ec2OverrideConfig?.InstanceType ? [ec2OverrideConfig.InstanceType] : instancesTypes;
   const amiIdToUse = ec2OverrideConfig?.ImageId ?? amiId;
+
+  if (ec2OverrideConfig?.InstanceRequirements) {
+    return subnetsToUse.map(
+      (subnetId): FleetLaunchTemplateOverridesRequest => ({
+        SubnetId: subnetId,
+        ImageId: amiIdToUse,
+        ...ec2OverrideConfig,
+      }),
+    );
+  }
+
+  const instanceTypesToUse = ec2OverrideConfig?.InstanceType ? [ec2OverrideConfig.InstanceType] : instancesTypes;
 
   // Both the on-demand 'prioritized' and the spot 'capacity-optimized-prioritized' strategies
   // honor the Priority field of the launch template overrides.

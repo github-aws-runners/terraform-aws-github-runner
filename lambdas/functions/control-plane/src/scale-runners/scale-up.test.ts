@@ -16,6 +16,7 @@ import type {
   CreateScaleUpRunnersInput,
   ScaleUpComputeProvider,
 } from './types';
+import { InvalidRunnerLabelsError } from '@aws-github-runner/compute-providers/core';
 import { defaultComputeProvider } from '@aws-github-runner/compute-providers/provider-types';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -736,6 +737,41 @@ describe('scaleUp with GHES', () => {
           throw new Error(`Unexpected labels combination: ${labels.join(',')}`);
         }
       }
+    });
+
+    it('discards an invalid label group and continues processing valid groups', async () => {
+      const invalidMessage = {
+        ...TEST_DATA_SINGLE,
+        labels: ['self-hosted', 'ghr-provider-size:invalid'],
+        messageId: 'invalid-message',
+      };
+      const validMessage = {
+        ...TEST_DATA_SINGLE,
+        labels: ['self-hosted', 'ghr-provider-size:large'],
+        messageId: 'valid-message',
+      };
+      mockResolveLabelsForRunners.mockImplementation(async (labels) => {
+        if (labels.includes('ghr-provider-size:invalid')) {
+          throw new InvalidRunnerLabelsError('Invalid runner labels');
+        }
+        return {
+          runnerLabels: labels.filter((label) => label.startsWith('ghr-')),
+          state: testProviderState,
+        };
+      });
+
+      await expect(scaleUpModule.scaleUp([invalidMessage, validMessage])).resolves.toEqual([]);
+
+      expect(mockCreateRunners).toHaveBeenCalledTimes(1);
+      expect(mockCreateRunners).toHaveBeenCalledWith(
+        expect.objectContaining({
+          githubRunnerConfig: expect.objectContaining({
+            runnerLabels: 'base-label,ghr-provider-size:large',
+          }),
+        }),
+      );
+      expect(mockPublishRetryMessage).toHaveBeenCalledTimes(1);
+      expect(mockPublishRetryMessage).toHaveBeenCalledWith(validMessage);
     });
 
     it('preserves base RUNNER_LABELS for each group without mutation', async () => {
