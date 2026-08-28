@@ -1,4 +1,9 @@
-import { CreateFleetCommand, DescribeInstancesCommand, TerminateInstancesCommand } from '@aws-sdk/client-ec2';
+import {
+  CreateFleetCommand,
+  CreateTagsCommand,
+  DescribeInstancesCommand,
+  TerminateInstancesCommand,
+} from '@aws-sdk/client-ec2';
 import { DeleteParameterCommand, GetParameterCommand, PutParameterCommand } from '@aws-sdk/client-ssm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -37,15 +42,20 @@ describe('EC2 scale-set scale up', () => {
           ResourceType: 'instance',
           Tags: expect.arrayContaining([
             { Key: 'ghr:created_by', Value: 'scale-set-service' },
-            { Key: 'ghr:environment', Value: 'unit-test' },
             { Key: 'ghr:Owner', Value: 'example' },
             { Key: 'ghr:Type', Value: 'Org' },
-            { Key: EC2_RUNNER_CONFIG_TAG, Value: 'linux' },
-            { Key: EC2_SCALE_SET_ID_TAG, Value: '42' },
-            { Key: EC2_GITHUB_SCOPE_HASH_TAG, Value: githubScopeHash },
-            { Key: EC2_SCALE_SET_STATE_TAG, Value: 'provisioning' },
           ]),
         }),
+      ]),
+    });
+    expect(ec2Mock).toHaveReceivedCommandWith(CreateTagsCommand, {
+      Resources: [instanceId],
+      Tags: expect.arrayContaining([
+        { Key: 'ghr:environment', Value: 'unit-test' },
+        { Key: EC2_RUNNER_CONFIG_TAG, Value: 'linux' },
+        { Key: EC2_SCALE_SET_ID_TAG, Value: '42' },
+        { Key: EC2_GITHUB_SCOPE_HASH_TAG, Value: githubScopeHash },
+        { Key: EC2_SCALE_SET_STATE_TAG, Value: 'publishing' },
       ]),
     });
     expect(ssmMock).toHaveReceivedCommandWith(PutParameterCommand, {
