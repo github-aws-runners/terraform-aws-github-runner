@@ -121,6 +121,27 @@ describe('parseScaleSetControllerManifest', () => {
     });
   });
 
+  it('accepts a runner-group name for runtime ID resolution', () => {
+    expect(
+      parseScaleSetReconcilerConfig(runnerConfig({ runnerGroupName: 'self-hosted-linux' }), 0, 'group'),
+    ).toMatchObject({ runnerGroupName: 'self-hosted-linux' });
+  });
+
+  it('accepts scaleSetName without a GitHub-generated scale-set ID', () => {
+    const parsed = parseScaleSetReconcilerConfig(
+      runnerConfig({
+        scaleSetName: 'linux-x64',
+        expectedScaleSetName: undefined,
+        runnerGroupName: 'self-hosted-linux',
+        scaleSetId: undefined,
+      }),
+      0,
+      'group',
+    );
+    expect(parsed).toMatchObject({ scaleSetName: 'linux-x64', runnerGroupName: 'self-hosted-linux' });
+    expect(parsed).not.toHaveProperty('scaleSetId');
+  });
+
   it('bounds the derived session owner for maximum-length names', () => {
     const parsed = parseScaleSetReconcilerConfig(
       runnerConfig({ runnerConfigName: 'r'.repeat(128) }),

@@ -16,7 +16,7 @@ const config: ScaleSetReconcilerConfig = {
   schemaVersion: 1,
   runnerConfigName: 'linux',
   scaleSetId: 42,
-  expectedScaleSetName: 'linux',
+  scaleSetName: 'linux',
   githubConfigUrl: 'https://github.com/example',
   githubApp: {
     appIdParameterName: '/app/id',
@@ -89,6 +89,13 @@ function fixture(options: {
   };
   const client: ScaleSetReconcilerClient = {
     getRunnerScaleSetById: vi.fn().mockResolvedValue({ id: 42, name: 'linux' }),
+    getRunnerScaleSet: vi.fn().mockResolvedValue({ id: 42, name: 'linux', runnerGroupId: 7 }),
+    getRunnerGroupByName: vi.fn().mockResolvedValue({
+      id: 7,
+      name: 'runner-group',
+      size: 0,
+      isDefaultGroup: false,
+    }),
     createMessageSessionClient: vi.fn().mockResolvedValue(options.session as MessageSessionClient),
     generateJitRunnerConfig: vi.fn(),
     getGitHubRunner: vi.fn().mockResolvedValue({ id: 5, name: 'runner-5', status: 'online', busy: false }),
@@ -96,6 +103,8 @@ function fixture(options: {
     listGitHubRunners: vi.fn().mockResolvedValue([]),
     listRunners: vi.fn().mockResolvedValue([]),
     removeRunner: vi.fn(),
+    systemInfo: { scaleSetId: 42 },
+    setSystemInfo: vi.fn(),
   };
   const dependencies: ScaleSetReconcilerDependencies = {
     createAccessTokenProvider: vi.fn().mockResolvedValue(async () => ({ token: 'not-a-real-token' })),
@@ -114,6 +123,34 @@ function fixture(options: {
 }
 
 describe('ScaleSetReconciler', () => {
+  it('resolves the GitHub runner-group and scale-set IDs from their names', async () => {
+    const abort = new AbortController();
+    const session = {
+      session: { statistics: undefined },
+      getMessage: vi.fn().mockResolvedValue(message()),
+      deleteMessage: vi.fn(),
+      close: vi.fn(),
+    };
+    const { client, dependencies } = fixture({
+      session,
+      reconcile: vi.fn(async () => {
+        abort.abort();
+        return result();
+      }),
+    });
+    vi.mocked(client.getRunnerScaleSet).mockResolvedValue({ id: 42, name: 'linux', runnerGroupId: 7 });
+
+    await new ScaleSetReconciler(
+      { ...config, scaleSetId: undefined, runnerGroupName: 'runner-group', scaleSetName: 'linux' },
+      serviceConfig,
+      dependencies,
+    ).run(abort.signal, reporter());
+
+    expect(client.getRunnerGroupByName).toHaveBeenCalledWith('runner-group', { signal: abort.signal });
+    expect(client.getRunnerScaleSet).toHaveBeenCalledWith(7, 'linux', { signal: abort.signal });
+    expect(client.setSystemInfo).toHaveBeenCalledWith(expect.objectContaining({ scaleSetId: 42 }));
+  });
+
   it('acknowledges before acquisition, lifecycle observation, and reconciliation', async () => {
     const order: string[] = [];
     const abort = new AbortController();

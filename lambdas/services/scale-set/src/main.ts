@@ -45,7 +45,7 @@ async function main(): Promise<void> {
         systemInfo: {
           system: config.userAgent ?? 'github-aws-runners',
           version: '1',
-          scaleSetId: config.scaleSetId,
+          scaleSetId: config.scaleSetId ?? 0,
           subsystem: 'scale-set-controller',
         },
       }),

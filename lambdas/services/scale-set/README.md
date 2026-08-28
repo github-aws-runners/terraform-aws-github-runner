@@ -30,8 +30,8 @@ The service reads every direct child under the SSM path with paginated `GetParam
   "schemaVersion": 1,
   "runnerConfigName": "linux-x64",
   "githubConfigUrl": "https://github.com/example",
-  "scaleSetId": 123,
-  "expectedScaleSetName": "linux-x64",
+  "scaleSetName": "linux-x64",
+  "runnerGroupName": "self-hosted-linux",
   "expectedRunnerGroupId": null,
   "minRunners": 0,
   "maxRunners": 20,
@@ -64,7 +64,7 @@ The service reads every direct child under the SSM path with paginated `GetParam
 }
 ```
 
-Optional fields are `sessionOwner`, `workFolder`, `forceGhes`, `sslVerify`, and `userAgent`. `sslVerify` defaults to `true`; when false, the service uses a reconciler-scoped Undici dispatcher for both GitHub App token and scale-set requests without changing `NODE_TLS_REJECT_UNAUTHORIZED` or the global dispatcher. `userAgent` becomes the `system` identity inside the required structured scale-set protocol User-Agent rather than replacing that header. `bootTimeoutMinutes` defaults to `10`; it is orchestration-owned and is passed to the selected compute provider on every reconciliation. `expectedRunnerGroupId` can be omitted or null. Before opening a session, the reconciler fetches the configured scale-set ID and verifies its expected name and, when supplied, runner-group ID.
+`scaleSetName` and `runnerGroupName` are the GitHub names supplied by the operator. The service resolves both numeric IDs through the configured GitHub Actions service endpoint at startup; `scaleSetId` is only an optional legacy pin for an already-known ID. `expectedRunnerGroupId` can be omitted or null; when supplied, it is treated as an additional consistency check. If the named scale set does not exist, startup fails with a configuration error; this service does not create GitHub scale sets implicitly. Optional fields are `scaleSetId`, `expectedRunnerGroupId`, `sessionOwner`, `workFolder`, `forceGhes`, `sslVerify`, and `userAgent`. `sslVerify` defaults to `true`; when false, the service uses a reconciler-scoped Undici dispatcher for both GitHub App token and scale-set requests without changing `NODE_TLS_REJECT_UNAUTHORIZED` or the global dispatcher. `userAgent` becomes the `system` identity inside the required structured scale-set protocol User-Agent rather than replacing that header. `bootTimeoutMinutes` defaults to `10`; it is orchestration-owned and is passed to the selected compute provider on every reconciliation.
 
 GitHub App values are reloaded from SSM whenever an installation token is requested, so key rotation does not require a task restart. A SHA-256 credential fingerprint keeps the same Octokit auth instance—and its token cache—while the values remain unchanged, and replaces it after rotation. Private keys, installation tokens, message-session tokens, message bodies, and JIT configurations are never accepted as manifest values and are redacted from logs.
 
