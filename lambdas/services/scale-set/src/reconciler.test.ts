@@ -158,6 +158,14 @@ describe('ScaleSetReconciler', () => {
     expect(client.getRunnerScaleSet).toHaveBeenCalledWith(7, 'linux', { signal: abort.signal });
     expect(client.setSystemInfo).toHaveBeenCalledWith(expect.objectContaining({ scaleSetId: 42 }));
     expect(dependencies.parameterStore.put).toHaveBeenCalledWith('/runner/group-id', '7');
+    expect(dependencies.logger.info).toHaveBeenCalledWith(
+      'scale_set_compute_provider_created',
+      expect.objectContaining({ computeProviderType: 'ec2' }),
+    );
+    expect(dependencies.logger.info).toHaveBeenCalledWith(
+      'scale_set_compute_provider_reconcile_started',
+      expect.objectContaining({ computeProviderType: 'ec2', desiredRunners: 1, runnerInventoryComplete: false }),
+    );
   });
 
   it('registers a missing scale set in the resolved runner group', async () => {

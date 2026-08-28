@@ -144,9 +144,15 @@ export class ScaleSetReconciler {
         githubScope: this.config.githubConfigUrl,
         configuration: this.config.computeProvider.configuration,
       });
+      this.log('info', 'scale_set_compute_provider_created', {
+        computeProviderType: this.config.computeProvider.type,
+      });
     } catch (error) {
       status.markFailed(error);
-      this.log('error', 'scale_set_reconciler_initialization_failed', { error });
+      this.log('error', 'scale_set_reconciler_initialization_failed', {
+        computeProviderType: this.config.computeProvider.type,
+        error,
+      });
       return;
     }
 
@@ -446,6 +452,7 @@ export class ScaleSetReconciler {
       }
     }
     this.log('info', 'scale_set_reconciled', {
+      computeProviderType: this.config.computeProvider.type,
       desiredRunners,
       currentRunners: result.currentRunners,
       status: result.status,
@@ -454,6 +461,7 @@ export class ScaleSetReconciler {
     });
     if (result.status === 'retained') {
       this.log('warn', 'scale_set_capacity_retained', {
+        computeProviderType: this.config.computeProvider.type,
         desiredRunners,
         currentRunners: result.currentRunners,
         retainedBusy: result.actions.retainedBusy,
@@ -467,10 +475,21 @@ export class ScaleSetReconciler {
     provider: ScaleSetComputeProvider,
     request: ScaleSetReconcileRequest,
   ): Promise<ScaleSetReconcileResult> {
+    this.log('info', 'scale_set_compute_provider_reconcile_started', {
+      computeProviderType: this.config.computeProvider.type,
+      desiredRunners: request.desiredRunners,
+      runnerInventoryComplete: request.runnerInventoryComplete,
+    });
     try {
       return await provider.reconcile(request);
     } catch (error) {
       request.signal.throwIfAborted();
+      this.log('error', 'scale_set_compute_provider_reconcile_failed', {
+        computeProviderType: this.config.computeProvider.type,
+        desiredRunners: request.desiredRunners,
+        runnerInventoryComplete: request.runnerInventoryComplete,
+        error,
+      });
       throw new ScaleSetProviderReconciliationError(undefined, { cause: error });
     }
   }
