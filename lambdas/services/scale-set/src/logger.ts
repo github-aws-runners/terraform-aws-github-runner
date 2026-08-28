@@ -1,5 +1,6 @@
 const REDACTED = '[REDACTED]';
 const SENSITIVE_KEY = /(authorization|credential|encodedjit|jitconfig|password|private.?key|secret|sessionid|token)/i;
+const SAFE_ERROR_MESSAGE_NAMES = new Set(['ScaleSetConfigurationError']);
 const MAX_LOG_STRING_LENGTH = 1024;
 const MAX_LOG_DEPTH = 4;
 
@@ -21,7 +22,13 @@ function sanitize(value: unknown, key: string, depth: number): unknown {
   if (value instanceof Error) {
     const status = 'status' in value && typeof value.status === 'number' ? value.status : undefined;
     const code = 'code' in value && typeof value.code === 'string' ? sanitizeString(value.code) : undefined;
-    return { name: sanitizeString(value.name), ...(status === undefined ? {} : { status }), ...(code ? { code } : {}) };
+    const message = SAFE_ERROR_MESSAGE_NAMES.has(value.name) ? sanitizeString(value.message) : undefined;
+    return {
+      name: sanitizeString(value.name),
+      ...(message ? { message } : {}),
+      ...(status === undefined ? {} : { status }),
+      ...(code ? { code } : {}),
+    };
   }
   if (Array.isArray(value)) return value.slice(0, 100).map((item) => sanitize(item, key, depth + 1));
   if (typeof value === 'object') {

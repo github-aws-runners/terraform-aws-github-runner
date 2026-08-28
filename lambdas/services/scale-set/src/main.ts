@@ -12,8 +12,18 @@ import { createDefaultControllerManifestLoader, defaultParameterStore } from './
 import { abortableSleep, TtlScaleSetRunnerInventoryCache, type ScaleSetReconcilerDependencies } from './reconciler';
 
 async function main(): Promise<void> {
+  logger.info('scale_set_controller_configuration_loading', {
+    manifestConfigured: Boolean(process.env.SCALE_SET_CONTROLLER_MANIFEST?.trim()),
+    groupConfigConfigured: Boolean(process.env.SCALE_SET_CONTROLLER_GROUP_CONFIG_PATH?.trim()),
+  });
   const serviceConfig = parseScaleSetServiceConfig(process.env);
   const manifest = await createDefaultControllerManifestLoader().load(serviceConfig);
+  logger.info('scale_set_controller_manifest_loaded', {
+    groupName: manifest.groupName,
+    revision: manifest.revision,
+    reconcilerCount: manifest.reconcilers.length,
+    runnerConfigNames: manifest.reconcilers.map(({ runnerConfigName }) => runnerConfigName),
+  });
   const computeProviders = createScaleSetComputeProviderRegistry();
   const githubHttp = createScaleSetGitHubHttp();
   const dependencies: ScaleSetReconcilerDependencies = {
