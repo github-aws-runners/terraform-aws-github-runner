@@ -93,7 +93,7 @@ describe('GitHub App credentials', () => {
       .fn()
       .mockResolvedValue({ token: 'installation-token', expiresAt: '2099-01-01T00:00:00Z' });
     const fetchImplementation = vi.fn<ScaleSetFetch>().mockResolvedValue(
-      new Response(JSON.stringify({ installations: [{ id: 456, account: { login: 'example' } }] }), {
+      new Response(JSON.stringify([{ id: 456, account: { login: 'example' } }]), {
         status: 200,
         headers: { 'content-type': 'application/json' },
       }),
