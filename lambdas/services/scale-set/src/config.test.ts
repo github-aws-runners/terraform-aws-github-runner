@@ -43,8 +43,6 @@ describe('scale-set service configuration', () => {
       sessionCloseTimeoutMs: 10000,
       reconnectInitialBackoffMs: 1000,
       reconnectMaxBackoffMs: 30000,
-      mode: 'controller',
-      janitorIntervalMs: 300000,
     });
   });
 
@@ -60,19 +58,6 @@ describe('scale-set service configuration', () => {
     expect(() =>
       parseScaleSetServiceConfig({ SCALE_SET_CONTROLLER_MANIFEST: 'x'.repeat(MAX_MANIFEST_BYTES + 1) }),
     ).toThrow('must not exceed');
-  });
-
-  it('supports an independent janitor mode with a bounded poll interval', () => {
-    expect(
-      parseScaleSetServiceConfig({
-        SCALE_SET_CONTROLLER_MANIFEST: '{}',
-        SCALE_SET_CONTROLLER_MODE: 'janitor',
-        SCALE_SET_JANITOR_INTERVAL_SECONDS: '60',
-      }),
-    ).toMatchObject({ mode: 'janitor', janitorIntervalMs: 60000 });
-    expect(() =>
-      parseScaleSetServiceConfig({ SCALE_SET_CONTROLLER_MANIFEST: '{}', SCALE_SET_CONTROLLER_MODE: 'invalid' }),
-    ).toThrow('must be controller or janitor');
   });
 
   it('validates production selectors and numeric runtime settings', () => {

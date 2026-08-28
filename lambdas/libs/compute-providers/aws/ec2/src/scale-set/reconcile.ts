@@ -9,7 +9,6 @@ const MAX_BOOT_TIMEOUT_MINUTES = 120;
 
 export interface MutableReconcileState {
   currentRunners: number;
-  needsRunnerInventory: boolean;
   retainedUnknownResourceIds: Set<string>;
   actions: ScaleSetReconcileActions;
   errors: ScaleSetReconcileError[];
@@ -56,14 +55,8 @@ export function throwIfAborted(signal: AbortSignal, error?: unknown): void {
   }
 }
 
-function resultStatus(
-  errors: readonly ScaleSetReconcileError[],
-  current: number,
-  desired: number,
-  needsRunnerInventory: boolean,
-) {
+function resultStatus(errors: readonly ScaleSetReconcileError[], current: number, desired: number) {
   if (errors.length > 0 || current < desired) return 'error' as const;
-  if (needsRunnerInventory) return 'retained' as const;
   if (current > desired) return 'retained' as const;
   return 'converged' as const;
 }
@@ -76,10 +69,9 @@ export function finish(state: MutableReconcileState, desiredRunners: number): Sc
     });
   }
   return {
-    status: resultStatus(state.errors, state.currentRunners, desiredRunners, state.needsRunnerInventory),
+    status: resultStatus(state.errors, state.currentRunners, desiredRunners),
     desiredRunners,
     currentRunners: state.currentRunners,
-    needsRunnerInventory: state.needsRunnerInventory,
     actions: state.actions,
     errors: state.errors,
   };
@@ -88,7 +80,6 @@ export function finish(state: MutableReconcileState, desiredRunners: number): Sc
 export function emptyState(currentRunners: number): MutableReconcileState {
   return {
     currentRunners,
-    needsRunnerInventory: false,
     retainedUnknownResourceIds: new Set(),
     actions: { launched: 0, terminated: 0, retainedBusy: 0, retainedUnknown: 0 },
     errors: [],
@@ -129,11 +120,11 @@ export function validateBootTimeout(bootTimeoutMinutes: number): ScaleSetReconci
   return undefined;
 }
 
-export function validateInventorySignal(runnerInventoryComplete: unknown): ScaleSetReconcileError | undefined {
-  if (typeof runnerInventoryComplete !== 'boolean') {
+export function validateBusyRunners(busyRunners: number): ScaleSetReconcileError | undefined {
+  if (!Number.isSafeInteger(busyRunners) || busyRunners < 0 || busyRunners > 2_147_483_647) {
     return {
       operation: 'validate',
-      code: 'INVALID_RUNNER_INVENTORY_SIGNAL',
+      code: 'INVALID_BUSY_RUNNER_COUNT',
     };
   }
   return undefined;

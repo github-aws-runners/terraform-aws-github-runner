@@ -7,13 +7,11 @@ import {
   AccessTokenProvider,
   GitHubActionsScaleSetClientOptions,
   RunnerGroup,
-  GitHubRunnerReference,
   RunnerReference,
   RunnerScaleSet,
   RunnerScaleSetJitRunnerConfig,
   RunnerScaleSetJitRunnerSetting,
   ScaleSetFetch,
-  ScaleSetRunnerState,
   ScaleSetRequestOptions,
   SystemInfo,
 } from './types';
@@ -52,13 +50,6 @@ interface RunnerReferenceListResponse {
   count: number;
   value: RunnerReference[];
 }
-
-interface GitHubRunnerListResponse {
-  total_count: number;
-  runners: GitHubRunnerReference[];
-}
-
-const MAX_GITHUB_RUNNER_PAGES = 100;
 
 interface ActionsRequestOptions extends ScaleSetRequestOptions {
   query?: Record<string, string | number | undefined>;
@@ -372,100 +363,6 @@ export class GitHubActionsScaleSetClient {
     return parseJsonResponse<RunnerReference>(result, 'GET', url);
   }
 
-  async listRunners(options: ScaleSetRequestOptions = {}): Promise<RunnerReference[]> {
-    const { result, url } = await this.actionsRequest('GET', RUNNER_ENDPOINT, {
-      expectedStatuses: [200],
-      signal: options.signal,
-    });
-    return parseJsonResponse<RunnerReferenceListResponse>(result, 'GET', url).value;
-  }
-
-  async listGitHubRunners(options: ScaleSetRequestOptions = {}): Promise<GitHubRunnerReference[]> {
-    const runners: GitHubRunnerReference[] = [];
-    for (let page = 1; page <= MAX_GITHUB_RUNNER_PAGES; page += 1) {
-      const url = githubApiUrl(this.config, `${this.runnerListPath()}?per_page=100&page=${page}`);
-      const accessToken = await this.getAccessToken();
-      const result = await executeRequest(
-        this.fetchImplementation,
-        url,
-        {
-          method: 'GET',
-          headers: {
-            Accept: 'application/vnd.github+json',
-            Authorization: `Bearer ${accessToken}`,
-            'User-Agent': this.currentUserAgent,
-            'X-GitHub-Api-Version': '2022-11-28',
-          },
-          signal: options.signal,
-        },
-        [200],
-      );
-      const response = parseJsonResponse<GitHubRunnerListResponse>(result, 'GET', url);
-      if (!Array.isArray(response.runners)) {
-        throw new ScaleSetProtocolError('GitHub runner list response is missing runners');
-      }
-      runners.push(...response.runners);
-      if (response.runners.length < 100 || runners.length >= response.total_count) return runners;
-    }
-    throw new ScaleSetProtocolError(`GitHub runner inventory exceeded ${MAX_GITHUB_RUNNER_PAGES} pages`);
-  }
-
-  /** Fetch one runner directly from GitHub immediately before a destructive action. */
-  async getGitHubRunner(runnerId: number, options: ScaleSetRequestOptions = {}): Promise<GitHubRunnerReference | null> {
-    const url = githubApiUrl(this.config, `${this.runnerListPath()}/${runnerId}`);
-    const accessToken = await this.getAccessToken();
-    const result = await executeRequest(
-      this.fetchImplementation,
-      url,
-      {
-        method: 'GET',
-        headers: {
-          Accept: 'application/vnd.github+json',
-          Authorization: `Bearer ${accessToken}`,
-          'User-Agent': this.currentUserAgent,
-          'X-GitHub-Api-Version': '2022-11-28',
-        },
-        signal: options.signal,
-      },
-      [200, 404],
-    );
-    if (result.response.status === 404) return null;
-    return parseJsonResponse<GitHubRunnerReference>(result, 'GET', url);
-  }
-
-  async listScaleSetRunnerStates(
-    runnerScaleSetId: number,
-    options: ScaleSetRequestOptions = {},
-  ): Promise<ScaleSetRunnerState[]> {
-    const [actionsRunners, githubRunners] = await Promise.all([
-      this.listRunners(options),
-      this.listGitHubRunners(options),
-    ]);
-    const githubById = new Map<number, GitHubRunnerReference>();
-    const duplicateIds = new Set<number>();
-    for (const runner of githubRunners) {
-      if (githubById.has(runner.id)) duplicateIds.add(runner.id);
-      else githubById.set(runner.id, runner);
-    }
-    return actionsRunners
-      .filter((runner) => runner.runnerScaleSetId === runnerScaleSetId)
-      .map((runner) => {
-        const githubRunner = duplicateIds.has(runner.id) ? undefined : githubById.get(runner.id);
-        const exact = githubRunner?.name === runner.name;
-        const status =
-          exact && (githubRunner.status === 'online' || githubRunner.status === 'offline')
-            ? githubRunner.status
-            : 'unknown';
-        return {
-          runnerId: runner.id,
-          runnerName: runner.name,
-          scaleSetId: runner.runnerScaleSetId,
-          status,
-          busy: exact && typeof githubRunner.busy === 'boolean' ? githubRunner.busy : undefined,
-        };
-      });
-  }
-
   async getRunnerByName(runnerName: string, options: ScaleSetRequestOptions = {}): Promise<RunnerReference | null> {
     const { result, url } = await this.actionsRequest('GET', RUNNER_ENDPOINT, {
       expectedStatuses: [200],
@@ -603,17 +500,6 @@ export class GitHubActionsScaleSetClient {
     const accessToken = typeof providedToken === 'string' ? providedToken : providedToken.token;
     if (accessToken === '') throw new ScaleSetProtocolError('access token provider returned an empty token');
     return accessToken;
-  }
-
-  private runnerListPath(): string {
-    switch (this.config.scope) {
-      case 'organization':
-        return `/orgs/${this.config.organization}/actions/runners`;
-      case 'repository':
-        return `/repos/${this.config.organization}/${this.config.repository}/actions/runners`;
-      case 'enterprise':
-        return `/enterprises/${this.config.enterprise}/actions/runners`;
-    }
   }
 
   private async getActionsServiceAdminConnection(

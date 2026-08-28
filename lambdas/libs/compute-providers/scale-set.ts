@@ -52,12 +52,9 @@ export type RemoveScaleSetRunner = (input: RemoveScaleSetRunnerInput) => Promise
 
 export interface ScaleSetReconcileRequest {
   desiredRunners: number;
-  /** Recovery-only mode never launches capacity; it only removes confirmed idle runners. */
-  recoveryOnly?: boolean;
-  /** Orchestration-owned handoff window before exact runner inventory is required. */
+  /** Aggregate busy-runner count reported by the GitHub Actions scale-set session. */
+  busyRunners: number;
   bootTimeoutMinutes: number;
-  /** True only when runnerStates contains the controller's complete, freshly joined Actions and GitHub inventory. */
-  runnerInventoryComplete: boolean;
   runnerStates: readonly ScaleSetRunnerState[];
   signal: AbortSignal;
   generateJitConfiguration: GenerateScaleSetJitConfiguration;
@@ -96,8 +93,6 @@ export interface ScaleSetReconcileResult {
   desiredRunners: number;
   /** Best-known owned capacity after actions completed; the next reconciliation re-observes AWS. */
   currentRunners: number;
-  /** The provider retained unknown capacity and needs a controller inventory refresh before retrying scale-down. */
-  needsRunnerInventory: boolean;
   actions: ScaleSetReconcileActions;
   errors: readonly ScaleSetReconcileError[];
 }

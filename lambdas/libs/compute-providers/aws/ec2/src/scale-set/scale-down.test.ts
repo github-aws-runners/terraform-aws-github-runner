@@ -17,7 +17,6 @@ describe('EC2 scale-set scale down', () => {
     const result = await createTestProvider().reconcile(
       createRequest({
         desiredRunners: 2,
-        runnerInventoryComplete: true,
         runnerStates: [
           githubState(101, 'runner-completed', { status: 'offline', busy: undefined, lifecycle: 'completed' }),
           githubState(102, 'runner-busy', { busy: true, lifecycle: 'started' }),
@@ -30,8 +29,7 @@ describe('EC2 scale-set scale down', () => {
       status: 'converged',
       desiredRunners: 2,
       currentRunners: 2,
-      needsRunnerInventory: false,
-      actions: { launched: 0, terminated: 1, retainedBusy: 1, retainedUnknown: 1 },
+      actions: { launched: 0, terminated: 1, retainedBusy: 1, retainedUnknown: 0 },
       errors: [],
     });
     expect(removeRunner).toHaveBeenCalledTimes(1);
@@ -46,38 +44,17 @@ describe('EC2 scale-set scale down', () => {
     expect(ec2Mock).not.toHaveReceivedCommandWith(TerminateInstancesCommand, { InstanceIds: ['i-unknown'] });
   });
 
-  it('uses a typed inventory signal for a conservative first pass and exact second pass', async () => {
+  it('uses aggregate idle state to remove a tagged runner after a restart', async () => {
     const instance = ownedInstance('i-completed', { runnerId: 101, runnerName: 'runner-completed' });
     ec2Mock.on(DescribeInstancesCommand).resolves({ Reservations: [{ Instances: [instance] }] });
     const removeRunner = vi.fn().mockResolvedValue({ status: 'removed' });
-    const computeProvider = createTestProvider();
-
-    const firstPass = await computeProvider.reconcile(
-      createRequest({ desiredRunners: 0, runnerStates: [], removeRunner }),
+    const result = await createTestProvider().reconcile(
+      createRequest({ desiredRunners: 0, busyRunners: 0, runnerStates: [], removeRunner }),
     );
 
-    expect(firstPass).toMatchObject({
-      status: 'retained',
-      currentRunners: 1,
-      needsRunnerInventory: true,
-      actions: { terminated: 0, retainedUnknown: 1 },
-      errors: [],
-    });
-    expect(removeRunner).not.toHaveBeenCalled();
-
-    const secondPass = await computeProvider.reconcile(
-      createRequest({
-        desiredRunners: 0,
-        runnerInventoryComplete: true,
-        runnerStates: [githubState(101, 'runner-completed', { lifecycle: 'completed', status: 'offline' })],
-        removeRunner,
-      }),
-    );
-
-    expect(secondPass).toMatchObject({
+    expect(result).toMatchObject({
       status: 'converged',
       currentRunners: 0,
-      needsRunnerInventory: false,
       actions: { terminated: 1 },
     });
     expect(removeRunner).toHaveBeenCalledTimes(1);
@@ -91,7 +68,7 @@ describe('EC2 scale-set scale down', () => {
     const result = await createTestProvider().reconcile(
       createRequest({
         desiredRunners: 0,
-        runnerInventoryComplete: true,
+        busyRunners: 1,
         runnerStates: [
           githubState(101, 'runner-completed-busy', {
             lifecycle: 'completed',
@@ -106,7 +83,6 @@ describe('EC2 scale-set scale down', () => {
     expect(result).toMatchObject({
       status: 'retained',
       currentRunners: 1,
-      needsRunnerInventory: false,
       actions: { terminated: 0, retainedBusy: 1 },
       errors: [],
     });
@@ -122,7 +98,7 @@ describe('EC2 scale-set scale down', () => {
     const result = await createTestProvider().reconcile(
       createRequest({
         desiredRunners: 0,
-        runnerInventoryComplete: true,
+        busyRunners: 0,
         runnerStates: [githubState(101, 'runner-raced-busy')],
         removeRunner,
       }),
@@ -131,7 +107,6 @@ describe('EC2 scale-set scale down', () => {
     expect(result).toMatchObject({
       status: 'retained',
       currentRunners: 1,
-      needsRunnerInventory: false,
       actions: { terminated: 0, retainedBusy: 1, retainedUnknown: 0 },
       errors: [],
     });
@@ -146,7 +121,7 @@ describe('EC2 scale-set scale down', () => {
     const result = await createTestProvider().reconcile(
       createRequest({
         desiredRunners: 0,
-        runnerInventoryComplete: true,
+        busyRunners: 0,
         runnerStates: [githubState(101, 'runner-raced-unknown')],
         removeRunner,
       }),
@@ -155,7 +130,6 @@ describe('EC2 scale-set scale down', () => {
     expect(result).toMatchObject({
       status: 'retained',
       currentRunners: 1,
-      needsRunnerInventory: false,
       actions: { terminated: 0, retainedBusy: 0, retainedUnknown: 1 },
       errors: [],
     });
@@ -170,7 +144,7 @@ describe('EC2 scale-set scale down', () => {
     const result = await createTestProvider().reconcile(
       createRequest({
         desiredRunners: 0,
-        runnerInventoryComplete: true,
+        busyRunners: 0,
         runnerStates: [githubState(101, 'runner-exact')],
         removeRunner,
       }),
@@ -196,7 +170,7 @@ describe('EC2 scale-set scale down', () => {
     const result = await createTestProvider().reconcile(
       createRequest({
         desiredRunners: 0,
-        runnerInventoryComplete: true,
+        busyRunners: 0,
         runnerStates: [githubState(101, 'runner-idle')],
         removeRunner,
       }),

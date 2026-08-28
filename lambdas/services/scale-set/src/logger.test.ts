@@ -1,7 +1,21 @@
-import { logger, sanitizeLogAttributes } from './logger';
+import { createScaleSetLogger, logger, sanitizeLogAttributes } from './logger';
 import { ScaleSetConfigurationError } from './config';
 
 describe('redacted structured logging', () => {
+  it('emits debug records when LOG_LEVEL is debug', () => {
+    const spy = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
+    createScaleSetLogger({ LOG_LEVEL: 'debug' }).debug('debug_event', { reconcilerCount: 2 });
+    expect(spy).toHaveBeenCalledWith(expect.stringContaining('"event":"debug_event"'));
+    spy.mockRestore();
+  });
+
+  it('does not emit debug records at the default info level', () => {
+    const spy = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
+    createScaleSetLogger({}).debug('hidden_debug_event');
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
   it('redacts nested secrets and strips log-injection characters', () => {
     expect(
       sanitizeLogAttributes({

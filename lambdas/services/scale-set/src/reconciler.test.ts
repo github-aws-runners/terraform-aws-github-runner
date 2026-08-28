@@ -1,15 +1,11 @@
-import {
-  ScaleSetHttpError,
-  type MessageSessionClient,
-  type RunnerScaleSetMessage,
-} from '@aws-github-runner/github-actions-scale-set';
+import type { MessageSessionClient, RunnerScaleSetMessage } from '@aws-github-runner/github-actions-scale-set';
 import type { ScaleSetComputeProvider, ScaleSetReconcileResult } from '@aws-github-runner/compute-providers/scale-set';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { ScaleSetReconcilerConfig, ScaleSetServiceConfig } from './config';
 import type { ScaleSetReconcilerStatusReporter } from './health';
 import {
   ScaleSetReconciler,
-  TtlScaleSetRunnerInventoryCache,
   calculateDesiredRunners,
   validateProviderResult,
   type ScaleSetReconcilerClient,
@@ -46,7 +42,6 @@ function result(overrides: Partial<ScaleSetReconcileResult> = {}): ScaleSetRecon
     status: 'converged',
     desiredRunners: 1,
     currentRunners: 1,
-    needsRunnerInventory: false,
     actions: { launched: 0, terminated: 0, retainedBusy: 0, retainedUnknown: 0 },
     errors: [],
     ...overrides,
@@ -103,10 +98,7 @@ function fixture(options: {
     }),
     createMessageSessionClient: vi.fn().mockResolvedValue(options.session as MessageSessionClient),
     generateJitRunnerConfig: vi.fn(),
-    getGitHubRunner: vi.fn().mockResolvedValue({ id: 5, name: 'runner-5', status: 'online', busy: false }),
     getRunnerByName: vi.fn(),
-    listGitHubRunners: vi.fn().mockResolvedValue([]),
-    listRunners: vi.fn().mockResolvedValue([]),
     removeRunner: vi.fn(),
     systemInfo: { scaleSetId: 42 },
     setSystemInfo: vi.fn(),
@@ -115,14 +107,13 @@ function fixture(options: {
     createAccessTokenProvider: vi.fn().mockResolvedValue(async () => ({ token: 'not-a-real-token' })),
     createClient: vi.fn().mockReturnValue(client),
     computeProviders: { create: vi.fn().mockReturnValue(computeProvider) },
-    logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+    logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
     sleep: vi.fn(async (_delay, signal) => {
       if (!signal.aborted)
         await new Promise<void>((resolve) => signal.addEventListener('abort', () => resolve(), { once: true }));
     }),
     random: () => 0,
     closeSignal: () => new AbortController().signal,
-    runnerInventory: new TtlScaleSetRunnerInventoryCache(),
     parameterStore: { get: vi.fn().mockResolvedValue(new Map()), put: vi.fn() },
   };
   return { client, computeProvider, dependencies };
@@ -169,7 +160,7 @@ describe('ScaleSetReconciler', () => {
     );
     expect(dependencies.logger.info).toHaveBeenCalledWith(
       'scale_set_compute_provider_reconcile_started',
-      expect.objectContaining({ computeProviderType: 'ec2', desiredRunners: 1, runnerInventoryComplete: false }),
+      expect.objectContaining({ computeProviderType: 'ec2', desiredRunners: 1, busyRunners: 0 }),
     );
   });
 
@@ -208,34 +199,6 @@ describe('ScaleSetReconciler', () => {
     );
   });
 
-  it('runs recovery without opening a session or registering a missing scale set', async () => {
-    const abort = new AbortController();
-    const session = {
-      session: { statistics: undefined },
-      getMessage: vi.fn(),
-      close: vi.fn(),
-    };
-    const reconcile = vi.fn().mockResolvedValue(result({ desiredRunners: 0, currentRunners: 0 }));
-    const { client, computeProvider, dependencies } = fixture({ session, reconcile });
-    vi.mocked(client.getRunnerScaleSetById).mockResolvedValue({ id: 42, name: 'linux' });
-
-    await new ScaleSetReconciler(config, serviceConfig, dependencies).recover(abort.signal);
-
-    expect(client.createMessageSessionClient).not.toHaveBeenCalled();
-    expect(client.createRunnerScaleSet).not.toHaveBeenCalled();
-    expect(computeProvider.reconcile).toHaveBeenCalledWith(
-      expect.objectContaining({
-        desiredRunners: 0,
-        recoveryOnly: true,
-        runnerInventoryComplete: true,
-      }),
-    );
-    expect(dependencies.logger.info).toHaveBeenCalledWith(
-      'scale_set_recovery_reconciled',
-      expect.objectContaining({ actions: expect.any(Object) }),
-    );
-  });
-
   it('acknowledges before acquisition, lifecycle observation, and reconciliation', async () => {
     const order: string[] = [];
     const abort = new AbortController();
@@ -253,7 +216,7 @@ describe('ScaleSetReconciler', () => {
     };
     const reconcile = vi.fn(async (request) => {
       order.push('reconcile');
-      expect(request.runnerInventoryComplete).toBe(false);
+      expect(request.busyRunners).toBe(0);
       expect(request.bootTimeoutMinutes).toBe(10);
       expect(request.runnerStates).toContainEqual(
         expect.objectContaining({ runnerId: 5, runnerName: 'runner-5', lifecycle: 'started' }),
@@ -271,132 +234,6 @@ describe('ScaleSetReconciler', () => {
       githubScope: 'https://github.com/example',
       configuration: {},
     });
-  });
-
-  it('does not query public or Actions runner inventory on steady-state empty polls', async () => {
-    const abort = new AbortController();
-    let calls = 0;
-    const reconcile = vi.fn(async () => {
-      calls += 1;
-      if (calls === 2) abort.abort();
-      return result({ desiredRunners: 0, currentRunners: 0 });
-    });
-    const session = {
-      session: { statistics: { ...message().statistics, totalAssignedJobs: 0 } },
-      getMessage: vi.fn().mockResolvedValue(null),
-      close: vi.fn(),
-    };
-    const { client, dependencies } = fixture({ session, reconcile });
-    await new ScaleSetReconciler(config, serviceConfig, dependencies).run(abort.signal, reporter());
-    expect(reconcile).toHaveBeenCalledTimes(2);
-    expect(client.listGitHubRunners).not.toHaveBeenCalled();
-    expect(client.listRunners).not.toHaveBeenCalled();
-  });
-
-  it('performs the typed inventory second pass whenever requested, including at desired physical capacity', async () => {
-    const abort = new AbortController();
-    const reconcile = vi
-      .fn()
-      .mockResolvedValueOnce(
-        result({
-          status: 'retained',
-          desiredRunners: 1,
-          currentRunners: 1,
-          needsRunnerInventory: true,
-          actions: { launched: 0, terminated: 0, retainedBusy: 0, retainedUnknown: 1 },
-          errors: [],
-        }),
-      )
-      .mockImplementationOnce(async (request) => {
-        expect(request.runnerInventoryComplete).toBe(true);
-        expect(request.runnerStates).toContainEqual({
-          runnerId: 5,
-          runnerName: 'runner-5',
-          scaleSetId: 42,
-          status: 'online',
-          busy: false,
-          lifecycle: 'unknown',
-        });
-        abort.abort();
-        return result({ desiredRunners: 1, currentRunners: 1 });
-      });
-    const session = {
-      session: { statistics: message().statistics },
-      close: vi.fn(),
-    };
-    const { client, dependencies } = fixture({ session, reconcile });
-    vi.mocked(client.listRunners).mockResolvedValue([{ id: 5, name: 'runner-5', runnerScaleSetId: 42 }]);
-    vi.mocked(client.listGitHubRunners).mockResolvedValue([{ id: 5, name: 'runner-5', status: 'online', busy: false }]);
-    await new ScaleSetReconciler(config, serviceConfig, dependencies).run(abort.signal, reporter());
-    expect(reconcile.mock.calls[0]?.[0]).toEqual(expect.objectContaining({ runnerInventoryComplete: false }));
-    expect(client.listGitHubRunners).toHaveBeenCalledTimes(1);
-    expect(client.listRunners).toHaveBeenCalledTimes(1);
-  });
-
-  it('retains capacity and retries after a runner inventory 404 during recovery', async () => {
-    const abort = new AbortController();
-    const inventoryError = new ScaleSetHttpError({
-      method: 'GET',
-      url: 'https://api.github.com/orgs/example/actions/runners',
-      status: 404,
-      statusText: 'Not Found',
-      headers: new Headers(),
-      responseBody: '',
-    });
-    const reconcile = vi.fn().mockResolvedValue(
-      result({
-        status: 'retained',
-        currentRunners: 1,
-        needsRunnerInventory: true,
-        actions: { launched: 0, terminated: 0, retainedBusy: 0, retainedUnknown: 1 },
-      }),
-    );
-    const session = {
-      session: { statistics: message().statistics },
-      getMessage: vi.fn(async () => {
-        abort.abort();
-        throw new DOMException('aborted', 'AbortError');
-      }),
-      close: vi.fn(),
-    };
-    const { client, dependencies } = fixture({ session, reconcile });
-    vi.mocked(client.listGitHubRunners).mockRejectedValue(inventoryError);
-    const status = reporter();
-
-    await new ScaleSetReconciler(config, serviceConfig, dependencies).run(abort.signal, status);
-
-    expect(status.markFailed).not.toHaveBeenCalled();
-    expect(reconcile).toHaveBeenCalledTimes(1);
-    expect(dependencies.logger.warn).toHaveBeenCalledWith(
-      'scale_set_runner_inventory_unavailable',
-      expect.objectContaining({ requestMethod: 'GET', requestStatus: 404, requestCode: 'NOT_FOUND' }),
-    );
-    expect(client.listGitHubRunners).toHaveBeenCalledTimes(1);
-  });
-
-  it('rejects a provider that requests another inventory after the complete second pass', async () => {
-    const abort = new AbortController();
-    const reconcile = vi.fn().mockResolvedValue(
-      result({
-        status: 'retained',
-        currentRunners: 1,
-        needsRunnerInventory: true,
-        actions: { launched: 0, terminated: 0, retainedBusy: 0, retainedUnknown: 1 },
-      }),
-    );
-    const session = { session: { statistics: message().statistics }, close: vi.fn() };
-    const { dependencies } = fixture({ session, reconcile });
-    dependencies.sleep = vi.fn(async () => abort.abort());
-    const status = reporter();
-
-    await new ScaleSetReconciler(config, serviceConfig, dependencies).run(abort.signal, status);
-
-    expect(reconcile).toHaveBeenCalledTimes(2);
-    expect(status.markFailed).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: 'scale-set compute provider requested inventory after a complete inventory pass',
-      }),
-    );
   });
 
   it('acknowledges and stops when reconciliation rejects', async () => {
@@ -476,7 +313,7 @@ describe('ScaleSetReconciler', () => {
     expect(dependencies.sleep).not.toHaveBeenCalled();
   });
 
-  it('does not request inventory after a provider error result', async () => {
+  it('does not call public GitHub runner inventory after a provider error result', async () => {
     const session = {
       session: { statistics: undefined },
       getMessage: vi.fn().mockResolvedValue(message()),
@@ -488,24 +325,21 @@ describe('ScaleSetReconciler', () => {
       result({
         status: 'error',
         currentRunners: 0,
-        needsRunnerInventory: true,
         errors: [{ operation: 'launch', code: 'EC2_LAUNCH_FAILED' }],
       }),
     );
-    const { client, dependencies } = fixture({ session, reconcile });
+    const { dependencies } = fixture({ session, reconcile });
     const status = reporter();
 
     await new ScaleSetReconciler(config, serviceConfig, dependencies).run(new AbortController().signal, status);
 
     expect(reconcile).toHaveBeenCalledOnce();
-    expect(client.listGitHubRunners).not.toHaveBeenCalled();
-    expect(client.listRunners).not.toHaveBeenCalled();
     expect(status.markFailed).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'ScaleSetProviderReconciliationError' }),
     );
   });
 
-  it('re-fetches exact state in the serialized loop and acknowledges a typed busy retention', async () => {
+  it('uses the Actions-service identity check without public runner verification', async () => {
     const abort = new AbortController();
     const order: string[] = [];
     const session = {
@@ -523,7 +357,7 @@ describe('ScaleSetReconciler', () => {
     const reconcile = vi.fn(async (request) => {
       order.push('reconcile');
       await expect(request.removeRunner({ runnerId: 5, runnerName: 'runner-5', scaleSetId: 42 })).resolves.toEqual({
-        status: 'retained_busy',
+        status: 'removed',
       });
       abort.abort();
       return result({
@@ -537,14 +371,10 @@ describe('ScaleSetReconciler', () => {
       order.push('actions-refetch');
       return { id: 5, name: 'runner-5', runnerScaleSetId: 42 };
     });
-    vi.mocked(client.getGitHubRunner).mockImplementation(async () => {
-      order.push('github-refetch');
-      return { id: 5, name: 'runner-5', status: 'online', busy: true };
-    });
     await new ScaleSetReconciler(config, serviceConfig, dependencies).run(abort.signal, reporter());
 
-    expect(order).toEqual(['delete', 'acquire', 'reconcile', 'actions-refetch', 'github-refetch']);
-    expect(client.removeRunner).not.toHaveBeenCalled();
+    expect(order).toEqual(['delete', 'acquire', 'reconcile', 'actions-refetch']);
+    expect(client.removeRunner).toHaveBeenCalledWith(5, { signal: abort.signal });
     expect(session.deleteMessage).toHaveBeenCalledOnce();
     expect(session.acquireJobs).toHaveBeenCalledTimes(1);
   });
@@ -570,24 +400,11 @@ describe('reconciler helpers', () => {
     expect(() => calculateDesiredRunners(-1, 0, 1)).toThrow('non-negative integer');
   });
 
-  it('shares successful inventory loads and retries failed loads', async () => {
-    let now = 0;
-    const cache = new TtlScaleSetRunnerInventoryCache(100, () => now);
-    const loader = vi.fn().mockResolvedValue([{ id: 1, name: 'a', status: 'online', busy: false }]);
-    await Promise.all([cache.get('scope', loader), cache.get('scope', loader)]);
-    expect(loader).toHaveBeenCalledTimes(1);
-    now = 101;
-    await cache.get('scope', loader);
-    expect(loader).toHaveBeenCalledTimes(2);
-    await expect(cache.get('failed', vi.fn().mockRejectedValue(new Error('nope')))).rejects.toThrow('nope');
-  });
-
   it.each([
     { status: 'unexpected' },
     { status: 'retryable_error' },
     { status: 'non_retryable_error' },
     { retryable: true },
-    { needsRunnerInventory: 'yes' },
     { actions: { launched: 0, terminated: 0, retainedBusy: -1, retainedUnknown: 0 } },
     { actions: { launched: 0, terminated: 0, retainedBusy: 0, retainedUnknown: 0, retryable: true } },
     { status: 'converged', errors: [{ operation: 'list', code: 'UNEXPECTED_ERROR' }] },
@@ -595,7 +412,6 @@ describe('reconciler helpers', () => {
     { status: 'error', errors: [] },
     { currentRunners: 0 },
     { currentRunners: 2 },
-    { needsRunnerInventory: true },
     { status: 'retained' },
     { errors: [{ operation: 'shell', code: 'BAD' }] },
     { errors: [{ operation: 'list', code: 'contains spaces' }] },

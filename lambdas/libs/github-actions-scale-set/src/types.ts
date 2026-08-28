@@ -94,21 +94,6 @@ export interface RunnerReference {
   runnerScaleSetId: number;
 }
 
-export interface GitHubRunnerReference {
-  id: number;
-  name: string;
-  status: 'online' | 'offline' | string;
-  busy: boolean;
-}
-
-export interface ScaleSetRunnerState {
-  runnerId: number;
-  runnerName: string;
-  scaleSetId: number;
-  status: 'online' | 'offline' | 'unknown';
-  busy: boolean | undefined;
-}
-
 export interface RunnerScaleSetJitRunnerConfig {
   runner: RunnerReference | null;
   encodedJITConfig: string;

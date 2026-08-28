@@ -153,23 +153,6 @@ describe('GitHubActionsScaleSetClient', () => {
     await expect(client.getRunnerScaleSetById(42)).rejects.toBeInstanceOf(ScaleSetProtocolError);
   });
 
-  it('fetches an exact public GitHub runner immediately by id', async () => {
-    const fixture = clientFixture((url) => {
-      if (url.pathname === '/orgs/example/actions/runners/71') {
-        return jsonResponse({ id: 71, name: 'runner-71', status: 'online', busy: false });
-      }
-      return new Response(null, { status: 500 });
-    });
-
-    await expect(fixture.client.getGitHubRunner(71)).resolves.toEqual({
-      id: 71,
-      name: 'runner-71',
-      status: 'online',
-      busy: false,
-    });
-    expect(fixture.accessTokenProvider).toHaveBeenCalledOnce();
-  });
-
   it('refreshes the Actions admin token when it enters the 60-second expiry window', async () => {
     let nowMs = Date.UTC(2026, 7, 14, 12, 0, 0);
     let tokenIssue = 0;
