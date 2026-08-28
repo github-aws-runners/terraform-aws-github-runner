@@ -50,6 +50,7 @@ async function main(): Promise<void> {
         },
       }),
     logger,
+    parameterStore: defaultParameterStore,
     sleep: abortableSleep,
     random: Math.random,
     closeSignal: AbortSignal.timeout,

@@ -19,6 +19,7 @@ import type {
 } from '@aws-github-runner/compute-providers/scale-set';
 
 import { ScaleSetConfigurationError, type ScaleSetReconcilerConfig, type ScaleSetServiceConfig } from './config';
+import type { ParameterStore } from './credentials';
 import type { ScaleSetReconcilerStatusReporter } from './health';
 import type { ScaleSetLogger } from './logger';
 
@@ -54,6 +55,7 @@ export interface ScaleSetReconcilerDependencies {
   random(): number;
   closeSignal(timeoutMs: number): AbortSignal;
   runnerInventory: ScaleSetRunnerInventoryCache;
+  parameterStore: ParameterStore;
 }
 
 export interface ScaleSetRunnerInventoryCache {
@@ -232,13 +234,20 @@ export class ScaleSetReconciler {
   ): Promise<{ scaleSetId: number; runnerGroupId?: number }> {
     let runnerGroupId = this.config.expectedRunnerGroupId;
     if (this.config.runnerGroupName !== undefined) {
-      const runnerGroup = await client.getRunnerGroupByName(this.config.runnerGroupName, { signal });
+      const cachedRunnerGroupId = await this.loadCachedRunnerGroupId();
+      const runnerGroup =
+        cachedRunnerGroupId === undefined
+          ? await client.getRunnerGroupByName(this.config.runnerGroupName, { signal })
+          : { id: cachedRunnerGroupId };
       if (runnerGroupId !== undefined && runnerGroupId !== runnerGroup.id) {
         throw new ScaleSetConfigurationError(
           `runner group ${JSON.stringify(this.config.runnerGroupName)} resolved to ID ${runnerGroup.id}, expected ${runnerGroupId}`,
         );
       }
       runnerGroupId = runnerGroup.id;
+      if (cachedRunnerGroupId === undefined && this.config.runnerGroupIdParameterName !== undefined) {
+        await this.dependencies.parameterStore.put?.(this.config.runnerGroupIdParameterName, String(runnerGroupId));
+      }
       this.log('info', 'scale_set_runner_group_resolved', {
         runnerConfigName: this.config.runnerConfigName,
         runnerGroupName: this.config.runnerGroupName,
@@ -272,6 +281,26 @@ export class ScaleSetReconciler {
       runnerGroupId,
     });
     return { scaleSetId: configuredScaleSet.id, runnerGroupId };
+  }
+
+  private async loadCachedRunnerGroupId(): Promise<number | undefined> {
+    const parameterName = this.config.runnerGroupIdParameterName;
+    if (parameterName === undefined) return undefined;
+    const values = await this.dependencies.parameterStore.get([parameterName]);
+    const raw = values.get(parameterName)?.trim();
+    if (raw === undefined || raw === '') return undefined;
+    if (!/^\d+$/.test(raw)) {
+      throw new ScaleSetConfigurationError(
+        `runner group ID parameter ${JSON.stringify(parameterName)} must contain a positive integer`,
+      );
+    }
+    const id = Number(raw);
+    if (!Number.isSafeInteger(id) || id <= 0) {
+      throw new ScaleSetConfigurationError(
+        `runner group ID parameter ${JSON.stringify(parameterName)} must contain a positive integer`,
+      );
+    }
+    return id;
   }
 
   private get scaleSetId(): number {

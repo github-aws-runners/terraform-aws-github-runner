@@ -13,6 +13,7 @@ import { ScaleSetConfigurationError, type GitHubAppParameterReferences } from '.
 
 export interface ParameterStore {
   get(names: readonly string[]): Promise<ReadonlyMap<string, string>>;
+  put?(name: string, value: string): Promise<void>;
 }
 
 interface GitHubAppCredentials {
@@ -188,6 +189,9 @@ export async function createGitHubAppAccessTokenProvider(
       } else {
         installationId = await discoverGitHubAppInstallationId(credentials, target!, apiBaseUrl, fetchImplementation);
         discovered = { fingerprint: credentialFingerprint, installationId };
+        if (references.installationIdParameterName !== undefined && parameterStore.put !== undefined) {
+          await parameterStore.put(references.installationIdParameterName, String(installationId));
+        }
       }
     }
     const fingerprint = `${credentialFingerprint}\u0000${installationId}`;

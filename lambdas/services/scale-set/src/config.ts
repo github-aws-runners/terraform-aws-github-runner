@@ -18,6 +18,7 @@ export interface ScaleSetReconcilerConfig {
   scaleSetId?: number;
   scaleSetName: string;
   runnerGroupName?: string;
+  runnerGroupIdParameterName?: string;
   expectedRunnerGroupId?: number;
   githubConfigUrl: string;
   githubApp: GitHubAppParameterReferences;
@@ -349,6 +350,7 @@ export function parseScaleSetReconcilerConfig(
       'scaleSetName',
       'expectedScaleSetName',
       'runnerGroupName',
+      'runnerGroupIdParameterName',
       'expectedRunnerGroupId',
       'githubConfigUrl',
       'githubApp',
@@ -389,6 +391,13 @@ export function parseScaleSetReconcilerConfig(
     record.runnerGroupName === undefined
       ? undefined
       : validateScaleSetName(requiredString(record, 'runnerGroupName', path), `${path}.runnerGroupName`);
+  const runnerGroupIdParameterName =
+    record.runnerGroupIdParameterName === undefined
+      ? undefined
+      : validateSsmParameterName(
+          requiredString(record, 'runnerGroupIdParameterName', path),
+          `${path}.runnerGroupIdParameterName`,
+        );
   if (record.scaleSetName !== undefined && record.expectedScaleSetName !== undefined) {
     throw new ScaleSetConfigurationError(`${path} must configure only one of scaleSetName or expectedScaleSetName`);
   }
@@ -407,6 +416,7 @@ export function parseScaleSetReconcilerConfig(
     ...(scaleSetId === undefined ? {} : { scaleSetId }),
     scaleSetName,
     ...(runnerGroupName === undefined ? {} : { runnerGroupName }),
+    ...(runnerGroupIdParameterName === undefined ? {} : { runnerGroupIdParameterName }),
     ...(expectedRunnerGroupId === undefined ? {} : { expectedRunnerGroupId }),
     githubConfigUrl: validateGitHubConfigUrl(
       requiredString(record, 'githubConfigUrl', path),
