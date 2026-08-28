@@ -90,6 +90,7 @@ function fixture(options: {
   const client: ScaleSetReconcilerClient = {
     getRunnerScaleSetById: vi.fn().mockResolvedValue({ id: 42, name: 'linux' }),
     getRunnerScaleSet: vi.fn().mockResolvedValue({ id: 42, name: 'linux', runnerGroupId: 7 }),
+    createRunnerScaleSet: vi.fn().mockResolvedValue({ id: 42, name: 'linux', runnerGroupId: 7 }),
     getRunnerGroupByName: vi.fn().mockResolvedValue({
       id: 7,
       name: 'runner-group',
@@ -157,6 +158,40 @@ describe('ScaleSetReconciler', () => {
     expect(client.getRunnerScaleSet).toHaveBeenCalledWith(7, 'linux', { signal: abort.signal });
     expect(client.setSystemInfo).toHaveBeenCalledWith(expect.objectContaining({ scaleSetId: 42 }));
     expect(dependencies.parameterStore.put).toHaveBeenCalledWith('/runner/group-id', '7');
+  });
+
+  it('registers a missing scale set in the resolved runner group', async () => {
+    const abort = new AbortController();
+    const session = {
+      session: { statistics: undefined },
+      getMessage: vi.fn().mockResolvedValue(message()),
+      deleteMessage: vi.fn(),
+      close: vi.fn(),
+    };
+    const { client, dependencies } = fixture({
+      session,
+      reconcile: vi.fn(async () => {
+        abort.abort();
+        return result();
+      }),
+    });
+    vi.mocked(client.getRunnerScaleSet).mockResolvedValueOnce(null);
+
+    await new ScaleSetReconciler(
+      { ...config, scaleSetId: undefined, runnerGroupName: 'runner-group', scaleSetName: 'linux' },
+      serviceConfig,
+      dependencies,
+    ).run(abort.signal, reporter());
+
+    expect(client.createRunnerScaleSet).toHaveBeenCalledWith(
+      {
+        name: 'linux',
+        runnerGroupId: 7,
+        labels: [{ name: 'linux' }],
+        runnerSetting: {},
+      },
+      { signal: abort.signal },
+    );
   });
 
   it('acknowledges before acquisition, lifecycle observation, and reconciliation', async () => {
