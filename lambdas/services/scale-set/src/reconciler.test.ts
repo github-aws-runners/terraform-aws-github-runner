@@ -118,6 +118,7 @@ function fixture(options: {
     random: () => 0,
     closeSignal: () => new AbortController().signal,
     runnerInventory: new TtlScaleSetRunnerInventoryCache(),
+    parameterStore: { get: vi.fn().mockResolvedValue(new Map()), put: vi.fn() },
   };
   return { client, computeProvider, dependencies };
 }
@@ -141,7 +142,13 @@ describe('ScaleSetReconciler', () => {
     vi.mocked(client.getRunnerScaleSet).mockResolvedValue({ id: 42, name: 'linux', runnerGroupId: 7 });
 
     await new ScaleSetReconciler(
-      { ...config, scaleSetId: undefined, runnerGroupName: 'runner-group', scaleSetName: 'linux' },
+      {
+        ...config,
+        scaleSetId: undefined,
+        runnerGroupName: 'runner-group',
+        runnerGroupIdParameterName: '/runner/group-id',
+        scaleSetName: 'linux',
+      },
       serviceConfig,
       dependencies,
     ).run(abort.signal, reporter());
@@ -149,6 +156,7 @@ describe('ScaleSetReconciler', () => {
     expect(client.getRunnerGroupByName).toHaveBeenCalledWith('runner-group', { signal: abort.signal });
     expect(client.getRunnerScaleSet).toHaveBeenCalledWith(7, 'linux', { signal: abort.signal });
     expect(client.setSystemInfo).toHaveBeenCalledWith(expect.objectContaining({ scaleSetId: 42 }));
+    expect(dependencies.parameterStore.put).toHaveBeenCalledWith('/runner/group-id', '7');
   });
 
   it('acknowledges before acquisition, lifecycle observation, and reconciliation', async () => {

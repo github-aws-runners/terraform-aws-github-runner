@@ -1,6 +1,6 @@
-import { GetParametersByPathCommand, SSMClient } from '@aws-sdk/client-ssm';
+import { GetParametersByPathCommand, PutParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
 
-import { getParameters } from '@aws-github-runner/aws-ssm-util';
+import { getParameters, ssmClient } from '@aws-github-runner/aws-ssm-util';
 
 import {
   MAX_MANIFEST_BYTES,
@@ -20,6 +20,16 @@ const MAX_GROUP_BYTES = 4 * 1024 * 1024;
 
 export const defaultParameterStore: ParameterStore = {
   get: async (names) => await getParameters([...names]),
+  put: async (name, value) => {
+    await ssmClient().send(
+      new PutParameterCommand({
+        Name: name,
+        Value: value,
+        Type: 'String',
+        Overwrite: true,
+      }),
+    );
+  },
 };
 
 export interface ControllerManifestLoader {
