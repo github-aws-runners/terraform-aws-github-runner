@@ -123,6 +123,38 @@ describe('EC2 scale-set provider orchestration', () => {
     expect(ec2Mock).not.toHaveReceivedCommand(CreateFleetCommand);
   });
 
+  it('recovery removes only exact idle runners and retains busy or unknown runners', async () => {
+    const idle = ownedInstance('i-idle', { runnerId: 100, runnerName: 'runner-i-idle' });
+    const busy = ownedInstance('i-busy', { runnerId: 101, runnerName: 'runner-i-busy' });
+    const unknown = ownedInstance('i-unknown', { runnerId: 102, runnerName: 'runner-i-unknown' });
+    ec2Mock.on(DescribeInstancesCommand).resolves({ Reservations: [{ Instances: [idle, busy, unknown] }] });
+    ec2Mock.on(TerminateInstancesCommand).resolves({});
+
+    const removeRunner = vi.fn().mockResolvedValue({ status: 'removed' as const });
+    const result = await createTestProvider().reconcile(
+      createRequest({
+        recoveryOnly: true,
+        runnerInventoryComplete: true,
+        removeRunner,
+        runnerStates: [
+          githubState(100, 'runner-i-idle', { status: 'offline', busy: false }),
+          githubState(101, 'runner-i-busy', { status: 'online', busy: true }),
+        ],
+      }),
+    );
+
+    expect(result).toMatchObject({
+      status: 'retained',
+      currentRunners: 2,
+      actions: { launched: 0, terminated: 1, retainedBusy: 1, retainedUnknown: 1 },
+      errors: [],
+    });
+    expect(removeRunner).toHaveBeenCalledTimes(1);
+    expect(ec2Mock).toHaveReceivedCommandWith(TerminateInstancesCommand, { InstanceIds: ['i-idle'] });
+    expect(ec2Mock).not.toHaveReceivedCommandWith(TerminateInstancesCommand, { InstanceIds: ['i-busy', 'i-unknown'] });
+    expect(ec2Mock).not.toHaveReceivedCommand(CreateFleetCommand);
+  });
+
   it('propagates cancellation instead of converting shutdown into a retry result', async () => {
     const abort = new AbortController();
     abort.abort(new Error('service stopping'));

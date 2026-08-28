@@ -57,6 +57,13 @@ async function main(): Promise<void> {
     runnerInventory: new TtlScaleSetRunnerInventoryCache(),
   };
   const controller = new ScaleSetController(manifest, serviceConfig, dependencies, logger);
+
+  if (serviceConfig.mode === 'janitor') {
+    await runJanitor(controller, manifest.groupName, manifest.revision, serviceConfig.janitorIntervalMs);
+    await githubHttp.close();
+    return;
+  }
+
   const runtime = new ScaleSetServiceRuntime(serviceConfig, controller);
   let healthServer: ScaleSetHealthServer | undefined;
 
@@ -87,6 +94,35 @@ async function main(): Promise<void> {
     await githubHttp.close();
     process.removeListener('SIGTERM', onSigterm);
     process.removeListener('SIGINT', onSigint);
+  }
+}
+
+async function runJanitor(
+  controller: ScaleSetController,
+  groupName: string,
+  revision: string | undefined,
+  intervalMs: number,
+): Promise<void> {
+  const abortController = new AbortController();
+  const shutdown = (signal: NodeJS.Signals) => {
+    logger.info('scale_set_janitor_shutdown_requested', { signal, groupName });
+    abortController.abort(new Error(`received ${signal}`));
+  };
+  const onSigterm = () => shutdown('SIGTERM');
+  const onSigint = () => shutdown('SIGINT');
+  process.once('SIGTERM', onSigterm);
+  process.once('SIGINT', onSigint);
+
+  try {
+    logger.info('scale_set_janitor_started', { groupName, revision, intervalMs });
+    while (!abortController.signal.aborted) {
+      await controller.recover(abortController.signal);
+      await abortableSleep(intervalMs, abortController.signal);
+    }
+  } finally {
+    process.removeListener('SIGTERM', onSigterm);
+    process.removeListener('SIGINT', onSigint);
+    logger.info('scale_set_janitor_stopped', { groupName });
   }
 }
 

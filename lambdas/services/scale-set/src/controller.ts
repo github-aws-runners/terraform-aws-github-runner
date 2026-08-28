@@ -39,6 +39,14 @@ export class ScaleSetController {
     this.health.markStopping();
     await Promise.all(completions);
   }
+
+  async recover(signal: AbortSignal): Promise<void> {
+    await Promise.all(
+      this.manifest.reconcilers.map(async (config) => {
+        await new ScaleSetReconciler(config, this.serviceConfig, this.dependencies).recover(signal);
+      }),
+    );
+  }
 }
 
 async function waitForAbort(signal: AbortSignal): Promise<void> {

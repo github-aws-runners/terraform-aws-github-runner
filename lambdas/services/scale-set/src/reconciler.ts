@@ -134,7 +134,7 @@ export class ScaleSetReconciler {
     try {
       const accessTokenProvider = await this.dependencies.createAccessTokenProvider(this.config);
       client = this.dependencies.createClient(this.config, accessTokenProvider);
-      const resolved = await this.resolveScaleSet(client, signal);
+      const resolved = await this.resolveScaleSet(client, signal, true);
       this.resolvedScaleSetId = resolved.scaleSetId;
       this.resolvedRunnerGroupId = resolved.runnerGroupId;
       client.setSystemInfo({ ...client.systemInfo, scaleSetId: resolved.scaleSetId });
@@ -239,9 +239,66 @@ export class ScaleSetReconciler {
     status.markStopping();
   }
 
+  /** Run one independent recovery pass without opening a message session or creating a scale set. */
+  async recover(signal: AbortSignal): Promise<void> {
+    let provider: ScaleSetComputeProvider;
+    let client: ScaleSetReconcilerClient;
+    try {
+      const accessTokenProvider = await this.dependencies.createAccessTokenProvider(this.config);
+      client = this.dependencies.createClient(this.config, accessTokenProvider);
+      const resolved = await this.resolveScaleSet(client, signal, false);
+      this.resolvedScaleSetId = resolved.scaleSetId;
+      this.resolvedRunnerGroupId = resolved.runnerGroupId;
+      client.setSystemInfo({ ...client.systemInfo, scaleSetId: resolved.scaleSetId });
+      provider = this.dependencies.computeProviders.create(this.config.computeProvider.type, {
+        runnerConfigName: this.config.runnerConfigName,
+        scaleSetId: resolved.scaleSetId,
+        githubScope: this.config.githubConfigUrl,
+        configuration: this.config.computeProvider.configuration,
+      });
+    } catch (error) {
+      if (signal.aborted) return;
+      this.log('warn', 'scale_set_recovery_initialization_failed', {
+        computeProviderType: this.config.computeProvider.type,
+        ...httpErrorLogAttributes(error),
+        error,
+      });
+      return;
+    }
+
+    try {
+      const inventory = await this.loadScaleSetInventory(client, signal);
+      const result = await this.reconcileProvider(provider, {
+        desiredRunners: 0,
+        recoveryOnly: true,
+        bootTimeoutMinutes: this.config.bootTimeoutMinutes,
+        runnerInventoryComplete: true,
+        runnerStates: this.mergeLifecycle(inventory),
+        ...this.createReconcileCallbacks(client, signal),
+      });
+      validateProviderResult(result, 0);
+      throwIfProviderError(result);
+      this.log('info', 'scale_set_recovery_reconciled', {
+        computeProviderType: this.config.computeProvider.type,
+        currentRunners: result.currentRunners,
+        status: result.status,
+        actions: result.actions,
+        errorCount: result.errors.length,
+      });
+    } catch (error) {
+      if (signal.aborted) return;
+      this.log('warn', 'scale_set_recovery_failed', {
+        computeProviderType: this.config.computeProvider.type,
+        ...httpErrorLogAttributes(error),
+        error,
+      });
+    }
+  }
+
   private async resolveScaleSet(
     client: ScaleSetReconcilerClient,
     signal: AbortSignal,
+    registerMissing: boolean,
   ): Promise<{ scaleSetId: number; runnerGroupId?: number }> {
     let runnerGroupId = this.config.expectedRunnerGroupId;
     if (this.config.runnerGroupName !== undefined) {
@@ -273,7 +330,12 @@ export class ScaleSetReconciler {
       this.config.scaleSetId === undefined
         ? await client.getRunnerScaleSet(runnerGroupId as number, this.config.scaleSetName, { signal })
         : await client.getRunnerScaleSetById(this.config.scaleSetId, { signal });
-    if (configuredScaleSet === null && runnerGroupId !== undefined && this.config.scaleSetId === undefined) {
+    if (
+      registerMissing &&
+      configuredScaleSet === null &&
+      runnerGroupId !== undefined &&
+      this.config.scaleSetId === undefined
+    ) {
       this.log('info', 'scale_set_registering', {
         runnerConfigName: this.config.runnerConfigName,
         scaleSetName: this.config.scaleSetName,
@@ -354,7 +416,49 @@ export class ScaleSetReconciler {
       this.config.minRunners,
       this.config.maxRunners,
     );
-    const callbacks = {
+    const callbacks = this.createReconcileCallbacks(client, signal);
+    let result = await this.reconcileProvider(provider, {
+      desiredRunners,
+      bootTimeoutMinutes: this.config.bootTimeoutMinutes,
+      runnerInventoryComplete: false,
+      runnerStates: this.lifecycleStates(),
+      ...callbacks,
+    });
+    validateProviderResult(result, desiredRunners);
+    throwIfProviderError(result);
+    if (result.needsRunnerInventory) {
+      let inventory: readonly GitHubScaleSetRunnerState[];
+      try {
+        inventory = await this.loadScaleSetInventory(client, signal);
+      } catch (error) {
+        if (!isScaleSetHttpError(error) || error.status !== 404) throw error;
+        this.log('warn', 'scale_set_runner_inventory_unavailable', {
+          ...httpErrorLogAttributes(error),
+          error,
+        });
+        this.logReconciliationResult(result, desiredRunners);
+        return;
+      }
+      result = await this.reconcileProvider(provider, {
+        desiredRunners,
+        bootTimeoutMinutes: this.config.bootTimeoutMinutes,
+        runnerInventoryComplete: true,
+        runnerStates: this.mergeLifecycle(inventory),
+        ...callbacks,
+      });
+      validateProviderResult(result, desiredRunners);
+      throwIfProviderError(result);
+      if (result.needsRunnerInventory) {
+        throw new ScaleSetProtocolError(
+          'scale-set compute provider requested inventory after a complete inventory pass',
+        );
+      }
+    }
+    this.logReconciliationResult(result, desiredRunners);
+  }
+
+  private createReconcileCallbacks(client: ScaleSetReconcilerClient, signal: AbortSignal) {
+    return {
       signal,
       generateJitConfiguration: async ({
         runnerName,
@@ -429,44 +533,6 @@ export class ScaleSetReconciler {
         return { status: 'removed' as const };
       },
     };
-    let result = await this.reconcileProvider(provider, {
-      desiredRunners,
-      bootTimeoutMinutes: this.config.bootTimeoutMinutes,
-      runnerInventoryComplete: false,
-      runnerStates: this.lifecycleStates(),
-      ...callbacks,
-    });
-    validateProviderResult(result, desiredRunners);
-    throwIfProviderError(result);
-    if (result.needsRunnerInventory) {
-      let inventory: readonly GitHubScaleSetRunnerState[];
-      try {
-        inventory = await this.loadScaleSetInventory(client, signal);
-      } catch (error) {
-        if (!isScaleSetHttpError(error) || error.status !== 404) throw error;
-        this.log('warn', 'scale_set_runner_inventory_unavailable', {
-          ...httpErrorLogAttributes(error),
-          error,
-        });
-        this.logReconciliationResult(result, desiredRunners);
-        return;
-      }
-      result = await this.reconcileProvider(provider, {
-        desiredRunners,
-        bootTimeoutMinutes: this.config.bootTimeoutMinutes,
-        runnerInventoryComplete: true,
-        runnerStates: this.mergeLifecycle(inventory),
-        ...callbacks,
-      });
-      validateProviderResult(result, desiredRunners);
-      throwIfProviderError(result);
-      if (result.needsRunnerInventory) {
-        throw new ScaleSetProtocolError(
-          'scale-set compute provider requested inventory after a complete inventory pass',
-        );
-      }
-    }
-    this.logReconciliationResult(result, desiredRunners);
   }
 
   private logReconciliationResult(result: ScaleSetReconcileResult, desiredRunners: number): void {
@@ -496,6 +562,7 @@ export class ScaleSetReconciler {
     this.log('info', 'scale_set_compute_provider_reconcile_started', {
       computeProviderType: this.config.computeProvider.type,
       desiredRunners: request.desiredRunners,
+      recoveryOnly: request.recoveryOnly ?? false,
       runnerInventoryComplete: request.runnerInventoryComplete,
     });
     try {
@@ -505,6 +572,7 @@ export class ScaleSetReconciler {
       this.log('error', 'scale_set_compute_provider_reconcile_failed', {
         computeProviderType: this.config.computeProvider.type,
         desiredRunners: request.desiredRunners,
+        recoveryOnly: request.recoveryOnly ?? false,
         runnerInventoryComplete: request.runnerInventoryComplete,
         error,
       });

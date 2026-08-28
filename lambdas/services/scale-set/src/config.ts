@@ -54,6 +54,8 @@ export interface ScaleSetServiceConfig {
   sessionCloseTimeoutMs: number;
   reconnectInitialBackoffMs: number;
   reconnectMaxBackoffMs: number;
+  mode: 'controller' | 'janitor';
+  janitorIntervalMs: number;
 }
 
 export type ScaleSetServiceEnvironment = Readonly<Record<string, string | undefined>>;
@@ -67,6 +69,7 @@ const DEFAULT_SHUTDOWN_TIMEOUT_SECONDS = 110;
 const DEFAULT_SESSION_CLOSE_TIMEOUT_SECONDS = 10;
 const DEFAULT_RECONNECT_INITIAL_BACKOFF_SECONDS = 1;
 const DEFAULT_RECONNECT_MAX_BACKOFF_SECONDS = 30;
+const DEFAULT_JANITOR_INTERVAL_SECONDS = 300;
 const MAX_RECONCILERS = 1000;
 const MAX_PROVIDER_CONFIG_NODES = 10_000;
 const MAX_PROVIDER_CONFIG_DEPTH = 32;
@@ -137,6 +140,11 @@ export function parseScaleSetServiceConfig(environment: ScaleSetServiceEnvironme
     );
   }
 
+  const mode = environment.SCALE_SET_CONTROLLER_MODE?.trim() || 'controller';
+  if (mode !== 'controller' && mode !== 'janitor') {
+    throw new ScaleSetConfigurationError('SCALE_SET_CONTROLLER_MODE must be controller or janitor');
+  }
+
   return {
     ...(manifest ? { manifest } : {}),
     ...(groupConfigPath ? { groupConfigPath, groupName, groupRevision } : {}),
@@ -165,6 +173,13 @@ export function parseScaleSetServiceConfig(environment: ScaleSetServiceEnvironme
       }) * 1000,
     reconnectInitialBackoffMs,
     reconnectMaxBackoffMs,
+    mode,
+    janitorIntervalMs:
+      parseInteger(environment, 'SCALE_SET_JANITOR_INTERVAL_SECONDS', {
+        defaultValue: DEFAULT_JANITOR_INTERVAL_SECONDS,
+        minimum: 10,
+        maximum: 86400,
+      }) * 1000,
   };
 }
 

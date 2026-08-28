@@ -94,7 +94,13 @@ export function createEc2ScaleSetProvider(
       const state = emptyState(ownedRunners.length);
       const servingRunners = servingCapacity(normalizedInput, ownedRunners, request, state, now());
 
-      if (servingRunners.length < request.desiredRunners) {
+      if (request.recoveryOnly) {
+        if (!request.runnerInventoryComplete) {
+          state.needsRunnerInventory = true;
+        } else if (servingRunners.length > 0) {
+          await scaleDown(normalizedInput, servingRunners, servingRunners.length, request, state, runnerOperations);
+        }
+      } else if (servingRunners.length < request.desiredRunners) {
         const capacityDeficit = request.desiredRunners - servingRunners.length;
         const availableReplacementSlots = Math.max(
           0,

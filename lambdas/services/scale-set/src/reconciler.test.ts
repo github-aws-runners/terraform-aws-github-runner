@@ -92,7 +92,7 @@ function fixture(options: {
     reconcile: options.reconcile ?? vi.fn().mockResolvedValue(result()),
   };
   const client: ScaleSetReconcilerClient = {
-    getRunnerScaleSetById: vi.fn().mockResolvedValue({ id: 42, name: 'linux' }),
+    getRunnerScaleSetById: vi.fn().mockResolvedValue({ id: 42, name: 'linux', runnerGroupId: 7 }),
     getRunnerScaleSet: vi.fn().mockResolvedValue({ id: 42, name: 'linux', runnerGroupId: 7 }),
     createRunnerScaleSet: vi.fn().mockResolvedValue({ id: 42, name: 'linux', runnerGroupId: 7 }),
     getRunnerGroupByName: vi.fn().mockResolvedValue({
@@ -135,6 +135,7 @@ describe('ScaleSetReconciler', () => {
       session: { statistics: undefined },
       getMessage: vi.fn().mockResolvedValue(message()),
       deleteMessage: vi.fn(),
+      acquireJobs: vi.fn(),
       close: vi.fn(),
     };
     const { client, dependencies } = fixture({
@@ -178,6 +179,7 @@ describe('ScaleSetReconciler', () => {
       session: { statistics: undefined },
       getMessage: vi.fn().mockResolvedValue(message()),
       deleteMessage: vi.fn(),
+      acquireJobs: vi.fn(),
       close: vi.fn(),
     };
     const { client, dependencies } = fixture({
@@ -203,6 +205,34 @@ describe('ScaleSetReconciler', () => {
         runnerSetting: {},
       },
       { signal: abort.signal },
+    );
+  });
+
+  it('runs recovery without opening a session or registering a missing scale set', async () => {
+    const abort = new AbortController();
+    const session = {
+      session: { statistics: undefined },
+      getMessage: vi.fn(),
+      close: vi.fn(),
+    };
+    const reconcile = vi.fn().mockResolvedValue(result({ desiredRunners: 0, currentRunners: 0 }));
+    const { client, computeProvider, dependencies } = fixture({ session, reconcile });
+    vi.mocked(client.getRunnerScaleSetById).mockResolvedValue({ id: 42, name: 'linux' });
+
+    await new ScaleSetReconciler(config, serviceConfig, dependencies).recover(abort.signal);
+
+    expect(client.createMessageSessionClient).not.toHaveBeenCalled();
+    expect(client.createRunnerScaleSet).not.toHaveBeenCalled();
+    expect(computeProvider.reconcile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        desiredRunners: 0,
+        recoveryOnly: true,
+        runnerInventoryComplete: true,
+      }),
+    );
+    expect(dependencies.logger.info).toHaveBeenCalledWith(
+      'scale_set_recovery_reconciled',
+      expect.objectContaining({ actions: expect.any(Object) }),
     );
   });
 
@@ -524,7 +554,9 @@ describe('ScaleSetReconciler', () => {
     const reconciler = new ScaleSetReconciler(config, serviceConfig, dependencies) as unknown as {
       rememberLifecycle(id: number, name: string, lifecycle: 'started'): void;
       lifecycle: Map<string, unknown>;
+      resolvedScaleSetId: number;
     };
+    reconciler.resolvedScaleSetId = 42;
     for (let index = 0; index < 1100; index += 1) reconciler.rememberLifecycle(index + 1, `runner-${index}`, 'started');
     expect(reconciler.lifecycle.size).toBe(1000);
     expect(reconciler.lifecycle.has('runner-0')).toBe(false);
