@@ -170,6 +170,61 @@ async function deleteGitHubRunner(
   }
 }
 
+function idleConfirmationSeconds(): number {
+  const raw = process.env.SCALE_DOWN_IDLE_CONFIRMATION_SECONDS;
+  const parsed = raw === undefined || raw === '' ? 0 : Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
+// GitHub's busy flag can be stale: it reads false for runners that are actively executing
+// a job, both shortly after job assignment (observed 25-60s lag) and deep into a running
+// job (observed 12+ minutes). See #5085. A single busy=false reading is therefore not
+// sufficient evidence that a runner is idle. When SCALE_DOWN_IDLE_CONFIRMATION_SECONDS > 0,
+// require busy=false readings spanning at least that window before terminating; any
+// busy=true reading in between resets the window (see clearIdleDetection).
+//
+// Providers that cannot persist per-runner state do not implement markIdle/unmarkIdle;
+// for those the window is skipped entirely and behaviour is unchanged.
+async function idleConfirmed(runner: RunnerInfo, computeProvider: ScaleDownComputeProvider): Promise<boolean> {
+  const confirmationSeconds = idleConfirmationSeconds();
+  if (confirmationSeconds === 0 || !computeProvider.markIdle) {
+    return true;
+  }
+  const idleDetectedAt = runner.idleDetectedAt;
+  const idleForSeconds = idleDetectedAt ? (Date.now() - Date.parse(idleDetectedAt)) / 1000 : NaN;
+  if (Number.isNaN(idleForSeconds)) {
+    // No marker yet, or an unparsable one: (re)start the confirmation window.
+    await computeProvider.markIdle(runner.id, new Date().toISOString());
+    logger.info(
+      `Runner '${runner.id}' reads idle; deferring termination for at least ` +
+        `${confirmationSeconds}s to confirm the busy state is not stale.`,
+    );
+    return false;
+  }
+  if (idleForSeconds < confirmationSeconds) {
+    logger.info(
+      `Runner '${runner.id}' reads idle since '${idleDetectedAt}' ` +
+        `(${Math.round(idleForSeconds)}s < ${confirmationSeconds}s); deferring termination.`,
+    );
+    return false;
+  }
+  logger.info(
+    `Runner '${runner.id}' confirmed idle since '${idleDetectedAt}' ` +
+      `(${Math.round(idleForSeconds)}s >= ${confirmationSeconds}s).`,
+  );
+  return true;
+}
+
+async function clearIdleDetection(runner: RunnerInfo, computeProvider: ScaleDownComputeProvider): Promise<void> {
+  if (idleConfirmationSeconds() === 0 || !computeProvider.unmarkIdle) {
+    return;
+  }
+  if (runner.idleDetectedAt) {
+    await computeProvider.unmarkIdle(runner.id);
+    logger.info(`Runner '${runner.id}' is busy again; idle-detection window reset.`);
+  }
+}
+
 async function removeRunner(
   runner: RunnerInfo,
   ghRunnerIds: number[],
@@ -192,6 +247,9 @@ async function removeRunner(
     );
 
     if (states.every((busy) => busy === false)) {
+      if (!(await idleConfirmed(runner, computeProvider))) {
+        return;
+      }
       const results = await Promise.all(
         ghRunnerIds.map((ghRunnerId) => deleteGitHubRunner(githubInstallationClient, runner, ghRunnerId)),
       );
@@ -213,6 +271,7 @@ async function removeRunner(
         );
       }
     } else {
+      await clearIdleDetection(runner, computeProvider);
       logger.info(`Runner '${runner.id}' cannot be de-registered, because it is still busy.`);
     }
   } catch (e) {

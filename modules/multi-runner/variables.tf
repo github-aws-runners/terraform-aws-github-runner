@@ -136,6 +136,7 @@ variable "multi_runner_config" {
       pool_runner_owner                                              = optional(string, null)
       runner_as_root                                                 = optional(bool, false)
       runner_boot_time_in_minutes                                    = optional(number, 5)
+      scale_down_idle_confirmation_seconds                           = optional(number, 0)
       runner_disable_default_labels                                  = optional(bool, false)
       runner_extra_labels                                            = optional(list(string), [])
       runner_group_name                                              = optional(string, "Default")
@@ -281,6 +282,7 @@ variable "multi_runner_config" {
         runner_additional_security_group_ids: "List of additional security groups IDs to apply to the runner. If added outside the multi_runner_config block, the additional security group(s) will be applied to all runner configs. If added inside the multi_runner_config, the additional security group(s) will be applied to the individual runner."
         runner_as_root: "Run the action runner under the root user. Variable `runner_run_as` will be ignored."
         runner_boot_time_in_minutes: "The minimum time for an EC2 runner to boot and register as a runner."
+        scale_down_idle_confirmation_seconds: "Number of seconds a runner must consistently report not-busy before scale-down terminates it. GitHub's busy flag can be stale, so a single not-busy reading is not sufficient evidence a runner is idle. 0 keeps the previous single-reading behaviour."
         runner_disable_default_labels: "Disable default labels for the runners (os, architecture and `self-hosted`). If enabled, the runner will only have the extra labels provided in `runner_extra_labels`. In case you on own start script is used, this configuration parameter needs to be parsed via SSM."
         runner_extra_labels: "Extra (custom) labels for the runners (GitHub). Separate each label by a comma. Labels checks on the webhook can be enforced by setting `multi_runner_config.matcherConfig.exactMatch`. GitHub read-only labels should not be provided."
         runner_group_name: "Name of the runner group."
