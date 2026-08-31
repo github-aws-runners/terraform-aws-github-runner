@@ -104,9 +104,9 @@ jobs:
     needs: [docs]
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      pages: write
-      id-token: write
+      contents: read # for actions/checkout
+      pages: write # for actions/upload-pages-artifact
+      id-token: write # for actions/deploy-pages
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
