@@ -67,7 +67,7 @@ github_app = {
 
 Manually creating the SSM parameters that hold the configuration of your GitHub App avoids leaking critical plain text values in your terraform state and version control system. This is a recommended security practice for handling sensitive credentials.
 
-You can read more [over here](../examples/external-managed-ssm-secrets/README.md).
+You can read more [over here](examples/external-managed-ssm-secrets.md).
 
 ## Encryption
 

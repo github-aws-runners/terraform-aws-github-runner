@@ -9,6 +9,7 @@ use_directory_urls: true
 
 theme:
   name: material
+  variant: classic
   icon:
     logo: material/rocket-launch-outline
   palette:
