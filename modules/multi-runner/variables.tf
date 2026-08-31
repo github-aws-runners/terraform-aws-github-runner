@@ -589,7 +589,7 @@ variable "vpc_id" {
 }
 
 variable "subnet_ids" {
-  description = "List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`."
+  description = "List of subnets in which the action runner instances will be launched. The subnets must exist in the configured VPC (`vpc_id`)."
   type        = list(string)
 }
 

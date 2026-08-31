@@ -6,6 +6,7 @@ import {
   DeleteTagsCommand,
   DescribeInstancesCommand,
   DescribeInstancesResult,
+  DescribeSubnetsCommand,
   RunInstancesCommand,
   type RunInstancesCommandInput,
   RunInstancesCommandOutput,
@@ -30,6 +31,11 @@ const logger = createChildLogger('runners');
 interface Ec2Filter {
   Name: string;
   Values: string[];
+}
+
+interface SubnetAllocation {
+  subnets: string[];
+  targetCapacity: number;
 }
 
 type FleetError = NonNullable<CreateFleetResult['Errors']>[number];
@@ -196,6 +202,57 @@ function isRetryableAwsErrorName(errorName: string, configuredRetryableErrors: s
   return configuredRetryableErrors.includes(errorName) || RETRYABLE_AWS_ERROR_NAMES.has(errorName);
 }
 
+async function buildAzSafeSubnetSets(subnetIds: string[], ec2Client: EC2Client): Promise<string[][]> {
+  const uniqueSubnetIds = [...new Set(subnetIds)];
+  if (uniqueSubnetIds.length <= 1) {
+    return [uniqueSubnetIds];
+  }
+
+  const response = await ec2Client.send(new DescribeSubnetsCommand({ SubnetIds: uniqueSubnetIds }));
+  const availabilityZoneBySubnet = new Map<string, string>();
+  for (const subnet of response.Subnets || []) {
+    const availabilityZone = subnet.AvailabilityZoneId || subnet.AvailabilityZone;
+    if (subnet.SubnetId && availabilityZone) {
+      availabilityZoneBySubnet.set(subnet.SubnetId, availabilityZone);
+    }
+  }
+
+  const subnetsByAvailabilityZone = new Map<string, string[]>();
+  for (const subnetId of uniqueSubnetIds) {
+    const availabilityZone = availabilityZoneBySubnet.get(subnetId);
+    if (!availabilityZone) {
+      throw new Error(`Unable to resolve an Availability Zone for subnet '${subnetId}'.`);
+    }
+    const subnets = subnetsByAvailabilityZone.get(availabilityZone) || [];
+    subnets.push(subnetId);
+    subnetsByAvailabilityZone.set(availabilityZone, subnets);
+  }
+
+  const subnetSetCount = Math.max(...[...subnetsByAvailabilityZone.values()].map((subnets) => subnets.length));
+  const subnetSets = Array.from({ length: subnetSetCount }, (_, setIndex) =>
+    [...subnetsByAvailabilityZone.values()].map((subnets) => subnets[setIndex % subnets.length]),
+  );
+
+  logger.debug('Resolved AZ-safe subnet sets.', { subnetSets });
+  return subnetSets;
+}
+
+function buildSubnetAllocations(subnetSets: string[][], targetCapacity: number): SubnetAllocation[] {
+  if (subnetSets.length <= 1) {
+    return [{ subnets: subnetSets[0], targetCapacity }];
+  }
+
+  const startIndex = Math.floor(Math.random() * subnetSets.length);
+  const orderedSubnetSets = subnetSets.map((_, index) => subnetSets[(startIndex + index) % subnetSets.length]);
+  const baseTargetCapacity = Math.floor(targetCapacity / orderedSubnetSets.length);
+  const remainder = targetCapacity % orderedSubnetSets.length;
+
+  return orderedSubnetSets.map((subnets, index) => ({
+    subnets,
+    targetCapacity: baseTargetCapacity + (index < remainder ? 1 : 0),
+  }));
+}
+
 // The instance_allocation_strategy variable accepts the union of spot and on-demand strategies,
 // so a value valid for one capacity type can be invalid for the other. AWS rejects CreateFleet
 // when the strategy is not valid for the target capacity type, so fall back to 'lowest-price'
@@ -299,6 +356,57 @@ function buildRunInstancesOverrides(
 }
 
 export async function createRunner(runnerParameters: RunnerInputParameters): Promise<CreateRunnerResult> {
+  if (runnerParameters.useDedicatedHost || runnerParameters.ec2OverrideConfig?.SubnetId) {
+    return await createRunnerForSubnetSet(runnerParameters);
+  }
+
+  const ec2Client = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
+  let subnetSets: string[][];
+  try {
+    subnetSets = await buildAzSafeSubnetSets(runnerParameters.subnets, ec2Client);
+  } catch (error) {
+    const retryable = isRetryableAwsError(error, runnerParameters.scaleErrors);
+    logger.warn('Failed to resolve runner subnet Availability Zones.', {
+      error: error as Error,
+      retryable,
+    });
+    return failedCreateRunnerResult(runnerParameters.numberOfRunners, retryable);
+  }
+
+  if (subnetSets.length === 1) {
+    return await createRunnerForSubnetSet({ ...runnerParameters, subnets: subnetSets[0] });
+  }
+
+  const result: CreateRunnerResult = {
+    instances: [],
+    retryableErrorCount: 0,
+    nonRetryableErrorCount: 0,
+  };
+  let retryableCarry = 0;
+
+  const allocations = buildSubnetAllocations(subnetSets, runnerParameters.numberOfRunners);
+  for (const allocation of allocations) {
+    const targetCapacity = allocation.targetCapacity + retryableCarry;
+    retryableCarry = 0;
+    if (targetCapacity === 0) {
+      continue;
+    }
+
+    const allocationResult = await createRunnerForSubnetSet({
+      ...runnerParameters,
+      subnets: allocation.subnets,
+      numberOfRunners: targetCapacity,
+    });
+    result.instances.push(...allocationResult.instances);
+    result.nonRetryableErrorCount += allocationResult.nonRetryableErrorCount;
+    retryableCarry = allocationResult.retryableErrorCount;
+  }
+
+  result.retryableErrorCount = retryableCarry;
+  return result;
+}
+
+async function createRunnerForSubnetSet(runnerParameters: RunnerInputParameters): Promise<CreateRunnerResult> {
   logger.debug('Runner configuration.', {
     runner: {
       configuration: {
