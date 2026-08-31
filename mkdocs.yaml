@@ -75,7 +75,6 @@ nav:
     - Overview: examples/index.md
     - Default: examples/default.md
     - Multi Runner: examples/multi-runner.md
-    - Windows: examples/windows.md
     - Ephemeral: examples/ephemeral.md
     - External managed secrets: examples/external-managed-ssm-secrets.md
     - Custom AMI: examples/prebuilt.md
