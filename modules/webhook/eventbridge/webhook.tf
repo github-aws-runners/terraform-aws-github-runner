@@ -1,3 +1,7 @@
+locals {
+  webhook_lambda_name = "${var.config.prefix}-webhook"
+}
+
 resource "null_resource" "github_app_parameters" {
   triggers = {
     github_app_webhook_secret_name = var.config.github_app_parameters.webhook_secret.name
@@ -10,13 +14,14 @@ resource "aws_lambda_function" "webhook" {
   s3_object_version = var.config.lambda_s3_object_version != null ? var.config.lambda_s3_object_version : null
   filename          = var.config.lambda_s3_bucket == null ? local.lambda_zip : null
   source_code_hash  = var.config.lambda_s3_bucket == null ? filebase64sha256(local.lambda_zip) : null
-  function_name     = "${var.config.prefix}-webhook"
+  function_name     = local.webhook_lambda_name
   role              = aws_iam_role.webhook_lambda.arn
   handler           = "index.eventBridgeWebhook"
   runtime           = var.config.lambda_runtime
   memory_size       = var.config.lambda_memory_size
   timeout           = var.config.lambda_timeout
   architectures     = [var.config.lambda_architecture]
+  depends_on        = [aws_cloudwatch_log_group.webhook]
 
   environment {
     variables = {
@@ -59,7 +64,7 @@ resource "aws_lambda_function" "webhook" {
 }
 
 resource "aws_cloudwatch_log_group" "webhook" {
-  name              = "/aws/lambda/${aws_lambda_function.webhook.function_name}"
+  name              = "/aws/lambda/${local.webhook_lambda_name}"
   retention_in_days = var.config.logging_retention_in_days
   kms_key_id        = var.config.logging_kms_key_id
   log_group_class   = var.config.log_class

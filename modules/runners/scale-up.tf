@@ -8,13 +8,17 @@ locals {
   } : {}
 }
 
+locals {
+  scale_up_lambda_name = "${var.prefix}-scale-up"
+}
+
 resource "aws_lambda_function" "scale_up" {
   s3_bucket                      = var.lambda_s3_bucket != null ? var.lambda_s3_bucket : null
   s3_key                         = var.runners_lambda_s3_key != null ? var.runners_lambda_s3_key : null
   s3_object_version              = var.runners_lambda_s3_object_version != null ? var.runners_lambda_s3_object_version : null
   filename                       = var.lambda_s3_bucket == null ? local.lambda_zip : null
   source_code_hash               = var.lambda_s3_bucket == null ? filebase64sha256(local.lambda_zip) : null
-  function_name                  = "${var.prefix}-scale-up"
+  function_name                  = local.scale_up_lambda_name
   role                           = aws_iam_role.scale_up.arn
   handler                        = "index.scaleUpHandler"
   runtime                        = var.lambda_runtime
@@ -23,6 +27,7 @@ resource "aws_lambda_function" "scale_up" {
   memory_size                    = var.lambda_scale_up_memory_size
   tags                           = merge(local.tags, var.lambda_tags)
   architectures                  = [var.lambda_architecture]
+  depends_on                     = [aws_cloudwatch_log_group.scale_up]
   environment {
     variables = {
       AMI_ID_SSM_PARAMETER_NAME                 = local.ami_id_ssm_parameter_name
@@ -86,7 +91,7 @@ resource "aws_lambda_function" "scale_up" {
 }
 
 resource "aws_cloudwatch_log_group" "scale_up" {
-  name              = "/aws/lambda/${aws_lambda_function.scale_up.function_name}"
+  name              = "/aws/lambda/${local.scale_up_lambda_name}"
   retention_in_days = var.logging_retention_in_days
   kms_key_id        = var.logging_kms_key_id
   log_group_class   = var.log_class

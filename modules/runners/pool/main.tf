@@ -1,4 +1,5 @@
 locals {
+  lambda_name = "${var.config.prefix}-pool"
   pool_name_prefix = (
     length("${var.config.prefix}-pool") <= 38
     ? "${var.config.prefix}-pool"
@@ -13,7 +14,7 @@ resource "aws_lambda_function" "pool" {
   s3_object_version              = var.config.lambda.s3_object_version != null ? var.config.lambda.s3_object_version : null
   filename                       = var.config.lambda.s3_bucket == null ? var.config.lambda.zip : null
   source_code_hash               = var.config.lambda.s3_bucket == null ? filebase64sha256(var.config.lambda.zip) : null
-  function_name                  = "${var.config.prefix}-pool"
+  function_name                  = local.lambda_name
   role                           = aws_iam_role.pool.arn
   handler                        = "index.adjustPool"
   architectures                  = [var.config.lambda.architecture]
@@ -21,6 +22,7 @@ resource "aws_lambda_function" "pool" {
   timeout                        = var.config.lambda.timeout
   reserved_concurrent_executions = var.config.lambda.reserved_concurrent_executions
   memory_size                    = var.config.lambda.memory_size
+  depends_on                     = [aws_cloudwatch_log_group.pool]
   tags                           = merge(var.config.tags, var.config.lambda_tags)
 
   environment {
@@ -82,7 +84,7 @@ resource "aws_lambda_function" "pool" {
 }
 
 resource "aws_cloudwatch_log_group" "pool" {
-  name              = "/aws/lambda/${aws_lambda_function.pool.function_name}"
+  name              = "/aws/lambda/${local.lambda_name}"
   retention_in_days = var.config.lambda.logging_retention_in_days
   kms_key_id        = var.config.lambda.logging_kms_key_id
   log_group_class   = var.config.lambda.log_class

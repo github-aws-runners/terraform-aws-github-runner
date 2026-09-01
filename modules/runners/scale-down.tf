@@ -1,4 +1,5 @@
 locals {
+  scale_down_lambda_name = "${var.prefix}-scale-down"
   # Windows Runners can take their sweet time to do anything
   # For an AWS vended AMI with an x86 Mac instance or an Apple silicon Mac instance,
   # the launch time can range from approximately 6 minutes to 20 minutes. 
@@ -14,7 +15,7 @@ resource "aws_lambda_function" "scale_down" {
   s3_object_version = var.runners_lambda_s3_object_version != null ? var.runners_lambda_s3_object_version : null
   filename          = var.lambda_s3_bucket == null ? local.lambda_zip : null
   source_code_hash  = var.lambda_s3_bucket == null ? filebase64sha256(local.lambda_zip) : null
-  function_name     = "${var.prefix}-scale-down"
+  function_name     = local.scale_down_lambda_name
   role              = aws_iam_role.scale_down.arn
   handler           = "index.scaleDownHandler"
   runtime           = var.lambda_runtime
@@ -22,6 +23,7 @@ resource "aws_lambda_function" "scale_down" {
   tags              = merge(local.tags, var.lambda_tags)
   memory_size       = var.lambda_scale_down_memory_size
   architectures     = [var.lambda_architecture]
+  depends_on        = [aws_cloudwatch_log_group.scale_down]
 
   environment {
     variables = {
@@ -64,7 +66,7 @@ resource "aws_lambda_function" "scale_down" {
 }
 
 resource "aws_cloudwatch_log_group" "scale_down" {
-  name              = "/aws/lambda/${aws_lambda_function.scale_down.function_name}"
+  name              = "/aws/lambda/${local.scale_down_lambda_name}"
   retention_in_days = var.logging_retention_in_days
   kms_key_id        = var.logging_kms_key_id
   log_group_class   = var.log_class
