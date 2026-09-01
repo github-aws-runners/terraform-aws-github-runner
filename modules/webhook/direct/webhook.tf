@@ -1,5 +1,6 @@
 locals {
-  lambda_zip = var.config.lambda_zip == null ? "${path.module}/../../../lambdas/functions/webhook/webhook.zip" : var.config.lambda_zip
+  lambda_zip                        = var.config.lambda_zip == null ? "${path.module}/../../../lambdas/functions/webhook/webhook.zip" : var.config.lambda_zip
+  webhook_secret_in_secrets_manager = can(regex("^arn:[^:]*:secretsmanager:", var.config.github_app_parameters.webhook_secret.arn))
 }
 
 resource "aws_lambda_function" "webhook" {
@@ -142,10 +143,20 @@ resource "aws_iam_role_policy" "webhook_ssm" {
   policy = templatefile("${path.module}/../policies/lambda-ssm.json", {
     resource_arns = jsonencode(
       concat(
-        [var.config.github_app_parameters.webhook_secret.arn],
+        local.webhook_secret_in_secrets_manager ? [] : [var.config.github_app_parameters.webhook_secret.arn],
         [for p in var.config.ssm_parameter_runner_matcher_config : p.arn]
       )
     )
+  })
+}
+
+resource "aws_iam_role_policy" "webhook_secretsmanager" {
+  count = local.webhook_secret_in_secrets_manager ? 1 : 0
+  name  = "publish-secretsmanager-policy"
+  role  = aws_iam_role.webhook_lambda.name
+
+  policy = templatefile("${path.module}/../policies/lambda-secretsmanager.json", {
+    resource_arns = jsonencode([var.config.github_app_parameters.webhook_secret.arn])
   })
 }
 

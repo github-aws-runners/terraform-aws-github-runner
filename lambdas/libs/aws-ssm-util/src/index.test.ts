@@ -1,4 +1,9 @@
 import {
+  GetSecretValueCommand,
+  GetSecretValueCommandOutput,
+  SecretsManagerClient,
+} from '@aws-sdk/client-secrets-manager';
+import {
   GetParameterCommand,
   GetParameterCommandOutput,
   PutParameterCommand,
@@ -13,6 +18,7 @@ import { getParameter, putParameter, SSM_ADVANCED_TIER_THRESHOLD } from '.';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 const mockSSMClient = mockClient(SSMClient);
+const mockSecretsManagerClient = mockClient(SecretsManagerClient);
 const cleanEnv = process.env;
 
 beforeEach(() => {
@@ -164,5 +170,131 @@ describe('Test getParameter and putParameter', () => {
       Type: 'String',
       Tier: expectedTier,
     });
+  });
+});
+
+describe('Test getParameter with Secrets Manager references', () => {
+  const secretArn = 'arn:aws:secretsmanager:us-east-1:123456789012:secret:my-secret-AbCdEf';
+
+  it('Gets a Secrets Manager ARN without a jsonKey and returns the raw secret string', async () => {
+    // Arrange
+    const secretValue = 'raw-secret-value';
+    const output: GetSecretValueCommandOutput = {
+      SecretString: secretValue,
+      $metadata: { httpStatusCode: 200 },
+    };
+    mockSecretsManagerClient.on(GetSecretValueCommand).resolves(output);
+
+    // Act
+    const result = await getParameter(secretArn);
+
+    // Assert
+    expect(result).toBe(secretValue);
+  });
+
+  it('Gets a Secrets Manager ARN with a jsonKey and returns that key as a string', async () => {
+    // Arrange
+    const output: GetSecretValueCommandOutput = {
+      SecretString: JSON.stringify({ webhook_secret: 'abc123' }),
+      $metadata: { httpStatusCode: 200 },
+    };
+    mockSecretsManagerClient.on(GetSecretValueCommand).resolves(output);
+
+    // Act
+    const result = await getParameter(`${secretArn}#webhook_secret`);
+
+    // Assert
+    expect(result).toBe('abc123');
+  });
+
+  it('Gets a Secrets Manager ARN with a jsonKey where the JSON value is a number and returns it stringified', async () => {
+    // Arrange
+    const output: GetSecretValueCommandOutput = {
+      SecretString: JSON.stringify({ id: 123456 }),
+      $metadata: { httpStatusCode: 200 },
+    };
+    mockSecretsManagerClient.on(GetSecretValueCommand).resolves(output);
+
+    // Act
+    const result = await getParameter(`${secretArn}#id`);
+
+    // Assert
+    expect(result).toBe('123456');
+  });
+
+  it('Throws when the secret cannot be retrieved', async () => {
+    // Arrange
+    const output: GetSecretValueCommandOutput = {
+      $metadata: { httpStatusCode: 200 },
+    };
+    mockSecretsManagerClient.on(GetSecretValueCommand).resolves(output);
+
+    // Act + Assert
+    await expect(getParameter(secretArn)).rejects.toThrow(`Secret ${secretArn} not found`);
+  });
+
+  it('Throws when the requested jsonKey is missing from the secret', async () => {
+    // Arrange
+    const output: GetSecretValueCommandOutput = {
+      SecretString: JSON.stringify({ id: 123456 }),
+      $metadata: { httpStatusCode: 200 },
+    };
+    mockSecretsManagerClient.on(GetSecretValueCommand).resolves(output);
+
+    // Act + Assert
+    await expect(getParameter(`${secretArn}#missing_key`)).rejects.toThrow(
+      `Key "missing_key" not found in secret ${secretArn}`,
+    );
+  });
+
+  it('Throws when the requested jsonKey is null in the secret', async () => {
+    // Arrange
+    const output: GetSecretValueCommandOutput = {
+      SecretString: JSON.stringify({ webhook_secret: null }),
+      $metadata: { httpStatusCode: 200 },
+    };
+    mockSecretsManagerClient.on(GetSecretValueCommand).resolves(output);
+
+    // Act + Assert
+    await expect(getParameter(`${secretArn}#webhook_secret`)).rejects.toThrow(
+      `Key "webhook_secret" not found in secret ${secretArn}`,
+    );
+  });
+
+  it('Throws when a jsonKey is requested against a secret value that is valid JSON but not an object', async () => {
+    // Arrange
+    const output: GetSecretValueCommandOutput = {
+      SecretString: JSON.stringify(5),
+      $metadata: { httpStatusCode: 200 },
+    };
+    mockSecretsManagerClient.on(GetSecretValueCommand).resolves(output);
+
+    // Act + Assert
+    await expect(getParameter(`${secretArn}#webhook_secret`)).rejects.toThrow(
+      `Secret ${secretArn} is not a JSON object, cannot read key "webhook_secret"`,
+    );
+  });
+
+  it('Throws when a jsonKey is requested against a non-JSON secret value, without leaking the value', async () => {
+    // Arrange
+    const secretValue = 'not-json';
+    const output: GetSecretValueCommandOutput = {
+      SecretString: secretValue,
+      $metadata: { httpStatusCode: 200 },
+    };
+    mockSecretsManagerClient.on(GetSecretValueCommand).resolves(output);
+
+    // Act
+    let error: Error | undefined;
+    try {
+      await getParameter(`${secretArn}#webhook_secret`);
+    } catch (e) {
+      error = e as Error;
+    }
+
+    // Assert
+    expect(error).toBeInstanceOf(Error);
+    expect(error?.message).toContain(secretArn);
+    expect(error?.message).not.toContain(secretValue);
   });
 });

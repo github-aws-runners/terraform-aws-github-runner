@@ -1,3 +1,7 @@
+locals {
+  webhook_secret_in_secrets_manager = can(regex("^arn:[^:]*:secretsmanager:", var.config.github_app_parameters.webhook_secret.arn))
+}
+
 resource "null_resource" "github_app_parameters" {
   triggers = {
     github_app_webhook_secret_name = var.config.github_app_parameters.webhook_secret.name
@@ -126,10 +130,26 @@ resource "aws_iam_role_policy" "webhook_eventbridge" {
 }
 
 resource "aws_iam_role_policy" "webhook_ssm" {
-  name = "publish-ssm-policy"
-  role = aws_iam_role.webhook_lambda.name
+  count = local.webhook_secret_in_secrets_manager ? 0 : 1
+  name  = "publish-ssm-policy"
+  role  = aws_iam_role.webhook_lambda.name
 
   policy = templatefile("${path.module}/../policies/lambda-ssm.json", {
+    resource_arns = jsonencode([var.config.github_app_parameters.webhook_secret.arn])
+  })
+}
+
+moved {
+  from = aws_iam_role_policy.webhook_ssm
+  to   = aws_iam_role_policy.webhook_ssm[0]
+}
+
+resource "aws_iam_role_policy" "webhook_secretsmanager" {
+  count = local.webhook_secret_in_secrets_manager ? 1 : 0
+  name  = "publish-secretsmanager-policy"
+  role  = aws_iam_role.webhook_lambda.name
+
+  policy = templatefile("${path.module}/../policies/lambda-secretsmanager.json", {
     resource_arns = jsonencode([var.config.github_app_parameters.webhook_secret.arn])
   })
 }

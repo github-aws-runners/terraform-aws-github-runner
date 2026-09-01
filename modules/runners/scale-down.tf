@@ -4,6 +4,8 @@ locals {
     "windows" = 15
     "linux"   = 5
   }
+
+  github_app_credentials_in_secrets_manager = can(regex("^arn:[^:]*:secretsmanager:", var.github_app_parameters.id.arn))
 }
 resource "aws_lambda_function" "scale_down" {
   s3_bucket         = var.lambda_s3_bucket != null ? var.lambda_s3_bucket : null
@@ -96,10 +98,11 @@ resource "aws_iam_role_policy" "scale_down" {
   name = "scale-down-policy"
   role = aws_iam_role.scale_down.name
   policy = templatefile("${path.module}/policies/lambda-scale-down.json", {
-    environment               = var.prefix
-    github_app_id_arn         = var.github_app_parameters.id.arn
-    github_app_key_base64_arn = var.github_app_parameters.key_base64.arn
-    kms_key_arn               = local.kms_key_arn
+    environment                               = var.prefix
+    github_app_id_arn                         = var.github_app_parameters.id.arn
+    github_app_key_base64_arn                 = var.github_app_parameters.key_base64.arn
+    github_app_credentials_in_secrets_manager = local.github_app_credentials_in_secrets_manager
+    kms_key_arn                               = local.kms_key_arn
   })
 }
 

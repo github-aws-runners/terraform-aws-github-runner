@@ -20,6 +20,8 @@ locals {
     environment_variables = local.environment_variables
     metrics_namespace     = var.config.metrics.namespace
   })
+
+  github_app_credentials_in_secrets_manager = can(regex("^arn:[^:]*:secretsmanager:", var.config.github_app_parameters.id.arn))
 }
 
 resource "aws_sqs_queue_policy" "job_retry_check_queue_policy" {
@@ -62,11 +64,12 @@ resource "aws_iam_role_policy" "job_retry" {
   name = "job_retry-policy"
   role = module.job_retry.lambda.role.name
   policy = templatefile("${path.module}/policies/lambda.json", {
-    kms_key_arn               = var.config.kms_key_arn != null ? var.config.kms_key_arn : ""
-    sqs_build_queue_arn       = var.config.sqs_build_queue.arn
-    sqs_job_retry_queue_arn   = aws_sqs_queue.job_retry_check_queue.arn
-    github_app_id_arn         = var.config.github_app_parameters.id.arn
-    github_app_key_base64_arn = var.config.github_app_parameters.key_base64.arn
+    kms_key_arn                               = var.config.kms_key_arn != null ? var.config.kms_key_arn : ""
+    sqs_build_queue_arn                       = var.config.sqs_build_queue.arn
+    sqs_job_retry_queue_arn                   = aws_sqs_queue.job_retry_check_queue.arn
+    github_app_id_arn                         = var.config.github_app_parameters.id.arn
+    github_app_key_base64_arn                 = var.config.github_app_parameters.key_base64.arn
+    github_app_credentials_in_secrets_manager = local.github_app_credentials_in_secrets_manager
   })
 }
 

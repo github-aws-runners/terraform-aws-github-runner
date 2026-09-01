@@ -33,12 +33,26 @@
                 "ssm:GetParameter"
             ],
             "Resource": [
+%{ if !github_app_credentials_in_secrets_manager ~}
                 "${github_app_key_base64_arn}",
                 "${github_app_id_arn}",
+%{ endif ~}
                 "${ssm_config_path}/*",
                 "${ssm_ami_id_parameter_arn}"
             ]
         },
+%{ if github_app_credentials_in_secrets_manager ~}
+        {
+            "Effect": "Allow",
+            "Action": [
+                "secretsmanager:GetSecretValue"
+            ],
+            "Resource": [
+                "${github_app_key_base64_arn}",
+                "${github_app_id_arn}"
+            ]
+        },
+%{ endif ~}
         {
             "Effect": "Allow",
             "Action": [

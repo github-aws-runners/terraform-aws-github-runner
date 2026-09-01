@@ -6,6 +6,8 @@ locals {
     delayBackoff   = var.job_retry.delay_backoff
     queueUrl       = module.job_retry[0].job_retry_check_queue.url
   } : {}
+
+  github_app_credentials_in_secrets_manager = can(regex("^arn:[^:]*:secretsmanager:", var.github_app_parameters.id.arn))
 }
 
 resource "aws_lambda_function" "scale_up" {
@@ -117,14 +119,15 @@ resource "aws_iam_role_policy" "scale_up" {
   name = "scale-up-policy"
   role = aws_iam_role.scale_up.name
   policy = templatefile("${path.module}/policies/lambda-scale-up.json", {
-    arn_runner_instance_role  = aws_iam_role.runner.arn
-    sqs_arn                   = var.sqs_build_queue.arn
-    github_app_id_arn         = var.github_app_parameters.id.arn
-    github_app_key_base64_arn = var.github_app_parameters.key_base64.arn
-    ssm_config_path           = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm_paths.root}/${var.ssm_paths.config}"
-    kms_key_arn               = local.kms_key_arn
-    ami_kms_key_arn           = local.ami_kms_key_arn
-    ssm_ami_id_parameter_arn  = local.ami_id_ssm_module_managed ? aws_ssm_parameter.runner_ami_id[0].arn : var.ami.id_ssm_parameter_arn
+    arn_runner_instance_role                  = aws_iam_role.runner.arn
+    sqs_arn                                   = var.sqs_build_queue.arn
+    github_app_id_arn                         = var.github_app_parameters.id.arn
+    github_app_key_base64_arn                 = var.github_app_parameters.key_base64.arn
+    github_app_credentials_in_secrets_manager = local.github_app_credentials_in_secrets_manager
+    ssm_config_path                           = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm_paths.root}/${var.ssm_paths.config}"
+    kms_key_arn                               = local.kms_key_arn
+    ami_kms_key_arn                           = local.ami_kms_key_arn
+    ssm_ami_id_parameter_arn                  = local.ami_id_ssm_module_managed ? aws_ssm_parameter.runner_ami_id[0].arn : var.ami.id_ssm_parameter_arn
   })
 }
 

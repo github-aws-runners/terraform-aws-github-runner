@@ -1,6 +1,7 @@
 {
   "Version": "2012-10-17",
   "Statement": [
+%{ if !github_app_credentials_in_secrets_manager ~}
     {
       "Effect": "Allow",
       "Action": [
@@ -11,6 +12,19 @@
         "${github_app_id_arn}"
       ]
     },
+%{ endif ~}
+%{ if github_app_credentials_in_secrets_manager ~}
+    {
+      "Effect": "Allow",
+      "Action": [
+        "secretsmanager:GetSecretValue"
+      ],
+      "Resource": [
+        "${github_app_key_base64_arn}",
+        "${github_app_id_arn}"
+      ]
+    },
+%{ endif ~}
     {
       "Effect": "Allow",
       "Action": [

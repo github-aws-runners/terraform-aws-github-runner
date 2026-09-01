@@ -23,6 +23,8 @@
   },
   "dependencies": {
     "@aws-github-runner/aws-powertools-util": "*",
+    "@aws-lambda-powertools/parameters": "^2.30.2",
+    "@aws-sdk/client-secrets-manager": "^3.984.0",
     "@aws-sdk/client-ssm": "^3.984.0"
   },
   "nx": {
