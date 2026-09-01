@@ -67,6 +67,7 @@ yarn run dist
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_aws_partition"></a> [aws\_partition](#input\_aws\_partition) | (optional) partition for the base arn if not 'aws' | `string` | `"aws"` | no |
+| <a name="input_create_api_gateway"></a> [create\_api\_gateway](#input\_create\_api\_gateway) | Whether to create the API Gateway. Set to false when using an external ALB. | `bool` | `true` | no |
 | <a name="input_eventbridge"></a> [eventbridge](#input\_eventbridge) | Enable the use of EventBridge by the module. By enabling this feature events will be put on the EventBridge by the webhook instead of directly dispatching to queues for scaling.<br/><br/>    `enable`: Enable the EventBridge feature.<br/>    `accept_events`: List can be used to only allow specific events to be putted on the EventBridge. By default all events, empty list will be be interpreted as all events. | <pre>object({<br/>    enable        = optional(bool, false)<br/>    accept_events = optional(list(string), null)<br/>  })</pre> | n/a | yes |
 | <a name="input_github_app_parameters"></a> [github\_app\_parameters](#input\_github\_app\_parameters) | Parameter Store for GitHub App Parameters. | <pre>object({<br/>    webhook_secret = map(string)<br/>  })</pre> | n/a | yes |
 | <a name="input_kms_key_arn"></a> [kms\_key\_arn](#input\_kms\_key\_arn) | Optional CMK Key ARN to be used for Parameter Store. | `string` | `null` | no |
