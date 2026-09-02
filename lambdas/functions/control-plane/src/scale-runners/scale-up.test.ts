@@ -947,7 +947,7 @@ describe('scaleUp with GHES', () => {
       expect(rejectedMessages).toEqual(['message-0']);
     });
 
-    it('does not retry non-retryable partial runner creation failures', async () => {
+    it('non-retryable partial runner creation failures are not retried', async () => {
       mockCreateRunner.mockImplementation(async () => createRunnerResult(['i-12345'], 0, 2));
 
       const rejectedMessages = await scaleUpModule.scaleUp(createTestMessages(3));
