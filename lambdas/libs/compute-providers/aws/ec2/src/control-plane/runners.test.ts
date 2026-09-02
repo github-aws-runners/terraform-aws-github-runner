@@ -139,67 +139,75 @@ describe('list instances', () => {
     expect(mockEC2Client).toHaveReceivedCommand(DescribeInstancesCommand);
   });
 
-  it('filters instances on repo name', async () => {
+  it('sends only the instance-state-name filter to EC2 (tags are filtered client-side)', async () => {
     mockEC2Client.on(DescribeInstancesCommand).resolves(mockRunningInstances);
     await listEC2Runners({
       runnerType: 'Repo',
       runnerOwner: REPO_NAME,
-      environment: undefined,
+      environment: ENVIRONMENT,
+      orphan: true,
     });
     expect(mockEC2Client).toHaveReceivedCommandWith(DescribeInstancesCommand, {
-      Filters: [
-        { Name: 'instance-state-name', Values: ['running', 'pending'] },
-        { Name: 'tag:ghr:Type', Values: ['Repo'] },
-        { Name: 'tag:ghr:Owner', Values: [REPO_NAME] },
-        { Name: 'tag:ghr:Application', Values: ['github-action-runner'] },
-      ],
+      Filters: [{ Name: 'instance-state-name', Values: ['running', 'pending'] }],
     });
   });
 
-  it('filters instances on org name', async () => {
-    mockEC2Client.on(DescribeInstancesCommand).resolves(mockRunningInstances);
-    await listEC2Runners({
+  it('filters instances on repo name (client-side)', async () => {
+    const instances = buildInstancesResult([
+      { 'ghr:Application': 'github-action-runner', 'ghr:Type': 'Repo', 'ghr:Owner': REPO_NAME },
+      { 'ghr:Application': 'github-action-runner', 'ghr:Type': 'Org', 'ghr:Owner': ORG_NAME },
+    ]);
+    mockEC2Client.on(DescribeInstancesCommand).resolves(instances);
+    const resp = await listEC2Runners({
+      runnerType: 'Repo',
+      runnerOwner: REPO_NAME,
+      environment: undefined,
+    });
+    expect(resp.length).toBe(1);
+    expect(resp[0].owner).toBe(REPO_NAME);
+  });
+
+  it('filters instances on org name (client-side)', async () => {
+    const instances = buildInstancesResult([
+      { 'ghr:Application': 'github-action-runner', 'ghr:Type': 'Org', 'ghr:Owner': ORG_NAME },
+      { 'ghr:Application': 'github-action-runner', 'ghr:Type': 'Repo', 'ghr:Owner': REPO_NAME },
+    ]);
+    mockEC2Client.on(DescribeInstancesCommand).resolves(instances);
+    const resp = await listEC2Runners({
       runnerType: 'Org',
       runnerOwner: ORG_NAME,
       environment: undefined,
     });
-    expect(mockEC2Client).toHaveReceivedCommandWith(DescribeInstancesCommand, {
-      Filters: [
-        { Name: 'instance-state-name', Values: ['running', 'pending'] },
-        { Name: 'tag:ghr:Type', Values: ['Org'] },
-        { Name: 'tag:ghr:Owner', Values: [ORG_NAME] },
-        { Name: 'tag:ghr:Application', Values: ['github-action-runner'] },
-      ],
-    });
+    expect(resp.length).toBe(1);
+    expect(resp[0].owner).toBe(ORG_NAME);
   });
 
-  it('filters instances on environment', async () => {
-    mockEC2Client.on(DescribeInstancesCommand).resolves(mockRunningInstances);
-    await listEC2Runners({ environment: ENVIRONMENT });
-    expect(mockEC2Client).toHaveReceivedCommandWith(DescribeInstancesCommand, {
-      Filters: [
-        { Name: 'instance-state-name', Values: ['running', 'pending'] },
-        { Name: 'tag:ghr:environment', Values: [ENVIRONMENT] },
-        { Name: 'tag:ghr:Application', Values: ['github-action-runner'] },
-      ],
-    });
+  it('filters instances on environment (client-side)', async () => {
+    const instances = buildInstancesResult([
+      { 'ghr:Application': 'github-action-runner', 'ghr:environment': ENVIRONMENT },
+      { 'ghr:Application': 'github-action-runner', 'ghr:environment': 'some-other-environment' },
+    ]);
+    mockEC2Client.on(DescribeInstancesCommand).resolves(instances);
+    const resp = await listEC2Runners({ environment: ENVIRONMENT });
+    expect(resp.length).toBe(1);
   });
 
-  it('filters instances on environment and orphan', async () => {
-    mockRunningInstances.Reservations![0].Instances![0].Tags!.push({
-      Key: 'ghr:orphan',
-      Value: 'true',
-    });
-    mockEC2Client.on(DescribeInstancesCommand).resolves(mockRunningInstances);
-    await listEC2Runners({ environment: ENVIRONMENT, orphan: true });
-    expect(mockEC2Client).toHaveReceivedCommandWith(DescribeInstancesCommand, {
-      Filters: [
-        { Name: 'instance-state-name', Values: ['running', 'pending'] },
-        { Name: 'tag:ghr:environment', Values: [ENVIRONMENT] },
-        { Name: 'tag:ghr:orphan', Values: ['true'] },
-        { Name: 'tag:ghr:Application', Values: ['github-action-runner'] },
-      ],
-    });
+  it('filters instances on environment and orphan (client-side)', async () => {
+    const instances = buildInstancesResult([
+      { 'ghr:Application': 'github-action-runner', 'ghr:environment': ENVIRONMENT, 'ghr:orphan': 'true' },
+      { 'ghr:Application': 'github-action-runner', 'ghr:environment': ENVIRONMENT },
+      { 'ghr:Application': 'github-action-runner', 'ghr:environment': 'some-other-environment', 'ghr:orphan': 'true' },
+    ]);
+    mockEC2Client.on(DescribeInstancesCommand).resolves(instances);
+    const resp = await listEC2Runners({ environment: ENVIRONMENT, orphan: true });
+    expect(resp.length).toBe(1);
+  });
+
+  it('excludes instances missing the Application tag (client-side)', async () => {
+    const instances = buildInstancesResult([{ 'ghr:Type': 'Org', 'ghr:Owner': ORG_NAME }]);
+    mockEC2Client.on(DescribeInstancesCommand).resolves(instances);
+    const resp = await listEC2Runners();
+    expect(resp.length).toBe(0);
   });
 
   it('No instances, undefined reservations list.', async () => {
@@ -211,7 +219,7 @@ describe('list instances', () => {
     expect(resp.length).toBe(0);
   });
 
-  it('Instances with no tags.', async () => {
+  it('Instances with no tags are excluded (no Application tag match).', async () => {
     const noInstances: DescribeInstancesResult = {
       Reservations: [
         {
@@ -227,17 +235,14 @@ describe('list instances', () => {
     };
     mockEC2Client.on(DescribeInstancesCommand).resolves(noInstances);
     const resp = await listEC2Runners();
-    expect(resp.length).toBe(1);
+    expect(resp.length).toBe(0);
   });
 
   it('Filter instances for state running.', async () => {
     mockEC2Client.on(DescribeInstancesCommand).resolves(mockRunningInstances);
     await listEC2Runners({ statuses: ['running'] });
     expect(mockEC2Client).toHaveReceivedCommandWith(DescribeInstancesCommand, {
-      Filters: [
-        { Name: 'instance-state-name', Values: ['running'] },
-        { Name: 'tag:ghr:Application', Values: ['github-action-runner'] },
-      ],
+      Filters: [{ Name: 'instance-state-name', Values: ['running'] }],
     });
   });
 
@@ -245,13 +250,24 @@ describe('list instances', () => {
     mockEC2Client.on(DescribeInstancesCommand).resolves(mockRunningInstances);
     await listEC2Runners({ statuses: undefined });
     expect(mockEC2Client).toHaveReceivedCommandWith(DescribeInstancesCommand, {
-      Filters: [
-        { Name: 'instance-state-name', Values: ['running', 'pending'] },
-        { Name: 'tag:ghr:Application', Values: ['github-action-runner'] },
-      ],
+      Filters: [{ Name: 'instance-state-name', Values: ['running', 'pending'] }],
     });
   });
 });
+
+function buildInstancesResult(tagSets: Record<string, string>[]): DescribeInstancesResult {
+  return {
+    Reservations: [
+      {
+        Instances: tagSets.map((tags, index) => ({
+          LaunchTime: new Date('2020-10-10T14:48:00.000+09:00'),
+          InstanceId: `i-${index}`,
+          Tags: Object.entries(tags).map(([Key, Value]) => ({ Key, Value })),
+        })),
+      },
+    ],
+  };
+}
 
 describe('terminate runner', () => {
   beforeEach(() => {

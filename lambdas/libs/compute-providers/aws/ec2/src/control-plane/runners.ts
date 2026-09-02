@@ -6,6 +6,7 @@ import {
   DeleteTagsCommand,
   DescribeInstancesCommand,
   DescribeInstancesResult,
+  type Instance,
   RunInstancesCommand,
   type RunInstancesCommandInput,
   RunInstancesCommandOutput,
@@ -35,40 +36,30 @@ interface Ec2Filter {
 type FleetError = NonNullable<CreateFleetResult['Errors']>[number];
 
 export async function listEC2Runners(filters: Ec2ListRunnerFilters | undefined = undefined): Promise<RunnerInfo[]> {
-  const ec2Filters = constructFilters(filters);
-  const runners: RunnerInfo[] = [];
-  for (const filter of ec2Filters) {
-    runners.push(...(await getRunners(filter)));
-  }
-  return runners;
+  const ec2Statuses = filters?.statuses ? filters.statuses : ['running', 'pending'];
+  const stateFilter: Ec2Filter[] = [{ Name: 'instance-state-name', Values: ec2Statuses }];
+  const tagFilters = constructTagFilters(filters);
+  return await getRunners(stateFilter, tagFilters);
 }
 
-function constructFilters(filters?: Ec2ListRunnerFilters): Ec2Filter[][] {
-  const ec2Statuses = filters?.statuses ? filters.statuses : ['running', 'pending'];
-  const ec2Filters: Ec2Filter[][] = [];
-  const ec2FiltersBase = [{ Name: 'instance-state-name', Values: ec2Statuses }];
+function constructTagFilters(filters?: Ec2ListRunnerFilters): Ec2Filter[] {
+  const tagFilters: Ec2Filter[] = [{ Name: 'tag:ghr:Application', Values: ['github-action-runner'] }];
   if (filters) {
     if (filters.environment !== undefined) {
-      ec2FiltersBase.push({ Name: 'tag:ghr:environment', Values: [filters.environment] });
+      tagFilters.push({ Name: 'tag:ghr:environment', Values: [filters.environment] });
     }
     if (filters.runnerType && filters.runnerOwner) {
-      ec2FiltersBase.push({ Name: `tag:ghr:Type`, Values: [filters.runnerType] });
-      ec2FiltersBase.push({ Name: `tag:ghr:Owner`, Values: [filters.runnerOwner] });
+      tagFilters.push({ Name: `tag:ghr:Type`, Values: [filters.runnerType] });
+      tagFilters.push({ Name: `tag:ghr:Owner`, Values: [filters.runnerOwner] });
     }
     if (filters.orphan) {
-      ec2FiltersBase.push({ Name: 'tag:ghr:orphan', Values: ['true'] });
+      tagFilters.push({ Name: 'tag:ghr:orphan', Values: ['true'] });
     }
   }
-
-  for (const key of ['tag:ghr:Application']) {
-    const filter = [...ec2FiltersBase];
-    filter.push({ Name: key, Values: ['github-action-runner'] });
-    ec2Filters.push(filter);
-  }
-  return ec2Filters;
+  return tagFilters;
 }
 
-async function getRunners(ec2Filters: Ec2Filter[]): Promise<RunnerInfo[]> {
+async function getRunners(ec2Filters: Ec2Filter[], tagFilters: Ec2Filter[]): Promise<RunnerInfo[]> {
   const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
   const runners: RunnerInfo[] = [];
   let nextToken;
@@ -79,9 +70,30 @@ async function getRunners(ec2Filters: Ec2Filter[]): Promise<RunnerInfo[]> {
     );
     hasNext = instances.NextToken ? true : false;
     nextToken = instances.NextToken;
-    runners.push(...getRunnerInfo(instances));
+    runners.push(...getRunnerInfo(filterInstancesByTags(instances, tagFilters)));
   }
   return runners;
+}
+
+function matchesTagFilters(instance: Instance, tagFilters: Ec2Filter[]): boolean {
+  return tagFilters.every((filter) => {
+    const tagKey = filter.Name.replace(/^tag:/, '');
+    const tagValue = instance.Tags?.find((t) => t.Key === tagKey)?.Value;
+    return tagValue !== undefined && filter.Values.includes(tagValue);
+  });
+}
+
+function filterInstancesByTags(result: DescribeInstancesResult, tagFilters: Ec2Filter[]): DescribeInstancesResult {
+  if (!result.Reservations) {
+    return result;
+  }
+  return {
+    ...result,
+    Reservations: result.Reservations.map((reservation) => ({
+      ...reservation,
+      Instances: reservation.Instances?.filter((instance) => matchesTagFilters(instance, tagFilters)),
+    })),
+  };
 }
 
 function getRunnerInfo(runningInstances: DescribeInstancesResult) {
