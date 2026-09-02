@@ -11,5 +11,4 @@ config = {
   tag_filters = {
     "ghr:Application" = "github-action-runner"
   }
-  zip = "../../tests/ministack/ministack-lambda.zip"
 }
