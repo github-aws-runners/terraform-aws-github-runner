@@ -218,6 +218,10 @@ function safeFailureIdentifier(value: unknown): string | undefined {
   return typeof value === 'string' && SAFE_FAILURE_IDENTIFIER.test(value) ? value : undefined;
 }
 
+function failureMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 function requestFailureCodes(error: unknown): Ec2RunnerFailureCode[] {
   const failureCodes = new Set<Ec2RunnerFailureCode>();
   const visited = new Set<Error>();
@@ -378,6 +382,7 @@ async function createEc2Runner(
     const failureCodes = requestFailureCodes(error);
     logger.warn('Runner creation failed before an EC2 request could be made.', {
       failedInstanceCount: runnerParameters.numberOfRunners,
+      error: failureMessage(error),
       failureCodes,
     });
     return failedCreateRunnerResult(runnerParameters.numberOfRunners, failureCodes);
@@ -400,6 +405,7 @@ async function createEc2Runner(
     const failureCodes = requestFailureCodes(error);
     logger.warn('Create fleet request failed.', {
       failedInstanceCount: runnerParameters.numberOfRunners,
+      error: failureMessage(error),
       failureCodes,
     });
     return failedCreateRunnerResult(runnerParameters.numberOfRunners, failureCodes);
@@ -562,64 +568,58 @@ async function createInstances(
     targetCapacityType,
   );
 
-  let fleet: CreateFleetResult;
-  try {
-    // see for spec https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_CreateFleet.html
-    const createFleetCommand = new CreateFleetCommand({
-      LaunchTemplateConfigs: [
-        {
-          LaunchTemplateSpecification: {
-            LaunchTemplateName: runnerParameters.launchTemplateName,
-            Version: '$Default',
-          },
-          Overrides: generateFleetOverrides(
-            runnerParameters.subnets,
-            runnerParameters.ec2instanceCriteria.instanceTypes,
-            amiIdOverride,
-            runnerParameters.ec2OverrideConfig,
-            allocationStrategy,
-            runnerParameters.ec2instanceCriteria.instanceTypePriorities,
-          ),
+  // see for spec https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_CreateFleet.html
+  const createFleetCommand = new CreateFleetCommand({
+    LaunchTemplateConfigs: [
+      {
+        LaunchTemplateSpecification: {
+          LaunchTemplateName: runnerParameters.launchTemplateName,
+          Version: '$Default',
         },
-      ],
-      ...(targetCapacityType === 'spot'
-        ? {
-            SpotOptions: {
-              MaxTotalPrice: runnerParameters.ec2instanceCriteria.maxSpotPrice,
-              AllocationStrategy: allocationStrategy as SpotAllocationStrategy,
-            },
-          }
-        : {
-            OnDemandOptions: {
-              AllocationStrategy: allocationStrategy as FleetOnDemandAllocationStrategy,
-            },
-          }),
-      TargetCapacitySpecification: {
-        TotalTargetCapacity: runnerParameters.numberOfRunners,
-        DefaultTargetCapacityType: targetCapacityType,
+        Overrides: generateFleetOverrides(
+          runnerParameters.subnets,
+          runnerParameters.ec2instanceCriteria.instanceTypes,
+          amiIdOverride,
+          runnerParameters.ec2OverrideConfig,
+          allocationStrategy,
+          runnerParameters.ec2instanceCriteria.instanceTypePriorities,
+        ),
       },
-      TagSpecifications: [
-        {
-          ResourceType: 'instance',
-          Tags: tags,
-        },
-        {
-          ResourceType: 'volume',
-          Tags: tags,
-        },
-        {
-          ResourceType: 'fleet',
-          Tags: tags,
-        },
-      ],
-      Type: 'instant',
-    });
-    logger.debug('CreateFleet request payload.', { payload: createFleetCommand.input });
-    fleet = await ec2Client.send(createFleetCommand, { abortSignal: signal });
-  } catch (e) {
-    logger.warn('Create fleet request failed.', { failureCodes: requestFailureCodes(e) });
-    throw e;
-  }
+    ],
+    ...(targetCapacityType === 'spot'
+      ? {
+          SpotOptions: {
+            MaxTotalPrice: runnerParameters.ec2instanceCriteria.maxSpotPrice,
+            AllocationStrategy: allocationStrategy as SpotAllocationStrategy,
+          },
+        }
+      : {
+          OnDemandOptions: {
+            AllocationStrategy: allocationStrategy as FleetOnDemandAllocationStrategy,
+          },
+        }),
+    TargetCapacitySpecification: {
+      TotalTargetCapacity: runnerParameters.numberOfRunners,
+      DefaultTargetCapacityType: targetCapacityType,
+    },
+    TagSpecifications: [
+      {
+        ResourceType: 'instance',
+        Tags: tags,
+      },
+      {
+        ResourceType: 'volume',
+        Tags: tags,
+      },
+      {
+        ResourceType: 'fleet',
+        Tags: tags,
+      },
+    ],
+    Type: 'instant',
+  });
+  logger.debug('CreateFleet request payload.', { payload: createFleetCommand.input });
+  const fleet = await ec2Client.send(createFleetCommand, { abortSignal: signal });
   return fleet;
 }
 
@@ -680,6 +680,7 @@ async function createInstancesWithRunInstances(
     const failureCodes = requestFailureCodes(error);
     logger.warn('RunInstances request failed for dedicated host.', {
       failedInstanceCount: runnerParameters.numberOfRunners,
+      error: failureMessage(error),
       failureCodes,
     });
     return failedCreateRunnerResult(runnerParameters.numberOfRunners, failureCodes);
