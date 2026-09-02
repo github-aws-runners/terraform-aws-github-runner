@@ -21,7 +21,6 @@ node_modules/
 secrets.auto.tfvars
 .envrc
 *.zip
-!tests/ministack/ministack-lambda.zip
 *.gz
 *.tgz
 *.env*

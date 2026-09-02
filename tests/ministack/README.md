@@ -22,7 +22,9 @@ tests/ministack/run-example.sh apply termination-watcher
 tests/ministack/run-example.sh apply multi-runner
 ```
 
-The script also supports `init`, `plan`, and `destroy`. The Lambda variables
-point to the inert MiniStack test archive in this directory. The remaining
-examples stay outside this workflow because they require externally managed
-SSM parameters or remote state.
+The script also supports `init`, `plan`, and `destroy`. It creates inert Lambda
+ZIP fixtures in the paths expected by the modules when they are absent, and
+removes only the files it created. For `multi-runner`, it also creates the two
+AMI SSM parameters required by the example and removes them during cleanup.
+The remaining examples stay outside this workflow because they require
+externally managed SSM parameters or remote state.

@@ -48,6 +48,100 @@ if [ ! -f "$tfvars_file" ]; then
   exit 66
 fi
 
+fixture_dir=""
+lambda_created_paths=""
+lambda_zip_paths="
+$source_root/lambdas/functions/ami-housekeeper/ami-housekeeper.zip
+$source_root/lambdas/functions/control-plane/runners.zip
+$source_root/lambdas/functions/gh-agent-syncer/runner-binaries-syncer.zip
+$source_root/lambdas/functions/webhook/webhook.zip
+$source_root/lambdas/functions/termination-watcher/termination-watcher.zip
+"
+
+cleanup() {
+  if [ -n "$fixture_dir" ] && [ -f "$fixture_dir/terraform.tfstate" ]; then
+    terraform -chdir="$fixture_dir" destroy -auto-approve -input=false >/dev/null 2>&1 || true
+  fi
+
+  for lambda_zip in $lambda_created_paths; do
+    rm -f "$lambda_zip"
+  done
+
+  if [ -n "$fixture_dir" ]; then
+    rm -rf "$fixture_dir"
+  fi
+}
+trap cleanup EXIT INT TERM
+
+create_ministack_fixtures() {
+  fixture_dir=$(mktemp -d "${TMPDIR:-/tmp}/terraform-aws-github-runner-ministack-fixtures.XXXXXX")
+  printf '%s\n' 'exports.handler = async () => ({ statusCode: 200, body: "ministack" });' > "$fixture_dir/index.js"
+  cat > "$fixture_dir/main.tf" <<EOF
+terraform {
+  required_providers {
+    archive = {
+      source  = "hashicorp/archive"
+      version = "~> 2.7"
+    }
+    aws = {
+      source  = "hashicorp/aws"
+      version = ">= 6.21"
+    }
+  }
+}
+
+provider "aws" {
+  region                      = "$AWS_DEFAULT_REGION"
+  skip_credentials_validation = true
+  skip_metadata_api_check     = true
+  skip_region_validation      = true
+  skip_requesting_account_id  = true
+  s3_use_path_style           = true
+}
+
+data "archive_file" "lambda" {
+  type        = "zip"
+  source_file = "$fixture_dir/index.js"
+  output_path = "$fixture_dir/ministack-lambda.zip"
+}
+
+resource "aws_ssm_parameter" "al2023_x64" {
+  name      = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64"
+  type      = "String"
+  value     = "ami-0a1b2c3d4e5f67890"
+  count     = "$example" == "multi-runner" ? 1 : 0
+  overwrite = true
+}
+
+resource "aws_ssm_parameter" "al2023_arm64" {
+  name      = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-arm64"
+  type      = "String"
+  value     = "ami-0a1b2c3d4e5f67890"
+  count     = "$example" == "multi-runner" ? 1 : 0
+  overwrite = true
+}
+EOF
+
+  terraform -chdir="$fixture_dir" init -backend=false -input=false -upgrade
+  terraform -chdir="$fixture_dir" apply -auto-approve -input=false
+
+  for lambda_zip in $lambda_zip_paths; do
+    if [ -e "$lambda_zip" ]; then
+      continue
+    fi
+    mkdir -p "$(dirname "$lambda_zip")"
+    cp "$fixture_dir/ministack-lambda.zip" "$lambda_zip"
+    lambda_created_paths="$lambda_created_paths
+$lambda_zip"
+  done
+}
+
+case "$action" in
+  plan | apply | destroy)
+    create_ministack_fixtures
+    ;;
+esac
+
 terraform_init() {
   terraform -chdir="$example_root" init -backend=false -input=false -upgrade
 }
