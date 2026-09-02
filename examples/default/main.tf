@@ -32,6 +32,12 @@ module "runners" {
     webhook_secret = random_id.random.hex
   }
 
+  ami                               = var.ami
+  ami_housekeeper_lambda_zip        = var.ami_housekeeper_lambda_zip
+  runner_binaries_syncer_lambda_zip = var.runner_binaries_syncer_lambda_zip
+  runners_lambda_zip                = var.runners_lambda_zip
+  webhook_lambda_zip                = var.webhook_lambda_zip
+
   # configure the block device mappings, default for Amazon Linux2
   # block_device_mappings = [{
   #   device_name           = "/dev/xvda"
@@ -121,7 +127,8 @@ module "runners" {
   }
 
   instance_termination_watcher = {
-    enable = true
+    enable = var.instance_termination_watcher_enabled
+    zip    = var.termination_watcher_lambda_zip
   }
 
   # enable metric creation  (experimental)
@@ -147,6 +154,7 @@ module "runners" {
 }
 
 module "webhook_github_app" {
+  count      = var.enable_webhook_github_app ? 1 : 0
   source     = "../../modules/webhook-github-app"
   depends_on = [module.runners]
 

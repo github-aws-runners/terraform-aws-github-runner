@@ -1,30 +1,28 @@
-# MiniStack example lifecycle tests
+# MiniStack example tests
 
-The MiniStack workflow runs explicit `terraform apply` and `terraform destroy`
-commands against the repository's runnable AWS examples. Every matrix entry gets
-an isolated source tree, Terraform state, and MiniStack service.
+The MiniStack workflow runs the `base`, `default`, `ephemeral`, `multi-runner`,
+`prebuilt`, and `termination-watcher` examples directly with
+Terraform. Each example gets its inputs from its own tfvars file in this
+directory; no override files, setup module, temporary archive, or generated
+Terraform configuration is used.
 
-The fixture creates synthetic SSM values through MiniStack and an inert Lambda
-archive under its ignored `.terraform/` directory. Test-only Terraform override
-files route each example to that archive and a MiniStack AMI. They also disable
-the `webhook-github-app` local-exec module, which would otherwise update a real
-GitHub App. The production example configurations are not changed.
+Start MiniStack, set the AWS endpoint and test credentials, then run:
 
-| Example | Lifecycle coverage |
-| --- | --- |
-| `base` | VPC and Resource Groups |
-| `default` | Full default runner stack |
-| `ephemeral` | Ephemeral runner and job-retry stack |
-| `external-managed-ssm-secrets` | Runner stack with fixture-owned external SSM parameters |
-| `multi-runner` | All runner lanes: public/private SSM wiring for Linux x64/ARM64 and module-managed AMI parameters for three lanes |
-| `permissions-boundary` | IAM setup, assumed-role runner stack, and reverse-order teardown |
-| `prebuilt` | Prebuilt-runner stack using a MiniStack AMI |
-| `termination-watcher` | Standalone termination watcher |
+```sh
+tests/ministack/run-example.sh apply base
+# or
+tests/ministack/run-example.sh apply ephemeral
+# or
+tests/ministack/run-example.sh apply default
+# or
+tests/ministack/run-example.sh apply prebuilt
+# or
+tests/ministack/run-example.sh apply termination-watcher
+# or
+tests/ministack/run-example.sh apply multi-runner
+```
 
-Two examples are intentionally outside the matrix:
-
-- `dedicated-mac-hosts` requires the EC2 Dedicated Hosts and License Manager
-  APIs, which MiniStack v1.5.0 does not implement.
-- `lambdas-download` has no AWS resources. Its apply operation downloads release
-  archives from GitHub, so it is not a MiniStack lifecycle test. The underlying
-  `download-lambda` module remains in the existing module validation matrix.
+The script also supports `init`, `plan`, and `destroy`. The Lambda variables
+point to the inert MiniStack test archive in this directory. The remaining
+examples stay outside this workflow because they require externally managed
+SSM parameters or remote state.

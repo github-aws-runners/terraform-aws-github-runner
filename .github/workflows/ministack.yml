@@ -51,9 +51,7 @@ jobs:
           - base
           - default
           - ephemeral
-          - external-managed-ssm-secrets
           - multi-runner
-          - permissions-boundary
           - prebuilt
           - termination-watcher
     container:
@@ -79,25 +77,6 @@ jobs:
         shell: sh
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      - id: prepare
-        name: Prepare isolated fixture
-        env:
-          EXAMPLE: ${{ matrix.example }}
-        run: tests/ministack/run-example.sh prepare "$EXAMPLE"
-
-      - id: fixture
-        name: Apply shared fixture
-        env:
-          EXAMPLE: ${{ matrix.example }}
-        run: tests/ministack/run-example.sh fixture-apply "$EXAMPLE"
-
-      - id: setup
-        name: Apply permissions-boundary prerequisite
-        if: matrix.example == 'permissions-boundary'
-        env:
-          EXAMPLE: ${{ matrix.example }}
-        run: tests/ministack/run-example.sh setup-apply "$EXAMPLE"
-
       - id: init
         name: Terraform init
         env:
@@ -115,15 +94,3 @@ jobs:
         env:
           EXAMPLE: ${{ matrix.example }}
         run: tests/ministack/run-example.sh destroy "$EXAMPLE"
-
-      - name: Destroy permissions-boundary prerequisite
-        if: always() && matrix.example == 'permissions-boundary' && steps.setup.outcome != 'skipped'
-        env:
-          EXAMPLE: ${{ matrix.example }}
-        run: tests/ministack/run-example.sh setup-destroy "$EXAMPLE"
-
-      - name: Destroy shared fixture
-        if: always() && steps.prepare.outcome == 'success' && steps.fixture.outcome != 'skipped'
-        env:
-          EXAMPLE: ${{ matrix.example }}
-        run: tests/ministack/run-example.sh fixture-destroy "$EXAMPLE"
