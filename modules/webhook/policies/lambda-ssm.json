@@ -3,7 +3,7 @@
   "Statement": [
     {
       "Effect": "Allow",
-      "Action": ["ssm:GetParameter"],
+      "Action": ["ssm:GetParameter", "ssm:GetParameters"],
       "Resource": ${resource_arns}
     }
   ]

@@ -44,11 +44,27 @@ output "webhook" {
 }
 
 output "ssm_parameters" {
-  value = { for k, v in local.github_app_parameters : k => {
-    name = v.name
-    arn  = v.arn
-    }
-  }
+  value = merge(
+    {
+      id             = { name = local.github_app_parameters.id[0].name, arn = local.github_app_parameters.id[0].arn }
+      key_base64     = { name = local.github_app_parameters.key_base64[0].name, arn = local.github_app_parameters.key_base64[0].arn }
+      webhook_secret = { name = local.github_app_parameters.webhook_secret.name, arn = local.github_app_parameters.webhook_secret.arn }
+    },
+    { for idx, v in local.github_app_parameters.id : "github_app_id_${idx}" => {
+      name = v.name
+      arn  = v.arn
+    } },
+    { for idx, v in local.github_app_parameters.key_base64 : "github_app_key_base64_${idx}" => {
+      name = v.name
+      arn  = v.arn
+    } },
+    {
+      github_app_webhook_secret = {
+        name = local.github_app_parameters.webhook_secret.name
+        arn  = local.github_app_parameters.webhook_secret.arn
+      }
+    },
+  )
 }
 
 

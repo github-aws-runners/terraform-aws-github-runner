@@ -14,7 +14,9 @@
     "emitDecoratorMetadata": true,
     "forceConsistentCasingInFileNames": false,
     "resolveJsonModule": true,
-    "types": ["vitest/globals"]
+    "types": [
+      "vitest/globals"
+    ],
+    "skipLibCheck": true
   }
 }
-

@@ -1,4 +1,4 @@
-import { getParameter } from '@aws-github-runner/aws-ssm-util';
+import { getParameter, getParameters } from '@aws-github-runner/aws-ssm-util';
 import { RunnerMatcherConfig } from './sqs';
 import { logger } from '@aws-github-runner/aws-powertools-util';
 
@@ -61,7 +61,7 @@ abstract class BaseConfig {
         this.loadProperty(propertyName, value);
       })
       .catch((error) => {
-        const errorMessage = `Failed to load parameter for ${String(propertyName)} from path ${paramPath}: ${(error as Error).message}`; // eslint-disable-line max-len
+        const errorMessage = `Failed to load parameter for ${String(propertyName)} from path ${paramPath}: ${(error as Error).message}`;
         this.configLoadingErrors.push(errorMessage);
       });
   }
@@ -87,8 +87,14 @@ abstract class BaseConfig {
   }
 }
 
+export type QueueSelectionStrategy = 'first' | 'random' | 'all';
+
 abstract class MatcherAwareConfig extends BaseConfig {
   matcherConfig: RunnerMatcherConfig[] = [];
+  // How to pick a queue when several runner configs match a job equally well.
+  // 'first' keeps the historical deterministic behaviour; 'random' spreads jobs
+  // across the matching queues to avoid concentrating load on a single one.
+  queueSelectionStrategy: QueueSelectionStrategy = 'first';
 
   protected async loadMatcherConfig(paramPathsEnv: string) {
     if (!paramPathsEnv || paramPathsEnv === 'undefined' || paramPathsEnv === 'null' || !paramPathsEnv.includes(':')) {
@@ -101,16 +107,27 @@ abstract class MatcherAwareConfig extends BaseConfig {
       .split(':')
       .map((p) => p.trim())
       .filter(Boolean);
-    let combinedString = '';
-    for (const path of paths) {
-      await this.loadParameter(path, 'matcherConfig');
-      combinedString += this.matcherConfig;
-    }
 
+    // Batch fetch all matcher config paths in a single SSM API call
     try {
-      this.matcherConfig = JSON.parse(combinedString);
+      const params = await getParameters(paths);
+      let combinedString = '';
+      for (const path of paths) {
+        const value = params.get(path);
+        if (value) {
+          combinedString += value;
+        } else {
+          this.configLoadingErrors.push(
+            `Failed to load parameter for matcherConfig from path ${path}: Parameter not found`,
+          );
+        }
+      }
+
+      if (combinedString) {
+        this.matcherConfig = JSON.parse(combinedString);
+      }
     } catch (error) {
-      this.configLoadingErrors.push(`Failed to parse combined matcher config: ${(error as Error).message}`);
+      this.configLoadingErrors.push(`Failed to load/parse combined matcher config: ${(error as Error).message}`);
     }
   }
 }
@@ -122,6 +139,7 @@ export class ConfigWebhook extends MatcherAwareConfig {
 
   async loadConfig(): Promise<void> {
     this.loadEnvVar(process.env.REPOSITORY_ALLOW_LIST, 'repositoryAllowList', []);
+    this.loadEnvVar(process.env.QUEUE_SELECTION_STRATEGY, 'queueSelectionStrategy', 'first');
 
     await Promise.all([
       this.loadMatcherConfig(process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH),
@@ -130,6 +148,7 @@ export class ConfigWebhook extends MatcherAwareConfig {
 
     validateWebhookSecret(this);
     validateRunnerMatcherConfig(this);
+    validateQueueSelectionStrategy(this);
   }
 }
 
@@ -154,9 +173,11 @@ export class ConfigDispatcher extends MatcherAwareConfig {
 
   async loadConfig(): Promise<void> {
     this.loadEnvVar(process.env.REPOSITORY_ALLOW_LIST, 'repositoryAllowList', []);
+    this.loadEnvVar(process.env.QUEUE_SELECTION_STRATEGY, 'queueSelectionStrategy', 'first');
     await this.loadMatcherConfig(process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH);
 
     validateRunnerMatcherConfig(this);
+    validateQueueSelectionStrategy(this);
   }
 }
 
@@ -175,5 +196,14 @@ function validateWebhookSecret(config: ConfigWebhookEventBridge | ConfigWebhook)
 function validateRunnerMatcherConfig(config: ConfigDispatcher | ConfigWebhook): void {
   if (config.matcherConfig.length === 0) {
     config.configLoadingErrors.push('Matcher config is empty');
+  }
+}
+
+function validateQueueSelectionStrategy(config: ConfigDispatcher | ConfigWebhook): void {
+  const allowed: QueueSelectionStrategy[] = ['first', 'random', 'all'];
+  if (!allowed.includes(config.queueSelectionStrategy)) {
+    config.configLoadingErrors.push(
+      `Invalid queue selection strategy '${config.queueSelectionStrategy}', expected one of: ${allowed.join(', ')}`,
+    );
   }
 }

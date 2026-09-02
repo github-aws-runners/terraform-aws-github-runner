@@ -3,7 +3,6 @@
 ## install the runner
 
 s3_location=${S3_LOCATION_RUNNER_DISTRIBUTION}
-architecture=${RUNNER_ARCHITECTURE}
 
 if [ -z "$RUNNER_TARBALL_URL" ] && [ -z "$s3_location" ]; then
   echo "Neither RUNNER_TARBALL_URL or s3_location are set"
@@ -45,8 +44,8 @@ rm -rf $file_name
 os_id=$(awk -F= '/^ID=/{print $2}' /etc/os-release)
 echo OS: $os_id
 
-# Install libicu on non-ubuntu
-if [[ ! "$os_id" =~ ^ubuntu.* ]]; then
+# Install libicu on non-ubuntu, non-debian
+if [[ ! "$os_id" =~ ^(ubuntu|debian).* ]]; then
   max_attempts=5
   attempt_count=0
   success=false
@@ -63,8 +62,8 @@ if [[ ! "$os_id" =~ ^ubuntu.* ]]; then
   done
 fi
 
-# Install dependencies for ubuntu
-if [[ "$os_id" =~ ^ubuntu.* ]]; then
+# Install dependencies for ubuntu and debian
+if [[ "$os_id" =~ ^(ubuntu|debian).* ]]; then
     echo "Installing dependencies"
     ./bin/installdependencies.sh
 fi

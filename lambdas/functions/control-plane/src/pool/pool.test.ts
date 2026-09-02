@@ -2,9 +2,10 @@ import { Octokit } from '@octokit/rest';
 import moment from 'moment-timezone';
 import * as nock from 'nock';
 
-import { listEC2Runners } from '../aws/runners';
+import { createRunners } from '@aws-github-runner/compute-providers/aws/ec2/control-plane/runner-config';
+import { listEC2Runners } from '@aws-github-runner/compute-providers/aws/ec2/control-plane/runners';
 import * as ghAuth from '../github/auth';
-import { createRunners, getGitHubEnterpriseApiUrl } from '../scale-runners/scale-up';
+import { getGitHubEnterpriseApiUrl } from '../scale-runners/github-runner';
 import { adjust } from './pool';
 import { describe, it, expect, beforeEach, vi, MockedClass } from 'vitest';
 
@@ -25,7 +26,7 @@ vi.mock('@octokit/rest', () => ({
   }),
 }));
 
-vi.mock('./../aws/runners', async () => ({
+vi.mock('@aws-github-runner/compute-providers/aws/ec2/control-plane/runners', async () => ({
   listEC2Runners: vi.fn(),
   // Include any other functions from the module that might be used
   bootTimeExceeded: vi.fn(),
@@ -34,16 +35,23 @@ vi.mock('./../github/auth', async () => ({
   createGithubAppAuth: vi.fn(),
   createGithubInstallationAuth: vi.fn(),
   createOctokitClient: vi.fn(),
+  getStoredInstallationId: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('../scale-runners/scale-up', async () => ({
-  scaleUp: vi.fn(),
+vi.mock('@aws-github-runner/compute-providers/aws/ec2/control-plane/runner-config', async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import('@aws-github-runner/compute-providers/aws/ec2/control-plane/runner-config')
+  >()),
   createRunners: vi.fn(),
+}));
+
+vi.mock('../scale-runners/github-runner', async () => ({
+  createStartRunnerConfig: vi.fn(),
   getGitHubEnterpriseApiUrl: vi.fn().mockReturnValue({
     ghesApiUrl: '',
     ghesBaseUrl: '',
   }),
-  // Include any other functions that might be needed
+  validateSsmParameterStoreTags: vi.fn().mockReturnValue([]),
 }));
 
 const mocktokit = Octokit as MockedClass<typeof Octokit>;
@@ -59,25 +67,25 @@ const MINIMUM_TIME_RUNNING = 15;
 
 const ec2InstancesRegistered = [
   {
-    instanceId: 'i-1-idle',
+    id: 'i-1-idle',
     launchTime: new Date(),
     type: 'Org',
     owner: ORG,
   },
   {
-    instanceId: 'i-2-busy',
+    id: 'i-2-busy',
     launchTime: new Date(),
     type: 'Org',
     owner: ORG,
   },
   {
-    instanceId: 'i-3-offline',
+    id: 'i-3-offline',
     launchTime: new Date(),
     type: 'Org',
     owner: ORG,
   },
   {
-    instanceId: 'i-4-idle-older-than-minimum-time-running',
+    id: 'i-4-idle-older-than-minimum-time-running',
     launchTime: moment(new Date())
       .subtract(MINIMUM_TIME_RUNNING + 3, 'minutes')
       .toDate(),
@@ -130,7 +138,7 @@ beforeEach(() => {
   process.env.GITHUB_APP_ID = '1337';
   process.env.GITHUB_APP_CLIENT_ID = 'TEST_CLIENT_ID';
   process.env.GITHUB_APP_CLIENT_SECRET = 'TEST_CLIENT_SECRET';
-  process.env.RUNNERS_MAXIMUM_COUNT = '3';
+  process.env.RUNNERS_MAXIMUM_COUNT = '-1';
   process.env.ENVIRONMENT = 'unit-test-environment';
   process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
   process.env.LAUNCH_TEMPLATE_NAME = 'lt-1';
@@ -153,6 +161,11 @@ beforeEach(() => {
   mockOctokit.paginate.mockImplementation(() => githubRunnersRegistered);
 
   mockListRunners.mockImplementation(async () => ec2InstancesRegistered);
+  vi.mocked(createRunners).mockResolvedValue({
+    instances: [],
+    retryableErrorCount: 0,
+    nonRetryableErrorCount: 0,
+  });
 
   const mockInstallationIdReturnValueOrgs = {
     data: {
@@ -166,6 +179,7 @@ beforeEach(() => {
     token: 'token',
     appId: 1,
     expiresAt: 'some-date',
+    appIndex: 0,
   });
   mockedInstallationAuth.mockResolvedValue({
     type: 'token',
@@ -190,13 +204,57 @@ describe('Test simple pool.', () => {
       });
     });
     it('Top up pool with pool size 2 registered.', async () => {
-      await adjust({ poolSize: 3 });
+      await adjust({ poolSize: 3, type: 'ec2' });
       expect(createRunners).toHaveBeenCalledTimes(1);
-      expect(createRunners).toHaveBeenCalledWith(expect.anything(), expect.anything(), 1, expect.anything());
+      expect(createRunners).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        1,
+        expect.anything(),
+        expect.anything(),
+        'pool-lambda',
+      );
+    });
+
+    it('Defaults legacy pool events without a provider type to EC2.', async () => {
+      await adjust({ poolSize: 10 });
+      expect(mockListRunners).toHaveBeenCalledWith({
+        environment: 'unit-test-environment',
+        runnerOwner: ORG,
+        runnerType: 'Org',
+        statuses: ['running'],
+      });
+      expect(createRunners).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        8,
+        expect.anything(),
+        expect.anything(),
+        'pool-lambda',
+      );
+    });
+
+    it('Selects the EC2 pool provider case-insensitively.', async () => {
+      await adjust({ poolSize: 10, type: ' EC2 ' });
+      expect(createRunners).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        8,
+        expect.anything(),
+        expect.anything(),
+        'pool-lambda',
+      );
+    });
+
+    it('Rejects unsupported pool provider types.', async () => {
+      await expect(adjust({ poolSize: 10, type: 'microvm' })).rejects.toThrow(
+        "Unsupported compute provider type 'microvm'",
+      );
+      expect(mockListRunners).not.toHaveBeenCalled();
     });
 
     it('Should not top up if pool size is reached.', async () => {
-      await adjust({ poolSize: 1 });
+      await adjust({ poolSize: 1, type: 'ec2' });
       expect(createRunners).not.toHaveBeenCalled();
     });
 
@@ -204,7 +262,7 @@ describe('Test simple pool.', () => {
       mockListRunners.mockImplementation(async () => [
         ...ec2InstancesRegistered,
         {
-          instanceId: 'i-4-still-booting',
+          id: 'i-4-still-booting',
           launchTime: moment(new Date())
             .subtract(MINIMUM_TIME_RUNNING - 3, 'minutes')
             .toDate(),
@@ -212,7 +270,7 @@ describe('Test simple pool.', () => {
           owner: ORG,
         },
         {
-          instanceId: 'i-5-orphan',
+          id: 'i-5-orphan',
           launchTime: moment(new Date())
             .subtract(MINIMUM_TIME_RUNNING + 3, 'minutes')
             .toDate(),
@@ -222,7 +280,7 @@ describe('Test simple pool.', () => {
       ]);
 
       // 2 idle + 1 booting = 3, top up with 2 to match a pool of 5
-      await adjust({ poolSize: 5 });
+      await adjust({ poolSize: 5, type: 'ec2' });
       expect(createRunners).toHaveBeenCalled();
       // Access the numberOfRunners without assuming a specific position
       // Just test that the function was called
@@ -235,7 +293,7 @@ describe('Test simple pool.', () => {
       mockListRunners.mockImplementation(async () => [
         ...ec2InstancesRegistered,
         {
-          instanceId: 'i-4-still-booting',
+          id: 'i-4-still-booting',
           launchTime: moment(new Date())
             .subtract(MINIMUM_TIME_RUNNING - 3, 'minutes')
             .toDate(),
@@ -243,7 +301,7 @@ describe('Test simple pool.', () => {
           owner: ORG,
         },
         {
-          instanceId: 'i-5-orphan',
+          id: 'i-5-orphan',
           launchTime: moment(new Date())
             .subtract(MINIMUM_TIME_RUNNING + 3, 'minutes')
             .toDate(),
@@ -252,7 +310,7 @@ describe('Test simple pool.', () => {
         },
       ]);
 
-      await adjust({ poolSize: 2 });
+      await adjust({ poolSize: 2, type: 'ec2' });
       expect(createRunners).not.toHaveBeenCalled();
     });
   });
@@ -266,9 +324,16 @@ describe('Test simple pool.', () => {
     });
 
     it('Top up if the pool size is set to 5', async () => {
-      await adjust({ poolSize: 5 });
+      await adjust({ poolSize: 5, type: 'ec2' });
       // 2 idle, top up with 3 to match a pool of 5
-      expect(createRunners).toHaveBeenCalledWith(expect.anything(), expect.anything(), 3, expect.anything());
+      expect(createRunners).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        3,
+        expect.anything(),
+        expect.anything(),
+        'pool-lambda',
+      );
     });
   });
 
@@ -281,9 +346,16 @@ describe('Test simple pool.', () => {
     });
 
     it('Top up if the pool size is set to 5', async () => {
-      await adjust({ poolSize: 5 });
+      await adjust({ poolSize: 5, type: 'ec2' });
       // 2 idle, top up with 3 to match a pool of 5
-      expect(createRunners).toHaveBeenCalledWith(expect.anything(), expect.anything(), 3, expect.anything());
+      expect(createRunners).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        3,
+        expect.anything(),
+        expect.anything(),
+        'pool-lambda',
+      );
     });
   });
 
@@ -318,22 +390,185 @@ describe('Test simple pool.', () => {
       mockListRunners.mockImplementation(async () => [
         ...ec2InstancesRegistered,
         {
-          instanceId: 'i-5-idle',
+          id: 'i-5-idle',
           launchTime: new Date(),
           type: 'Org',
           owner: ORG,
         },
         {
-          instanceId: 'i-6-idle',
+          id: 'i-6-idle',
           launchTime: new Date(),
           type: 'Org',
           owner: ORG,
         },
       ]);
 
-      await adjust({ poolSize: 5 });
+      await adjust({ poolSize: 5, type: 'ec2' });
       // 2 idle, 2 prefixed idle top up with 1 to match a pool of 5
-      expect(createRunners).toHaveBeenCalledWith(expect.anything(), expect.anything(), 1, expect.anything());
+      expect(createRunners).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        1,
+        expect.anything(),
+        expect.anything(),
+        'pool-lambda',
+      );
+    });
+  });
+
+  describe('Respecting runners_maximum_count', () => {
+    beforeEach(() => {
+      (getGitHubEnterpriseApiUrl as ReturnType<typeof vi.fn>).mockReturnValue({
+        ghesApiUrl: '',
+        ghesBaseUrl: '',
+      });
+    });
+
+    it('Should not top up when the total number of running runners is at the maximum.', async () => {
+      // 4 running runners (2 idle, 1 busy, 1 offline) already meet the maximum, so a large pool size
+      // must not create more. This is the over-provisioning case from issue #5186.
+      process.env.RUNNERS_MAXIMUM_COUNT = '4';
+      await adjust({ poolSize: 10, type: 'ec2' });
+      expect(createRunners).not.toHaveBeenCalled();
+    });
+
+    it('Should not top up when the total number of running runners exceeds the maximum.', async () => {
+      process.env.RUNNERS_MAXIMUM_COUNT = '3';
+      await adjust({ poolSize: 10, type: 'ec2' });
+      expect(createRunners).not.toHaveBeenCalled();
+    });
+
+    it('Should clamp the top-up to the remaining headroom under the maximum.', async () => {
+      // 4 running runners with a maximum of 6 leaves headroom for 2, even though the pool of 10 and the
+      // 2 idle runners would otherwise request a top-up of 8.
+      process.env.RUNNERS_MAXIMUM_COUNT = '6';
+      await adjust({ poolSize: 10, type: 'ec2' });
+      expect(createRunners).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        2,
+        expect.anything(),
+        expect.anything(),
+        'pool-lambda',
+      );
+    });
+
+    it('Should top up against the pool size when below the maximum headroom.', async () => {
+      // Headroom (6 - 4 = 2) is larger than the pool demand (5 - 2 idle = 3 would exceed it, so use a
+      // pool that stays within headroom): pool of 3 with 2 idle requests 1, which is under the cap.
+      process.env.RUNNERS_MAXIMUM_COUNT = '6';
+      await adjust({ poolSize: 3, type: 'ec2' });
+      expect(createRunners).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        1,
+        expect.anything(),
+        expect.anything(),
+        'pool-lambda',
+      );
+    });
+
+    it('Should ignore the maximum when set to -1 (unlimited).', async () => {
+      process.env.RUNNERS_MAXIMUM_COUNT = '-1';
+      // 2 idle of 4 running, pool of 10 tops up with 8 regardless of how many are already running.
+      await adjust({ poolSize: 10, type: 'ec2' });
+      expect(createRunners).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        8,
+        expect.anything(),
+        expect.anything(),
+        'pool-lambda',
+      );
+    });
+  });
+
+  describe('With INCLUDE_BUSY_RUNNERS enabled', () => {
+    beforeEach(() => {
+      process.env.INCLUDE_BUSY_RUNNERS = 'true';
+    });
+
+    it('Should not top up when pool size matches runners including busy online runners.', async () => {
+      // Without INCLUDE_BUSY_RUNNERS: 2 in pool (i-1-idle, i-4-idle-older). With it: 3 (adds i-2-busy).
+      await adjust({ poolSize: 3, type: 'ec2' });
+      expect(createRunners).not.toHaveBeenCalled();
+    });
+
+    it('Should top up by two runners when pool size is 5 and busy runners count toward the pool.', async () => {
+      await adjust({ poolSize: 5, type: 'ec2' });
+      // 3 in pool (idle, busy, older idle); need 2 more
+      expect(createRunners).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        2,
+        expect.anything(),
+        expect.anything(),
+        'pool-lambda',
+      );
+    });
+  });
+
+  describe('Multi-app round-robin', () => {
+    beforeEach(() => {
+      (getGitHubEnterpriseApiUrl as ReturnType<typeof vi.fn>).mockReturnValue({
+        ghesApiUrl: '',
+        ghesBaseUrl: '',
+      });
+    });
+
+    it('passes the same appIndex to createGithubInstallationAuth', async () => {
+      mockedAppAuth.mockResolvedValue({
+        type: 'app',
+        token: 'token',
+        appId: 42,
+        expiresAt: 'some-date',
+        appIndex: 1,
+      });
+
+      await adjust({ poolSize: 3 });
+
+      expect(mockedInstallationAuth).toHaveBeenCalledWith(
+        expect.any(Number),
+        expect.any(String),
+        1, // appIndex must match the one from createGithubAppAuth
+      );
+    });
+
+    it('looks up installationId using the selected app JWT', async () => {
+      mockedAppAuth.mockResolvedValue({
+        type: 'app',
+        token: 'app-token-for-selected-app',
+        appId: 42,
+        expiresAt: 'some-date',
+        appIndex: 1,
+      });
+
+      await adjust({ poolSize: 3 });
+
+      // Should look up installationId via the API
+      expect(mockOctokit.apps.getOrgInstallation).toHaveBeenCalledWith({ org: ORG });
+    });
+
+    it('passes appIndex to createRunners so rate-limit metrics are attributed to the correct app', async () => {
+      mockedAppAuth.mockResolvedValue({
+        type: 'app',
+        token: 'token',
+        appId: 42,
+        expiresAt: 'some-date',
+        appIndex: 2,
+      });
+
+      await adjust({ poolSize: 3 });
+
+      expect(createRunners).toHaveBeenCalledWith(
+        // appIndex must match the one returned by createGithubAppAuth
+        expect.objectContaining({ appIndex: 2 }),
+        expect.anything(),
+        expect.any(Number),
+        expect.anything(),
+        expect.anything(),
+        'pool-lambda',
+      );
     });
   });
 });
