@@ -13,10 +13,3 @@ ami = {
   }
   owners = ["self"]
 }
-
-webhook_lambda_zip                = "../../tests/ministack/ministack-lambda.zip"
-runner_binaries_syncer_lambda_zip = "../../tests/ministack/ministack-lambda.zip"
-runners_lambda_zip                = "../../tests/ministack/ministack-lambda.zip"
-
-# MiniStack cannot configure a real GitHub webhook.
-enable_webhook_github_app = false

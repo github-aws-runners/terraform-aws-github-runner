@@ -16,23 +16,3 @@ ami = {
   }
   owners = ["self"]
 }
-
-ami_ssm_parameters = {
-  x64 = {
-    arn   = "arn:aws:ssm:eu-west-1:000000000000:parameter/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64"
-    name  = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64"
-    value = "ami-0a1b2c3d4e5f67890"
-  }
-  arm64 = {
-    arn   = "arn:aws:ssm:eu-west-1:000000000000:parameter/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-arm64"
-    name  = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-arm64"
-    value = "ami-0a1b2c3d4e5f67890"
-  }
-}
-
-runner_binaries_syncer_lambda_zip = "../../tests/ministack/ministack-lambda.zip"
-runners_lambda_zip                = "../../tests/ministack/ministack-lambda.zip"
-webhook_lambda_zip                = "../../tests/ministack/ministack-lambda.zip"
-
-# MiniStack cannot configure a real GitHub webhook.
-enable_webhook_github_app = false

@@ -13,13 +13,3 @@ ami = {
   }
   owners = ["self"]
 }
-
-# Set these paths to the Lambda artifacts downloaded or built for the example.
-ami_housekeeper_lambda_zip        = "../../tests/ministack/ministack-lambda.zip"
-webhook_lambda_zip                = "../../tests/ministack/ministack-lambda.zip"
-runner_binaries_syncer_lambda_zip = "../../tests/ministack/ministack-lambda.zip"
-runners_lambda_zip                = "../../tests/ministack/ministack-lambda.zip"
-termination_watcher_lambda_zip    = "../../tests/ministack/ministack-lambda.zip"
-
-# MiniStack cannot configure a real GitHub webhook.
-enable_webhook_github_app = false
