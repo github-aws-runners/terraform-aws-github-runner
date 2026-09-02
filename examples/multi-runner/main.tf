@@ -7,30 +7,18 @@
 # 3. Other runners like ubuntu, windows, etc. are using the build in one parameter.
 
 data "aws_ssm_parameter" "al2023_x64" {
-  count = var.ami_ssm_parameters.x64 == null ? 1 : 0
-
   name = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64"
 }
 
 data "aws_ssm_parameter" "al2023_arm64" {
-  count = var.ami_ssm_parameters.arm64 == null ? 1 : 0
-
   name = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-arm64"
 }
 
-resource "aws_ssm_parameter" "al2023_x64" {
-  count = var.ami_ssm_parameters.x64 == null ? 0 : 1
-
-  name  = var.ami_ssm_parameters.x64.name
-  type  = "String"
-  value = var.ami_ssm_parameters.x64.value
-}
-
 resource "aws_ssm_parameter" "al2023_arm64" {
-  name      = var.ami_ssm_parameters.arm64 != null ? var.ami_ssm_parameters.arm64.name : local.al2023_arm64_name
+  name      = local.al2023_arm64_name
   type      = "String"
   data_type = "aws:ec2:image"
-  value     = var.ami_ssm_parameters.arm64 != null ? var.ami_ssm_parameters.arm64.value : data.aws_ssm_parameter.al2023_arm64[0].value
+  value     = data.aws_ssm_parameter.al2023_arm64.value
 }
 
 data "aws_caller_identity" "current" {}
@@ -42,22 +30,16 @@ locals {
   # create map only with amazon linux 2023 x64 and arm64 to overwrite the default
   al2023_arm64_name = "/${local.environment}/examples/multi-runner/aws-github-runners/ami/amazon-linux-2023-arm64"
   ssm_ami_arns = {
-    "linux-x64" = var.ami_ssm_parameters.x64 != null ? coalesce(
-      var.ami_ssm_parameters.x64.arn,
-      "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.ami_ssm_parameters.x64.name}"
-    ) : data.aws_ssm_parameter.al2023_x64[0].arn
+    "linux-x64" = data.aws_ssm_parameter.al2023_x64.arn
     # construct the arn to avoid terraform count errors
-    "linux-arm64" = var.ami_ssm_parameters.arm64 != null ? coalesce(
-      var.ami_ssm_parameters.arm64.arn,
-      "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.ami_ssm_parameters.arm64.name}"
-    ) : "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${local.al2023_arm64_name}"
+    "linux-arm64" = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${local.al2023_arm64_name}"
   }
 
   # Load runner configurations from Yaml files
   multi_runner_config_files = {
     for c in fileset("${path.module}/templates/runner-configs", "*.yaml") :
+
     trimsuffix(c, ".yaml") => yamldecode(file("${path.module}/templates/runner-configs/${c}"))
-    if var.runner_config_names == null || contains(var.runner_config_names, trimsuffix(c, ".yaml"))
   }
 
   multi_runner_config = {
@@ -73,7 +55,6 @@ locals {
             vpc_id     = lookup(v.runner_config, "vpc_id", null) != null ? module.base.vpc.vpc_id : null
             ami = contains(keys(v.runner_config), "ami") ? merge(
               v.runner_config.ami,
-              var.ami,
               {
                 id_ssm_parameter_arn = lookup(local.ssm_ami_arns, k, null) != null ? local.ssm_ami_arns[k] : null
               }
@@ -136,10 +117,6 @@ module "runners" {
     webhook_secret = random_id.random.hex
   }
 
-  runner_binaries_syncer_lambda_zip = var.runner_binaries_syncer_lambda_zip
-  runners_lambda_zip                = var.runners_lambda_zip
-  webhook_lambda_zip                = var.webhook_lambda_zip
-
   # Uncomment to distribute GitHub API rate limit usage across multiple GitHub Apps.
   # Each additional app must be installed on the same repos/orgs as the primary app.
   # The control-plane lambdas will randomly select an app for each API call.
@@ -197,7 +174,6 @@ module "runners" {
 }
 
 module "webhook_github_app" {
-  count      = var.enable_webhook_github_app ? 1 : 0
   source     = "../../modules/webhook-github-app"
   depends_on = [module.runners]
 

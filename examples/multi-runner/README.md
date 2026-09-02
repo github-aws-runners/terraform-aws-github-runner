@@ -81,7 +81,6 @@ terraform output -raw webhook_secret
 | Name | Type |
 |------|------|
 | [aws_ssm_parameter.al2023_arm64](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
-| [aws_ssm_parameter.al2023_x64](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
 | [random_id.random](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/id) | resource |
 | [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
 | [aws_ssm_parameter.al2023_arm64](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/ssm_parameter) | data source |
@@ -91,23 +90,9 @@ terraform output -raw webhook_secret
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_ami"></a> [ami](#input\_ami) | Optional AMI configuration override for the runner configurations. | `any` | `{}` | no |
-| <a name="input_ami_ssm_parameters"></a> [ami\_ssm\_parameters](#input\_ami\_ssm\_parameters) | Optional AMI SSM parameter fixtures used by MiniStack tests. | <pre>object({<br/>    x64 = optional(object({<br/>      arn   = optional(string, null)<br/>      name  = string<br/>      value = string<br/>    }), null)<br/>    arm64 = optional(object({<br/>      arn   = optional(string, null)<br/>      name  = string<br/>      value = string<br/>    }), null)<br/>  })</pre> | `{}` | no |
-| <a name="input_aws_access_key"></a> [aws\_access\_key](#input\_aws\_access\_key) | Optional AWS access key for the provider. | `string` | `null` | no |
 | <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS region to deploy to | `string` | `"eu-west-1"` | no |
-| <a name="input_aws_secret_key"></a> [aws\_secret\_key](#input\_aws\_secret\_key) | Optional AWS secret key for the provider. | `string` | `null` | no |
-| <a name="input_enable_webhook_github_app"></a> [enable\_webhook\_github\_app](#input\_enable\_webhook\_github\_app) | Whether to configure the GitHub App webhook with GitHub. | `bool` | `true` | no |
 | <a name="input_environment"></a> [environment](#input\_environment) | Environment name, used as prefix | `string` | `null` | no |
 | <a name="input_github_app"></a> [github\_app](#input\_github\_app) | GitHub for API usages. | <pre>object({<br/>    id         = string<br/>    key_base64 = string<br/>  })</pre> | n/a | yes |
-| <a name="input_runner_binaries_syncer_lambda_zip"></a> [runner\_binaries\_syncer\_lambda\_zip](#input\_runner\_binaries\_syncer\_lambda\_zip) | File location of the runner binaries syncer Lambda zip file. | `string` | `null` | no |
-| <a name="input_runner_config_names"></a> [runner\_config\_names](#input\_runner\_config\_names) | Optional runner configuration names to load from the YAML files. | `set(string)` | `null` | no |
-| <a name="input_runners_lambda_zip"></a> [runners\_lambda\_zip](#input\_runners\_lambda\_zip) | File location of the runners Lambda zip file. | `string` | `null` | no |
-| <a name="input_s3_use_path_style"></a> [s3\_use\_path\_style](#input\_s3\_use\_path\_style) | Use path-style S3 requests. | `bool` | `false` | no |
-| <a name="input_skip_credentials_validation"></a> [skip\_credentials\_validation](#input\_skip\_credentials\_validation) | Skip AWS credential validation. | `bool` | `false` | no |
-| <a name="input_skip_metadata_api_check"></a> [skip\_metadata\_api\_check](#input\_skip\_metadata\_api\_check) | Skip the EC2 metadata API check. | `bool` | `false` | no |
-| <a name="input_skip_region_validation"></a> [skip\_region\_validation](#input\_skip\_region\_validation) | Skip AWS region validation. | `bool` | `false` | no |
-| <a name="input_skip_requesting_account_id"></a> [skip\_requesting\_account\_id](#input\_skip\_requesting\_account\_id) | Skip requesting the AWS account ID. | `bool` | `false` | no |
-| <a name="input_webhook_lambda_zip"></a> [webhook\_lambda\_zip](#input\_webhook\_lambda\_zip) | File location of the webhook Lambda zip file. | `string` | `null` | no |
 
 ## Outputs
 

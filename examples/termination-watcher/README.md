@@ -28,7 +28,6 @@ Once a Spot instance is terminated a log line and metric will be updated. Spot i
 | Name | Version |
 |------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1 |
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 6.21 |
 
 ## Providers
 
@@ -46,17 +45,7 @@ No resources.
 
 ## Inputs
 
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| <a name="input_aws_access_key"></a> [aws\_access\_key](#input\_aws\_access\_key) | Optional AWS access key for the provider. | `string` | `null` | no |
-| <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS region. | `string` | `"eu-west-1"` | no |
-| <a name="input_aws_secret_key"></a> [aws\_secret\_key](#input\_aws\_secret\_key) | Optional AWS secret key for the provider. | `string` | `null` | no |
-| <a name="input_config"></a> [config](#input\_config) | Configuration for the spot termination watcher. | `any` | n/a | yes |
-| <a name="input_s3_use_path_style"></a> [s3\_use\_path\_style](#input\_s3\_use\_path\_style) | Use path-style S3 requests. | `bool` | `false` | no |
-| <a name="input_skip_credentials_validation"></a> [skip\_credentials\_validation](#input\_skip\_credentials\_validation) | Skip AWS credential validation. | `bool` | `false` | no |
-| <a name="input_skip_metadata_api_check"></a> [skip\_metadata\_api\_check](#input\_skip\_metadata\_api\_check) | Skip the EC2 metadata API check. | `bool` | `false` | no |
-| <a name="input_skip_region_validation"></a> [skip\_region\_validation](#input\_skip\_region\_validation) | Skip AWS region validation. | `bool` | `false` | no |
-| <a name="input_skip_requesting_account_id"></a> [skip\_requesting\_account\_id](#input\_skip\_requesting\_account\_id) | Skip requesting the AWS account ID. | `bool` | `false` | no |
+No inputs.
 
 ## Outputs
 
