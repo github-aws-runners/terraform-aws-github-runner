@@ -60,12 +60,12 @@ terraform output webhook_secret
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-| ---- | ----------- | ---- | ------- | :------: |
-| <a name="input_aws_access_key"></a> [aws\_access\_key](#input\_aws\_access\_key) | Optional AWS access key for the provider. | `string` | `null` | no |
+|------|-------------|------|---------|:--------:|
 | <a name="input_ami"></a> [ami](#input\_ami) | AMI lookup configuration passed to the runner module. | <pre>object({<br/>    filter = optional(map(list(string)), {<br/>      state = ["available"]<br/>    })<br/>    owners               = optional(list(string), ["amazon"])<br/>    id_ssm_parameter_arn = optional(string, null)<br/>    kms_key_arn          = optional(string, null)<br/>  })</pre> | `null` | no |
+| <a name="input_aws_access_key"></a> [aws\_access\_key](#input\_aws\_access\_key) | Optional AWS access key for the provider. | `string` | `null` | no |
 | <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS region. | `string` | `"eu-west-1"` | no |
 | <a name="input_aws_secret_key"></a> [aws\_secret\_key](#input\_aws\_secret\_key) | Optional AWS secret key for the provider. | `string` | `null` | no |
-| <a name="input_enable_webhook_github_app"></a> [enable\_webhook\_github\_app](#input\_enable_webhook\_github\_app) | Whether to configure the GitHub App webhook with GitHub. | `bool` | `true` | no |
+| <a name="input_enable_webhook_github_app"></a> [enable\_webhook\_github\_app](#input\_enable\_webhook\_github\_app) | Whether to configure the GitHub App webhook with GitHub. | `bool` | `true` | no |
 | <a name="input_environment"></a> [environment](#input\_environment) | Environment name, used as prefix | `string` | `null` | no |
 | <a name="input_github_app"></a> [github\_app](#input\_github\_app) | GitHub for API usages. | <pre>object({<br/>    id         = string<br/>    key_base64 = string<br/>  })</pre> | n/a | yes |
 | <a name="input_runner_binaries_syncer_lambda_zip"></a> [runner\_binaries\_syncer\_lambda\_zip](#input\_runner\_binaries\_syncer\_lambda\_zip) | File location of the runner binaries syncer Lambda zip file. | `string` | `null` | no |

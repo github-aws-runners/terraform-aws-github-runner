@@ -62,9 +62,24 @@ terraform output -raw webhook_secret
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
+| <a name="input_ami"></a> [ami](#input\_ami) | AMI lookup configuration passed to the runner module. | <pre>object({<br/>    filter               = optional(map(list(string)), { state = ["available"] })<br/>    owners               = optional(list(string), ["amazon"])<br/>    id_ssm_parameter_arn = optional(string, null)<br/>    kms_key_arn          = optional(string, null)<br/>  })</pre> | `null` | no |
+| <a name="input_ami_housekeeper_lambda_zip"></a> [ami\_housekeeper\_lambda\_zip](#input\_ami\_housekeeper\_lambda\_zip) | File location of the AMI housekeeper Lambda zip file. | `string` | `null` | no |
+| <a name="input_aws_access_key"></a> [aws\_access\_key](#input\_aws\_access\_key) | Optional AWS access key for the provider. | `string` | `null` | no |
 | <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS region. | `string` | `"eu-west-1"` | no |
+| <a name="input_aws_secret_key"></a> [aws\_secret\_key](#input\_aws\_secret\_key) | Optional AWS secret key for the provider. | `string` | `null` | no |
+| <a name="input_enable_webhook_github_app"></a> [enable\_webhook\_github\_app](#input\_enable\_webhook\_github\_app) | Whether to configure the GitHub App webhook with GitHub. | `bool` | `true` | no |
 | <a name="input_environment"></a> [environment](#input\_environment) | Environment name, used as prefix. | `string` | `null` | no |
 | <a name="input_github_app"></a> [github\_app](#input\_github\_app) | GitHub for API usages. | <pre>object({<br/>    id         = string<br/>    key_base64 = string<br/>  })</pre> | n/a | yes |
+| <a name="input_instance_termination_watcher_enabled"></a> [instance\_termination\_watcher\_enabled](#input\_instance\_termination\_watcher\_enabled) | Whether to enable the instance termination watcher. | `bool` | `true` | no |
+| <a name="input_runner_binaries_syncer_lambda_zip"></a> [runner\_binaries\_syncer\_lambda\_zip](#input\_runner\_binaries\_syncer\_lambda\_zip) | File location of the runner binaries syncer Lambda zip file. | `string` | `null` | no |
+| <a name="input_runners_lambda_zip"></a> [runners\_lambda\_zip](#input\_runners\_lambda\_zip) | File location of the runners Lambda zip file. | `string` | `null` | no |
+| <a name="input_s3_use_path_style"></a> [s3\_use\_path\_style](#input\_s3\_use\_path\_style) | Use path-style S3 requests. | `bool` | `false` | no |
+| <a name="input_skip_credentials_validation"></a> [skip\_credentials\_validation](#input\_skip\_credentials\_validation) | Skip AWS credential validation. | `bool` | `false` | no |
+| <a name="input_skip_metadata_api_check"></a> [skip\_metadata\_api\_check](#input\_skip\_metadata\_api\_check) | Skip the EC2 metadata API check. | `bool` | `false` | no |
+| <a name="input_skip_region_validation"></a> [skip\_region\_validation](#input\_skip\_region\_validation) | Skip AWS region validation. | `bool` | `false` | no |
+| <a name="input_skip_requesting_account_id"></a> [skip\_requesting\_account\_id](#input\_skip\_requesting\_account\_id) | Skip requesting the AWS account ID. | `bool` | `false` | no |
+| <a name="input_termination_watcher_lambda_zip"></a> [termination\_watcher\_lambda\_zip](#input\_termination\_watcher\_lambda\_zip) | File location of the termination watcher Lambda zip file. | `string` | `null` | no |
+| <a name="input_webhook_lambda_zip"></a> [webhook\_lambda\_zip](#input\_webhook\_lambda\_zip) | File location of the webhook Lambda zip file. | `string` | `null` | no |
 
 ## Outputs
 
