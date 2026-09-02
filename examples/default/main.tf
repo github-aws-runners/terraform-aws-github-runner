@@ -22,7 +22,6 @@ module "runners" {
   subnet_ids                      = module.base.vpc.private_subnets
 
   prefix = local.environment
-  ami    = var.ami
   tags = {
     Project = "ProjectX"
   }

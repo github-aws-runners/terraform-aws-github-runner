@@ -40,7 +40,6 @@ locals {
     for c in fileset("${path.module}/templates/runner-configs", "*.yaml") :
 
     trimsuffix(c, ".yaml") => yamldecode(file("${path.module}/templates/runner-configs/${c}"))
-    if var.runner_config_names == null || contains(var.runner_config_names, trimsuffix(c, ".yaml"))
   }
 
   multi_runner_config = {
@@ -55,12 +54,7 @@ locals {
             subnet_ids = lookup(v.runner_config, "subnet_ids", null) != null ? [module.base.vpc.private_subnets[0]] : null
             vpc_id     = lookup(v.runner_config, "vpc_id", null) != null ? module.base.vpc.vpc_id : null
             ami = contains(keys(v.runner_config), "ami") ? merge(
-              var.ami != null ? var.ami : {
-                filter               = try(v.runner_config.ami.filter, {})
-                owners               = try(v.runner_config.ami.owners, ["amazon"])
-                id_ssm_parameter_arn = try(v.runner_config.ami.id_ssm_parameter_arn, null)
-                kms_key_arn          = try(v.runner_config.ami.kms_key_arn, null)
-              },
+              v.runner_config.ami,
               {
                 id_ssm_parameter_arn = lookup(local.ssm_ami_arns, k, null) != null ? local.ssm_ami_arns[k] : null
               }

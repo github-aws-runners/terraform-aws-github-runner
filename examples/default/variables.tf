@@ -20,15 +20,3 @@ variable "aws_region" {
   type    = string
   default = "eu-west-1"
 }
-
-variable "ami" {
-  description = "AMI configuration for the action runner instances."
-
-  type = object({
-    filter               = optional(map(list(string)), { state = ["available"] })
-    owners               = optional(list(string), ["amazon"])
-    id_ssm_parameter_arn = optional(string, null)
-    kms_key_arn          = optional(string, null)
-  })
-  default = null
-}

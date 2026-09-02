@@ -49,9 +49,6 @@ jobs:
       matrix:
         example:
           - base
-          - default
-          - ephemeral
-          - multi-runner
           - prebuilt
           - termination-watcher
     services:

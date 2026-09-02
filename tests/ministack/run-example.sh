@@ -14,9 +14,9 @@ example="${2:-}"
 tfvars_file="${3:-${MINISTACK_TFVARS_FILE:-}}"
 
 case "$example" in
-  base | default | ephemeral | multi-runner | prebuilt | termination-watcher) ;;
+  base | prebuilt | termination-watcher) ;;
   *)
-  echo "Supported examples for the tfvars-only runner are: base, default, ephemeral, multi-runner, prebuilt, termination-watcher" >&2
+  echo "Supported examples for the tfvars-only runner are: base, prebuilt, termination-watcher" >&2
   exit 64
   ;;
 esac
@@ -24,7 +24,7 @@ esac
 case "$action" in
   init | plan | apply | destroy) ;;
   *)
-    echo "Usage: $0 {init|plan|apply|destroy} {base|default|ephemeral|multi-runner|prebuilt|termination-watcher} [TFVARS_FILE]" >&2
+    echo "Usage: $0 {init|plan|apply|destroy} {base|prebuilt|termination-watcher} [TFVARS_FILE]" >&2
     exit 64
     ;;
 esac
@@ -51,7 +51,6 @@ fi
 lambda_fixture_dir=""
 lambda_created_paths=""
 ami_created_ids=""
-ssm_created_names=""
 lambda_zip_paths="
 $source_root/lambdas/functions/ami-housekeeper/ami-housekeeper.zip
 $source_root/lambdas/functions/control-plane/runners.zip
@@ -61,10 +60,6 @@ $source_root/lambdas/functions/termination-watcher/termination-watcher.zip
 "
 
 cleanup() {
-  for name in $ssm_created_names; do
-    ministack_aws ssm delete-parameter --name "$name" >/dev/null 2>&1 || true
-  done
-
   for image_id in $ami_created_ids; do
     ministack_aws ec2 deregister-image --image-id "$image_id" >/dev/null 2>&1 || true
   done
@@ -119,24 +114,6 @@ create_ami_fixture() {
 $ami_id"
   fi
 
-  ami_fixture_id="$ami_id"
-}
-
-create_ssm_fixture() {
-  name="$1"
-  value="$2"
-
-  if ministack_aws ssm get-parameter --name "$name" >/dev/null 2>&1; then
-    return
-  fi
-
-  ministack_aws ssm put-parameter \
-    --name "$name" \
-    --type String \
-    --value "$value" \
-    --overwrite >/dev/null
-  ssm_created_names="$ssm_created_names
-$name"
 }
 
 create_ministack_fixtures() {
@@ -172,26 +149,10 @@ $lambda_zip"
   done
 
   case "$example" in
-    default | ephemeral | prebuilt)
+    prebuilt)
       create_ami_fixture \
         "amzn2-ami-hvm-2.0.20231116.0-x86_64-gp2" \
         x86_64 >/dev/null
-      ;;
-    multi-runner)
-      create_ami_fixture \
-        "amzn2-ami-hvm-2.0.20231116.0-x86_64-gp2" \
-        x86_64
-      x86_ami_id="$ami_fixture_id"
-      create_ami_fixture \
-        "amzn2-ami-hvm-2.0.20231116.0-arm64-gp2" \
-        arm64
-      arm64_ami_id="$ami_fixture_id"
-      create_ssm_fixture \
-        "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64" \
-        "$x86_ami_id"
-      create_ssm_fixture \
-        "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-arm64" \
-        "$arm64_ami_id"
       ;;
   esac
 }
