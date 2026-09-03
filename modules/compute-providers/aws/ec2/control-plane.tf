@@ -200,7 +200,7 @@ locals {
     INSTANCE_TYPES                       = join(",", var.config.instance_types)
     LAUNCH_TEMPLATE_NAME                 = aws_launch_template.runner.name
     SUBNET_IDS                           = join(",", var.config.subnet_ids)
-    ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS = jsonencode(var.config.enable_on_demand_failover_for_errors)
+    ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS = jsonencode(var.config.on_demand_failover_for_errors)
     SCALE_ERRORS                         = jsonencode(var.config.scale_errors)
     USE_DEDICATED_HOST                   = var.config.use_dedicated_host
   }
