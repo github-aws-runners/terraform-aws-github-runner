@@ -42,7 +42,11 @@ resource "aws_sqs_queue" "queued_builds" {
   kms_master_key_id                 = local.effective_config.orchestration_provider.webhook.queue.encryption.kms_master_key_id
   kms_data_key_reuse_period_seconds = local.effective_config.orchestration_provider.webhook.queue.encryption.kms_data_key_reuse_period_seconds
 
-  tags = merge(local.tags, each.value.orchestration_provider.webhook.queue.tags)
+  tags = merge(
+    local.effective_config.tags,
+    each.value.tags,
+    each.value.orchestration_provider.webhook.queue.tags,
+  )
 }
 
 resource "aws_sqs_queue_policy" "build_queue_policy" {
@@ -61,7 +65,11 @@ resource "aws_sqs_queue" "queued_builds_dlq" {
   sqs_managed_sse_enabled           = local.effective_config.orchestration_provider.webhook.queue.encryption.sqs_managed_sse_enabled
   kms_master_key_id                 = local.effective_config.orchestration_provider.webhook.queue.encryption.kms_master_key_id
   kms_data_key_reuse_period_seconds = local.effective_config.orchestration_provider.webhook.queue.encryption.kms_data_key_reuse_period_seconds
-  tags                              = merge(local.tags, each.value.orchestration_provider.webhook.queue.tags)
+  tags = merge(
+    local.effective_config.tags,
+    each.value.tags,
+    each.value.orchestration_provider.webhook.queue.tags,
+  )
 }
 
 resource "aws_sqs_queue_policy" "build_queue_dlq_policy" {
