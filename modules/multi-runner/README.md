@@ -25,6 +25,8 @@ For each configuration:
 - When enabled, the [distribution syncer](https://github-aws-runners.github.io/terraform-aws-github-runner/modules/internal/runner-binaries-syncer/) is deployed for each unique combination of OS and architecture.
 - For each configuration a queue is created and [runner module](https://github-aws-runners.github.io/terraform-aws-github-runner/modules/internal/runners/) is deployed
 
+Experimental runner configurations may select the Lambda MicroVM provider with `compute_provider.aws.microvm`. MicroVM lanes use Linux ARM64 ephemeral runners with JIT configuration and do not participate in EC2 runner-binary synchronization.
+
 ## Matching
 
 Matching of the configuration is done based on the labels specified in labelMatchers configuration. The webhook is processing the `workflow_job` event and match the labels against the labels specified in labelMatchers configuration in the order of configuration with exact-match true first, followed by all exact matches false.
