@@ -239,8 +239,8 @@ __metadata:
   resolution: "@aws-github-runner/webhook@workspace:functions/webhook"
   dependencies:
     "@aws-github-runner/aws-powertools-util": "npm:*"
-    "@aws-github-runner/aws-ssm-util": "npm:*"
     "@aws-github-runner/compute-providers": "npm:*"
+    "@aws-github-runner/storage-providers": "npm:*"
     "@aws-sdk/client-eventbridge": "npm:^3.1009.0"
     "@aws-sdk/client-sqs": "npm:^3.1009.0"
     "@middy/core": "npm:^6.4.5"
