@@ -7,6 +7,5 @@ module "ssm" {
   tags = merge(
     local.tags,
     local.effective_config.ssm.tags,
-    local.effective_config.ssm.parameters.tags,
   )
 }
