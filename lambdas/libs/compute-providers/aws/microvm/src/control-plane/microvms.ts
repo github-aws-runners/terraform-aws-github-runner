@@ -9,13 +9,7 @@ import {
 } from '@aws-sdk/client-lambda-microvms';
 import type { MicrovmItem, MicrovmState, RunMicrovmCommandInput } from '@aws-sdk/client-lambda-microvms';
 
-import type {
-  CreateGitHubRunnerConfig,
-  RunnerSource,
-  ListRunnerFilters,
-  RunnerInfo,
-  RunnerType,
-} from '../../../../core';
+import type { RunnerSource, ListRunnerFilters, RunnerInfo, RunnerType } from '../../../../core';
 import { loadMicrovmProviderConfig, type MicrovmProviderConfig } from './config';
 import { MICROVM_LIFETIME_IN_SECONDS } from './lifetime';
 import {
@@ -24,6 +18,7 @@ import {
   deleteMicrovmRunnerJitConfig,
   listMicrovmRunnerMetadata,
   markMicrovmCleanupPending,
+  type MicrovmMetadataTag,
   type MicrovmSsmPaths,
 } from './runner-metadata';
 
@@ -42,12 +37,12 @@ export interface RunMicrovmRunnerInput {
   runHookPayload: string;
   runnerOwner: string;
   runnerType: RunnerType;
-  ssmParameterStoreTags: CreateGitHubRunnerConfig['ssmParameterStoreTags'];
+  ssmParameterStoreTags: MicrovmMetadataTag[];
   source: RunnerSource;
 }
 
 export interface RunMicrovmRunnerResult {
-  metadataTags: CreateGitHubRunnerConfig['ssmParameterStoreTags'];
+  metadataTags: MicrovmMetadataTag[];
   microvmId: string;
 }
 
