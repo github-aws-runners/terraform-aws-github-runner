@@ -375,6 +375,16 @@ run "non_empty_experimental_map_is_authoritative" {
       }
     }
 
+    experimental_global_config_compute_provider = {
+      aws = {
+        ec2 = {
+          runner_binaries = {
+            enabled = false
+          }
+        }
+      }
+    }
+
     experimental_multi_runner_config = {
       experimental = {
         orchestration_provider = {
@@ -466,6 +476,9 @@ run "lane_values_override_experimental_globals" {
         ec2 = {
           vpc_id     = "vpc-experimental"
           subnet_ids = ["subnet-global"]
+          runner_binaries = {
+            enabled = false
+          }
           tags = {
             precedence = "global"
             global     = "true"
@@ -600,6 +613,9 @@ run "global_external_runner_role_suppresses_inherited_iam_overrides" {
         ec2 = {
           vpc_id     = "vpc-global"
           subnet_ids = ["subnet-global"]
+          runner_binaries = {
+            enabled = false
+          }
         }
       }
     }
