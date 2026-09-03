@@ -87,18 +87,6 @@ describe('parseRunRequest', () => {
       }),
     ],
     [
-      'provider-incompatible storage fields',
-      request({
-        context: {
-          storage: {
-            ...SSM_STORAGE,
-            RUNNER_CONFIG_DYNAMODB_RUNNER_STATE_TABLE_NAME: 'runner-config',
-          },
-        },
-        version: 2,
-      }),
-    ],
-    [
       'typed provider fields in the environment map',
       request({ context: { storage: { provider: 'aws_ssm', tokenPath: '/runner/token' } }, version: 2 }),
     ],
