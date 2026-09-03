@@ -5,8 +5,8 @@ variable "compute_provider_key" {
   default     = null
 
   validation {
-    condition     = var.compute_provider_key == null ? true : contains(["aws_ec2"], var.compute_provider_key)
-    error_message = "compute_provider_key must be null or aws_ec2."
+    condition     = var.compute_provider_key == null ? true : contains(["aws_ec2", "aws_microvm"], var.compute_provider_key)
+    error_message = "compute_provider_key must be null, aws_ec2, or aws_microvm."
   }
 }
 
@@ -256,6 +256,40 @@ variable "compute_provider" {
           "InsufficientCapacityOnHost",
         ])
         use_dedicated_host = optional(bool, false)
+      }), null)
+      microvm = optional(object({
+        image_arn                  = string
+        image_version              = optional(string, null)
+        ingress_network_connectors = optional(list(string), [])
+        egress_network_connectors  = optional(list(string), [])
+        cloudwatch_agent = optional(object({
+          enabled = optional(bool, true)
+          config  = optional(string, null)
+        }), {})
+        log_files = optional(list(object({
+          log_group_name   = string
+          prefix_log_group = bool
+          file_path        = string
+          log_stream_name  = string
+          log_class        = optional(string, "STANDARD")
+        })), null)
+        environment_variables = optional(map(string), {})
+        iam = optional(object({
+          resource_arns = optional(object({
+            images = optional(list(string), null)
+          }), {})
+          additional_policy_json = optional(object({
+            scale_up = optional(string, null)
+          }), {})
+          managed_policies = optional(object({
+            scale_up = optional(object({
+              arn = string
+            }), null)
+            pool = optional(object({
+              arn = string
+            }), null)
+          }), {})
+        }), {})
       }), null)
     }), {})
   })
