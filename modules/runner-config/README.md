@@ -10,9 +10,13 @@ Runner demand orchestration is selected independently through `orchestration_pro
 
 Common `lambda` contains only shared execution substrate and the optional shared artifact bucket. The webhook provider owns the runner-control archive shared by scale, pool, and job-retry at `orchestration_provider.webhook.lambda.artifact` and combines its zip or S3 key/version with that common substrate. The common SSM housekeeper independently owns `ssm.housekeeper.lambda.artifact`: an S3 selection combines its component key/version with the common bucket, a local zip is used otherwise when configured, and the packaged runner control-plane archive is the final fallback. It never inherits the webhook runner-control archive.
 
-Provider-owned settings remain nested under a typed namespace and provider leaf. For example, AMI, VPC, instance-profile, capacity, userdata, and runner-host logging settings live under `compute_provider.aws.ec2`. `multi-runner` resolves experimental globals and runner-configuration overrides first, then its final forwarding adapter preserves the wrapped `{ aws = { ec2 = ... } }` object expected by this module. Exactly one provider leaf must be non-null. The configuration module flattens the selected namespace and type to the Terraform dispatch key `aws_ec2`, while the webhook runtime registry continues to receive the provider type `ec2`.
+Provider-owned settings remain nested under a typed namespace and provider leaf. EC2 settings live under `compute_provider.aws.ec2`, while Lambda MicroVM settings live under `compute_provider.aws.microvm`. `multi-runner` resolves experimental globals and runner-configuration overrides first, then preserves the wrapped `{ aws = { ec2 = ..., microvm = ... } }` object expected by this module. Exactly one provider leaf must be non-null. Runner-config flattens the selected namespace and type only for Terraform dispatch: `aws_ec2` maps to runtime type `ec2`, and `aws_microvm` maps to runtime type `microvm`.
 
-The EC2 leaf reaches runner-config with `compute_provider.aws.ec2.binaries_syncer = { enabled, s3 }`; the S3 object is null when synchronization is disabled. Binary discovery and this shape adaptation happen in `multi-runner`, not inside runner-config. Before creating the common runner role, the configuration module calls [`compute-providers/aws/ec2/trust-policy`](../compute-providers/aws/ec2/trust-policy) as `module.compute_aws_ec2_trust_policy[0]` to combine its default trust with `runner.iam.additional_trust_policy_json`. The resulting assume-role policy does not depend on the full [`compute-providers/aws/ec2`](../compute-providers/aws/ec2) module, dispatched at `module.compute_aws_ec2[0]`, which receives the resolved runner role only after it is created. Declarative moved blocks preserve state from the earlier experimental `module.compute_ec2_trust_policy[0]` and `module.compute_ec2[0]` labels. EC2 owns the instance profile, launch template, EC2 bootstrap parameters, runner log groups, and its provider policies and Lambda environment variables. The common configuration module attaches each returned policy group to its runner or webhook-provider role. Provider-specific outputs remain grouped under the matching namespace and provider path, currently `provider.aws.ec2`. Moved blocks do not rewrite output references, so consumers of the former experimental `provider.ec2` path must update their expressions. EC2 is the only implemented Terraform compute provider in this phase.
+The EC2 leaf reaches runner-config with `compute_provider.aws.ec2.binaries_syncer = { enabled, s3 }`; the S3 object is null when synchronization is disabled. Binary discovery and this shape adaptation happen in `multi-runner`, not inside runner-config. Runner-config calls [`compute-providers/aws/ec2/trust-policy`](../compute-providers/aws/ec2/trust-policy) as `module.compute_aws_ec2_trust_policy[0]`, then dispatches the full [`compute-providers/aws/ec2`](../compute-providers/aws/ec2) module at `module.compute_aws_ec2[0]`. Declarative moved blocks preserve state from the earlier experimental `module.compute_ec2_trust_policy[0]` and `module.compute_ec2[0]` labels.
+
+The MicroVM leaf similarly uses [`compute-providers/aws/microvm/trust-policy`](../compute-providers/aws/microvm/trust-policy) at `module.compute_aws_microvm_trust_policy[0]` and the full [`compute-providers/aws/microvm`](../compute-providers/aws/microvm) module at `module.compute_aws_microvm[0]`. It uses the resolved common `runner.iam.role` as the MicroVM execution role and exports the IAM and runtime-environment fragments required by the webhook control plane. MicroVM lanes require Linux on ARM64 and ephemeral webhook orchestration with JIT configuration enabled. MicroVM is introduced directly at its namespaced labels, so the EC2 moved blocks do not apply to it.
+
+The common configuration module attaches each selected provider's returned policy groups to its managed runner or webhook-provider roles. Provider-specific outputs remain grouped under the matching path: `provider.aws.ec2` or `provider.aws.microvm`. Moved blocks do not rewrite output references, so consumers of the former experimental `provider.ec2` path must update their expressions.
 
 ## Tagging
 
@@ -22,19 +26,23 @@ Tags are merged from broadest to narrowest: module tags, shared resource tags, c
 
 Provider-specific runner tags remain inside the provider boundary. `compute_provider.aws.ec2.tags` applies to runtime EC2 instance, volume, network-interface, and spot-request tag specifications. `multi-runner` derives that map from global and runner-configuration `compute_provider.aws.ec2.tags` values. The EC2 provider applies the bootstrap tags `ghr:environment`, `ghr:ssm_config_path`, and `ghr:runner_name_prefix` last so they cannot be overridden; those tags are not added to common Lambda, IAM, queue, log-group, or SSM resources.
 
-## Overview
+## Provider behavior
 
-### Action runners on EC2
+### EC2 runners
 
-The action runners are created via a launch template; in the launch template only the subnet needs to be provided. During launch the installation is handled via a user data script. The configuration is fetched from SSM parameter store.
+The EC2 provider creates runners from a launch template. Bootstrap is handled by user data, and the runner retrieves its configuration from Parameter Store.
+
+### Lambda MicroVM runners
+
+The MicroVM provider starts Linux ARM64 capacity with `RunMicrovm`. The control plane generates the ephemeral runner's JIT payload, and the MicroVM image retrieves that payload from Parameter Store through its `/run` hook. The resolved common runner role is the MicroVM execution role.
 
 ### Lambda scale up
 
-The scale up lambda is triggered by events on a SQS queue. Events on this queue are delayed, which will give the workflow some time to start running on available runners. For each event the lambda will check if the workflow is still queued and no other limits are reached. In that case the lambda will create a new EC2 instance. The lambda only needs to know which launch template to use and which subnets are available. From the available subnets a random one will be chosen. Once the instance is created the event is assumed as handled, and we assume the workflow wil start at some moment once the created instance is ready.
+The scale-up Lambda is triggered by events on the runner configuration's SQS queue. It verifies that the workflow remains queued and that capacity limits permit another runner, then delegates creation to the selected compute provider: EC2 launches from the provider launch template, while MicroVM calls `RunMicrovm` with the resolved image, execution role, connector, duration, and logging settings.
 
 ### Lambda scale down
 
-The scale down lambda is triggered via a CloudWatch event. The event is triggered by a cron expression defined in `orchestration_provider.webhook.lambda.scale.down.schedule_expression` (https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html). For scaling down GitHub does not provide a good API yet, therefore we run the scaling down based on this event every x minutes. Each time the lambda is triggered it tries to remove all runners older than x minutes (configurable) managed in this deployment. In case the runner can be removed from GitHub, which means it is not executing a workflow, the lambda will terminate the EC2 instance.
+The scale-down Lambda runs on the schedule configured by `orchestration_provider.webhook.lambda.scale.down.schedule_expression`. It lists capacity through the selected compute provider, correlates it with GitHub runner state, and terminates removable EC2 instances or MicroVMs through that provider's API.
 
 --8<-- "modules/orchestration-providers/webhook/scale-down-state-diagram.md:mkdocs_scale_down_state_diagram"
 
@@ -86,6 +94,8 @@ yarn run dist
 |------|--------|---------|
 | <a name="module_compute_aws_ec2"></a> [compute\_aws\_ec2](#module\_compute\_aws\_ec2) | ../compute-providers/aws/ec2 | n/a |
 | <a name="module_compute_aws_ec2_trust_policy"></a> [compute\_aws\_ec2\_trust\_policy](#module\_compute\_aws\_ec2\_trust\_policy) | ../compute-providers/aws/ec2/trust-policy | n/a |
+| <a name="module_compute_aws_microvm"></a> [compute\_aws\_microvm](#module\_compute\_aws\_microvm) | ../compute-providers/aws/microvm | n/a |
+| <a name="module_compute_aws_microvm_trust_policy"></a> [compute\_aws\_microvm\_trust\_policy](#module\_compute\_aws\_microvm\_trust\_policy) | ../compute-providers/aws/microvm/trust-policy | n/a |
 | <a name="module_orchestration_webhook"></a> [orchestration\_webhook](#module\_orchestration\_webhook) | ../orchestration-providers/webhook | n/a |
 | <a name="module_ssm_housekeeper"></a> [ssm\_housekeeper](#module\_ssm\_housekeeper) | ./ssm-housekeeper | n/a |
 
