@@ -463,18 +463,3 @@ locals {
     }
   })
 }
-
-locals {
-  # Temporary target map for runner-binary discovery. Keep this derived from
-  # the pre-binary resolved configuration so the binary module cannot depend
-  # on the effective configuration it helps produce.
-  resolved_runner_binary_targets = distinct([
-    for config in local.resolved_config.multi_runner_config : {
-      "os_type"      = config.runner.os
-      "architecture" = config.runner.architecture
-    } if try(config.compute_provider.aws.ec2.binaries_syncer.enabled, false)
-  ])
-  resolved_runner_binary_targets_by_key = {
-    for i, v in local.resolved_runner_binary_targets : "${v.os_type}_${v.architecture}" => v
-  }
-}
