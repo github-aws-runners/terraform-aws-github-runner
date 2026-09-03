@@ -88,11 +88,15 @@ variables {
       capture_error         = false
     }
     metrics = {
-      enable    = true
+      enabled   = true
       namespace = "WebhookTest"
       metric = {
-        enable_github_app_rate_limit = true
-        enable_job_retry             = true
+        github_app_rate_limit = {
+          enabled = true
+        }
+        job_retry = {
+          enabled = true
+        }
       }
     }
   }
