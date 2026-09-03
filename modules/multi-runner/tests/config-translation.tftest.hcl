@@ -279,7 +279,8 @@ run "empty_experimental_map_translates_stable_inputs" {
       && local.normalized_config.lambda.artifact.s3.bucket == var.lambda_s3_bucket
       && local.normalized_config.lambda.architecture == var.lambda_architecture
       && local.normalized_config.orchestration_provider.webhook.queue_selection_strategy == var.queue_selection_strategy
-      && jsonencode(local.normalized_config.orchestration_provider.webhook.eventbridge) == jsonencode(var.eventbridge)
+      && local.normalized_config.orchestration_provider.webhook.eventbridge.enabled == var.eventbridge.enable
+      && tolist(local.normalized_config.orchestration_provider.webhook.eventbridge.accept_events) == tolist(var.eventbridge.accept_events)
       && local.normalized_config.orchestration_provider.webhook.matcher_config_parameter_store_tier == var.matcher_config_parameter_store_tier
       && tolist(local.normalized_config.orchestration_provider.webhook.github.repository_white_list) == tolist(var.repository_white_list)
       && local.normalized_config.orchestration_provider.webhook.lambda.scale.up.memory_size == var.scale_up_lambda_memory_size

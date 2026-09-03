@@ -396,22 +396,24 @@ locals {
               local.normalized_config.observability.metrics.namespace,
             )
             metric = {
-              github_app_rate_limit_enabled = coalesce(
-                v.observability.metrics.metric.github_app_rate_limit_enabled,
-                local.normalized_config.observability.metrics.metric.github_app_rate_limit_enabled,
-              )
-              job_retry_enabled = coalesce(
-                v.observability.metrics.metric.job_retry_enabled,
-                local.normalized_config.observability.metrics.metric.job_retry_enabled,
-              )
-              spot_termination_enabled = coalesce(
-                v.observability.metrics.metric.spot_termination_enabled,
-                local.normalized_config.observability.metrics.metric.spot_termination_enabled,
-              )
-              spot_termination_warning_enabled = coalesce(
-                v.observability.metrics.metric.spot_termination_warning_enabled,
-                local.normalized_config.observability.metrics.metric.spot_termination_warning_enabled,
-              )
+              github_app_rate_limit = {
+                enabled = coalesce(
+                  v.observability.metrics.metric.github_app_rate_limit.enabled,
+                  local.normalized_config.observability.metrics.metric.github_app_rate_limit.enabled,
+                )
+              }
+              job_retry = {
+                enabled = coalesce(
+                  v.observability.metrics.metric.job_retry.enabled,
+                  local.normalized_config.observability.metrics.metric.job_retry.enabled,
+                )
+              }
+              spot_termination_warning = {
+                enabled = coalesce(
+                  v.observability.metrics.metric.spot_termination_warning.enabled,
+                  local.normalized_config.observability.metrics.metric.spot_termination_warning.enabled,
+                )
+              }
             }
           }
         }

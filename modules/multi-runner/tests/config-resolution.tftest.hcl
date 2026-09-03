@@ -175,10 +175,16 @@ run "v2_experimental_inputs_resolve_lane_over_global" {
           subnet_ids = ["subnet-global"]
           instance_termination_watcher = {
             features = {
-              spot_termination_handler_enabled              = false
-              spot_termination_notification_watcher_enabled = false
+              runner_deregistration = {
+                enabled = false
+              }
+              spot_termination_handler = {
+                enabled = false
+              }
+              spot_termination_notification_watcher = {
+                enabled = false
+              }
             }
-            runner_deregistration_enabled = false
           }
         }
       }
@@ -188,8 +194,12 @@ run "v2_experimental_inputs_resolve_lane_over_global" {
       metrics = {
         enabled = true
         metric = {
-          github_app_rate_limit_enabled = false
-          job_retry_enabled             = false
+          github_app_rate_limit = {
+            enabled = false
+          }
+          job_retry = {
+            enabled = false
+          }
         }
       }
     }
@@ -229,8 +239,12 @@ run "v2_experimental_inputs_resolve_lane_over_global" {
           metrics = {
             enabled = false
             metric = {
-              github_app_rate_limit_enabled = true
-              job_retry_enabled             = true
+              github_app_rate_limit = {
+                enabled = true
+              }
+              job_retry = {
+                enabled = true
+              }
             }
           }
         }
@@ -262,7 +276,7 @@ run "v2_experimental_inputs_resolve_lane_over_global" {
     condition = (
       local.use_v2_config
       && local.normalized_config.tags.source == "v2"
-      && keys(local.resolved_config.multi_runner_config) == ["lane"]
+      && toset(keys(local.resolved_config.multi_runner_config)) == toset(["lane"])
       && local.resolved_config.tags.source == "v2"
       && local.resolved_config.multi_runner_config["lane"].runner.os == "linux"
       && local.resolved_config.multi_runner_config["lane"].runner.architecture == "arm64"
@@ -271,13 +285,13 @@ run "v2_experimental_inputs_resolve_lane_over_global" {
       && toset(local.resolved_config.multi_runner_config["lane"].compute_provider.aws.ec2.subnet_ids) == toset(["subnet-lane"])
       && local.resolved_config.multi_runner_config["lane"].orchestration_provider.webhook.matcherConfig.dynamic_labels_enabled
       && !local.resolved_config.multi_runner_config["lane"].observability.metrics.enabled
-      && local.resolved_config.multi_runner_config["lane"].observability.metrics.metric.github_app_rate_limit_enabled
-      && local.resolved_config.multi_runner_config["lane"].observability.metrics.metric.job_retry_enabled
-      && local.resolved_config.multi_runner_config["lane"].compute_provider.aws.ec2.on_demand_failover_for_errors == ["InsufficientInstanceCapacity"]
+      && local.resolved_config.multi_runner_config["lane"].observability.metrics.metric.github_app_rate_limit.enabled
+      && local.resolved_config.multi_runner_config["lane"].observability.metrics.metric.job_retry.enabled
+      && tolist(local.resolved_config.multi_runner_config["lane"].compute_provider.aws.ec2.on_demand_failover_for_errors) == tolist(["InsufficientInstanceCapacity"])
       && !local.resolved_config.orchestration_provider.webhook.eventbridge.enabled
-      && !local.resolved_config.compute_provider.aws.ec2.instance_termination_watcher.features.spot_termination_handler_enabled
-      && !local.resolved_config.compute_provider.aws.ec2.instance_termination_watcher.features.spot_termination_notification_watcher_enabled
-      && !local.resolved_config.compute_provider.aws.ec2.instance_termination_watcher.runner_deregistration_enabled
+      && !local.resolved_config.compute_provider.aws.ec2.instance_termination_watcher.features.spot_termination_handler.enabled
+      && !local.resolved_config.compute_provider.aws.ec2.instance_termination_watcher.features.spot_termination_notification_watcher.enabled
+      && !local.resolved_config.compute_provider.aws.ec2.instance_termination_watcher.features.runner_deregistration.enabled
       && local.resolved_config.multi_runner_config["lane"].ssm.housekeeper.lambda.artifact.zip == null
       && local.resolved_config.multi_runner_config["lane"].ssm.housekeeper.lambda.artifact.s3.key == "lane-housekeeper.zip"
       && toset(local.effective_config.multi_runner_config["lane"].runner.labels) == toset(["arm64", "linux", "self-hosted"])

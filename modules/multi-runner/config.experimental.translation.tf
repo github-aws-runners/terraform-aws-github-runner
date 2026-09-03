@@ -191,10 +191,15 @@ locals {
       enabled   = var.metrics.enable
       namespace = var.metrics.namespace
       metric = {
-        github_app_rate_limit_enabled    = var.metrics.metric.enable_github_app_rate_limit
-        job_retry_enabled                = var.metrics.metric.enable_job_retry
-        spot_termination_enabled         = true
-        spot_termination_warning_enabled = var.metrics.metric.enable_spot_termination_warning
+        github_app_rate_limit = {
+          enabled = var.metrics.metric.enable_github_app_rate_limit
+        }
+        job_retry = {
+          enabled = var.metrics.metric.enable_job_retry
+        }
+        spot_termination_warning = {
+          enabled = var.metrics.metric.enable_spot_termination_warning
+        }
       }
     }
   }
@@ -238,11 +243,17 @@ locals {
         instance_termination_watcher = {
           enabled = var.instance_termination_watcher.enable
           features = {
-            spot_termination_handler_enabled              = var.instance_termination_watcher.features.enable_spot_termination_handler
-            spot_termination_notification_watcher_enabled = var.instance_termination_watcher.features.enable_spot_termination_notification_watcher
+            runner_deregistration = {
+              enabled = var.instance_termination_watcher.enable_runner_deregistration
+            }
+            spot_termination_handler = {
+              enabled = var.instance_termination_watcher.features.enable_spot_termination_handler
+            }
+            spot_termination_notification_watcher = {
+              enabled = var.instance_termination_watcher.features.enable_spot_termination_notification_watcher
+            }
           }
-          runner_deregistration_enabled = var.instance_termination_watcher.enable_runner_deregistration
-          environment_variables         = var.instance_termination_watcher.environment_variables
+          environment_variables = var.instance_termination_watcher.environment_variables
           artifact = {
             zip = var.lambda_s3_bucket == null ? var.instance_termination_watcher.zip : null
             s3 = var.lambda_s3_bucket == null ? null : {
@@ -463,10 +474,15 @@ locals {
           enabled   = null
           namespace = null
           metric = {
-            github_app_rate_limit_enabled    = null
-            job_retry_enabled                = null
-            spot_termination_enabled         = null
-            spot_termination_warning_enabled = null
+            github_app_rate_limit = {
+              enabled = null
+            }
+            job_retry = {
+              enabled = null
+            }
+            spot_termination_warning = {
+              enabled = null
+            }
           }
         }
       }
