@@ -60,7 +60,7 @@ variable "experimental_multi_runner_config" {
           exactMatch              = optional(bool, false)
           bidirectionalLabelMatch = optional(bool, false)
           priority                = optional(number, 999)
-          enableDynamicLabels     = optional(bool, false)
+          dynamic_labels_enabled  = optional(bool, false)
           awsDynamicLabelsPolicy = optional(object({
             blocked_keys = optional(list(string), [])
             restricted_keys = optional(map(object({
@@ -188,11 +188,11 @@ variable "experimental_multi_runner_config" {
         capture_error         = optional(bool, null)
       }), {})
       metrics = optional(object({
-        enable    = optional(bool, null)
+        enabled   = optional(bool, null)
         namespace = optional(string, null)
         metric = optional(object({
-          enable_github_app_rate_limit = optional(bool, null)
-          enable_job_retry             = optional(bool, null)
+          github_app_rate_limit_enabled = optional(bool, null)
+          job_retry_enabled             = optional(bool, null)
         }), {})
       }), {})
     }), {})
@@ -274,7 +274,7 @@ variable "experimental_multi_runner_config" {
           instance_profile = optional(object({
             name = string
           }), null)
-          enable_on_demand_failover_for_errors = optional(list(string), [])
+          on_demand_failover_for_errors = optional(list(string), [])
           scale_errors = optional(list(string), [
             "UnfulfillableCapacity",
             "MaxSpotInstanceCountExceeded",
