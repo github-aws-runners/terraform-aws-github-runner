@@ -37,7 +37,7 @@ module "runners" {
   sqs_build_queue                      = { "arn" : each.value.arn, "url" : each.value.url }
   github_app_parameters                = local.github_app_parameters
   ebs_optimized                        = each.value.compute_provider.aws.ec2.ebs_optimized
-  enable_on_demand_failover_for_errors = each.value.compute_provider.aws.ec2.enable_on_demand_failover_for_errors
+  enable_on_demand_failover_for_errors = each.value.compute_provider.aws.ec2.on_demand_failover_for_errors
   scale_errors                         = each.value.compute_provider.aws.ec2.scale_errors
   enable_organization_runners          = each.value.orchestration_provider.webhook.github.organization_runners
   enable_ephemeral_runners             = each.value.orchestration_provider.webhook.runner.ephemeral
@@ -159,5 +159,13 @@ module "runners" {
     max_attempts                          = each.value.orchestration_provider.webhook.job_retry.max_attempts
   }
 
-  metrics = each.value.observability.metrics
+  metrics = {
+    enable    = each.value.observability.metrics.enabled
+    namespace = each.value.observability.metrics.namespace
+    metric = {
+      enable_github_app_rate_limit    = each.value.observability.metrics.metric.github_app_rate_limit_enabled
+      enable_job_retry                = each.value.observability.metrics.metric.job_retry_enabled
+      enable_spot_termination_warning = each.value.observability.metrics.metric.spot_termination_warning_enabled
+    }
+  }
 }

@@ -3,13 +3,23 @@ module "webhook" {
   prefix      = var.prefix
   tags        = local.tags
   kms_key_arn = local.effective_config.ssm.kms_key_id
-  eventbridge = local.effective_config.orchestration_provider.webhook.eventbridge
+  eventbridge = {
+    enable        = local.effective_config.orchestration_provider.webhook.eventbridge.enabled
+    accept_events = local.effective_config.orchestration_provider.webhook.eventbridge.accept_events
+  }
   runner_matcher_config = {
     for k, v in local.effective_config.multi_runner_config : k => {
       arn = aws_sqs_queue.queued_builds[k].arn
       id  = aws_sqs_queue.queued_builds[k].id
 
-      matcherConfig = v.orchestration_provider.webhook.matcherConfig
+      matcherConfig = {
+        labelMatchers           = v.orchestration_provider.webhook.matcherConfig.labelMatchers
+        exactMatch              = v.orchestration_provider.webhook.matcherConfig.exactMatch
+        bidirectionalLabelMatch = v.orchestration_provider.webhook.matcherConfig.bidirectionalLabelMatch
+        priority                = v.orchestration_provider.webhook.matcherConfig.priority
+        enableDynamicLabels     = v.orchestration_provider.webhook.matcherConfig.dynamic_labels_enabled
+        awsDynamicLabelsPolicy  = v.orchestration_provider.webhook.matcherConfig.awsDynamicLabelsPolicy
+      }
     }
   }
   matcher_config_parameter_store_tier = local.effective_config.orchestration_provider.webhook.matcher_config_parameter_store_tier
