@@ -27,7 +27,7 @@ data "aws_iam_policy_document" "deny_insecure_transport" {
 }
 
 resource "aws_sqs_queue" "queued_builds" {
-  for_each                   = local.effective_config.multi_runner_config
+  for_each                   = local.webhook_runner_config
   name                       = "${var.prefix}-${each.key}-queued-builds"
   delay_seconds              = each.value.orchestration_provider.webhook.queue.delay_webhook_event
   visibility_timeout_seconds = each.value.orchestration_provider.webhook.queue.visibility_timeout_seconds
@@ -50,14 +50,14 @@ resource "aws_sqs_queue" "queued_builds" {
 }
 
 resource "aws_sqs_queue_policy" "build_queue_policy" {
-  for_each  = local.effective_config.multi_runner_config
+  for_each  = local.webhook_runner_config
   queue_url = aws_sqs_queue.queued_builds[each.key].id
   policy    = data.aws_iam_policy_document.deny_insecure_transport.json
 }
 
 resource "aws_sqs_queue" "queued_builds_dlq" {
   for_each = {
-    for config, values in local.effective_config.multi_runner_config : config => values
+    for config, values in local.webhook_runner_config : config => values
     if values.orchestration_provider.webhook.queue.redrive_build_queue.enabled
   }
   name = "${var.prefix}-${each.key}-queued-builds_dead_letter"
@@ -74,7 +74,7 @@ resource "aws_sqs_queue" "queued_builds_dlq" {
 
 resource "aws_sqs_queue_policy" "build_queue_dlq_policy" {
   for_each = {
-    for config, values in local.effective_config.multi_runner_config : config => values
+    for config, values in local.webhook_runner_config : config => values
     if values.orchestration_provider.webhook.queue.redrive_build_queue.enabled
   }
   queue_url = aws_sqs_queue.queued_builds_dlq[each.key].id

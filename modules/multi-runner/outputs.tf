@@ -33,6 +33,16 @@ output "runners_map_v2" {
   }
 }
 
+output "scale_set" {
+  description = "Shared scale-set orchestration resources, or null when no runner configuration selects scale_set."
+  value = length(module.orchestration_scale_set) == 0 ? null : {
+    cluster                      = one(module.orchestration_scale_set[*].cluster)
+    controller_groups            = one(module.orchestration_scale_set[*].controller_groups)
+    reconciler_config_parameters = one(module.orchestration_scale_set[*].reconciler_config_parameters)
+    resolved_container_image     = one(module.orchestration_scale_set[*].resolved_container_image)
+  }
+}
+
 output "binaries_syncer_map" {
   value = { for runner_binary_key, runner_binary in module.runner_binaries : runner_binary_key => {
     lambda           = runner_binary.lambda
@@ -44,15 +54,15 @@ output "binaries_syncer_map" {
 }
 
 output "webhook" {
-  value = {
-    gateway          = module.webhook.gateway
-    lambda           = module.webhook.lambda
-    lambda_log_group = module.webhook.lambda_log_group
-    lambda_role      = module.webhook.role
-    endpoint         = "${module.webhook.gateway.api_endpoint}/${module.webhook.endpoint_relative_path}"
-    webhook          = module.webhook.webhook
-    dispatcher       = local.effective_config.orchestration_provider.webhook.eventbridge.enabled ? module.webhook.dispatcher : null
-    eventbridge      = local.effective_config.orchestration_provider.webhook.eventbridge.enabled ? module.webhook.eventbridge : null
+  value = length(local.webhook_runner_config) == 0 ? null : {
+    gateway          = module.webhook[0].gateway
+    lambda           = module.webhook[0].lambda
+    lambda_log_group = module.webhook[0].lambda_log_group
+    lambda_role      = module.webhook[0].role
+    endpoint         = "${module.webhook[0].gateway.api_endpoint}/${module.webhook[0].endpoint_relative_path}"
+    webhook          = module.webhook[0].webhook
+    dispatcher       = try(local.effective_config.orchestration_provider.webhook.eventbridge.enabled, false) ? module.webhook[0].dispatcher : null
+    eventbridge      = try(local.effective_config.orchestration_provider.webhook.eventbridge.enabled, false) ? module.webhook[0].eventbridge : null
   }
 }
 
