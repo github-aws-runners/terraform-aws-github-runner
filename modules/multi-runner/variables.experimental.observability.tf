@@ -18,10 +18,15 @@ variable "experimental_global_config_observability" {
       enabled   = optional(bool, false)
       namespace = optional(string, "GitHub Runners")
       metric = optional(object({
-        github_app_rate_limit_enabled    = optional(bool, true)
-        job_retry_enabled                = optional(bool, true)
-        spot_termination_enabled         = optional(bool, true)
-        spot_termination_warning_enabled = optional(bool, true)
+        github_app_rate_limit = optional(object({
+          enabled = optional(bool, true)
+        }), {})
+        job_retry = optional(object({
+          enabled = optional(bool, true)
+        }), {})
+        spot_termination_warning = optional(object({
+          enabled = optional(bool, true)
+        }), {})
       }), {})
     }), {})
   })

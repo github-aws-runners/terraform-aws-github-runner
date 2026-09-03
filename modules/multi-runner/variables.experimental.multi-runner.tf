@@ -191,10 +191,15 @@ variable "experimental_multi_runner_config" {
         enabled   = optional(bool, null)
         namespace = optional(string, null)
         metric = optional(object({
-          github_app_rate_limit_enabled    = optional(bool, null)
-          job_retry_enabled                = optional(bool, null)
-          spot_termination_enabled         = optional(bool, null)
-          spot_termination_warning_enabled = optional(bool, null)
+          github_app_rate_limit = optional(object({
+            enabled = optional(bool, null)
+          }), {})
+          job_retry = optional(object({
+            enabled = optional(bool, null)
+          }), {})
+          spot_termination_warning = optional(object({
+            enabled = optional(bool, null)
+          }), {})
         }), {})
       }), {})
     }), {})

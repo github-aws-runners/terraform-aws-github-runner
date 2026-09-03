@@ -73,11 +73,17 @@ variable "experimental_global_config_compute_provider" {
         instance_termination_watcher = optional(object({
           enabled = optional(bool, false)
           features = optional(object({
-            spot_termination_handler_enabled              = optional(bool, true)
-            spot_termination_notification_watcher_enabled = optional(bool, true)
+            runner_deregistration = optional(object({
+              enabled = optional(bool, true)
+            }), {})
+            spot_termination_handler = optional(object({
+              enabled = optional(bool, true)
+            }), {})
+            spot_termination_notification_watcher = optional(object({
+              enabled = optional(bool, true)
+            }), {})
           }), {})
-          runner_deregistration_enabled = optional(bool, true)
-          environment_variables         = optional(map(string), {})
+          environment_variables = optional(map(string), {})
           artifact = optional(object({
             zip = optional(string, null)
             s3 = optional(object({
