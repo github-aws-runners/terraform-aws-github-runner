@@ -34,7 +34,7 @@ module "runners" {
     kms_key_arn          = try(each.value.compute_provider.aws.ec2.ami.kms_key.arn, null)
   }, null)
 
-  sqs_build_queue                      = { "arn" : each.value.arn, "url" : each.value.url }
+  sqs_build_queue                      = { "arn" : aws_sqs_queue.queued_builds[each.key].arn, "url" : aws_sqs_queue.queued_builds[each.key].url }
   github_app_parameters                = local.github_app_parameters
   ebs_optimized                        = each.value.compute_provider.aws.ec2.ebs_optimized
   enable_on_demand_failover_for_errors = each.value.compute_provider.aws.ec2.on_demand_failover_for_errors
