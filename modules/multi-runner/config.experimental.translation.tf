@@ -61,8 +61,11 @@ locals {
 
   stable_to_experimental_orchestration_provider = {
     webhook = {
-      queue_selection_strategy            = var.queue_selection_strategy
-      eventbridge                         = var.eventbridge
+      queue_selection_strategy = var.queue_selection_strategy
+      eventbridge = {
+        enabled       = var.eventbridge.enable
+        accept_events = var.eventbridge.accept_events
+      }
       matcher_config_parameter_store_tier = var.matcher_config_parameter_store_tier
       runner = {
         boot_time_in_minutes = 5
@@ -185,13 +188,13 @@ locals {
     }
     tracing = var.tracing_config
     metrics = {
-      enable    = var.metrics.enable
+      enabled   = var.metrics.enable
       namespace = var.metrics.namespace
       metric = {
-        enable_github_app_rate_limit    = var.metrics.metric.enable_github_app_rate_limit
-        enable_job_retry                = var.metrics.metric.enable_job_retry
-        enable_spot_termination         = true
-        enable_spot_termination_warning = var.metrics.metric.enable_spot_termination_warning
+        github_app_rate_limit_enabled    = var.metrics.metric.enable_github_app_rate_limit
+        job_retry_enabled                = var.metrics.metric.enable_job_retry
+        spot_termination_enabled         = true
+        spot_termination_warning_enabled = var.metrics.metric.enable_spot_termination_warning
       }
     }
   }
@@ -233,10 +236,13 @@ locals {
           }
         }
         instance_termination_watcher = {
-          enabled                      = var.instance_termination_watcher.enable
-          features                     = var.instance_termination_watcher.features
-          enable_runner_deregistration = var.instance_termination_watcher.enable_runner_deregistration
-          environment_variables        = var.instance_termination_watcher.environment_variables
+          enabled = var.instance_termination_watcher.enable
+          features = {
+            spot_termination_handler_enabled              = var.instance_termination_watcher.features.enable_spot_termination_handler
+            spot_termination_notification_watcher_enabled = var.instance_termination_watcher.features.enable_spot_termination_notification_watcher
+          }
+          runner_deregistration_enabled = var.instance_termination_watcher.enable_runner_deregistration
+          environment_variables         = var.instance_termination_watcher.environment_variables
           artifact = {
             zip = var.lambda_s3_bucket == null ? var.instance_termination_watcher.zip : null
             s3 = var.lambda_s3_bucket == null ? null : {
@@ -345,7 +351,14 @@ locals {
             organization_runners = v.runner_config.enable_organization_runners
           }
 
-          matcherConfig = v.matcherConfig
+          matcherConfig = {
+            labelMatchers           = v.matcherConfig.labelMatchers
+            exactMatch              = v.matcherConfig.exactMatch
+            bidirectionalLabelMatch = v.matcherConfig.bidirectionalLabelMatch
+            priority                = v.matcherConfig.priority
+            dynamic_labels_enabled  = v.matcherConfig.enableDynamicLabels
+            awsDynamicLabelsPolicy  = v.matcherConfig.awsDynamicLabelsPolicy
+          }
 
           lambda = {
             scale = {
@@ -447,11 +460,11 @@ locals {
           capture_error         = null
         }
         metrics = {
-          enable    = null
+          enabled   = null
           namespace = null
           metric = {
-            enable_github_app_rate_limit = null
-            enable_job_retry             = null
+            github_app_rate_limit_enabled = null
+            job_retry_enabled             = null
           }
         }
       }
@@ -510,16 +523,16 @@ locals {
             instance_profile = v.runner_config.iam_overrides.override_instance_profile == true ? {
               name = v.runner_config.iam_overrides.instance_profile_name
             } : null
-            enable_on_demand_failover_for_errors = v.runner_config.enable_on_demand_failover_for_errors
-            scale_errors                         = v.runner_config.scale_errors
-            subnet_ids                           = v.runner_config.subnet_ids
-            vpc_id                               = v.runner_config.vpc_id
-            cpu_options                          = v.runner_config.cpu_options
-            placement                            = v.runner_config.placement
-            license_specifications               = v.runner_config.license_specifications
-            use_dedicated_host                   = v.runner_config.use_dedicated_host
-            log_files                            = v.runner_config.runner_log_files
-            tags                                 = v.runner_config.runner_ec2_tags
+            on_demand_failover_for_errors = v.runner_config.enable_on_demand_failover_for_errors
+            scale_errors                  = v.runner_config.scale_errors
+            subnet_ids                    = v.runner_config.subnet_ids
+            vpc_id                        = v.runner_config.vpc_id
+            cpu_options                   = v.runner_config.cpu_options
+            placement                     = v.runner_config.placement
+            license_specifications        = v.runner_config.license_specifications
+            use_dedicated_host            = v.runner_config.use_dedicated_host
+            log_files                     = v.runner_config.runner_log_files
+            tags                          = v.runner_config.runner_ec2_tags
           }
         }
       }

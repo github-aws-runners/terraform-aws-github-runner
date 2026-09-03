@@ -5,7 +5,7 @@ variable "experimental_global_config_orchestration_provider" {
     webhook = optional(object({
       queue_selection_strategy = optional(string, "first")
       eventbridge = optional(object({
-        enable        = optional(bool, true)
+        enabled       = optional(bool, true)
         accept_events = optional(list(string), [])
       }), {})
       matcher_config_parameter_store_tier = optional(string, "Standard")
