@@ -85,6 +85,71 @@ variables {
   runners_lambda_s3_key = "runners.zip"
   webhook_lambda_s3_key = "webhook.zip"
   syncer_lambda_s3_key  = "runner-binaries-syncer.zip"
+
+  experimental_global_config_github = {
+    app = {
+      key_base64     = "experimental-app-key"
+      id             = "experimental-app-id"
+      webhook_secret = "experimental-webhook-secret"
+    }
+  }
+
+  experimental_global_config_lambda = {
+    artifact = {
+      s3 = {
+        bucket = "test-lambda-artifacts"
+      }
+    }
+  }
+
+  experimental_global_config_orchestration_provider = {
+    webhook = {
+      lambda = {
+        artifact = {
+          s3 = {
+            key = "runners.zip"
+          }
+        }
+        webhook = {
+          artifact = {
+            s3 = {
+              key = "webhook.zip"
+            }
+          }
+        }
+      }
+    }
+  }
+
+  experimental_global_config_ssm = {
+    housekeeper = {
+      lambda = {
+        artifact = {
+          s3 = {
+            key = "runners.zip"
+          }
+        }
+      }
+    }
+  }
+
+  experimental_global_config_compute_provider = {
+    aws = {
+      ec2 = {
+        vpc_id     = "vpc-experimental-default"
+        subnet_ids = ["subnet-experimental-default"]
+        runner_binaries = {
+          syncer = {
+            artifact = {
+              s3 = {
+                key = "runner-binaries-syncer.zip"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
 run "empty_v2_map_translates_stable_inputs" {
@@ -228,6 +293,20 @@ run "empty_v2_map_translates_stable_inputs" {
         github = {
           repository_white_list = ["ignored/repository"]
         }
+        lambda = {
+          artifact = {
+            s3 = {
+              key = "runners.zip"
+            }
+          }
+          webhook = {
+            artifact = {
+              s3 = {
+                key = "webhook.zip"
+              }
+            }
+          }
+        }
       }
     }
 
@@ -236,6 +315,15 @@ run "empty_v2_map_translates_stable_inputs" {
         ec2 = {
           vpc_id     = "vpc-experimental-ignored"
           subnet_ids = ["subnet-experimental-ignored"]
+          runner_binaries = {
+            syncer = {
+              artifact = {
+                s3 = {
+                  key = "runner-binaries-syncer.zip"
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -363,8 +451,16 @@ run "non_empty_v2_map_is_authoritative" {
     global_config_compute_provider = {
       aws = {
         ec2 = {
+          vpc_id     = "vpc-experimental-default"
+          subnet_ids = ["subnet-experimental-default"]
           runner_binaries = {
-            enabled = false
+            syncer = {
+              artifact = {
+                s3 = {
+                  key = "runner-binaries-syncer.zip"
+                }
+              }
+            }
           }
         }
       }
@@ -481,6 +577,20 @@ run "lane_values_override_experimental_globals" {
         runner = {
           maximum_count = 4
         }
+        lambda = {
+          artifact = {
+            s3 = {
+              key = "runners.zip"
+            }
+          }
+          webhook = {
+            artifact = {
+              s3 = {
+                key = "webhook.zip"
+              }
+            }
+          }
+        }
       }
     }
 
@@ -507,7 +617,13 @@ run "lane_values_override_experimental_globals" {
           vpc_id     = "vpc-experimental"
           subnet_ids = ["subnet-global"]
           runner_binaries = {
-            enabled = false
+            syncer = {
+              artifact = {
+                s3 = {
+                  key = "runner-binaries-syncer.zip"
+                }
+              }
+            }
           }
           tags = {
             precedence = "global"
@@ -646,7 +762,13 @@ run "global_external_runner_role_suppresses_inherited_iam_overrides" {
           vpc_id     = "vpc-global"
           subnet_ids = ["subnet-global"]
           runner_binaries = {
-            enabled = false
+            syncer = {
+              artifact = {
+                s3 = {
+                  key = "runner-binaries-syncer.zip"
+                }
+              }
+            }
           }
         }
       }

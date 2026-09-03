@@ -3,34 +3,38 @@ locals {
     prefix                       = var.prefix
     tags                         = local.tags
     aws_partition                = var.aws_partition
-    architecture                 = var.lambda_architecture
-    principals                   = var.lambda_principals
-    runtime                      = var.lambda_runtime
-    security_group_ids           = var.lambda_security_group_ids
-    subnet_ids                   = var.lambda_subnet_ids
-    log_level                    = var.log_level
-    log_class                    = var.log_class
-    logging_kms_key_id           = var.logging_kms_key_id
-    logging_retention_in_days    = var.logging_retention_in_days
-    role_path                    = var.role_path
-    role_permissions_boundary    = var.role_permissions_boundary
-    s3_bucket                    = var.lambda_s3_bucket
-    tracing_config               = var.tracing_config
-    lambda_tags                  = var.lambda_tags
-    metrics                      = var.metrics
-    enable_runner_deregistration = var.instance_termination_watcher.enable_runner_deregistration
-    github_app_parameters = var.instance_termination_watcher.enable_runner_deregistration ? {
+    architecture                 = local.effective_config.lambda.architecture
+    principals                   = local.effective_config.lambda.principals
+    runtime                      = local.effective_config.lambda.runtime
+    security_group_ids           = local.effective_config.lambda.security_group_ids
+    subnet_ids                   = local.effective_config.lambda.subnet_ids
+    log_level                    = local.effective_config.observability.logs.level
+    log_class                    = local.effective_config.observability.logs.class
+    logging_kms_key_id           = local.effective_config.observability.logs.kms_key_id
+    logging_retention_in_days    = local.effective_config.observability.logs.retention_in_days
+    role_path                    = local.effective_config.roles.path
+    role_permissions_boundary    = local.effective_config.roles.permissions_boundary
+    s3_bucket                    = try(local.effective_config.lambda.artifact.s3.bucket, null)
+    s3_key                       = try(local.effective_config.compute_provider.aws.ec2.instance_termination_watcher.artifact.s3.key, null)
+    s3_object_version            = try(local.effective_config.compute_provider.aws.ec2.instance_termination_watcher.artifact.s3.object_version, null)
+    zip                          = local.effective_config.compute_provider.aws.ec2.instance_termination_watcher.artifact.zip
+    tracing_config               = local.effective_config.observability.tracing
+    lambda_tags                  = local.effective_config.lambda.tags
+    metrics                      = local.effective_config.observability.metrics
+    features                     = local.effective_config.compute_provider.aws.ec2.instance_termination_watcher.features
+    enable_runner_deregistration = local.effective_config.compute_provider.aws.ec2.instance_termination_watcher.enable_runner_deregistration
+    github_app_parameters = local.effective_config.compute_provider.aws.ec2.instance_termination_watcher.enable_runner_deregistration ? {
       id         = local.github_app_parameters.id[0]
       key_base64 = local.github_app_parameters.key_base64[0]
     } : null
-    ghes_url              = var.ghes_url
-    environment_variables = var.instance_termination_watcher.environment_variables
+    ghes_url              = local.effective_config.github.enterprise_server.url
+    environment_variables = local.effective_config.compute_provider.aws.ec2.instance_termination_watcher.environment_variables
   }
 }
 
 module "instance_termination_watcher" {
   source = "../termination-watcher"
-  count  = var.instance_termination_watcher.enable ? 1 : 0
+  count  = try(local.effective_config.compute_provider.aws.ec2.instance_termination_watcher.enabled, false) ? 1 : 0
 
-  config = merge(local.lambda_instance_termination_watcher, var.instance_termination_watcher)
+  config = local.lambda_instance_termination_watcher
 }
