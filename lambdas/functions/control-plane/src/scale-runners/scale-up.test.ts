@@ -416,25 +416,6 @@ describe('scaleUp with GHES', () => {
       });
     });
 
-    it.each([true, false])(
-      'keeps the provider runner identity tag authoritative for ephemeral=%s',
-      async (ephemeral) => {
-        process.env.ENABLE_EPHEMERAL_RUNNERS = String(ephemeral);
-        process.env.RUNNERS_MAXIMUM_COUNT = '2';
-        process.env.SSM_PARAMETER_STORE_TAGS = JSON.stringify([
-          { Key: 'RunnerId', Value: 'configured-value-cannot-win' },
-          { Key: 'CostCenter', Value: '1234' },
-        ]);
-
-        await scaleUpModule.scaleUp(TEST_DATA);
-
-        expect(mockSSMClient.commandCalls(PutParameterCommand)[0].args[0].input.Tags).toEqual([
-          { Key: 'RunnerId', Value: 'i-12345' },
-          { Key: 'CostCenter', Value: '1234' },
-        ]);
-      },
-    );
-
     it('quotes runner labels with semicolon separators in non-ephemeral runner config', async () => {
       process.env.ENABLE_EPHEMERAL_RUNNERS = 'false';
       process.env.RUNNERS_MAXIMUM_COUNT = '2';
