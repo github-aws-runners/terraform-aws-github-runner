@@ -139,6 +139,8 @@ jobs:
           - orchestration-providers/webhook/scale-runners
           - compute-providers/aws/microvm
           - compute-providers/aws/microvm/trust-policy
+          - modules/compute-providers/aws/microvm
+          - modules/compute-providers/aws/microvm/trust-policy
           - runner-binaries-syncer
           - runner-config
           - runner-config/ssm-housekeeper
