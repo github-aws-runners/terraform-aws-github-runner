@@ -308,6 +308,8 @@ async function createJitConfig(
         githubRunnerId: runnerConfig.data.runner.id.toString(),
         runnerLabels,
       });
+
+      // Store the JIT config through the selected storage provider.
       logger.debug('Runner JIT config for ephemeral runner generated.', {
         instance: runnerId,
       });
