@@ -5,7 +5,7 @@ import type {
   CreateGitHubRunnerConfig,
   CreateRunnerResult,
   CreateStartRunnerConfig,
-  LambdaRunnerSource,
+  RunnerSource,
 } from '../../../../core';
 import type { MicrovmDynamicLabelOverrides } from '../dynamic-labels';
 import { loadMicrovmProviderConfig } from './config';
@@ -70,7 +70,7 @@ export async function createMicrovmRunners(
   numberOfRunners: number,
   githubInstallationClient: Octokit,
   createStartRunnerConfig: CreateStartRunnerConfig,
-  source: LambdaRunnerSource,
+  source: RunnerSource,
   overrides: MicrovmDynamicLabelOverrides = {},
 ): Promise<CreateRunnerResult> {
   if (!githubRunnerConfig.ephemeral || !githubRunnerConfig.enableJitConfig) {
