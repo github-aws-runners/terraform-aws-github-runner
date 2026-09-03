@@ -92,10 +92,6 @@ variable "experimental_global_config_compute_provider" {
         }), {})
         runner_binaries = optional(object({
           enabled = optional(bool, true)
-          targets = optional(map(object({
-            os           = string
-            architecture = string
-          })), null)
           s3 = optional(object({
             encryption = optional(object({
               enabled            = optional(bool, true)
