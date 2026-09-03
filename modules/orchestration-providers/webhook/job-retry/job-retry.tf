@@ -20,8 +20,8 @@ locals {
 
   job_retry_environment_variables = {
     ENABLE_ORGANIZATION_RUNNERS               = var.config.github.organization_runners
-    ENABLE_METRIC_JOB_RETRY                   = var.config.observability.metrics.enable && var.config.observability.metrics.metric.enable_job_retry
-    ENABLE_METRIC_GITHUB_APP_RATE_LIMIT       = var.config.observability.metrics.enable && var.config.observability.metrics.metric.enable_github_app_rate_limit
+    ENABLE_METRIC_JOB_RETRY                   = var.config.observability.metrics.enabled && var.config.observability.metrics.metric.job_retry.enabled
+    ENABLE_METRIC_GITHUB_APP_RATE_LIMIT       = var.config.observability.metrics.enabled && var.config.observability.metrics.metric.github_app_rate_limit.enabled
     GHES_URL                                  = var.config.github.enterprise_server.url
     NODE_TLS_REJECT_UNAUTHORIZED              = var.config.github.enterprise_server.url != null && !var.config.github.enterprise_server.ssl_verify ? 0 : 1
     USER_AGENT                                = var.config.github.user_agent

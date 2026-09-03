@@ -122,11 +122,15 @@ variable "config" {
         capture_error         = bool
       })
       metrics = object({
-        enable    = bool
+        enabled   = bool
         namespace = string
         metric = object({
-          enable_github_app_rate_limit = bool
-          enable_job_retry             = bool
+          github_app_rate_limit = object({
+            enabled = bool
+          })
+          job_retry = object({
+            enabled = bool
+          })
         })
       })
     })

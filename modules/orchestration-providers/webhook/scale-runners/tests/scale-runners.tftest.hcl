@@ -123,10 +123,12 @@ variables {
         capture_error         = true
       }
       metrics = {
-        enable    = true
+        enabled   = true
         namespace = "ScaleRunnersTest"
         metric = {
-          enable_github_app_rate_limit = true
+          github_app_rate_limit = {
+            enabled = true
+          }
         }
       }
     }

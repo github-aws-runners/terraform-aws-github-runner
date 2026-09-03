@@ -115,11 +115,15 @@ variables {
         capture_error         = false
       }
       metrics = {
-        enable    = false
+        enabled   = false
         namespace = "JobRetryTest"
         metric = {
-          enable_github_app_rate_limit = true
-          enable_job_retry             = true
+          github_app_rate_limit = {
+            enabled = true
+          }
+          job_retry = {
+            enabled = true
+          }
         }
       }
     }
@@ -299,11 +303,15 @@ run "does_not_enable_partial_vpc_configuration" {
           capture_error         = false
         }
         metrics = {
-          enable    = false
+          enabled   = false
           namespace = "GitHub Runners"
           metric = {
-            enable_github_app_rate_limit = true
-            enable_job_retry             = true
+            github_app_rate_limit = {
+              enabled = true
+            }
+            job_retry = {
+              enabled = true
+            }
           }
         }
       }
