@@ -114,7 +114,7 @@ variable "compute_provider" {
     - `aws.ec2.license_specifications`: License Manager configurations added to the launch template.
     - `aws.ec2.license_specifications[].license_configuration_arn`: ARN of a License Manager license configuration.
     - `aws.ec2.associate_public_ipv4_address`: Associates a public IPv4 address with runner network interfaces.
-    - `aws.ec2.enable_on_demand_failover_for_errors`: EC2 error codes that trigger an on-demand fallback after a Spot launch failure.
+    - `aws.ec2.on_demand_failover_for_errors`: EC2 error codes that trigger an on-demand fallback after a Spot launch failure.
     - `aws.ec2.scale_errors`: EC2 error codes treated as retryable scale-up failures.
     - `aws.ec2.use_dedicated_host`: Enables the dedicated-host launch path, required for macOS runners.
   EOT
@@ -242,8 +242,8 @@ variable "compute_provider" {
         license_specifications = optional(list(object({
           license_configuration_arn = string
         })), [])
-        associate_public_ipv4_address        = optional(bool, false)
-        enable_on_demand_failover_for_errors = optional(list(string), [])
+        associate_public_ipv4_address = optional(bool, false)
+        on_demand_failover_for_errors = optional(list(string), [])
         scale_errors = optional(list(string), [
           "UnfulfillableCapacity",
           "MaxSpotInstanceCountExceeded",

@@ -206,11 +206,11 @@ variable "observability" {
     - `tracing.mode`: Optional Lambda active-tracing mode. Null disables X-Ray tracing configuration.
     - `tracing.capture_http_requests`: Enables HTTP request capture in the tracing helper.
     - `tracing.capture_error`: Enables error capture in the tracing helper.
-    - `metrics.enable`: Enables module-emitted metrics.
+    - `metrics.enabled`: Enables module-emitted metrics.
     - `metrics.namespace`: CloudWatch namespace used for emitted metrics.
-    - `metrics.metric.enable_github_app_rate_limit`: Emits GitHub App rate-limit metrics.
-    - `metrics.metric.enable_job_retry`: Emits job-retry metrics.
-    - `metrics.metric.enable_spot_termination_warning`: Emits spot-termination warning metrics where supported.
+    - `metrics.metric.github_app_rate_limit.enabled`: Emits GitHub App rate-limit metrics.
+    - `metrics.metric.job_retry.enabled`: Emits job-retry metrics.
+    - `metrics.metric.spot_termination_warning.enabled`: Emits spot-termination warning metrics where supported.
   EOT
   type = object({
     logs = optional(object({
@@ -226,12 +226,18 @@ variable "observability" {
       capture_error         = optional(bool, false)
     }), {})
     metrics = optional(object({
-      enable    = optional(bool, false)
+      enabled   = optional(bool, false)
       namespace = optional(string, "GitHub Runners")
       metric = optional(object({
-        enable_github_app_rate_limit    = optional(bool, true)
-        enable_job_retry                = optional(bool, true)
-        enable_spot_termination_warning = optional(bool, true)
+        github_app_rate_limit = optional(object({
+          enabled = optional(bool, true)
+        }), {})
+        job_retry = optional(object({
+          enabled = optional(bool, true)
+        }), {})
+        spot_termination_warning = optional(object({
+          enabled = optional(bool, true)
+        }), {})
       }), {})
     }), {})
   })
