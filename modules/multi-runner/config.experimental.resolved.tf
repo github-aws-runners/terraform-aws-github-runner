@@ -404,6 +404,14 @@ locals {
                 v.observability.metrics.metric.job_retry_enabled,
                 local.normalized_config.observability.metrics.metric.job_retry_enabled,
               )
+              spot_termination_enabled = coalesce(
+                v.observability.metrics.metric.spot_termination_enabled,
+                local.normalized_config.observability.metrics.metric.spot_termination_enabled,
+              )
+              spot_termination_warning_enabled = coalesce(
+                v.observability.metrics.metric.spot_termination_warning_enabled,
+                local.normalized_config.observability.metrics.metric.spot_termination_warning_enabled,
+              )
             }
           }
         }
