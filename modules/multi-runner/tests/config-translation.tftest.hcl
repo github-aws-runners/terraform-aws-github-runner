@@ -454,6 +454,7 @@ run "non_empty_v2_map_is_authoritative" {
           vpc_id     = "vpc-experimental-default"
           subnet_ids = ["subnet-experimental-default"]
           runner_binaries = {
+            enabled = false
             syncer = {
               artifact = {
                 s3 = {
@@ -624,6 +625,7 @@ run "lane_values_override_experimental_globals" {
           vpc_id     = "vpc-experimental"
           subnet_ids = ["subnet-global"]
           runner_binaries = {
+            enabled = false
             syncer = {
               artifact = {
                 s3 = {
@@ -769,6 +771,7 @@ run "global_external_runner_role_suppresses_inherited_iam_overrides" {
           vpc_id     = "vpc-global"
           subnet_ids = ["subnet-global"]
           runner_binaries = {
+            enabled = false
             syncer = {
               artifact = {
                 s3 = {
