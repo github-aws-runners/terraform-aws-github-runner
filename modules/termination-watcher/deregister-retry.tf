@@ -101,6 +101,11 @@ resource "aws_iam_role_policy" "deregister_retry_ssm" {
         Effect   = "Allow"
         Action   = ["ssm:GetParameter"]
         Resource = local.ssm_parameter_arns
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["kms:Decrypt"]
+        Resource = [local.config._ssm_kms_key_id]
       }
     ]
   })
