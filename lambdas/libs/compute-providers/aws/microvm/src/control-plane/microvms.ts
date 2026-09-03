@@ -11,7 +11,7 @@ import type { MicrovmItem, MicrovmState, RunMicrovmCommandInput } from '@aws-sdk
 
 import type {
   CreateGitHubRunnerConfig,
-  LambdaRunnerSource,
+  RunnerSource,
   ListRunnerFilters,
   RunnerInfo,
   RunnerType,
@@ -43,7 +43,7 @@ export interface RunMicrovmRunnerInput {
   runnerOwner: string;
   runnerType: RunnerType;
   ssmParameterStoreTags: CreateGitHubRunnerConfig['ssmParameterStoreTags'];
-  source: LambdaRunnerSource;
+  source: RunnerSource;
 }
 
 export interface RunMicrovmRunnerResult {
