@@ -387,22 +387,22 @@ locals {
             )
           }
           metrics = {
-            enable = coalesce(
-              v.observability.metrics.enable,
-              local.normalized_config.observability.metrics.enable,
+            enabled = coalesce(
+              v.observability.metrics.enabled,
+              local.normalized_config.observability.metrics.enabled,
             )
             namespace = coalesce(
               v.observability.metrics.namespace,
               local.normalized_config.observability.metrics.namespace,
             )
             metric = {
-              enable_github_app_rate_limit = coalesce(
-                v.observability.metrics.metric.enable_github_app_rate_limit,
-                local.normalized_config.observability.metrics.metric.enable_github_app_rate_limit,
+              github_app_rate_limit_enabled = coalesce(
+                v.observability.metrics.metric.github_app_rate_limit_enabled,
+                local.normalized_config.observability.metrics.metric.github_app_rate_limit_enabled,
               )
-              enable_job_retry = coalesce(
-                v.observability.metrics.metric.enable_job_retry,
-                local.normalized_config.observability.metrics.metric.enable_job_retry,
+              job_retry_enabled = coalesce(
+                v.observability.metrics.metric.job_retry_enabled,
+                local.normalized_config.observability.metrics.metric.job_retry_enabled,
               )
             }
           }

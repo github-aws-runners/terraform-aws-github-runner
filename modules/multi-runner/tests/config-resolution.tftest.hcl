@@ -173,6 +173,31 @@ run "v2_experimental_inputs_resolve_lane_over_global" {
         ec2 = {
           vpc_id     = "vpc-global"
           subnet_ids = ["subnet-global"]
+          instance_termination_watcher = {
+            features = {
+              spot_termination_handler_enabled              = false
+              spot_termination_notification_watcher_enabled = false
+            }
+            runner_deregistration_enabled = false
+          }
+        }
+      }
+    }
+
+    experimental_global_config_observability = {
+      metrics = {
+        enabled = true
+        metric = {
+          github_app_rate_limit_enabled = false
+          job_retry_enabled             = false
+        }
+      }
+    }
+
+    experimental_global_config_orchestration_provider = {
+      webhook = {
+        eventbridge = {
+          enabled = false
         }
       }
     }
@@ -195,7 +220,17 @@ run "v2_experimental_inputs_resolve_lane_over_global" {
         orchestration_provider = {
           webhook = {
             matcherConfig = {
-              labelMatchers = [["self-hosted", "linux", "arm64"]]
+              labelMatchers          = [["self-hosted", "linux", "arm64"]]
+              dynamic_labels_enabled = true
+            }
+          }
+        }
+        observability = {
+          metrics = {
+            enabled = false
+            metric = {
+              github_app_rate_limit_enabled = true
+              job_retry_enabled             = true
             }
           }
         }
@@ -213,8 +248,9 @@ run "v2_experimental_inputs_resolve_lane_over_global" {
         compute_provider = {
           aws = {
             ec2 = {
-              instance_types = ["c7g.large"]
-              subnet_ids     = ["subnet-lane"]
+              instance_types                = ["c7g.large"]
+              subnet_ids                    = ["subnet-lane"]
+              on_demand_failover_for_errors = ["InsufficientInstanceCapacity"]
             }
           }
         }
@@ -233,6 +269,15 @@ run "v2_experimental_inputs_resolve_lane_over_global" {
       && local.resolved_config.multi_runner_config["lane"].runner.group_name == "lane-group"
       && local.resolved_config.multi_runner_config["lane"].compute_provider.aws.ec2.vpc_id == "vpc-global"
       && toset(local.resolved_config.multi_runner_config["lane"].compute_provider.aws.ec2.subnet_ids) == toset(["subnet-lane"])
+      && local.resolved_config.multi_runner_config["lane"].orchestration_provider.webhook.matcherConfig.dynamic_labels_enabled
+      && !local.resolved_config.multi_runner_config["lane"].observability.metrics.enabled
+      && local.resolved_config.multi_runner_config["lane"].observability.metrics.metric.github_app_rate_limit_enabled
+      && local.resolved_config.multi_runner_config["lane"].observability.metrics.metric.job_retry_enabled
+      && local.resolved_config.multi_runner_config["lane"].compute_provider.aws.ec2.on_demand_failover_for_errors == ["InsufficientInstanceCapacity"]
+      && !local.resolved_config.orchestration_provider.webhook.eventbridge.enabled
+      && !local.resolved_config.compute_provider.aws.ec2.instance_termination_watcher.features.spot_termination_handler_enabled
+      && !local.resolved_config.compute_provider.aws.ec2.instance_termination_watcher.features.spot_termination_notification_watcher_enabled
+      && !local.resolved_config.compute_provider.aws.ec2.instance_termination_watcher.runner_deregistration_enabled
       && local.resolved_config.multi_runner_config["lane"].ssm.housekeeper.lambda.artifact.zip == null
       && local.resolved_config.multi_runner_config["lane"].ssm.housekeeper.lambda.artifact.s3.key == "lane-housekeeper.zip"
       && toset(local.effective_config.multi_runner_config["lane"].runner.labels) == toset(["arm64", "linux", "self-hosted"])
