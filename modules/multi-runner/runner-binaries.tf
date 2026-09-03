@@ -1,6 +1,24 @@
+locals {
+  # Derive binary targets from the resolved runner lanes before the binary
+  # module is instantiated, so the effective configuration can consume the
+  # binary outputs without depending on its own inputs.
+  resolved_runner_binary_targets = distinct([
+    for config in local.resolved_config.multi_runner_config : {
+      os_type      = config.runner.os
+      architecture = config.runner.architecture
+    }
+    if try(config.compute_provider.aws.ec2.binaries_syncer.enabled, false)
+  ])
+
+  resolved_runner_binary_targets_by_key = {
+    for target in local.resolved_runner_binary_targets :
+    "${target.os_type}_${target.architecture}" => target
+  }
+}
+
 module "runner_binaries" {
   source   = "../runner-binaries-syncer"
-  for_each = local.unique_os_and_arch
+  for_each = local.resolved_runner_binary_targets_by_key
   prefix   = "${var.prefix}-${each.value.os_type}-${each.value.architecture}"
   tags     = local.tags
 
