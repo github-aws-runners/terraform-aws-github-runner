@@ -117,7 +117,7 @@ variable "config" {
     - `license_specifications`: License Manager configurations added to the launch template.
     - `license_specifications[].license_configuration_arn`: ARN of an AWS License Manager license configuration.
     - `associate_public_ipv4_address`: Associates a public IPv4 address with runner network interfaces.
-    - `enable_on_demand_failover_for_errors`: EC2 errors that trigger on-demand fallback after a Spot failure.
+    - `on_demand_failover_for_errors`: EC2 errors that trigger on-demand fallback after a Spot failure.
     - `scale_errors`: EC2 errors treated as retryable scale-up failures.
     - `use_dedicated_host`: Enables the dedicated-host launch path.
   EOT
@@ -243,8 +243,8 @@ variable "config" {
     license_specifications = optional(list(object({
       license_configuration_arn = string
     })), [])
-    associate_public_ipv4_address        = optional(bool, false)
-    enable_on_demand_failover_for_errors = optional(list(string), [])
+    associate_public_ipv4_address = optional(bool, false)
+    on_demand_failover_for_errors = optional(list(string), [])
     scale_errors = optional(list(string), [
       "UnfulfillableCapacity",
       "MaxSpotInstanceCountExceeded",
