@@ -1,7 +1,7 @@
 module "webhook" {
   source      = "../webhook"
   prefix      = var.prefix
-  tags        = local.effective_config.tags
+  tags        = local.tags
   kms_key_arn = local.effective_config.ssm.kms_key_id
   eventbridge = local.effective_config.orchestration_provider.webhook.eventbridge
   runner_matcher_config = {
