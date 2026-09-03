@@ -22,12 +22,9 @@ locals {
 }
 
 module "webhook" {
-  source = "../webhook"
-  prefix = var.prefix
-  tags = merge(
-    local.tags,
-    local.effective_config.orchestration_provider.webhook.lambda.webhook.tags,
-  )
+  source      = "../webhook"
+  prefix      = var.prefix
+  tags        = local.effective_config.tags
   kms_key_arn = local.effective_config.ssm.kms_key_id
   eventbridge = {
     enable        = local.effective_config.orchestration_provider.webhook.eventbridge.enabled
