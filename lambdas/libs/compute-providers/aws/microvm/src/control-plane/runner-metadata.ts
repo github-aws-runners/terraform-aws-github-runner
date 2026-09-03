@@ -8,7 +8,7 @@ import {
 } from '@aws-github-runner/aws-ssm-util';
 import type { MicrovmState } from '@aws-sdk/client-lambda-microvms';
 
-import type { CreateGitHubRunnerConfig, GitHubRunnerMetadata, LambdaRunnerSource, RunnerType } from '../../../../core';
+import type { CreateGitHubRunnerConfig, GitHubRunnerMetadata, RunnerSource, RunnerType } from '../../../../core';
 import { MICROVM_LIFETIME_IN_SECONDS } from './lifetime';
 
 const logger = createChildLogger('microvm-runner-metadata');
@@ -54,7 +54,7 @@ export interface MicrovmRunnerMetadata {
   orphan?: boolean;
   runnerOwner: string;
   runnerType: RunnerType;
-  source: LambdaRunnerSource;
+  source: RunnerSource;
   version: 1;
 }
 
@@ -71,7 +71,7 @@ export interface CreateMicrovmRunnerMetadataInput {
   runnerOwner: string;
   runnerType: RunnerType;
   ssmParameterStoreTags: MicrovmMetadataTag[];
-  source: LambdaRunnerSource;
+  source: RunnerSource;
 }
 
 function isProviderOwnedLateTag(key: string): boolean {
