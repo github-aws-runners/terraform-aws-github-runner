@@ -463,8 +463,10 @@ locals {
           enabled   = null
           namespace = null
           metric = {
-            github_app_rate_limit_enabled = null
-            job_retry_enabled             = null
+            github_app_rate_limit_enabled    = null
+            job_retry_enabled                = null
+            spot_termination_enabled         = null
+            spot_termination_warning_enabled = null
           }
         }
       }
