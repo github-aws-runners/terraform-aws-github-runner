@@ -145,10 +145,11 @@ run "v2_experimental_inputs_resolve_lane_over_global" {
     multi_runner_config = {
       stable = {
         runner_config = {
-          runner_os             = "windows"
-          runner_architecture   = "x64"
-          instance_types        = ["m5.large"]
-          runners_maximum_count = 1
+          runner_os                     = "windows"
+          runner_architecture           = "x64"
+          instance_types                = ["m5.large"]
+          runners_maximum_count         = 1
+          enable_runner_binaries_syncer = false
         }
         matcherConfig = {
           labelMatchers = [["stable"]]
