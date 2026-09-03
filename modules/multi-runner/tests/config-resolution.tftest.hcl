@@ -234,9 +234,6 @@ run "v2_inputs_resolve_lane_over_global" {
         ec2 = {
           vpc_id     = "vpc-global"
           subnet_ids = ["subnet-global"]
-          runner_binaries = {
-            enabled = false
-          }
           instance_termination_watcher = {
             features = {
               runner_deregistration = {
