@@ -1,6 +1,9 @@
 module "runners" {
-  source        = "../runners"
-  for_each      = local.effective_config.multi_runner_config
+  source = "../runners"
+  for_each = {
+    for runner_key, runner_config in local.effective_config.multi_runner_config :
+    runner_key => runner_config if !local.use_v2_config
+  }
   aws_region    = var.aws_region
   aws_partition = var.aws_partition
   vpc_id        = each.value.compute_provider.aws.ec2.vpc_id
