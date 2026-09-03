@@ -2,7 +2,7 @@ import { createAppAuth } from '@octokit/auth-app';
 import { StrategyOptions } from '@octokit/auth-app/dist-types/types';
 import { request } from '@octokit/request';
 import { RequestInterface, RequestParameters } from '@octokit/types';
-import { getParameters } from '@aws-github-runner/aws-ssm-util';
+import { getParameter, getParameters } from '@aws-github-runner/aws-ssm-util';
 import { generateKeyPairSync } from 'node:crypto';
 import * as nock from 'nock';
 
@@ -35,6 +35,7 @@ const PARAMETER_GITHUB_APP_ID_NAME = `/actions-runner/${ENVIRONMENT}/github_app_
 const PARAMETER_GITHUB_APP_KEY_BASE64_NAME = `/actions-runner/${ENVIRONMENT}/github_app_key_base64`;
 
 const mockedGetParameters = vi.mocked(getParameters);
+const mockedGetParameter = vi.mocked(getParameter);
 
 beforeEach(() => {
   vi.resetModules();
@@ -341,23 +342,32 @@ describe('Test getStoredInstallationId', () => {
     vi.mocked(createAppAuth).mockReturnValue(mockWithHook);
   });
 
-  it('returns stored installation ID when configured', async () => {
-    const installationIdParam = `/actions-runner/${ENVIRONMENT}/github_app_installation_id`;
-    process.env.PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME = installationIdParam;
+  it('returns stored installation ID when configured for an additional app', async () => {
+    const appIdParam = `/actions-runner/${ENVIRONMENT}/additional_github_app_0_id`;
+    const appKeyParam = `/actions-runner/${ENVIRONMENT}/additional_github_app_0_key_base64`;
+    const installationIdParam = `/actions-runner/${ENVIRONMENT}/additional_github_app_0_installation_id`;
+    process.env.PARAMETER_GITHUB_APPS_MANIFEST_NAME = `/actions-runner/${ENVIRONMENT}/additional_github_apps_manifest`;
+    mockedGetParameter.mockResolvedValueOnce(
+      JSON.stringify([
+        { idParamName: appIdParam, keyParamName: appKeyParam, installationIdParamName: installationIdParam },
+      ]),
+    );
     mockedGetParameters.mockResolvedValueOnce(
       new Map([
         [PARAMETER_GITHUB_APP_ID_NAME, GITHUB_APP_ID],
         [PARAMETER_GITHUB_APP_KEY_BASE64_NAME, b64],
+        [appIdParam, '2'],
+        [appKeyParam, b64],
         [installationIdParam, '12345'],
       ]),
     );
 
-    const result = await getStoredInstallationId(0);
+    const result = await getStoredInstallationId(1);
     expect(result).toBe(12345);
   });
 
-  it('returns undefined when installation ID param is empty', async () => {
-    process.env.PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME = '';
+  it('returns undefined when the manifest env var is empty', async () => {
+    process.env.PARAMETER_GITHUB_APPS_MANIFEST_NAME = '';
     mockedGetParameters.mockResolvedValueOnce(
       new Map([
         [PARAMETER_GITHUB_APP_ID_NAME, GITHUB_APP_ID],
@@ -369,8 +379,8 @@ describe('Test getStoredInstallationId', () => {
     expect(result).toBeUndefined();
   });
 
-  it('returns undefined when env var is not set', async () => {
-    delete process.env.PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME;
+  it('returns undefined when the manifest env var is not set', async () => {
+    delete process.env.PARAMETER_GITHUB_APPS_MANIFEST_NAME;
     mockedGetParameters.mockResolvedValueOnce(
       new Map([
         [PARAMETER_GITHUB_APP_ID_NAME, GITHUB_APP_ID],
@@ -383,7 +393,7 @@ describe('Test getStoredInstallationId', () => {
   });
 
   it('returns undefined for out-of-bounds appIndex', async () => {
-    process.env.PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME = '';
+    delete process.env.PARAMETER_GITHUB_APPS_MANIFEST_NAME;
     mockedGetParameters.mockResolvedValueOnce(
       new Map([
         [PARAMETER_GITHUB_APP_ID_NAME, GITHUB_APP_ID],
@@ -395,21 +405,21 @@ describe('Test getStoredInstallationId', () => {
     expect(result).toBeUndefined();
   });
 
-  it('loads installation IDs for multi-app setup', async () => {
-    const app1IdParam = `/actions-runner/${ENVIRONMENT}/github_app_id`;
+  it('loads installation IDs for multi-app setup from the manifest', async () => {
     const app2IdParam = `/actions-runner/${ENVIRONMENT}/additional_github_app_0_id`;
-    const app1KeyParam = `/actions-runner/${ENVIRONMENT}/github_app_key_base64`;
     const app2KeyParam = `/actions-runner/${ENVIRONMENT}/additional_github_app_0_key_base64`;
     const app2InstallParam = `/actions-runner/${ENVIRONMENT}/additional_github_app_0_installation_id`;
 
-    process.env.PARAMETER_GITHUB_APP_ID_NAME = `${app1IdParam}:${app2IdParam}`;
-    process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME = `${app1KeyParam}:${app2KeyParam}`;
-    process.env.PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME = `:${app2InstallParam}`;
-
+    process.env.PARAMETER_GITHUB_APPS_MANIFEST_NAME = `/actions-runner/${ENVIRONMENT}/additional_github_apps_manifest`;
+    mockedGetParameter.mockResolvedValueOnce(
+      JSON.stringify([
+        { idParamName: app2IdParam, keyParamName: app2KeyParam, installationIdParamName: app2InstallParam },
+      ]),
+    );
     mockedGetParameters.mockResolvedValueOnce(
       new Map([
-        [app1IdParam, '1'],
-        [app1KeyParam, b64],
+        [PARAMETER_GITHUB_APP_ID_NAME, '1'],
+        [PARAMETER_GITHUB_APP_KEY_BASE64_NAME, b64],
         [app2IdParam, '2'],
         [app2KeyParam, b64],
         [app2InstallParam, '67890'],

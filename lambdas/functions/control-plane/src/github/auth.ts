@@ -22,7 +22,7 @@ import { Octokit } from '@octokit/rest';
 import { retry } from '@octokit/plugin-retry';
 import { throttling } from '@octokit/plugin-throttling';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
-import { getParameters } from '@aws-github-runner/aws-ssm-util';
+import { getParameter, getParameters } from '@aws-github-runner/aws-ssm-util';
 import { EndpointDefaults } from '@octokit/types';
 
 const logger = createChildLogger('gh-auth');
@@ -77,46 +77,74 @@ interface GitHubAppCredential {
 
 let appCredentialsPromise: Promise<GitHubAppCredential[]> | null = null;
 
+// One entry per additional app in the manifest parameter. The manifest keeps
+// the lambda environment size constant regardless of the number of apps: the
+// environment carries only the manifest's parameter name, and the manifest
+// value lists the per-app credential parameter names.
+interface AdditionalAppManifestEntry {
+  idParamName: string;
+  keyParamName: string;
+  installationIdParamName?: string | null;
+}
+
 async function loadAppCredentials(): Promise<GitHubAppCredential[]> {
-  if (!process.env.PARAMETER_GITHUB_APP_ID_NAME) {
+  const idParamName = process.env.PARAMETER_GITHUB_APP_ID_NAME;
+  const keyParamName = process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME;
+  if (!idParamName) {
     throw new Error('Environment variable PARAMETER_GITHUB_APP_ID_NAME is not set');
   }
-  if (!process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME) {
+  if (!keyParamName) {
     throw new Error('Environment variable PARAMETER_GITHUB_APP_KEY_BASE64_NAME is not set');
   }
-  const idParams = process.env.PARAMETER_GITHUB_APP_ID_NAME.split(':').filter(Boolean);
-  const keyParams = process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME.split(':').filter(Boolean);
-  const installationIdParams = (process.env.PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME || '').split(':');
-  if (idParams.length !== keyParams.length) {
-    throw new Error(`GitHub App parameter count mismatch: ${idParams.length} IDs vs ${keyParams.length} keys`);
+
+  const entries: { id: string; key: string; installationId?: string }[] = [{ id: idParamName, key: keyParamName }];
+
+  const manifestParamName = process.env.PARAMETER_GITHUB_APPS_MANIFEST_NAME;
+  if (manifestParamName) {
+    const manifest = JSON.parse(await getParameter(manifestParamName)) as AdditionalAppManifestEntry[];
+    entries.push(
+      ...manifest.map((entry) => ({
+        id: entry.idParamName,
+        key: entry.keyParamName,
+        installationId: entry.installationIdParamName ?? undefined,
+      })),
+    );
   }
+
   // Batch fetch all SSM parameters in a single call to reduce API calls
-  const allParamNames = [...idParams, ...keyParams, ...installationIdParams.filter((p) => p.length > 0)];
+  const allParamNames = entries.flatMap((entry) => [
+    entry.id,
+    entry.key,
+    ...(entry.installationId ? [entry.installationId] : []),
+  ]);
   const params = await getParameters(allParamNames);
 
   const credentials: GitHubAppCredential[] = [];
-  for (let i = 0; i < idParams.length; i++) {
-    const appIdValue = params.get(idParams[i]);
+  for (const entry of entries) {
+    const appIdValue = params.get(entry.id);
     if (!appIdValue) {
-      throw new Error(`Parameter ${idParams[i]} not found`);
+      throw new Error(`Parameter ${entry.id} not found`);
     }
     const appId = parseInt(appIdValue, 10);
-    const privateKeyBase64 = params.get(keyParams[i]);
+    const privateKeyBase64 = params.get(entry.key);
     if (!privateKeyBase64) {
-      throw new Error(`Parameter ${keyParams[i]} not found`);
+      throw new Error(`Parameter ${entry.key} not found`);
     }
     // replace literal \n characters with new lines to allow the key to be stored as a
     // single line variable. This logic should match how the GitHub Terraform provider
     // processes private keys to retain compatibility between the projects
     const privateKey = Buffer.from(privateKeyBase64, 'base64').toString().replace(/\\n/g, '\n');
-    const installationIdParam = installationIdParams[i];
-    const installationIdValue =
-      installationIdParam && installationIdParam.length > 0 ? params.get(installationIdParam) : undefined;
+    const installationIdValue = entry.installationId ? params.get(entry.installationId) : undefined;
     const installationId = installationIdValue ? parseInt(installationIdValue, 10) : undefined;
     credentials.push({ appId, privateKey, installationId });
   }
   logger.info(`Loaded ${credentials.length} GitHub App credential(s)`);
   return credentials;
+}
+
+export async function getLoadedAppId(appIndex: number): Promise<number | undefined> {
+  const credentials = await getAppCredentials();
+  return credentials[appIndex]?.appId;
 }
 
 function getAppCredentials(): Promise<GitHubAppCredential[]> {

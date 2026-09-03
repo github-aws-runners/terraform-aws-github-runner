@@ -50,6 +50,17 @@ Sustained: 10,000/hour ÷ 60 = **~166 runners/minute**.
 
 Without a token cache, each runner also costs a `POST /app/installations/{id}/access_tokens` (5 points) against the `core` endpoint. This doesn't directly reduce JIT throughput (different endpoint) but competes with `isJobQueued` for the `core` hourly budget.
 
+### Distributing load across multiple GitHub Apps
+
+Rate limits are per App installation and cannot be raised. To scale beyond one App's budget, configure extra Apps with `additional_github_apps`. The control-plane lambdas select one App per invocation, making the effective limit N × the per-App limit.
+
+> [!IMPORTANT]
+> Every additional App must be installed on the same organizations or repositories as the primary App. The module cannot verify this. A missing installation surfaces at runtime as installation lookup 404s on the fraction of invocations that select the misconfigured App, which is hard to trace back to the installation.
+
+Only the primary App needs a webhook configured in GitHub; additional Apps are used for API calls only. Set `installation_id` per additional App to skip one installation lookup per invocation.
+
+The lambdas receive additional App credentials through a manifest SSM parameter that lists the per-App credential parameter names, so the lambda environment size stays constant regardless of App count.
+
 ### GHES
 
 Rate limits are **disabled by default** on GitHub Enterprise Server and must be explicitly enabled by the site admin. When enabled, the same formula applies.
