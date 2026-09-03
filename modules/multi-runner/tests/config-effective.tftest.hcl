@@ -144,6 +144,8 @@ run "v2_effective_config_contains_derived_values" {
           bucket = "global-lambda-artifacts"
         }
       }
+      subnet_ids         = ["subnet-lambda"]
+      security_group_ids = ["sg-lambda"]
     }
 
     experimental_global_config_orchestration_provider = {
@@ -152,6 +154,13 @@ run "v2_effective_config_contains_derived_values" {
           artifact = {
             s3 = {
               key = "global-runners.zip"
+            }
+          }
+          webhook = {
+            artifact = {
+              s3 = {
+                key = "global-webhook.zip"
+              }
             }
           }
         }
@@ -181,6 +190,8 @@ run "v2_effective_config_contains_derived_values" {
     experimental_global_config_compute_provider = {
       aws = {
         ec2 = {
+          vpc_id     = "vpc-global"
+          subnet_ids = ["subnet-global"]
           runner_binaries = {
             enabled = true
             syncer = {
