@@ -279,7 +279,8 @@ module "runners" {
 
   create_service_linked_role_spot = var.create_service_linked_role_spot
 
-  runner_iam_role_managed_policy_arns = var.runner_iam_role_managed_policy_arns
+  runner_iam_role_managed_policy_arns                = var.runner_iam_role_managed_policy_arns
+  runner_iam_role_additional_trust_policy_statements = var.runner_iam_role_additional_trust_policy_statements
 
   ghes_url        = var.ghes_url
   ghes_ssl_verify = var.ghes_ssl_verify
