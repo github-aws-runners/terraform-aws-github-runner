@@ -1,0 +1,53 @@
+{
+  "name": "@aws-github-runner/microvm-lifecycle-hooks",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AWS Lambda MicroVM lifecycle hook server for ephemeral GitHub Actions runners",
+  "main": "src/public.ts",
+  "exports": {
+    ".": "./src/public.ts"
+  },
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node dist/index.js",
+    "test": "NODE_ENV=test nx test",
+    "test:watch": "NODE_ENV=test nx test --watch",
+    "lint": "eslint src",
+    "build": "ncc build src/index.ts -o dist && cp runtime-package.json dist/package.json",
+    "format": "prettier --write \"**/*.{ts,json,md}\"",
+    "format-check": "prettier --check \"**/*.{ts,json,md}\"",
+    "all": "yarn build && yarn format && yarn lint && yarn test"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.3",
+    "@vercel/ncc": "^0.38.4"
+  },
+  "dependencies": {
+    "@aws-github-runner/storage-providers": "*"
+  },
+  "nx": {
+    "targets": {
+      "build": {
+        "inputs": [
+          "default",
+          "^default"
+        ],
+        "outputs": [
+          "{projectRoot}/dist/**/*"
+        ]
+      }
+    },
+    "includedScripts": [
+      "build",
+      "format",
+      "format-check",
+      "lint",
+      "start",
+      "all"
+    ]
+  }
+}
