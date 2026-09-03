@@ -67,7 +67,7 @@ output "ssm_parameters" {
 }
 
 output "instance_termination_watcher" {
-  value = try(local.effective_config.compute_provider.aws.ec2.instance_termination_watcher.enabled, false) && local.effective_config.compute_provider.aws.ec2.instance_termination_watcher.features.spot_termination_notification_watcher_enabled ? {
+  value = try(local.effective_config.compute_provider.aws.ec2.instance_termination_watcher.enabled, false) && local.effective_config.compute_provider.aws.ec2.instance_termination_watcher.features.spot_termination_notification_watcher.enabled ? {
     lambda           = module.instance_termination_watcher[0].spot_termination_notification.lambda
     lambda_log_group = module.instance_termination_watcher[0].spot_termination_notification.lambda_log_group
     lambda_role      = module.instance_termination_watcher[0].spot_termination_notification.lambda_role
@@ -75,7 +75,7 @@ output "instance_termination_watcher" {
 }
 
 output "instance_termination_handler" {
-  value = try(local.effective_config.compute_provider.aws.ec2.instance_termination_watcher.enabled, false) && local.effective_config.compute_provider.aws.ec2.instance_termination_watcher.features.spot_termination_handler_enabled ? {
+  value = try(local.effective_config.compute_provider.aws.ec2.instance_termination_watcher.enabled, false) && local.effective_config.compute_provider.aws.ec2.instance_termination_watcher.features.spot_termination_handler.enabled ? {
     lambda           = module.instance_termination_watcher[0].spot_termination_handler.lambda
     lambda_log_group = module.instance_termination_watcher[0].spot_termination_handler.lambda_log_group
     lambda_role      = module.instance_termination_watcher[0].spot_termination_handler.lambda_role
