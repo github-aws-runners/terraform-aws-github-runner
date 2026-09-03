@@ -42,9 +42,14 @@ beforeEach(() => {
 });
 
 describe('createStartRunnerConfig', () => {
-  it('notifies the provider before persisting JIT configuration', async () => {
+  it('persists JIT configuration before notifying the provider', async () => {
     const onJitConfigCreated = vi.fn(async () => {
-      expect(putParameter).not.toHaveBeenCalled();
+      expect(putParameter).toHaveBeenCalledWith(
+        '/github-action-runners/test/tokens/microvm-1',
+        'encoded-jit-config',
+        true,
+        { tags: [] },
+      );
     });
 
     await expect(
@@ -54,20 +59,14 @@ describe('createStartRunnerConfig', () => {
       githubRunnerId: '42',
       runnerLabels: ['self-hosted', 'linux'],
     });
-    expect(putParameter).toHaveBeenCalledWith(
-      '/github-action-runners/test/tokens/microvm-1',
-      'encoded-jit-config',
-      true,
-      { tags: [] },
-    );
   });
 
-  it('reports provider failures without persisting JIT configuration', async () => {
+  it('reports provider post-write fencing failures while leaving cleanup to the provider', async () => {
     const onJitConfigCreated = vi.fn().mockRejectedValue(new Error('cleanup already requested'));
 
     await expect(
       createStartRunnerConfig(githubRunnerConfig, ['microvm-1'], githubClient, { onJitConfigCreated }),
     ).resolves.toEqual(['microvm-1']);
-    expect(putParameter).not.toHaveBeenCalled();
+    expect(putParameter).toHaveBeenCalledOnce();
   });
 });
