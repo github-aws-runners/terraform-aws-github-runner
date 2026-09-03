@@ -1,17 +1,14 @@
-module "webhook" {
-  source      = "../webhook"
-  prefix      = var.prefix
-  tags        = local.tags
-  kms_key_arn = local.effective_config.ssm.kms_key_id
-  eventbridge = {
-    enable        = local.effective_config.orchestration_provider.webhook.eventbridge.enabled
-    accept_events = local.effective_config.orchestration_provider.webhook.eventbridge.accept_events
+locals {
+  webhook_runner_config = {
+    for k, v in local.effective_config.multi_runner_config : k => v
+    if v.orchestration_provider.webhook != null
   }
-  runner_matcher_config = {
-    for k, v in local.effective_config.multi_runner_config : k => {
-      arn = aws_sqs_queue.queued_builds[k].arn
-      id  = aws_sqs_queue.queued_builds[k].id
 
+  runner_matcher_config = {
+    for k, v in local.webhook_runner_config : k => {
+      id              = aws_sqs_queue.queued_builds[k].id
+      arn             = aws_sqs_queue.queued_builds[k].arn
+      computeProvider = "ec2"
       matcherConfig = {
         labelMatchers           = v.orchestration_provider.webhook.matcherConfig.labelMatchers
         exactMatch              = v.orchestration_provider.webhook.matcherConfig.exactMatch
@@ -22,6 +19,18 @@ module "webhook" {
       }
     }
   }
+}
+
+module "webhook" {
+  source      = "../webhook"
+  prefix      = var.prefix
+  tags        = local.tags
+  kms_key_arn = local.effective_config.ssm.kms_key_id
+  eventbridge = {
+    enable        = local.effective_config.orchestration_provider.webhook.eventbridge.enabled
+    accept_events = local.effective_config.orchestration_provider.webhook.eventbridge.accept_events
+  }
+  runner_matcher_config               = local.runner_matcher_config
   matcher_config_parameter_store_tier = local.effective_config.orchestration_provider.webhook.matcher_config_parameter_store_tier
 
   ssm_paths = {
