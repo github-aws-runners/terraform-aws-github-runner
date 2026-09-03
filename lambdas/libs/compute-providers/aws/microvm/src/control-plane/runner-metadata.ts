@@ -8,7 +8,7 @@ import {
 } from '@aws-github-runner/aws-ssm-util';
 import type { MicrovmState } from '@aws-sdk/client-lambda-microvms';
 
-import type { CreateGitHubRunnerConfig, GitHubRunnerMetadata, RunnerSource, RunnerType } from '../../../../core';
+import type { GitHubRunnerMetadata, RunnerSource, RunnerType } from '../../../../core';
 import { MICROVM_LIFETIME_IN_SECONDS } from './lifetime';
 
 const logger = createChildLogger('microvm-runner-metadata');
@@ -35,7 +35,10 @@ const METADATA_COMPANION_SUFFIXES = [
   TAGS_SUFFIX,
 ] as const;
 const ACTIVE_STATES = new Set<MicrovmState>(['PENDING', 'RUNNING', 'SUSPENDING', 'SUSPENDED']);
-type MicrovmMetadataTag = CreateGitHubRunnerConfig['ssmParameterStoreTags'][number];
+export interface MicrovmMetadataTag {
+  Key: string;
+  Value: string;
+}
 
 export interface MicrovmSsmPaths {
   metadataSsmPath: string;

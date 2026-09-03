@@ -23,9 +23,6 @@ const githubRunnerConfig: CreateGitHubRunnerConfig = {
   runnerOwner: 'Codertocat',
   runnerType: 'Org',
   disableAutoUpdate: true,
-  ssmTokenPath: '/runner/token',
-  ssmConfigPath: '/runner/config',
-  ssmParameterStoreTags: [],
 };
 
 beforeEach(() => {
