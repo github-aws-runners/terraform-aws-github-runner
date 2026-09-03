@@ -304,9 +304,6 @@ async function createJitConfig(
 
       metricGitHubAppRateLimit(runnerConfig.headers, githubRunnerConfig.appIndex);
 
-      logger.debug('Runner JIT config for ephemeral runner generated.', {
-        instance: runnerId,
-      });
       await runnerConfigStore.create(
         { runnerId, value: runnerConfig.data.encoded_jit_config },
         { metadata: options.getRunnerConfigMetadata?.(runnerId) },
@@ -314,6 +311,9 @@ async function createJitConfig(
       await options.onJitConfigCreated?.(runnerId, {
         githubRunnerId: runnerConfig.data.runner.id.toString(),
         runnerLabels,
+      });
+      logger.debug('Runner JIT config for ephemeral runner generated.', {
+        instance: runnerId,
       });
       if (isDelay) {
         // Delay to stay within the selected store's maximum write throughput.
