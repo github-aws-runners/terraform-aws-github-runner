@@ -1,14 +1,5 @@
-# Move deprecated variables to this file
-
-# EXAMPLE
-# tflint-ignore: terraform_unused_declarations
-# variable "name" {
-#   description = "DEPRECATED: description`."
-#   type        = string
-#   default     = null
-
-#   validation {
-#     condition     = ...
-#     error_message = "DEPRECATED, Replaced by `...`."
-#   }
-# }
+variable "enable_organization_runners" {
+  description = "DEPRECATED: Use `runner_registration_level` instead. Register runners to organization (true) or repository (false). If set to `true`, it takes priority over `runner_registration_level` for backwards compatibility. This variable will be removed in a future major version."
+  type        = bool
+  default     = false
+}

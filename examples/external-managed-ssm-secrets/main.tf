@@ -28,8 +28,8 @@ module "runners" {
     webhook_secret_ssm = var.github_app_ssm_parameters.webhook_secret
   }
 
-  enable_organization_runners = true
-  runner_extra_labels         = ["default", "example"]
+  runner_registration_level = "org"
+  runner_extra_labels       = ["default", "example"]
 
   # enable access to the runners via SSM
   enable_ssm_on_runners = true

@@ -42,9 +42,9 @@ variables {
     url = "https://sqs.eu-west-1.amazonaws.com/123456789012/build-queue"
   }
 
-  enable_organization_runners = true
-  enable_ssm_on_runners       = true
-  runner_labels               = ["self-hosted", "linux", "x64"]
+  runner_registration_level = "org"
+  enable_ssm_on_runners     = true
+  runner_labels             = ["self-hosted", "linux", "x64"]
 
   lambda_s3_bucket      = "my-lambda-bucket"
   runners_lambda_s3_key = "runners.zip"

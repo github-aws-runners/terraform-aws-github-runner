@@ -23,8 +23,8 @@ module "runners" {
   vpc_id                          = module.base.vpc.vpc_id
   subnet_ids                      = module.base.vpc.private_subnets
 
-  prefix                      = local.environment
-  enable_organization_runners = false
+  prefix                    = local.environment
+  runner_registration_level = "repo"
 
   github_app = {
     key_base64     = var.github_app.key_base64
