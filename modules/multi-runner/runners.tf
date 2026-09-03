@@ -163,9 +163,9 @@ module "runners" {
     enable    = each.value.observability.metrics.enabled
     namespace = each.value.observability.metrics.namespace
     metric = {
-      enable_github_app_rate_limit    = each.value.observability.metrics.metric.github_app_rate_limit_enabled
-      enable_job_retry                = each.value.observability.metrics.metric.job_retry_enabled
-      enable_spot_termination_warning = each.value.observability.metrics.metric.spot_termination_warning_enabled
+      enable_github_app_rate_limit    = each.value.observability.metrics.metric.github_app_rate_limit.enabled
+      enable_job_retry                = each.value.observability.metrics.metric.job_retry.enabled
+      enable_spot_termination_warning = each.value.observability.metrics.metric.spot_termination_warning.enabled
     }
   }
 }

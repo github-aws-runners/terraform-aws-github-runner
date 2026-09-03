@@ -24,17 +24,17 @@ locals {
       enable    = local.effective_config.observability.metrics.enabled
       namespace = local.effective_config.observability.metrics.namespace
       metric = {
-        enable_github_app_rate_limit    = local.effective_config.observability.metrics.metric.github_app_rate_limit_enabled
-        enable_job_retry                = local.effective_config.observability.metrics.metric.job_retry_enabled
-        enable_spot_termination_warning = local.effective_config.observability.metrics.metric.spot_termination_warning_enabled
+        enable_github_app_rate_limit    = local.effective_config.observability.metrics.metric.github_app_rate_limit.enabled
+        enable_job_retry                = local.effective_config.observability.metrics.metric.job_retry.enabled
+        enable_spot_termination_warning = local.effective_config.observability.metrics.metric.spot_termination_warning.enabled
       }
     }
     features = {
-      enable_spot_termination_handler              = local.effective_config.compute_provider.aws.ec2.instance_termination_watcher.features.spot_termination_handler_enabled
-      enable_spot_termination_notification_watcher = local.effective_config.compute_provider.aws.ec2.instance_termination_watcher.features.spot_termination_notification_watcher_enabled
+      enable_spot_termination_handler              = local.effective_config.compute_provider.aws.ec2.instance_termination_watcher.features.spot_termination_handler.enabled
+      enable_spot_termination_notification_watcher = local.effective_config.compute_provider.aws.ec2.instance_termination_watcher.features.spot_termination_notification_watcher.enabled
     }
-    enable_runner_deregistration = local.effective_config.compute_provider.aws.ec2.instance_termination_watcher.runner_deregistration_enabled
-    github_app_parameters = local.effective_config.compute_provider.aws.ec2.instance_termination_watcher.runner_deregistration_enabled ? {
+    enable_runner_deregistration = local.effective_config.compute_provider.aws.ec2.instance_termination_watcher.features.runner_deregistration.enabled
+    github_app_parameters = local.effective_config.compute_provider.aws.ec2.instance_termination_watcher.features.runner_deregistration.enabled ? {
       id         = local.github_app_parameters.id[0]
       key_base64 = local.github_app_parameters.key_base64[0]
     } : null
