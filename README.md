@@ -24,7 +24,7 @@ This [Terraform](https://www.terraform.io/) module creates the required infrastr
 - OS support: Linux (x64/arm64) and Windows
 - Multi-Runner: Create multiple runner configurations with a single deployment
 - GitHub cloud, GitHub Cloud with Data Residency and GitHub Enterprise Server (GHES) support.
-- Org and repo level runners. enterprise level runners are not supported (yet).
+- Org and repo level runners. Enterprise level runners are supported via PAT-based authentication.
 
 
 ## Getting started

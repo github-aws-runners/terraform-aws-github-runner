@@ -13,6 +13,8 @@ import {
   onRateLimit,
   onSecondaryRateLimit,
   resetAppCredentialsCache,
+  selectRandomPat,
+  createEnterprisePATClient,
 } from './auth';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
@@ -423,5 +425,55 @@ describe('Test getStoredInstallationId', () => {
     // Additional app (index 1) has stored installation ID
     const result1 = await getStoredInstallationId(1);
     expect(result1).toBe(67890);
+  });
+});
+
+describe('Test selectRandomPat', () => {
+  it('returns the single PAT when only one is provided', () => {
+    const result = selectRandomPat('ghp_singletoken');
+    expect(result).toBe('ghp_singletoken');
+  });
+
+  it('returns one of the PATs from a comma-separated list', () => {
+    const pats = ['ghp_token1', 'ghp_token2', 'ghp_token3'];
+    const result = selectRandomPat(pats.join(','));
+    expect(pats).toContain(result);
+  });
+
+  it('trims whitespace around PATs', () => {
+    const result = selectRandomPat('  ghp_token1 , ghp_token2  ');
+    expect(['ghp_token1', 'ghp_token2']).toContain(result);
+  });
+
+  it('ignores empty entries from extra commas', () => {
+    const result = selectRandomPat('ghp_token1,,ghp_token2,');
+    expect(['ghp_token1', 'ghp_token2']).toContain(result);
+  });
+
+  it('throws an error for empty string', () => {
+    expect(() => selectRandomPat('')).toThrow('Enterprise PAT parameter value is empty.');
+  });
+
+  it('throws an error for string with only commas and whitespace', () => {
+    expect(() => selectRandomPat(', , ,')).toThrow('Enterprise PAT parameter value is empty.');
+  });
+
+  it('distributes selection across multiple PATs', () => {
+    const pats = 'ghp_a,ghp_b,ghp_c';
+    const selections = new Set<string>();
+    // Run enough times to likely hit all PATs
+    for (let i = 0; i < 100; i++) {
+      selections.add(selectRandomPat(pats));
+    }
+    expect(selections.size).toBeGreaterThan(1);
+  });
+});
+
+describe('Test createEnterprisePATClient', () => {
+  it('throws when PARAMETER_ENTERPRISE_PAT_NAME is not set', async () => {
+    delete process.env.PARAMETER_ENTERPRISE_PAT_NAME;
+    await expect(createEnterprisePATClient()).rejects.toThrow(
+      'PARAMETER_ENTERPRISE_PAT_NAME environment variable is not set.',
+    );
   });
 });

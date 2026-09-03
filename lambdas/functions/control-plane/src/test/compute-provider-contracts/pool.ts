@@ -29,6 +29,7 @@ export function definePoolContractTests<TType extends string>({
       beforeEach(() => {
         process.env.ENVIRONMENT = 'test-environment';
         process.env.RUNNER_OWNER = 'test-owner';
+        process.env.RUNNER_REGISTRATION_LEVEL = 'org';
         process.env.RUNNERS_MAXIMUM_COUNT = '-1';
 
         resolveCapability.mockReturnValue(() => provider);
