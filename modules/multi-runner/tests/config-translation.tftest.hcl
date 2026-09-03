@@ -352,10 +352,11 @@ run "non_empty_experimental_map_is_authoritative" {
     multi_runner_config = {
       stable = {
         runner_config = {
-          runner_os             = "linux"
-          runner_architecture   = "x64"
-          instance_types        = ["m5.large"]
-          runners_maximum_count = 1
+          runner_os                     = "linux"
+          runner_architecture           = "x64"
+          instance_types                = ["m5.large"]
+          runners_maximum_count         = 1
+          enable_runner_binaries_syncer = false
         }
         matcherConfig = {
           labelMatchers = [["stable"]]
