@@ -164,6 +164,13 @@ run "v2_effective_config_contains_derived_values" {
         ec2 = {
           runner_binaries = {
             enabled = true
+            syncer = {
+              artifact = {
+                s3 = {
+                  key = "runner-binaries-syncer.zip"
+                }
+              }
+            }
           }
         }
       }
