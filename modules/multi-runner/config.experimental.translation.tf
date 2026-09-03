@@ -141,6 +141,7 @@ locals {
         encryption = var.queue_encryption
       }
     }
+    scale_set = null
   }
 
   stable_to_v2_ssm = {
