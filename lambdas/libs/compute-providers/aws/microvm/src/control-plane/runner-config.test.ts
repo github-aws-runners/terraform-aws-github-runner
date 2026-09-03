@@ -60,9 +60,6 @@ function runnerConfig(overrides: Partial<CreateGitHubRunnerConfig> = {}): Create
     runnerOwner: 'Codertocat',
     runnerType: 'Org',
     disableAutoUpdate: true,
-    ssmTokenPath: runnerTokenSsmPath,
-    ssmConfigPath: '/github-action-runners/unit-test/config',
-    ssmParameterStoreTags,
     ...overrides,
   };
 }
@@ -70,6 +67,9 @@ function runnerConfig(overrides: Partial<CreateGitHubRunnerConfig> = {}): Create
 beforeEach(() => {
   vi.clearAllMocks();
   process.env.ENVIRONMENT = 'unit-test';
+  process.env.SSM_CONFIG_PATH = runnerConfigSsmPath;
+  process.env.SSM_PARAMETER_STORE_TAGS = JSON.stringify(ssmParameterStoreTags);
+  process.env.SSM_TOKEN_PATH = runnerTokenSsmPath;
   vi.mocked(loadMicrovmProviderConfig).mockReturnValue(providerConfig);
   vi.mocked(runMicrovmRunner).mockResolvedValue({ microvmId: 'mvm-1', metadataTags: canonicalMetadataTags });
   vi.mocked(setMicrovmGithubRunnerMetadata).mockResolvedValue();
@@ -130,28 +130,18 @@ describe('createMicrovmRunners', () => {
   );
 
   it('requires an SSM token path', async () => {
+    process.env.SSM_TOKEN_PATH = '';
     await expect(
-      createMicrovmRunners(
-        runnerConfig({ ssmTokenPath: '' }),
-        1,
-        githubClient,
-        createStartRunnerConfig,
-        'scale-up-lambda',
-      ),
+      createMicrovmRunners(runnerConfig(), 1, githubClient, createStartRunnerConfig, 'scale-up-lambda'),
     ).resolves.toEqual({ instances: [], retryableErrorCount: 0, nonRetryableErrorCount: 1 });
 
     expect(runMicrovmRunner).not.toHaveBeenCalled();
   });
 
   it('requires an SSM config path', async () => {
+    process.env.SSM_CONFIG_PATH = '';
     await expect(
-      createMicrovmRunners(
-        runnerConfig({ ssmConfigPath: '' }),
-        1,
-        githubClient,
-        createStartRunnerConfig,
-        'scale-up-lambda',
-      ),
+      createMicrovmRunners(runnerConfig(), 1, githubClient, createStartRunnerConfig, 'scale-up-lambda'),
     ).resolves.toEqual({ instances: [], retryableErrorCount: 0, nonRetryableErrorCount: 1 });
 
     expect(runMicrovmRunner).not.toHaveBeenCalled();
@@ -172,14 +162,10 @@ describe('createMicrovmRunners', () => {
   });
 
   it('canonicalizes the configuration and token paths before launching or writing JIT configuration', async () => {
+    process.env.SSM_CONFIG_PATH = `${runnerConfigSsmPath}/`;
+    process.env.SSM_TOKEN_PATH = `${runnerTokenSsmPath}/`;
     await expect(
-      createMicrovmRunners(
-        runnerConfig({ ssmConfigPath: `${runnerConfigSsmPath}/`, ssmTokenPath: `${runnerTokenSsmPath}/` }),
-        1,
-        githubClient,
-        createStartRunnerConfig,
-        'scale-up-lambda',
-      ),
+      createMicrovmRunners(runnerConfig(), 1, githubClient, createStartRunnerConfig, 'scale-up-lambda'),
     ).resolves.toEqual({ instances: ['mvm-1'], retryableErrorCount: 0, nonRetryableErrorCount: 0 });
 
     expect(runMicrovmRunner).toHaveBeenCalledWith(
@@ -193,12 +179,7 @@ describe('createMicrovmRunners', () => {
         ssmParameterStoreTags: microvmMetadataTags,
       }),
     );
-    expect(createStartRunnerConfig).toHaveBeenCalledWith(
-      expect.objectContaining({ ssmConfigPath: runnerConfigSsmPath, ssmTokenPath: runnerTokenSsmPath }),
-      ['mvm-1'],
-      githubClient,
-      expect.any(Object),
-    );
+    expect(createStartRunnerConfig).toHaveBeenCalledWith(runnerConfig(), ['mvm-1'], githubClient, expect.any(Object));
   });
 
   it('classifies invalid provider configuration as non-retryable', async () => {

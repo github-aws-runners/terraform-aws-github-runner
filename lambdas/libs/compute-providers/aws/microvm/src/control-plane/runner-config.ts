@@ -14,6 +14,7 @@ import {
   assertMatchingMicrovmRunnerTokenPath,
   assertSeparatedMicrovmMetadataPath,
   normalizeMicrovmSsmPath,
+  type MicrovmMetadataTag,
   setMicrovmGithubRunnerMetadata,
 } from './runner-metadata';
 
@@ -56,13 +57,44 @@ export function createMicrovmRunHookPayload(payload: Omit<MicrovmRunHookPayloadV
 function createMicrovmMetadataTags(
   config: CreateGitHubRunnerConfig,
   environment: string,
-): CreateGitHubRunnerConfig['ssmParameterStoreTags'] {
+  ssmConfigPath: string,
+  ssmParameterStoreTags: MicrovmMetadataTag[],
+): MicrovmMetadataTag[] {
   return [
-    ...config.ssmParameterStoreTags.filter((tag) => !MICROVM_METADATA_CONTEXT_TAG_KEYS.has(tag.Key)),
+    ...ssmParameterStoreTags.filter((tag) => !MICROVM_METADATA_CONTEXT_TAG_KEYS.has(tag.Key)),
     { Key: 'ghr:environment', Value: environment },
     { Key: 'ghr:runner_name_prefix', Value: config.runnerNamePrefix },
-    { Key: 'ghr:ssm_config_path', Value: config.ssmConfigPath },
+    { Key: 'ghr:ssm_config_path', Value: ssmConfigPath },
   ];
+}
+
+function loadSsmParameterStoreTags(): MicrovmMetadataTag[] {
+  const encodedTags = process.env.SSM_PARAMETER_STORE_TAGS;
+  if (encodedTags === undefined || encodedTags.trim() === '') {
+    return [];
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(encodedTags);
+    if (!Array.isArray(parsed)) {
+      throw new Error('tags must be an array');
+    }
+
+    return parsed.map((tag, index) => {
+      if (
+        tag === null ||
+        typeof tag !== 'object' ||
+        typeof (tag as Record<string, unknown>).Key !== 'string' ||
+        typeof (tag as Record<string, unknown>).Value !== 'string'
+      ) {
+        throw new Error(`tag at index ${index} is invalid`);
+      }
+      const candidate = tag as Record<string, unknown>;
+      return { Key: candidate.Key as string, Value: candidate.Value as string };
+    });
+  } catch (error) {
+    throw new Error(`Failed to parse SSM_PARAMETER_STORE_TAGS: ${(error as Error).message}`);
+  }
 }
 
 export async function createMicrovmRunners(
@@ -78,25 +110,25 @@ export async function createMicrovmRunners(
     return { instances: [], retryableErrorCount: 0, nonRetryableErrorCount: numberOfRunners };
   }
 
-  if (!githubRunnerConfig.ssmTokenPath?.trim()) {
+  if (!process.env.SSM_TOKEN_PATH?.trim()) {
     logger.error('Lambda MicroVM runners require SSM_TOKEN_PATH to deliver JIT configuration');
     return { instances: [], retryableErrorCount: 0, nonRetryableErrorCount: numberOfRunners };
   }
-  if (!githubRunnerConfig.ssmConfigPath?.trim()) {
+  if (!process.env.SSM_CONFIG_PATH?.trim()) {
     logger.error('Lambda MicroVM runners require SSM_CONFIG_PATH to locate runner metadata');
     return { instances: [], retryableErrorCount: 0, nonRetryableErrorCount: numberOfRunners };
   }
   let config;
-  let normalizedGithubRunnerConfig: CreateGitHubRunnerConfig;
+  let normalizedRunnerConfigPath: string;
+  let normalizedRunnerTokenPath: string;
+  let ssmParameterStoreTags: MicrovmMetadataTag[];
   try {
     config = { ...loadMicrovmProviderConfig(), ...overrides };
-    assertMatchingMicrovmRunnerTokenPath(config.runnerTokenSsmPath, githubRunnerConfig.ssmTokenPath);
+    normalizedRunnerConfigPath = normalizeMicrovmSsmPath(process.env.SSM_CONFIG_PATH);
+    normalizedRunnerTokenPath = normalizeMicrovmSsmPath(process.env.SSM_TOKEN_PATH);
+    assertMatchingMicrovmRunnerTokenPath(config.runnerTokenSsmPath, normalizedRunnerTokenPath);
     assertSeparatedMicrovmMetadataPath(config.metadataSsmPath, config.runnerTokenSsmPath);
-    normalizedGithubRunnerConfig = {
-      ...githubRunnerConfig,
-      ssmConfigPath: normalizeMicrovmSsmPath(githubRunnerConfig.ssmConfigPath),
-      ssmTokenPath: config.runnerTokenSsmPath,
-    };
+    ssmParameterStoreTags = loadSsmParameterStoreTags();
   } catch (error) {
     logger.error('Invalid Lambda MicroVM provider configuration', { error });
     return { instances: [], retryableErrorCount: 0, nonRetryableErrorCount: numberOfRunners };
@@ -114,11 +146,16 @@ export async function createMicrovmRunners(
           imageVersion: config.imageVersion,
         }
       : {}),
-    runnerConfigSsmPath: normalizedGithubRunnerConfig.ssmConfigPath,
-    runnerTokenSsmPath: normalizedGithubRunnerConfig.ssmTokenPath,
+    runnerConfigSsmPath: normalizedRunnerConfigPath,
+    runnerTokenSsmPath: normalizedRunnerTokenPath,
   });
   const environment = process.env.ENVIRONMENT;
-  const metadataTags = createMicrovmMetadataTags(normalizedGithubRunnerConfig, environment);
+  const metadataTags = createMicrovmMetadataTags(
+    githubRunnerConfig,
+    environment,
+    normalizedRunnerConfigPath,
+    ssmParameterStoreTags,
+  );
 
   for (let runnerIndex = 0; runnerIndex < numberOfRunners; runnerIndex++) {
     let microvmId: string | undefined;
@@ -127,24 +164,19 @@ export async function createMicrovmRunners(
         config,
         environment,
         runHookPayload,
-        runnerOwner: normalizedGithubRunnerConfig.runnerOwner,
-        runnerType: normalizedGithubRunnerConfig.runnerType,
+        runnerOwner: githubRunnerConfig.runnerOwner,
+        runnerType: githubRunnerConfig.runnerType,
         ssmParameterStoreTags: metadataTags,
         source,
       });
       microvmId = runner.microvmId;
 
-      const failedRunnerIds = await createStartRunnerConfig(
-        normalizedGithubRunnerConfig,
-        [microvmId],
-        githubInstallationClient,
-        {
-          getRunnerConfigMetadata: (runnerId) => [{ key: 'MicrovmId', value: runnerId }],
-          onJitConfigCreated: async (runnerId, metadata) => {
-            await setMicrovmGithubRunnerMetadata(config, runnerId, metadata, runner.metadataTags);
-          },
+      const failedRunnerIds = await createStartRunnerConfig(githubRunnerConfig, [microvmId], githubInstallationClient, {
+        getRunnerConfigMetadata: (runnerId) => [{ key: 'MicrovmId', value: runnerId }],
+        onJitConfigCreated: async (runnerId, metadata) => {
+          await setMicrovmGithubRunnerMetadata(config, runnerId, metadata, runner.metadataTags);
         },
-      );
+      });
 
       if (failedRunnerIds.includes(microvmId)) {
         await terminateMicrovm(microvmId, config).catch((terminationError) => {
