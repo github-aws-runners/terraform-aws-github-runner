@@ -130,6 +130,14 @@ run "v2_effective_config_contains_derived_values" {
       }
     }
 
+    experimental_global_config_github = {
+      app = {
+        key_base64     = "experimental-app-key"
+        id             = "experimental-app-id"
+        webhook_secret = "experimental-webhook-secret"
+      }
+    }
+
     experimental_global_config_lambda = {
       artifact = {
         s3 = {
@@ -142,14 +150,16 @@ run "v2_effective_config_contains_derived_values" {
       webhook = {
         lambda = {
           artifact = {
-            zip = "global-webhook.zip"
+            s3 = {
+              key = "global-runners.zip"
+            }
           }
         }
         queue = {
           encryption = {
             kms_data_key_reuse_period_seconds = 300
             kms_master_key_id                 = "kms-global-queue"
-            sqs_managed_sse_enabled           = false
+            sqs_managed_sse_enabled           = null
           }
         }
       }
@@ -157,6 +167,15 @@ run "v2_effective_config_contains_derived_values" {
 
     experimental_global_config_ssm = {
       kms_key_id = "kms-global-ssm"
+      housekeeper = {
+        lambda = {
+          artifact = {
+            s3 = {
+              key = "global-housekeeper.zip"
+            }
+          }
+        }
+      }
     }
 
     experimental_global_config_compute_provider = {
@@ -212,7 +231,7 @@ run "v2_effective_config_contains_derived_values" {
         "x64",
       ])
       && local.effective_config.multi_runner_config["lane"].lambda.artifact.s3.bucket == "global-lambda-artifacts"
-      && local.effective_config.multi_runner_config["lane"].orchestration_provider.webhook.lambda.artifact.zip == "global-webhook.zip"
+      && local.effective_config.multi_runner_config["lane"].orchestration_provider.webhook.lambda.artifact.s3.key == "global-runners.zip"
       && local.effective_config.multi_runner_config["lane"].orchestration_provider.webhook.queue.kms_key_id == "kms-global-queue"
       && local.effective_config.multi_runner_config["lane"].ssm.kms_key_id == "kms-global-ssm"
       && toset(keys(local.resolved_runner_binary_targets_by_key)) == toset(["linux_x64"])

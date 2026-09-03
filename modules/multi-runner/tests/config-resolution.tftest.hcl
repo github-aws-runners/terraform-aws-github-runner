@@ -236,9 +236,6 @@ run "v2_experimental_inputs_resolve_lane_over_global" {
         ec2 = {
           vpc_id     = "vpc-global"
           subnet_ids = ["subnet-global"]
-          runner_binaries = {
-            enabled = false
-          }
           instance_termination_watcher = {
             features = {
               runner_deregistration = {
@@ -253,6 +250,7 @@ run "v2_experimental_inputs_resolve_lane_over_global" {
             }
           }
           runner_binaries = {
+            enabled = false
             syncer = {
               artifact = {
                 s3 = {
@@ -283,6 +281,20 @@ run "v2_experimental_inputs_resolve_lane_over_global" {
       webhook = {
         eventbridge = {
           enabled = false
+        }
+        lambda = {
+          artifact = {
+            s3 = {
+              key = "global-runners.zip"
+            }
+          }
+          webhook = {
+            artifact = {
+              s3 = {
+                key = "global-webhook.zip"
+              }
+            }
+          }
         }
       }
     }

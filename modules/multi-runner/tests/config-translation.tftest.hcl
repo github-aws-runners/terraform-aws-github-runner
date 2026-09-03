@@ -575,7 +575,9 @@ run "lane_values_override_experimental_globals" {
       housekeeper = {
         lambda = {
           artifact = {
-            zip = "global-housekeeper.zip"
+            s3 = {
+              key = "global-housekeeper.zip"
+            }
           }
         }
       }
