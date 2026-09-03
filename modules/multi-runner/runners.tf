@@ -6,7 +6,7 @@ module "runners" {
   vpc_id        = each.value.compute_provider.aws.ec2.vpc_id
   subnet_ids    = each.value.compute_provider.aws.ec2.subnet_ids
   prefix        = "${var.prefix}-${each.key}"
-  tags = merge(local.tags, each.value.tags, {
+  tags = merge(local.effective_config.tags, each.value.tags, {
     "ghr:environment" = "${var.prefix}-${each.key}"
   })
 
