@@ -251,7 +251,6 @@ locals {
         }
         runner_binaries = {
           enabled = true
-          targets = null
           s3 = {
             encryption = {
               enabled            = var.runner_binaries_s3_sse_configuration != null
