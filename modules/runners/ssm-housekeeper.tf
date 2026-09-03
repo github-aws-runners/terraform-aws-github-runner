@@ -14,11 +14,11 @@ locals {
 }
 
 resource "aws_lambda_function" "ssm_housekeeper" {
-  s3_bucket         = var.ssm_housekeeper.artifact.s3_bucket
-  s3_key            = var.ssm_housekeeper.artifact.s3_key
-  s3_object_version = var.ssm_housekeeper.artifact.s3_object_version
-  filename          = var.ssm_housekeeper.artifact.s3_bucket == null ? coalesce(var.ssm_housekeeper.artifact.zip, local.lambda_zip) : null
-  source_code_hash  = var.ssm_housekeeper.artifact.s3_bucket == null ? filebase64sha256(coalesce(var.ssm_housekeeper.artifact.zip, local.lambda_zip)) : null
+  s3_bucket         = var.lambda_s3_bucket != null ? var.lambda_s3_bucket : null
+  s3_key            = var.runners_lambda_s3_key != null ? var.runners_lambda_s3_key : null
+  s3_object_version = var.runners_lambda_s3_object_version != null ? var.runners_lambda_s3_object_version : null
+  filename          = var.lambda_s3_bucket == null ? local.lambda_zip : null
+  source_code_hash  = var.lambda_s3_bucket == null ? filebase64sha256(local.lambda_zip) : null
   function_name     = local.ssm_housekeeper_lambda_name
   role              = aws_iam_role.ssm_housekeeper.arn
   handler           = "index.ssmHousekeeper"

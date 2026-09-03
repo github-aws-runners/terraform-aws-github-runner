@@ -767,14 +767,8 @@ variable "ssm_housekeeper" {
   type = object({
     schedule_expression = optional(string, "rate(1 day)")
     state               = optional(string, "ENABLED")
-    artifact = optional(object({
-      zip               = optional(string, null)
-      s3_bucket         = optional(string, null)
-      s3_key            = optional(string, null)
-      s3_object_version = optional(string, null)
-    }), {})
-    lambda_memory_size = optional(number, 512)
-    lambda_timeout     = optional(number, 60)
+    lambda_memory_size  = optional(number, 512)
+    lambda_timeout      = optional(number, 60)
     config = object({
       tokenPath      = optional(string)
       minimumDaysOld = optional(number, 1)
