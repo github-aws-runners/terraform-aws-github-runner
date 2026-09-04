@@ -31,6 +31,7 @@ export interface GitHubRunnerMetadata {
 }
 
 export interface StartRunnerConfigOptions {
+  runnerGroupCacheStore?: import('@aws-github-runner/storage-providers').RunnerGroupCacheStore;
   getRunnerConfigMetadata?: (runnerId: string) => { key: string; value: string }[];
   onJitConfigCreated?: (runnerId: string, metadata: GitHubRunnerMetadata) => Promise<void>;
 }

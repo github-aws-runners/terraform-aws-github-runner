@@ -1,9 +1,10 @@
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
-import { getParameter, putParameter } from '@aws-github-runner/aws-ssm-util';
 import {
   createRunnerConfigStore,
+  createRunnerGroupCacheStore,
   type RunnerConfigMetadata,
   type RunnerConfigStore,
+  type RunnerGroupCacheStore,
 } from '@aws-github-runner/storage-providers';
 import { Octokit } from '@octokit/rest';
 
@@ -19,6 +20,7 @@ export interface GitHubRunnerMetadata {
 }
 
 export interface StartRunnerConfigOptions {
+  runnerGroupCacheStore?: RunnerGroupCacheStore;
   getRunnerConfigMetadata?: (runnerId: string) => RunnerConfigMetadata[];
   onJitConfigCreated?: (runnerId: string, metadata: GitHubRunnerMetadata) => Promise<void>;
 }
@@ -187,43 +189,22 @@ export async function isJobQueued(
 export async function getRunnerGroupId(
   githubRunnerConfig: CreateGitHubRunnerConfig,
   ghClient: Octokit,
+  runnerGroupCacheStore?: RunnerGroupCacheStore,
 ): Promise<number> {
   // if the runnerType is Repo, then runnerGroupId is default to 1
   let runnerGroupId: number | undefined = 1;
   if (githubRunnerConfig.runnerType === 'Org' && githubRunnerConfig.runnerGroup !== undefined) {
-    let runnerGroup: string | undefined;
-    // check if runner group id is already stored in SSM Parameter Store and
-    // use it if it exists to avoid API call to GitHub
-    try {
-      runnerGroup = await getParameter(
-        `${githubRunnerConfig.ssmConfigPath}/runner-group/${githubRunnerConfig.runnerGroup}`,
-      );
-    } catch (err) {
-      logger.debug('Handling error:', err as Error);
-      logger.warn(
-        `SSM Parameter "${githubRunnerConfig.ssmConfigPath}/runner-group/${githubRunnerConfig.runnerGroup}"
-         for Runner group ${githubRunnerConfig.runnerGroup} does not exist`,
-      );
-    }
+    const cacheStore = runnerGroupCacheStore ?? createRunnerGroupCacheStore();
+    const runnerGroup = await cacheStore.get(githubRunnerConfig.runnerGroup);
     if (runnerGroup === undefined) {
       // get runner group id from GitHub
       runnerGroupId = await getRunnerGroupByName(ghClient, githubRunnerConfig);
-      // store runner group id in SSM
-      try {
-        await putParameter(
-          `${githubRunnerConfig.ssmConfigPath}/runner-group/${githubRunnerConfig.runnerGroup}`,
-          runnerGroupId.toString(),
-          false,
-          {
-            tags: githubRunnerConfig.ssmParameterStoreTags,
-          },
-        );
-      } catch (err) {
-        logger.debug('Error storing runner group id in SSM Parameter Store', err as Error);
-        throw err;
-      }
+      await cacheStore.create({
+        runnerGroupName: githubRunnerConfig.runnerGroup,
+        runnerGroupId,
+      });
     } else {
-      runnerGroupId = parseInt(runnerGroup);
+      runnerGroupId = runnerGroup;
     }
   }
   return runnerGroupId;
@@ -318,7 +299,7 @@ async function createJitConfig(
   runnerConfigStore: RunnerConfigStore,
   options: StartRunnerConfigOptions,
 ): Promise<string[]> {
-  const runnerGroupId = await getRunnerGroupId(githubRunnerConfig, ghClient);
+  const runnerGroupId = await getRunnerGroupId(githubRunnerConfig, ghClient, options.runnerGroupCacheStore);
   const { isDelay, delay, delayMilliseconds } = addDelay(runnerIds, runnerConfigStore);
   const runnerLabels = githubRunnerConfig.runnerLabels.split(',');
   const failedRunnerIds: string[] = [];
