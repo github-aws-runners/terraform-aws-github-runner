@@ -58,6 +58,8 @@ nav:
   - Configuration: configuration.md
   - Getting started: getting-started.md
   - Security: security.md
+  - Architecture decisions:
+    - MiniStack for integration tests: adr/0001-use-ministack-for-terraform-integration-tests.md
   - Modules:
     - Runners (main): modules/runners.md
     - Submodules (public):

@@ -14,14 +14,14 @@ example="${2:-}"
 tfvars_file="${3:-${MINISTACK_TFVARS_FILE:-}}"
 
 case "$example" in
-  base | prebuilt)
+  base | prebuilt | default | ephemeral | multi-runner)
     use_tfvars=true
     ;;
   termination-watcher)
     use_tfvars=false
     ;;
   *)
-  echo "Supported examples for the runner are: base, prebuilt, termination-watcher" >&2
+  echo "Supported examples for the runner are: base, prebuilt, default, ephemeral, multi-runner, termination-watcher" >&2
   exit 64
   ;;
 esac
@@ -29,7 +29,7 @@ esac
 case "$action" in
   init | plan | apply | destroy) ;;
   *)
-    echo "Usage: $0 {init|plan|apply|destroy} {base|prebuilt|termination-watcher} [TFVARS_FILE]" >&2
+    echo "Usage: $0 {init|plan|apply|destroy} {base|prebuilt|default|ephemeral|multi-runner|termination-watcher} [TFVARS_FILE]" >&2
     exit 64
     ;;
 esac
@@ -58,6 +58,8 @@ fi
 lambda_fixture_dir=""
 lambda_created_paths=""
 ami_created_ids=""
+ssm_created_names=""
+override_created_paths=""
 lambda_zip_paths="
 $source_root/lambdas/functions/ami-housekeeper/ami-housekeeper.zip
 $source_root/lambdas/functions/control-plane/runners.zip
@@ -67,6 +69,14 @@ $source_root/lambdas/functions/termination-watcher/termination-watcher.zip
 "
 
 cleanup() {
+  for override_file in $override_created_paths; do
+    rm -f "$override_file"
+  done
+
+  for name in $ssm_created_names; do
+    ministack_aws ssm delete-parameter --name "$name" >/dev/null 2>&1 || true
+  done
+
   for image_id in $ami_created_ids; do
     ministack_aws ec2 deregister-image --image-id "$image_id" >/dev/null 2>&1 || true
   done
@@ -123,6 +133,68 @@ $ami_id"
 
 }
 
+create_ssm_fixture() {
+  name="$1"
+  value="$2"
+
+  if ministack_aws ssm get-parameter --name "$name" >/dev/null 2>&1; then
+    return
+  fi
+
+  ministack_aws ssm put-parameter \
+    --name "$name" \
+    --type String \
+    --value "$value" \
+    --overwrite >/dev/null
+  ssm_created_names="$ssm_created_names
+$name"
+}
+
+create_ami_override() {
+  override_file="$example_root/zz_ministack_ami_override.tf"
+  printf '%s\n' \
+    'module "runners" {' \
+    '  ami = {' \
+    '    filter = {' \
+    '      name  = ["amzn2-ami-hvm-2.0.20231116.0-x86_64-gp2"]' \
+    '      state = ["available"]' \
+    '    }' \
+    '    owners = ["amazon"]' \
+    '  }' \
+    '  enable_runner_binaries_syncer = false' \
+    '}' \
+    '' \
+    'output "runners" {' \
+    '  value = { lambda_syncer_name = null }' \
+    '}' > "$override_file"
+  override_created_paths="$override_created_paths
+$override_file"
+}
+
+create_multi_runner_override() {
+  override_file="$example_root/zz_ministack_override.tf"
+  printf '%s\n' \
+    'module "runners" {' \
+    '  multi_runner_config = {' \
+    '    for name, config in local.multi_runner_config :' \
+    '    name => merge(config, {' \
+    '      runner_config = merge(config.runner_config, {' \
+    '        enable_runner_binaries_syncer = false' \
+    '        ami = {' \
+    '          filter = {' \
+    '            name = [strcontains(name, "windows") ? "Windows_Server-2022-English-Full-Base" : strcontains(name, "ubuntu") ? "ubuntu/images/hvm-ssd/ubuntu-22.04-amd64-server" : "amzn2-ami-hvm-2.0.20231116.0-x86_64-gp2"]' \
+    '            state = ["available"]' \
+    '          }' \
+    '          owners = [strcontains(name, "ubuntu") ? "099720109477" : "amazon"]' \
+    '        }' \
+    '      })' \
+    '    })' \
+    '  }' \
+    '}' > "$override_file"
+  override_created_paths="$override_created_paths
+$override_file"
+}
+
 create_ministack_fixtures() {
   if ! command -v aws >/dev/null 2>&1; then
     echo "AWS CLI is required to seed MiniStack API fixtures." >&2
@@ -156,10 +228,22 @@ $lambda_zip"
   done
 
   case "$example" in
+    default | ephemeral)
+      create_ami_override
+      ;;
     prebuilt)
       create_ami_fixture \
         "amzn2-ami-hvm-2.0.20231116.0-x86_64-gp2" \
         x86_64 >/dev/null
+      ;;
+    multi-runner)
+      create_multi_runner_override
+      create_ssm_fixture \
+        "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64" \
+        "ami-0abcdef1234567890"
+      create_ssm_fixture \
+        "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-arm64" \
+        "ami-0abcdef1234567890"
       ;;
   esac
 }

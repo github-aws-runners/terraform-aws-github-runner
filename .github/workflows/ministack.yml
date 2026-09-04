@@ -50,10 +50,13 @@ jobs:
         example:
           - base
           - prebuilt
+          - default
+          - ephemeral
+          - multi-runner
           - termination-watcher
     services:
       ministack:
-        image: ghcr.io/ministackorg/ministack:1.5.0@sha256:ba48c20747780605a4287a950e7bb1758ddc3b55ec92409a0c47677cbe26bbb9
+        image: ghcr.io/ministackorg/ministack:1.5.7@sha256:37361b9ef886463d5632d5a4b2d114da4b7a5c5793f52f07dbc72579f2fd9207
         ports:
           - 4566:4566
         env:
