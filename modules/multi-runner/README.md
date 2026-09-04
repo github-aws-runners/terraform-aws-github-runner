@@ -117,6 +117,7 @@ module "multi-runner" {
 | <a name="module_ami_housekeeper"></a> [ami\_housekeeper](#module\_ami\_housekeeper) | ../ami-housekeeper | n/a |
 | <a name="module_instance_termination_watcher"></a> [instance\_termination\_watcher](#module\_instance\_termination\_watcher) | ../termination-watcher | n/a |
 | <a name="module_runner_binaries"></a> [runner\_binaries](#module\_runner\_binaries) | ../runner-binaries-syncer | n/a |
+| <a name="module_runner_configs"></a> [runner\_configs](#module\_runner\_configs) | ../runner-config | n/a |
 | <a name="module_runners"></a> [runners](#module\_runners) | ../runners | n/a |
 | <a name="module_ssm"></a> [ssm](#module\_ssm) | ../ssm | n/a |
 | <a name="module_webhook"></a> [webhook](#module\_webhook) | ../webhook | n/a |
@@ -232,6 +233,7 @@ module "multi-runner" {
 | <a name="output_instance_termination_handler"></a> [instance\_termination\_handler](#output\_instance\_termination\_handler) | n/a |
 | <a name="output_instance_termination_watcher"></a> [instance\_termination\_watcher](#output\_instance\_termination\_watcher) | n/a |
 | <a name="output_runners_map"></a> [runners\_map](#output\_runners\_map) | n/a |
+| <a name="output_runners_map_v2"></a> [runners\_map\_v2](#output\_runners\_map\_v2) | n/a |
 | <a name="output_ssm_parameters"></a> [ssm\_parameters](#output\_ssm\_parameters) | n/a |
 | <a name="output_webhook"></a> [webhook](#output\_webhook) | n/a |
 <!-- END_TF_DOCS -->

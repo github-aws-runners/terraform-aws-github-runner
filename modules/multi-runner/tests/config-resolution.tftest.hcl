@@ -195,6 +195,16 @@ run "v1_stable_inputs_translate_into_effective_base" {
     )
     error_message = "Stable v1 inputs must translate into the effective experimental base without leaking v2 globals."
   }
+
+  assert {
+    condition = (
+      keys(module.runners) == ["stable"]
+      && length(module.runner_configs) == 0
+      && keys(output.runners_map) == ["stable"]
+      && length(output.runners_map_v2) == 0
+    )
+    error_message = "Stable v1 configurations must route through module.runners and not the experimental runner-config module."
+  }
 }
 
 run "v2_experimental_inputs_resolve_lane_over_global" {
@@ -386,5 +396,15 @@ run "v2_experimental_inputs_resolve_lane_over_global" {
       && toset(local.effective_config.multi_runner_config["lane"].runner.labels) == toset(["arm64", "linux", "self-hosted"])
     )
     error_message = "Experimental v2 inputs must resolve lane overrides before experimental global defaults."
+  }
+
+  assert {
+    condition = (
+      length(module.runners) == 0
+      && keys(module.runner_configs) == ["lane"]
+      && length(output.runners_map) == 0
+      && keys(output.runners_map_v2) == ["lane"]
+    )
+    error_message = "Experimental v2 configurations must route through module.runner_configs and skip the legacy runners module."
   }
 }
