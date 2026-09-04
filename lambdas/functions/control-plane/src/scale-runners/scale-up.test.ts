@@ -141,6 +141,7 @@ let expectedRunnerParams = { ...EXPECTED_RUNNER_PARAMS };
 function setDefaults() {
   process.env = { ...cleanEnv };
   process.env.PARAMETER_GITHUB_APP_ID_NAME = 'github-app-id';
+  process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME = 'github-app-key';
   process.env.GITHUB_APP_KEY_BASE64 = 'TEST_CERTIFICATE_DATA';
   process.env.GITHUB_APP_ID = '1337';
   process.env.GITHUB_APP_CLIENT_ID = 'TEST_CLIENT_ID';
@@ -148,6 +149,7 @@ function setDefaults() {
   process.env.RUNNERS_MAXIMUM_COUNT = '3';
   process.env.ENVIRONMENT = EXPECTED_RUNNER_PARAMS.environment;
   process.env.SSM_TOKEN_PATH = '/github-action-runners/default/runners/config';
+  process.env.SSM_CONFIG_PATH = '/github-action-runners/default/runners/config';
 }
 
 async function createTestProviderRunners(input: CreateScaleUpRunnersInput<unknown>): Promise<CreateRunnerResult> {
@@ -1589,7 +1591,9 @@ describe('scaleUp with Github Data Residency', () => {
 
     it('create SSM parameter for runner group id if it does not exist', async () => {
       mockSSMgetParameter.mockImplementation(async () => {
-        throw new Error('ParameterNotFound');
+        const error = new Error('ParameterNotFound');
+        error.name = 'ParameterNotFound';
+        throw error;
       });
       await scaleUpModule.scaleUp(TEST_DATA);
       expect(mockOctokit.paginate).toHaveBeenCalledTimes(1);
