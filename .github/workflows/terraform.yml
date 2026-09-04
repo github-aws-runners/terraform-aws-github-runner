@@ -85,6 +85,8 @@ jobs:
             "download-lambda",
             "lambda",
             "multi-runner",
+            "compute-providers/aws/microvm",
+            "compute-providers/aws/microvm/trust-policy",
             "runner-binaries-syncer",
             "runners",
             "setup-iam-permissions",
@@ -216,6 +218,8 @@ jobs:
         module:
           - modules/runners
           - modules/multi-runner
+          - modules/compute-providers/aws/microvm
+          - modules/compute-providers/aws/microvm/trust-policy
     defaults:
       run:
         working-directory: ${{ matrix.module }}
