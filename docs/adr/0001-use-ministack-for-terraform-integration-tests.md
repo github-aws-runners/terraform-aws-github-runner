@@ -82,8 +82,6 @@ production module interface.
 ## References
 
 - [MiniStack v1.5.7 release notes](https://github.com/ministackorg/ministack/releases/tag/v1.5.7)
-- [MiniStack issue #1611](https://github.com/ministackorg/ministack/issues/1611#issuecomment-5537737162)
-- [Terraform integration test PR #5293](https://github.com/github-aws-runners/terraform-aws-github-runner/pull/5293#issuecomment-5537774649)
 - [MiniStack service and Terraform documentation](https://github.com/ministackorg/ministack)
 - [Floci service matrix](https://floci.io/floci/services/)
 - [LocalStack pricing comparison](https://www.localstack.cloud/pricing-comparison)
