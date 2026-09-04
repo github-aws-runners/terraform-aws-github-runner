@@ -460,3 +460,118 @@ run "v2_inputs_do_not_require_legacy_arguments" {
     error_message = "The v2 interface must work without the stable v1 GitHub App, VPC, subnet, or runner configuration inputs."
   }
 }
+
+run "v2_microvm_inputs_route_to_microvm_provider" {
+  command = plan
+
+  variables {
+    experimental_global_config = {
+      runner = {
+        os           = "linux"
+        architecture = "arm64"
+      }
+    }
+
+    experimental_global_config_github = {
+      app = {
+        key_base64     = "experimental-app-key"
+        id             = "experimental-app-id"
+        webhook_secret = "experimental-webhook-secret"
+      }
+    }
+
+    experimental_global_config_lambda = {
+      artifact = {
+        s3 = {
+          bucket = "global-lambda-artifacts"
+        }
+      }
+    }
+
+    experimental_global_config_orchestration_provider = {
+      webhook = {
+        eventbridge = {
+          enabled = false
+        }
+        runner = {
+          ephemeral          = true
+          jit_config_enabled = true
+        }
+        lambda = {
+          artifact = {
+            s3 = {
+              key = "global-runners.zip"
+            }
+          }
+        }
+      }
+    }
+
+    experimental_global_config_ssm = {
+      housekeeper = {
+        lambda = {
+          artifact = {
+            s3 = {
+              key = "global-housekeeper.zip"
+            }
+          }
+        }
+      }
+    }
+
+    experimental_global_config_compute_provider = {
+      aws = {
+        microvm = {
+          image_arn     = "arn:aws:lambda:eu-west-1:123456789012:microvm-image:global"
+          image_version = "7"
+        }
+      }
+    }
+
+    experimental_multi_runner_config = {
+      microvm = {
+        runner = {
+          name_prefix = "microvm-"
+        }
+        orchestration_provider = {
+          webhook = {
+            matcherConfig = {
+              labelMatchers = [["microvm"]]
+            }
+          }
+        }
+        compute_provider = {
+          aws = {
+            microvm = {
+              image_version = "8"
+            }
+          }
+        }
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      local.use_v2_config
+      && keys(local.resolved_config.multi_runner_config) == ["microvm"]
+      && local.resolved_config.multi_runner_config["microvm"].runner.os == "linux"
+      && local.resolved_config.multi_runner_config["microvm"].runner.architecture == "arm64"
+      && local.resolved_config.multi_runner_config["microvm"].compute_provider.aws.ec2 == null
+      && local.resolved_config.multi_runner_config["microvm"].compute_provider.aws.microvm.image_arn == "arn:aws:lambda:eu-west-1:123456789012:microvm-image:global"
+      && local.resolved_config.multi_runner_config["microvm"].compute_provider.aws.microvm.image_version == "8"
+    )
+    error_message = "Experimental MicroVM lanes must resolve Linux ARM64 settings and inherit global provider values while applying lane overrides."
+  }
+
+  assert {
+    condition = (
+      length(module.runners) == 0
+      && keys(module.runner_configs) == ["microvm"]
+      && output.runners_map_v2["microvm"].provider.aws.ec2 == null
+      && output.runners_map_v2["microvm"].provider.aws.microvm.image_arn == "arn:aws:lambda:eu-west-1:123456789012:microvm-image:global"
+      && output.runners_map_v2["microvm"].provider.aws.microvm.image_version == "8"
+    )
+    error_message = "Experimental MicroVM lanes must route through module.runner_configs and expose the MicroVM provider contract without an EC2 provider."
+  }
+}
