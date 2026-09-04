@@ -16,7 +16,8 @@ export function createAwsSsmGitHubAppCredentialsStore(
     environment.PARAMETER_GITHUB_APP_KEY_BASE64_NAME,
     'PARAMETER_GITHUB_APP_KEY_BASE64_NAME',
   );
-  const installationIdParameters = environment.PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME?.split(':').filter(Boolean) ?? [];
+  const installationIdParameters =
+    environment.PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME?.split(':').filter(Boolean) ?? [];
 
   if (idParameters.length !== keyParameters.length) {
     throw new Error(`GitHub App parameter count mismatch: ${idParameters.length} IDs vs ${keyParameters.length} keys`);
