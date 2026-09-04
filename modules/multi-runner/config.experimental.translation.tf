@@ -301,6 +301,30 @@ locals {
           }
         }
       }
+      microvm = {
+        image_arn                  = null
+        image_version              = null
+        ingress_network_connectors = []
+        egress_network_connectors  = []
+        cloudwatch_agent = {
+          enabled = true
+          config  = null
+        }
+        log_files             = null
+        environment_variables = {}
+        iam = {
+          resource_arns = {
+            images = null
+          }
+          additional_policy_json = {
+            scale_up = null
+          }
+          managed_policies = {
+            scale_up = null
+            pool     = null
+          }
+        }
+      }
     }
   }
 
@@ -551,6 +575,30 @@ locals {
             use_dedicated_host            = v.runner_config.use_dedicated_host
             log_files                     = v.runner_config.runner_log_files
             tags                          = v.runner_config.runner_ec2_tags
+          }
+          microvm = {
+            image_arn                  = null
+            image_version              = null
+            ingress_network_connectors = []
+            egress_network_connectors  = []
+            cloudwatch_agent = {
+              enabled = true
+              config  = null
+            }
+            log_files             = null
+            environment_variables = {}
+            iam = {
+              resource_arns = {
+                images = null
+              }
+              additional_policy_json = {
+                scale_up = null
+              }
+              managed_policies = {
+                scale_up = null
+                pool     = null
+              }
+            }
           }
         }
       }

@@ -36,7 +36,8 @@ output "provider" {
   description = "Provider-specific resources grouped under the selected provider namespace and type."
   value = {
     aws = {
-      ec2 = local.provider_key == "aws_ec2" ? local.provider_contract.resources : null
+      ec2     = local.provider_key == "aws_ec2" ? local.provider_contract.resources : null
+      microvm = local.provider_key == "aws_microvm" ? local.provider_contract.resources : null
     }
   }
 }

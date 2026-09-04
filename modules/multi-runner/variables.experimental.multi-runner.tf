@@ -325,6 +325,40 @@ variable "experimental_multi_runner_config" {
           })), null)
           tags = optional(map(string), {})
         }), null)
+        microvm = optional(object({
+          image_arn                  = optional(string, null)
+          image_version              = optional(string, null)
+          ingress_network_connectors = optional(list(string), null)
+          egress_network_connectors  = optional(list(string), null)
+          cloudwatch_agent = optional(object({
+            enabled = optional(bool, null)
+            config  = optional(string, null)
+          }), {})
+          log_files = optional(list(object({
+            log_group_name   = string
+            prefix_log_group = bool
+            file_path        = string
+            log_stream_name  = string
+            log_class        = optional(string, "STANDARD")
+          })), null)
+          environment_variables = optional(map(string), {})
+          iam = optional(object({
+            resource_arns = optional(object({
+              images = optional(list(string), null)
+            }), {})
+            additional_policy_json = optional(object({
+              scale_up = optional(string, null)
+            }), {})
+            managed_policies = optional(object({
+              scale_up = optional(object({
+                arn = string
+              }), null)
+              pool = optional(object({
+                arn = string
+              }), null)
+            }), {})
+          }), {})
+        }), null)
       }), {})
     })
 
