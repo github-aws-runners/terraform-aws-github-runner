@@ -155,6 +155,7 @@ jobs:
             "ephemeral",
             "termination-watcher",
             "multi-runner",
+            "multi-runner-v2",
             "external-managed-ssm-secrets"
           ]
     defaults:
