@@ -23,16 +23,15 @@ locals {
 
 module "webhook" {
   source      = "../webhook"
-  count       = length(local.webhook_runner_config) > 0 ? 1 : 0
   prefix      = var.prefix
   tags        = local.tags
   kms_key_arn = local.effective_config.ssm.kms_key_id
   eventbridge = {
-    enable        = try(local.effective_config.orchestration_provider.webhook.eventbridge.enabled, false)
-    accept_events = try(local.effective_config.orchestration_provider.webhook.eventbridge.accept_events, [])
+    enable        = local.effective_config.orchestration_provider.webhook.eventbridge.enabled
+    accept_events = local.effective_config.orchestration_provider.webhook.eventbridge.accept_events
   }
   runner_matcher_config               = local.runner_matcher_config
-  matcher_config_parameter_store_tier = try(local.effective_config.orchestration_provider.webhook.matcher_config_parameter_store_tier, "Standard")
+  matcher_config_parameter_store_tier = local.effective_config.orchestration_provider.webhook.matcher_config_parameter_store_tier
 
   ssm_paths = {
     root    = local.ssm_root_path
@@ -46,13 +45,13 @@ module "webhook" {
   lambda_s3_bucket                              = try(local.effective_config.lambda.artifact.s3.bucket, null)
   webhook_lambda_s3_key                         = try(local.effective_config.orchestration_provider.webhook.lambda.webhook.artifact.s3.key, null)
   webhook_lambda_s3_object_version              = try(local.effective_config.orchestration_provider.webhook.lambda.webhook.artifact.s3.object_version, null)
-  webhook_lambda_apigateway_access_log_settings = try(local.effective_config.orchestration_provider.webhook.lambda.webhook.api_gateway_access_log_settings, null)
+  webhook_lambda_apigateway_access_log_settings = local.effective_config.orchestration_provider.webhook.lambda.webhook.api_gateway_access_log_settings
   lambda_runtime                                = local.effective_config.lambda.runtime
   lambda_architecture                           = local.effective_config.lambda.architecture
-  lambda_zip                                    = try(local.effective_config.orchestration_provider.webhook.lambda.webhook.artifact.zip, null)
-  lambda_timeout                                = try(local.effective_config.orchestration_provider.webhook.lambda.webhook.timeout, null)
-  lambda_memory_size                            = try(local.effective_config.orchestration_provider.webhook.lambda.webhook.memory_size, null)
-  lambda_tags                                   = try(local.effective_config.orchestration_provider.webhook.lambda.webhook.tags, {})
+  lambda_zip                                    = local.effective_config.orchestration_provider.webhook.lambda.webhook.artifact.zip
+  lambda_timeout                                = local.effective_config.orchestration_provider.webhook.lambda.webhook.timeout
+  lambda_memory_size                            = local.effective_config.orchestration_provider.webhook.lambda.webhook.memory_size
+  lambda_tags                                   = local.effective_config.orchestration_provider.webhook.lambda.webhook.tags
   tracing_config                                = local.effective_config.observability.tracing
   logging_retention_in_days                     = local.effective_config.observability.logs.retention_in_days
   logging_kms_key_id                            = local.effective_config.observability.logs.kms_key_id
@@ -60,8 +59,8 @@ module "webhook" {
 
   role_path                 = local.effective_config.roles.path
   role_permissions_boundary = local.effective_config.roles.permissions_boundary
-  repository_white_list     = try(local.effective_config.orchestration_provider.webhook.github.repository_white_list, [])
-  queue_selection_strategy  = try(local.effective_config.orchestration_provider.webhook.queue_selection_strategy, "first")
+  repository_white_list     = local.effective_config.orchestration_provider.webhook.github.repository_white_list
+  queue_selection_strategy  = local.effective_config.orchestration_provider.webhook.queue_selection_strategy
 
   lambda_subnet_ids         = local.effective_config.lambda.subnet_ids
   lambda_security_group_ids = local.effective_config.lambda.security_group_ids
