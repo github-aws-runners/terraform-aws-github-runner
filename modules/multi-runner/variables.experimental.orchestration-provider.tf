@@ -107,6 +107,81 @@ variable "experimental_global_config_orchestration_provider" {
           sqs_managed_sse_enabled           = true
         })
       }), {})
+
+    }), {})
+
+    scale_set = optional(object({
+      grouping = optional(object({
+        strategy = optional(string, "compute_provider")
+        custom = optional(object({
+          groups = map(object({
+            runner_configs = set(string)
+          }))
+        }), null)
+      }), {})
+      container = optional(object({
+        image                             = optional(string, null)
+        user                              = optional(string, "10001:10001")
+        health_port                       = optional(number, 8080)
+        health_path                       = optional(string, "/healthz")
+        health_check_command              = optional(list(string), null)
+        health_check_interval             = optional(number, 30)
+        health_check_timeout              = optional(number, 5)
+        health_check_retries              = optional(number, 3)
+        health_check_start_period         = optional(number, 30)
+        health_stale_after_seconds        = optional(number, 180)
+        shutdown_timeout_seconds          = optional(number, 110)
+        session_close_timeout_seconds     = optional(number, 10)
+        reconnect_initial_backoff_seconds = optional(number, 1)
+        reconnect_max_backoff_seconds     = optional(number, 30)
+        stop_timeout_seconds              = optional(number, 120)
+        ecr_repository = optional(object({
+          arn = string
+        }), null)
+      }), {})
+      config_store = optional(object({
+        path_prefix = optional(string, null)
+        tier        = optional(string, "Standard")
+        tags        = optional(map(string), {})
+      }), {})
+      ecs = optional(object({
+        cluster = optional(object({
+          mode               = optional(string, "managed")
+          arn                = optional(string, null)
+          name               = optional(string, null)
+          container_insights = optional(bool, true)
+        }), {})
+        task = optional(object({
+          cpu              = optional(number, 512)
+          memory           = optional(number, 1024)
+          cpu_architecture = optional(string, "X86_64")
+          ephemeral_storage = optional(object({
+            size_in_gib = number
+          }), null)
+        }), {})
+        service = optional(object({
+          platform_version = optional(string, "LATEST")
+        }), {})
+        iam = optional(object({
+          path                 = optional(string, "/")
+          permissions_boundary = optional(string, null)
+        }), {})
+      }), {})
+      network = optional(object({
+        vpc_id     = optional(string, null)
+        subnet_ids = optional(set(string), null)
+        https_egress = optional(object({
+          ipv4_cidrs = optional(set(string), ["0.0.0.0/0"])
+          ipv6_cidrs = optional(set(string), [])
+        }), {})
+      }), {})
+      logging = optional(object({
+        retention_in_days = optional(number, 30)
+        kms_key_arn       = optional(string, null)
+        log_group_class   = optional(string, "STANDARD")
+        tags              = optional(map(string), {})
+      }), {})
+      tags = optional(map(string), {})
     }), {})
   })
   default = {}

@@ -3,7 +3,8 @@ variable "orchestration_provider" {
   description = <<-EOT
     Runner demand-orchestration provider configuration. Exactly one provider block must be non-null. Wrapper presence selects the provider and must therefore be known during planning; values inside the selected provider may remain unknown until apply.
 
-    - `webhook`: Selects the workflow-job webhook control plane. It owns runner lifecycle and capacity, the build queue reference, the runner-control artifact, scale-up, scale-down, scheduled pool, and optional job-retry controls. Future providers can be added as sibling blocks without moving this contract.
+    - `webhook`: Selects the workflow-job webhook control plane. It owns runner lifecycle and capacity, the build queue reference, the runner-control artifact, scale-up, scale-down, scheduled pool, and optional job-retry controls.
+    - `scale_set`: Selects scale-set orchestration for this runner config. The multi-runner topology owns the shared controller service and passes this plan-known selection marker to runner-config. Scale-set runners always use ephemeral JIT registration.
     - `webhook.runner`: Runner lifecycle, boot timeout, and capacity settings owned by webhook orchestration.
     - `webhook.runner.boot_time_in_minutes`: Expected runner boot duration used by scale-down and pool controls. The default is `5`.
     - `webhook.runner.ephemeral`: Registers runners in ephemeral mode. The default is `false`.
@@ -54,6 +55,17 @@ variable "orchestration_provider" {
     - `webhook.job_retry.lambda.memory_size`: Memory allocated to the job-retry Lambda in MB. The default is `256`.
     - `webhook.job_retry.lambda.reserved_concurrent_executions`: Reserved concurrency for job retry. The default is `1`; use `-1` for unreserved concurrency.
     - `webhook.job_retry.lambda.timeout`: Job-retry Lambda timeout in seconds and visibility timeout for its retry queue. The default is `30`.
+    - `scale_set`: Selects scale-set orchestration for this runner configuration.
+    - `scale_set.github.config_url`: GitHub Actions scale-set configuration URL.
+    - `scale_set.github.installation_id_ssm`: SSM parameter containing the GitHub App installation ID.
+    - `scale_set.name`: Name of the scale set.
+    - `scale_set.id`: Numeric scale-set ID.
+    - `scale_set.runner_group_id`: Optional GitHub runner-group ID.
+    - `scale_set.min_runners`: Minimum number of scale-set runners. The default is `0`.
+    - `scale_set.max_runners`: Maximum number of scale-set runners. The default is `10`.
+    - `scale_set.boot_time_in_minutes`: Expected scale-set runner boot duration. The default is `10`.
+    - `scale_set.session_owner`: Optional owner for scale-set runner sessions.
+    - `scale_set.work_folder`: Optional runner work folder.
   EOT
   type = object({
     webhook = optional(object({
@@ -134,6 +146,25 @@ variable "orchestration_provider" {
           timeout                        = optional(number, 30)
         }), {})
       }), {})
+    }), null)
+    scale_set = optional(object({
+      github = object({
+        config_url = string
+        installation_id_ssm = object({
+          name        = string
+          arn         = string
+          kms_key_arn = optional(string, null)
+        })
+        force_ghes = optional(bool, null)
+      })
+      name                 = string
+      id                   = number
+      runner_group_id      = optional(number, null)
+      min_runners          = optional(number, 0)
+      max_runners          = optional(number, 10)
+      boot_time_in_minutes = optional(number, 10)
+      session_owner        = optional(string, null)
+      work_folder          = optional(string, null)
     }), null)
   })
   nullable = false

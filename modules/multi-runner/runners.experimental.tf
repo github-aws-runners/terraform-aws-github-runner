@@ -31,6 +31,7 @@ module "runner_configs" {
       lambda    = each.value.orchestration_provider.webhook.lambda
       job_retry = each.value.orchestration_provider.webhook.job_retry
     }
+    scale_set = each.value.orchestration_provider.scale_set
   }
   ssm              = each.value.ssm
   observability    = each.value.observability

@@ -29,6 +29,15 @@ output "orchestration_provider" {
       pool       = one(module.orchestration_webhook[*].pool)
       job_retry  = one(module.orchestration_webhook[*].job_retry)
     } : null
+    scale_set = local.orchestration_provider_enabled.scale_set ? var.orchestration_provider.scale_set : null
+  }
+}
+
+output "compute_provider_contract" {
+  description = "Provider-neutral compute-provider capabilities consumed by topology-level orchestration."
+  value = {
+    type         = local.provider_contract.type
+    capabilities = local.provider_contract.capabilities
   }
 }
 
