@@ -20,7 +20,7 @@ describe('runner config consumer package subpath', () => {
       deadlineMs: Date.now() + 1_000,
       signal: new AbortController().signal,
     };
-    const exported: RunnerConfigStorageEnvironment = exportRunnerConfigStorageEnvironment(context, {});
+    const exported: RunnerConfigStorageEnvironment = exportRunnerConfigStorageEnvironment(context);
     const consumerFactory: () => RunnerConfigConsumer = createRunnerConfigConsumerFromEnvironment;
 
     expect(parseRunnerConfigStorageContext(context)).toEqual(context);
