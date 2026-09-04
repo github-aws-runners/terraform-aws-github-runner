@@ -59,30 +59,9 @@ mock_provider "random" {}
 mock_provider "null" {}
 
 variables {
-  aws_region = "eu-west-1"
-  vpc_id     = "vpc-stable"
-  subnet_ids = ["subnet-stable"]
-
-  github_app = {
-    key_base64_ssm = {
-      arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/tests/github-app/key"
-      name = "/tests/github-app/key"
-    }
-    id_ssm = {
-      arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/tests/github-app/id"
-      name = "/tests/github-app/id"
-    }
-    webhook_secret_ssm = {
-      arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/tests/github-app/webhook-secret"
-      name = "/tests/github-app/webhook-secret"
-    }
-  }
-
-  lambda_s3_bucket      = "test-lambda-artifacts"
-  runners_lambda_zip    = "README.md"
-  runners_lambda_s3_key = "runners.zip"
-  webhook_lambda_s3_key = "webhook.zip"
-  syncer_lambda_s3_key  = "runner-binaries-syncer.zip"
+  aws_region    = "eu-west-1"
+  prefix        = "test"
+  aws_partition = "aws"
 
   experimental_global_config_github = {
     app = {
@@ -152,6 +131,30 @@ run "v1_stable_inputs_translate_into_effective_base" {
   command = plan
 
   variables {
+    vpc_id     = "vpc-stable"
+    subnet_ids = ["subnet-stable"]
+
+    github_app = {
+      key_base64_ssm = {
+        arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/tests/github-app/key"
+        name = "/tests/github-app/key"
+      }
+      id_ssm = {
+        arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/tests/github-app/id"
+        name = "/tests/github-app/id"
+      }
+      webhook_secret_ssm = {
+        arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/tests/github-app/webhook-secret"
+        name = "/tests/github-app/webhook-secret"
+      }
+    }
+
+    lambda_s3_bucket      = "test-lambda-artifacts"
+    runners_lambda_zip    = "README.md"
+    runners_lambda_s3_key = "runners.zip"
+    webhook_lambda_s3_key = "webhook.zip"
+    syncer_lambda_s3_key  = "runner-binaries-syncer.zip"
+
     tags = {
       source = "v1"
     }
@@ -413,10 +416,6 @@ run "v2_inputs_do_not_require_legacy_arguments" {
   command = plan
 
   variables {
-    github_app          = {}
-    vpc_id              = null
-    subnet_ids          = null
-    multi_runner_config = {}
     experimental_global_config_compute_provider = {
       aws = {
         ec2 = {
