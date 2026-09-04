@@ -1,9 +1,9 @@
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import {
-  createRunnerConfigStore,
-  createRunnerGroupCacheStore,
+  createStorageProviders,
   type RunnerConfigMetadata,
   type RunnerConfigStore,
+  type GitHubAppCredentialsStore,
   type RunnerGroupCacheStore,
 } from '@aws-github-runner/storage-providers';
 import { Octokit } from '@octokit/rest';
@@ -20,6 +20,7 @@ export interface GitHubRunnerMetadata {
 }
 
 export interface StartRunnerConfigOptions {
+  runnerConfigStore?: RunnerConfigStore;
   runnerGroupCacheStore?: RunnerGroupCacheStore;
   getRunnerConfigMetadata?: (runnerId: string) => RunnerConfigMetadata[];
   onJitConfigCreated?: (runnerId: string, metadata: GitHubRunnerMetadata) => Promise<void>;
@@ -56,37 +57,6 @@ function quoteRunnerLabelsForShell(labels: string): string {
 
 function quoteShellArg(value: string): string {
   return `'${value.replace(/'/g, `'\\''`)}'`;
-}
-
-export function validateSsmParameterStoreTags(tagsJson: string): { Key: string; Value: string }[] {
-  try {
-    const tags = JSON.parse(tagsJson);
-
-    if (!Array.isArray(tags)) {
-      throw new Error('Tags must be an array');
-    }
-
-    if (tags.length === 0) {
-      return [];
-    }
-
-    tags.forEach((tag, index) => {
-      if (typeof tag !== 'object' || tag === null) {
-        throw new Error(`Tag at index ${index} must be an object`);
-      }
-      if (!tag.Key || typeof tag.Key !== 'string' || tag.Key.trim() === '') {
-        throw new Error(`Tag at index ${index} has missing or invalid 'Key' property`);
-      }
-      if (!Object.prototype.hasOwnProperty.call(tag, 'Value') || typeof tag.Value !== 'string') {
-        throw new Error(`Tag at index ${index} has missing or invalid 'Value' property`);
-      }
-    });
-
-    return tags;
-  } catch (err) {
-    logger.error('Invalid SSM_PARAMETER_STORE_TAGS format', { error: err });
-    throw new Error(`Failed to parse SSM_PARAMETER_STORE_TAGS: ${(err as Error).message}`);
-  }
 }
 
 async function getGithubRunnerRegistrationToken(githubRunnerConfig: CreateGitHubRunnerConfig, ghClient: Octokit) {
@@ -137,10 +107,11 @@ export async function getInstallationId(
   enableOrgLevel: boolean,
   payload: ActionRequestMessage,
   appIndex?: number,
+  credentialsStore?: GitHubAppCredentialsStore,
 ): Promise<number> {
   // Use the pre-configured installation ID when available (avoids an API call).
   if (appIndex !== undefined) {
-    const storedId = await getStoredInstallationId(appIndex);
+    const storedId = await getStoredInstallationId(appIndex, credentialsStore);
     if (storedId !== undefined) return storedId;
   }
 
@@ -194,7 +165,7 @@ export async function getRunnerGroupId(
   // if the runnerType is Repo, then runnerGroupId is default to 1
   let runnerGroupId: number | undefined = 1;
   if (githubRunnerConfig.runnerType === 'Org' && githubRunnerConfig.runnerGroup !== undefined) {
-    const cacheStore = runnerGroupCacheStore ?? createRunnerGroupCacheStore();
+    const cacheStore = runnerGroupCacheStore ?? createStorageProviders().runnerGroupCache;
     const runnerGroup = await cacheStore.get(githubRunnerConfig.runnerGroup);
     if (runnerGroup === undefined) {
       // get runner group id from GitHub
@@ -236,7 +207,7 @@ export async function createStartRunnerConfig(
   ghClient: Octokit,
   options: StartRunnerConfigOptions = {},
 ): Promise<string[]> {
-  const runnerConfigStore = createRunnerConfigStore();
+  const runnerConfigStore = options.runnerConfigStore ?? createStorageProviders().runnerConfig;
   if (githubRunnerConfig.enableJitConfig && githubRunnerConfig.ephemeral) {
     return await createJitConfig(githubRunnerConfig, runnerIds, ghClient, runnerConfigStore, options);
   } else {

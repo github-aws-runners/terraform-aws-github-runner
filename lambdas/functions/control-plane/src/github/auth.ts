@@ -7,7 +7,11 @@ import { Octokit } from '@octokit/rest';
 import { retry } from '@octokit/plugin-retry';
 import { throttling } from '@octokit/plugin-throttling';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
-import { createGitHubAppCredentialsStore, type GitHubAppCredential } from '@aws-github-runner/storage-providers';
+import {
+  createCommonStorage,
+  type GitHubAppCredential,
+  type GitHubAppCredentialsStore,
+} from '@aws-github-runner/storage-providers';
 import { EndpointDefaults } from '@octokit/types';
 
 type AppAuthOptions = { type: 'app' };
@@ -56,31 +60,37 @@ export function onSecondaryRateLimit(
 let appCredentialsPromise: Promise<GitHubAppCredential[]> | null = null;
 
 async function loadAppCredentials(): Promise<GitHubAppCredential[]> {
-  const credentials = await createGitHubAppCredentialsStore().get();
+  const credentials = await createCommonStorage().githubAppCredentials.get();
   logger.info(`Loaded ${credentials.length} GitHub App credential(s)`);
   return credentials;
 }
 
-function getAppCredentials(): Promise<GitHubAppCredential[]> {
+function getAppCredentials(credentialsStore?: GitHubAppCredentialsStore): Promise<GitHubAppCredential[]> {
+  if (credentialsStore) {
+    return credentialsStore.get();
+  }
   if (!appCredentialsPromise) appCredentialsPromise = loadAppCredentials();
   return appCredentialsPromise;
 }
 
-export async function getAppCount(): Promise<number> {
-  return (await getAppCredentials()).length;
+export async function getAppCount(credentialsStore?: GitHubAppCredentialsStore): Promise<number> {
+  return (await getAppCredentials(credentialsStore)).length;
 }
 
 export function resetAppCredentialsCache(): void {
   appCredentialsPromise = null;
 }
 
-export async function getStoredInstallationId(appIndex: number): Promise<number | undefined> {
-  const credentials = await getAppCredentials();
+export async function getStoredInstallationId(
+  appIndex: number,
+  credentialsStore?: GitHubAppCredentialsStore,
+): Promise<number | undefined> {
+  const credentials = await getAppCredentials(credentialsStore);
   return credentials[appIndex]?.installationId;
 }
 
-export async function getAppId(appIndex = 0): Promise<string> {
-  const credential = (await getAppCredentials())[appIndex];
+export async function getAppId(appIndex = 0, credentialsStore?: GitHubAppCredentialsStore): Promise<string> {
+  const credential = (await getAppCredentials(credentialsStore))[appIndex];
   if (!credential) {
     throw new Error(`GitHub App credential at index ${appIndex} not found`);
   }
@@ -117,10 +127,11 @@ export async function createGithubAppAuth(
   installationId: number | undefined,
   ghesApiUrl = '',
   appIndex?: number,
+  credentialsStore?: GitHubAppCredentialsStore,
 ): Promise<AppAuthentication & { appIndex: number }> {
-  const credentials = await getAppCredentials();
+  const credentials = await getAppCredentials(credentialsStore);
   const idx = appIndex ?? Math.floor(Math.random() * credentials.length);
-  const auth = await createAuth(installationId, ghesApiUrl, idx);
+  const auth = await createAuth(installationId, ghesApiUrl, idx, credentialsStore);
   return { ...(await auth({ type: 'app' })), appIndex: idx };
 }
 
@@ -128,10 +139,11 @@ export async function createGithubInstallationAuth(
   installationId: number | undefined,
   ghesApiUrl = '',
   appIndex?: number,
+  credentialsStore?: GitHubAppCredentialsStore,
 ): Promise<InstallationAccessTokenAuthentication> {
-  const credentials = await getAppCredentials();
+  const credentials = await getAppCredentials(credentialsStore);
   const idx = appIndex ?? Math.floor(Math.random() * credentials.length);
-  const auth = await createAuth(installationId, ghesApiUrl, idx);
+  const auth = await createAuth(installationId, ghesApiUrl, idx, credentialsStore);
   return auth({ type: 'installation', installationId });
 }
 
@@ -147,8 +159,9 @@ async function createAuth(
   installationId: number | undefined,
   ghesApiUrl: string,
   appIndex?: number,
+  credentialsStore?: GitHubAppCredentialsStore,
 ): Promise<AuthInterface> {
-  const credentials = await getAppCredentials();
+  const credentials = await getAppCredentials(credentialsStore);
   const selected =
     appIndex !== undefined ? credentials[appIndex] : credentials[Math.floor(Math.random() * credentials.length)];
   if (!selected) {

@@ -9,12 +9,10 @@ export default mergeConfig(defaultConfig, {
     coverage: {
       include: [
         'index.ts',
-        'github-app-credentials.ts',
-        'runner-config.ts',
         'runner-config-housekeeper.ts',
         'runner-config-consumer.ts',
-        'runner-config-consumer-common.ts',
-        'runner-group-cache.ts',
+        'storage-providers.ts',
+        'provider.ts',
         'core/**/*.ts',
         'aws/**/*.ts',
       ],

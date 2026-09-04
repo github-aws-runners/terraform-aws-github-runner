@@ -114,9 +114,6 @@ describe('createEc2PoolCapability.createRunners', () => {
     runnerOwner: 'owner',
     runnerType: 'Org',
     disableAutoUpdate: false,
-    ssmTokenPath: '/runners/tokens',
-    ssmConfigPath: '/runners/config',
-    ssmParameterStoreTags: [],
   };
   const providerConfig: Ec2ProviderConfig = {
     environment: 'test-environment',
