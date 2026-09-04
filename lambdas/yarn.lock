@@ -202,6 +202,16 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@aws-github-runner/microvm-lifecycle-hooks@workspace:services/microvm-lifecycle-hooks":
+  version: 0.0.0-use.local
+  resolution: "@aws-github-runner/microvm-lifecycle-hooks@workspace:services/microvm-lifecycle-hooks"
+  dependencies:
+    "@aws-github-runner/storage-providers": "npm:*"
+    "@types/node": "npm:^22.19.3"
+    "@vercel/ncc": "npm:^0.38.4"
+  languageName: unknown
+  linkType: soft
+
 "@aws-github-runner/storage-providers@npm:*, @aws-github-runner/storage-providers@workspace:libs/storage-providers":
   version: 0.0.0-use.local
   resolution: "@aws-github-runner/storage-providers@workspace:libs/storage-providers"

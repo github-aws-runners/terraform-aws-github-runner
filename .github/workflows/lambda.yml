@@ -50,3 +50,37 @@ jobs:
           name: coverage-reports
           path: ./**/coverage
           retention-days: 5
+
+  microvm-lifecycle-hooks:
+    name: Build MicroVM lifecycle hook
+    runs-on: ubuntu-latest
+    container:
+      image: node:24@sha256:aa648b387728c25f81ff811799bbf8de39df66d7e2d9b3ab55cc6300cb9175d9
+    defaults:
+      run:
+        working-directory: ./lambdas
+
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Run prettier
+        run: yarn prettier --check "services/microvm-lifecycle-hooks/**/*.{ts,json,md}"
+
+      - name: Run linter
+        run: yarn eslint services/microvm-lifecycle-hooks/src
+
+      - name: Run tests
+        run: yarn nx test @aws-github-runner/microvm-lifecycle-hooks
+
+      - name: Build distribution
+        run: yarn workspace @aws-github-runner/microvm-lifecycle-hooks build
