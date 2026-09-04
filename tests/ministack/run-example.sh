@@ -14,9 +14,14 @@ example="${2:-}"
 tfvars_file="${3:-${MINISTACK_TFVARS_FILE:-}}"
 
 case "$example" in
-  base | prebuilt | termination-watcher) ;;
+  base | prebuilt)
+    use_tfvars=true
+    ;;
+  termination-watcher)
+    use_tfvars=false
+    ;;
   *)
-  echo "Supported examples for the tfvars-only runner are: base, prebuilt, termination-watcher" >&2
+  echo "Supported examples for the runner are: base, prebuilt, termination-watcher" >&2
   exit 64
   ;;
 esac
@@ -33,19 +38,21 @@ script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 source_root=$(CDPATH='' cd -- "$script_dir/../.." && pwd)
 example_root="$source_root/examples/$example"
 
-if [ -z "$tfvars_file" ]; then
-  tfvars_file="$script_dir/$example.tfvars"
-fi
+if [ "$use_tfvars" = true ]; then
+  if [ -z "$tfvars_file" ]; then
+    tfvars_file="$script_dir/$example.tfvars"
+  fi
 
-case "$tfvars_file" in
-  /*) ;;
-  *) tfvars_file="$PWD/$tfvars_file" ;;
-esac
+  case "$tfvars_file" in
+    /*) ;;
+    *) tfvars_file="$PWD/$tfvars_file" ;;
+  esac
 
-if [ ! -f "$tfvars_file" ]; then
-  echo "Terraform variables file not found: $tfvars_file" >&2
-  echo "Pass it as the third argument or set MINISTACK_TFVARS_FILE." >&2
-  exit 66
+  if [ ! -f "$tfvars_file" ]; then
+    echo "Terraform variables file not found: $tfvars_file" >&2
+    echo "Pass it as the third argument or set MINISTACK_TFVARS_FILE." >&2
+    exit 66
+  fi
 fi
 
 lambda_fixture_dir=""
@@ -168,7 +175,11 @@ terraform_init() {
 }
 
 terraform_example() {
-  terraform -chdir="$example_root" "$@" -var-file="$tfvars_file"
+  if [ "$use_tfvars" = true ]; then
+    terraform -chdir="$example_root" "$@" -var-file="$tfvars_file"
+  else
+    terraform -chdir="$example_root" "$@"
+  fi
 }
 
 case "$action" in

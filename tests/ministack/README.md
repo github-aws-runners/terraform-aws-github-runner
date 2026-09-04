@@ -1,9 +1,11 @@
 # MiniStack example tests
 
 The MiniStack workflow runs the `base`, `prebuilt`, and `termination-watcher` examples directly with
-Terraform. Each example gets its inputs from its own tfvars file in this
-directory; no override files, setup module, or generated Terraform fixture
-configuration is used.
+Terraform. The `base` and `prebuilt` examples get their inputs from their own
+tfvars files in this directory. The `termination-watcher` example has no input
+variables and uses the configuration checked into the example itself. No
+override files, setup module, or generated Terraform fixture configuration is
+used.
 
 Start MiniStack, set the AWS endpoint and test credentials, then run:
 
