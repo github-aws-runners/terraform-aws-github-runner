@@ -72,7 +72,9 @@ export function runnerConfigStorageEnvironment(context: RunnerConfigStorageConte
 }
 
 /** Returns an allowlisted environment object without mutating process.env or a caller-owned target. */
-export function exportRunnerConfigStorageEnvironment(context: RunnerConfigStorageContext): RunnerConfigStorageEnvironment {
+export function exportRunnerConfigStorageEnvironment(
+  context: RunnerConfigStorageContext,
+): RunnerConfigStorageEnvironment {
   return runnerConfigStorageEnvironment(context);
 }
 

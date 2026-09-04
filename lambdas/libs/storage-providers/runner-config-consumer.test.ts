@@ -79,9 +79,7 @@ describe('runner config storage context', () => {
   });
 
   it('rejects unexpected context keys', () => {
-    expect(() =>
-      exportRunnerConfigStorageEnvironment({ ...ssmContext, unexpected: 'forbidden' } as never),
-    ).toThrow();
+    expect(() => exportRunnerConfigStorageEnvironment({ ...ssmContext, unexpected: 'forbidden' } as never)).toThrow();
   });
 });
 
