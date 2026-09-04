@@ -164,7 +164,7 @@ case "$action" in
 esac
 
 terraform_init() {
-  terraform -chdir="$example_root" init -backend=false -input=false -upgrade
+  terraform -chdir="$example_root" init -backend=false -input=false -lockfile=readonly
 }
 
 terraform_example() {
