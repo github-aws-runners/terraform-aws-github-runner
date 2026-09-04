@@ -51,7 +51,7 @@ module "microvm_foundation" {
 
 The companion `examples/microvm-foundation` directory is a complete setup
 example. Apply it before following the direct Packer build instructions in
-`images/microvm/README.md` or using the `examples/microvm` runner example.
+`images/microvm-ubuntu/README.md` or using the `examples/microvm` runner example.
 
 <!-- BEGIN_TF_DOCS -->
 ## Requirements

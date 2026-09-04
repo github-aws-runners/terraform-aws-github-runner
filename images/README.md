@@ -39,3 +39,16 @@ ami_owners        = ["<your owner id>"]
 
 enable_userdata = false
 ```
+
+## Lambda MicroVM images
+
+The `microvm-ubuntu` directory contains the Packer inputs for the Lambda MicroVM
+image workflow. Unlike the AMI examples above, Lambda owns the image build.
+The Packer template, Dockerfile, lifecycle-hook ZIP contract, and image
+entrypoint are under `microvm-ubuntu/`; the compiled hook server is supplied
+separately as a build artifact.
+
+Apply [`examples/microvm-foundation`](../examples/microvm-foundation) first,
+then follow the [`microvm-ubuntu` build instructions](microvm-ubuntu/README.md) and run
+Packer with its outputs. Use the resulting image ARN in the
+[`examples/microvm`](../examples/microvm) runner example.
