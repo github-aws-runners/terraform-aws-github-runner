@@ -1,9 +1,11 @@
 export type {
   RunnerConfigMetadata,
+  RunnerConfigHousekeeper,
   RunnerConfigRecord,
   RunnerConfigStore,
   RunnerGroupCacheRecord,
   RunnerGroupCacheStore,
 } from './core';
 export { createRunnerConfigStore } from './runner-config';
+export { createRunnerConfigHousekeeper } from './runner-config-housekeeper';
 export { createRunnerGroupCacheStore } from './runner-group-cache';
