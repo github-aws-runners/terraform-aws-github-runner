@@ -503,6 +503,13 @@ run "v2_microvm_inputs_route_to_microvm_provider" {
               key = "global-runners.zip"
             }
           }
+          webhook = {
+            artifact = {
+              s3 = {
+                key = "global-webhook.zip"
+              }
+            }
+          }
         }
       }
     }
@@ -560,8 +567,9 @@ run "v2_microvm_inputs_route_to_microvm_provider" {
       && local.resolved_config.multi_runner_config["microvm"].compute_provider.aws.ec2 == null
       && local.resolved_config.multi_runner_config["microvm"].compute_provider.aws.microvm.image_arn == "arn:aws:lambda:eu-west-1:123456789012:microvm-image:global"
       && local.resolved_config.multi_runner_config["microvm"].compute_provider.aws.microvm.image_version == "8"
+      && local.effective_config.orchestration_provider.webhook.lambda.webhook.artifact.s3.key == "global-webhook.zip"
     )
-    error_message = "Experimental MicroVM lanes must resolve Linux ARM64 settings and inherit global provider values while applying lane overrides."
+    error_message = "Experimental MicroVM lanes must resolve Linux ARM64 settings, inherit global provider values, and place the webhook artifact key under lambda.webhook.artifact."
   }
 
   assert {
