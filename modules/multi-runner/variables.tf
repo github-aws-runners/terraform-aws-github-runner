@@ -1,6 +1,8 @@
 variable "github_app" {
   description = <<EOF
-  GitHub app parameters, see your github app.
+  GitHub app parameters for the stable v1 interface, see your github app.
+  Omit this value when using the experimental v2 interface and provide the
+  app through `experimental_global_config_github` instead.
   You can optionally create the SSM parameters yourself and provide the ARN and name here, through the `*_ssm` attributes.
   If you chose to provide the configuration values directly here,
   please ensure the key is the base64-encoded `.pem` file (the output of `base64 app.private-key.pem`, not the content of `private-key.pem`).
@@ -23,16 +25,7 @@ variable "github_app" {
       name = string
     }))
   })
-
-  validation {
-    condition     = (var.github_app.key_base64 != null || var.github_app.key_base64_ssm != null) && (var.github_app.id != null || var.github_app.id_ssm != null) && (var.github_app.webhook_secret != null || var.github_app.webhook_secret_ssm != null)
-    error_message = <<EOF
-     You must set all of the following parameters, choosing one option from each pair:
-      - `key_base64` or `key_base64_ssm`
-      - `id` or `id_ssm`
-      - `webhook_secret` or `webhook_secret_ssm`
-    EOF
-  }
+  default = {}
 }
 
 
@@ -250,6 +243,7 @@ variable "multi_runner_config" {
       maxReceiveCount = null
     })
   }))
+  default     = {}
   description = <<EOT
     multi_runner_config = {
       runner_config: {
@@ -584,13 +578,15 @@ variable "aws_region" {
 }
 
 variable "vpc_id" {
-  description = "The VPC for security groups of the action runners."
+  description = "The VPC for security groups of stable v1 action runners. Omit when using the experimental v2 interface."
   type        = string
+  default     = null
 }
 
 variable "subnet_ids" {
-  description = "List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`."
+  description = "List of subnets in which stable v1 action runners will be launched. Omit when using the experimental v2 interface."
   type        = list(string)
+  default     = null
 }
 
 variable "enable_managed_runner_security_group" {
