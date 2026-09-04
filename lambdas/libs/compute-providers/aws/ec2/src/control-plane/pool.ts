@@ -44,7 +44,7 @@ export function createEc2PoolCapability(
         statuses: ['running'],
       }),
     countAvailableRunners: countAvailableEc2PoolRunners,
-    createRunners: async ({ githubRunnerConfig, numberOfRunners, githubInstallationClient }) => {
+    createRunners: async ({ githubRunnerConfig, numberOfRunners, githubInstallationClient, storage }) => {
       const config = loadEc2ProviderConfig();
 
       const { instances } = await createRunners(
@@ -64,6 +64,7 @@ export function createEc2PoolCapability(
         githubInstallationClient,
         createStartRunnerConfig,
         'pool-lambda',
+        storage,
       );
       return instances;
     },

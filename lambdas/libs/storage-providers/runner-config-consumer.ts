@@ -1,6 +1,6 @@
 import { createAwsSsmRunnerConfigConsumer, type AwsSsmRunnerConfigApi } from './aws/ssm/runner-config-consumer';
 import type { RunnerConfigConsumer } from './core';
-import { canonicalSsmTokenPath, type RunnerConfigPollingOptions } from './runner-config-consumer-common';
+import { canonicalSsmTokenPath, type RunnerConfigPollingOptions } from './aws/ssm/runner-config-consumer-common';
 
 export type { RunnerConfigConsumeOptions, RunnerConfigConsumer } from './core';
 export type { AwsSsmRunnerConfigApi } from './aws/ssm/runner-config-consumer';

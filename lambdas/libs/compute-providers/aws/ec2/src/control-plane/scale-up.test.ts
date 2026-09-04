@@ -52,8 +52,6 @@ function runnerConfig(overrides: Partial<CreateGitHubRunnerConfig> = {}): Create
     runnerOwner,
     runnerType: 'Org',
     disableAutoUpdate: false,
-    ssmConfigPath: '/github-action-runners/default/runners/config',
-    ssmParameterStoreTags: [],
     ...overrides,
   };
 }

@@ -3,9 +3,11 @@ interface SsmParameterStoreTag {
   Value: string;
 }
 
-export function loadSsmParameterStoreTagsFromEnvironment(): SsmParameterStoreTag[] {
-  return process.env.SSM_PARAMETER_STORE_TAGS && process.env.SSM_PARAMETER_STORE_TAGS.trim() !== ''
-    ? validateSsmParameterStoreTags(process.env.SSM_PARAMETER_STORE_TAGS)
+export function loadSsmParameterStoreTagsFromEnvironment(
+  environment: Readonly<Record<string, string | undefined>> = process.env,
+): SsmParameterStoreTag[] {
+  return environment.SSM_PARAMETER_STORE_TAGS && environment.SSM_PARAMETER_STORE_TAGS.trim() !== ''
+    ? validateSsmParameterStoreTags(environment.SSM_PARAMETER_STORE_TAGS)
     : [];
 }
 
