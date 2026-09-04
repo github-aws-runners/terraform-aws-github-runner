@@ -156,7 +156,8 @@ jobs:
             "termination-watcher",
             "multi-runner",
             "multi-runner-v2",
-            "external-managed-ssm-secrets"
+            "external-managed-ssm-secrets",
+            "multi-runner-scale-set"
           ]
     defaults:
       run:
