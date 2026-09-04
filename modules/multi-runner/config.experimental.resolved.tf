@@ -33,7 +33,10 @@ locals {
   # A non-empty experimental map selects v2 normalization.
   use_v2_config = length(var.experimental_multi_runner_config) > 0
 
-  normalized_config = local.use_v2_config ? local.experimental : local.stable_to_experimental
+  normalized_config = merge(
+    local.stable_to_experimental,
+    { for k, v in local.experimental : k => v if local.use_v2_config },
+  )
 }
 
 locals {
