@@ -325,7 +325,7 @@ describe('pool adjustment', () => {
 
       await adjust({ poolSize: 3 });
 
-      expect(mockedInstallationAuth).toHaveBeenCalledWith(expect.any(Number), expect.any(String), 1);
+      expect(mockedInstallationAuth).toHaveBeenCalledWith(expect.any(Number), expect.any(String), 1, expect.anything());
     });
 
     it('looks up installationId using the selected app JWT', async () => {
