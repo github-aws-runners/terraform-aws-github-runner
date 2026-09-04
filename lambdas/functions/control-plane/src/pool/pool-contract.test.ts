@@ -48,6 +48,7 @@ const computeProviders = providerTypes.map((type) => ({
 beforeEach(() => {
   vi.clearAllMocks();
   process.env = { ...cleanEnv };
+  process.env.SSM_TOKEN_PATH = '/github-action-runners/default/runners/tokens';
 
   mockedAppAuth.mockResolvedValue({ type: 'app', token: 'app-token', appId: 1, expiresAt: 'some-date' });
   mockedInstallationAuth.mockResolvedValue({

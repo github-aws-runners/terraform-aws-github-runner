@@ -137,6 +137,7 @@ __metadata:
   dependencies:
     "@aws-github-runner/aws-powertools-util": "npm:*"
     "@aws-github-runner/aws-ssm-util": "npm:*"
+    "@aws-github-runner/storage-providers": "npm:*"
     "@aws-sdk/client-ec2": "npm:^3.1009.0"
     "@octokit/rest": "npm:22.0.1"
     aws-sdk-client-mock: "npm:^4.1.0"
@@ -154,6 +155,7 @@ __metadata:
     "@aws-github-runner/aws-powertools-util": "npm:*"
     "@aws-github-runner/aws-ssm-util": "npm:*"
     "@aws-github-runner/compute-providers": "npm:*"
+    "@aws-github-runner/storage-providers": "npm:*"
     "@aws-lambda-powertools/parameters": "npm:^2.31.0"
     "@aws-sdk/client-ec2": "npm:^3.1009.0"
     "@aws-sdk/client-sqs": "npm:^3.1009.0"
@@ -196,6 +198,18 @@ __metadata:
     aws-sdk-client-mock-jest: "npm:^4.1.0"
     aws-sdk-client-mock-vitest: "npm:^7.0.1"
     axios: "npm:^1.18.1"
+  languageName: unknown
+  linkType: soft
+
+"@aws-github-runner/storage-providers@npm:*, @aws-github-runner/storage-providers@workspace:libs/storage-providers":
+  version: 0.0.0-use.local
+  resolution: "@aws-github-runner/storage-providers@workspace:libs/storage-providers"
+  dependencies:
+    "@aws-github-runner/aws-powertools-util": "npm:*"
+    "@aws-github-runner/aws-ssm-util": "npm:*"
+    "@aws-sdk/client-ssm": "npm:^3.1009.0"
+    aws-sdk-client-mock: "npm:^4.1.0"
+    aws-sdk-client-mock-jest: "npm:^4.1.0"
   languageName: unknown
   linkType: soft
 
