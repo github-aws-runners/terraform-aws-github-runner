@@ -832,6 +832,7 @@ variable "user_agent" {
   default     = "github-aws-runners"
 }
 
+# tflint-ignore: terraform_unused_declarations
 variable "iam_overrides" {
   description = "This map provides the possibility to override some IAM defaults. The following attributes are supported: `instance_profile_name` overrides the instance profile name used in the launch template. `runner_role_arn` overrides the IAM role ARN used for the runner instances."
   type = object({
