@@ -20,7 +20,7 @@ jobs:
     name: Verify module
     strategy:
       matrix:
-        terraform: ["1.4.0", "latest"]
+        terraform: ["1.5.6", "latest"]
     runs-on: ubuntu-latest
     container:
       image: hashicorp/terraform:${{ matrix.terraform }}
@@ -43,7 +43,7 @@ jobs:
           touch lambdas/functions/termination-watcher/termination-watcher.zip
       - name: terraform init
         run: terraform init -get -backend=false -input=false
-      - if: matrix.terraform != 'latest'
+      - if: contains(matrix.terraform, '1.5.')
         name: check terraform formatting
         run: terraform fmt -recursive -check=true -write=false
       - if: contains(matrix.terraform, 'latest') # check formatting for the latest release but avoid failing the build
@@ -52,22 +52,22 @@ jobs:
         continue-on-error: true
       - name: validate terraform
         run: terraform validate
-      - if: matrix.terraform != 'latest'
+      - if: contains(matrix.terraform, '1.5.')
         name: Fix for actions/cache on alpine
         run: apk add --no-cache tar
         continue-on-error: true
-      - if: matrix.terraform != 'latest'
+      - if: contains(matrix.terraform, '1.5.')
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         name: Cache TFLint plugin dir
         with:
           path: ~/.tflint.d/plugins
           key: tflint-${{ hashFiles('.tflint.hcl') }}
-      - if: matrix.terraform != 'latest'
+      - if: contains(matrix.terraform, '1.5.')
         name: Setup TFLint
         uses: terraform-linters/setup-tflint@6e1e0642c0289bd619021bf6b34e3c08ed1e005a # v6.3.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-      - if: matrix.terraform != 'latest'
+      - if: contains(matrix.terraform, '1.5.')
         name: Run TFLint
         run: |
           tflint --init -c ${GITHUB_WORKSPACE}/.tflint.hcl
@@ -78,7 +78,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        terraform: ["1.4.0", "latest"]
+        terraform: ["1.5.6", "latest"]
         module:
           [
             "ami-housekeeper",
@@ -109,7 +109,7 @@ jobs:
           persist-credentials: false
       - name: terraform init
         run: terraform init -get -backend=false -input=false
-      - if: matrix.terraform != 'latest'
+      - if: contains(matrix.terraform, '1.3.')
         name: check terraform formatting
         run: terraform fmt -recursive -check=true -write=false
       - if: contains(matrix.terraform, 'latest') # check formatting for the latest release but avoid failing the build
@@ -118,22 +118,22 @@ jobs:
         continue-on-error: true
       - name: validate terraform
         run: terraform validate
-      - if: matrix.terraform != 'latest'
+      - if: contains(matrix.terraform, '1.3.')
         name: Fix for actions/cache on alpine
         run: apk add --no-cache tar
         continue-on-error: true
-      - if: matrix.terraform != 'latest'
+      - if: contains(matrix.terraform, '1.3.')
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         name: Cache TFLint plugin dir
         with:
           path: ~/.tflint.d/plugins
           key: tflint-${{ hashFiles('.tflint.hcl') }}
-      - if: matrix.terraform != 'latest'
+      - if: contains(matrix.terraform, '1.3.')
         name: Setup TFLint
         uses: terraform-linters/setup-tflint@6e1e0642c0289bd619021bf6b34e3c08ed1e005a # v6.3.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-      - if: matrix.terraform != 'latest'
+      - if: contains(matrix.terraform, '1.3.')
         name: Run TFLint
         working-directory: ${{ github.workspace }}
         env:
@@ -147,7 +147,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        terraform: ["1.4.0", "latest"]
+        terraform: ["1.5.6", "latest"]
         example:
           [
             "default",
@@ -174,7 +174,7 @@ jobs:
           persist-credentials: false
       - name: terraform init
         run: terraform init -get -backend=false -input=false
-      - if: matrix.terraform != 'latest'
+      - if: contains(matrix.terraform, '1.5.')
         name: check terraform formatting
         run: terraform fmt -recursive -check=true -write=false
       - if: contains(matrix.terraform, 'latest') # check formatting for the latest release but avoid failing the build
@@ -183,22 +183,22 @@ jobs:
         continue-on-error: true
       - name: validate terraform
         run: terraform validate
-      - if: matrix.terraform != 'latest'
+      - if: contains(matrix.terraform, '1.5.')
         name: Fix for actions/cache on alpine
         run: apk add --no-cache tar
         continue-on-error: true
-      - if: matrix.terraform != 'latest'
+      - if: contains(matrix.terraform, '1.5.')
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         name: Cache TFLint plugin dir
         with:
           path: ~/.tflint.d/plugins
           key: tflint-${{ hashFiles('.tflint.hcl') }}
-      - if: matrix.terraform != 'latest'
+      - if: contains(matrix.terraform, '1.5.')
         name: Setup TFLint
         uses: terraform-linters/setup-tflint@6e1e0642c0289bd619021bf6b34e3c08ed1e005a # v6.3.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-      - if: matrix.terraform != 'latest'
+      - if: contains(matrix.terraform, '1.5.')
         name: Run TFLint
         working-directory: ${{ github.workspace }}
         env:
