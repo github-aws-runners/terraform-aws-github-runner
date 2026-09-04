@@ -194,6 +194,9 @@ run "v1_stable_inputs_translate_into_effective_base" {
       && local.resolved_config.multi_runner_config["stable"].runner.group_name == "v1-lane"
       && local.resolved_config.multi_runner_config["stable"].orchestration_provider.webhook.runner.maximum_count == 2
       && toset(local.resolved_config.multi_runner_config["stable"].compute_provider.aws.ec2.instance_types) == toset(["m5.large"])
+      && local.resolved_config.multi_runner_config["stable"].compute_provider.aws.microvm.image_arn == null
+      && local.resolved_config.multi_runner_config["stable"].compute_provider.aws.microvm.cloudwatch_agent.enabled
+      && length(local.resolved_config.multi_runner_config["stable"].compute_provider.aws.microvm.environment_variables) == 0
       && toset(local.effective_config.multi_runner_config["stable"].runner.labels) == toset(["linux", "self-hosted", "x64"])
     )
     error_message = "Stable v1 inputs must translate into the effective experimental base without leaking v2 globals."
