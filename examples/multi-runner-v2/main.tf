@@ -19,28 +19,11 @@ module "runners" {
 
   prefix     = local.environment
   aws_region = local.aws_region
-  vpc_id     = module.base.vpc.vpc_id
-  subnet_ids = module.base.vpc.private_subnets
-
-  # Required compatibility input; the non-empty v2 map below selects the v2
-  # routing path and keeps this legacy map unused.
-  multi_runner_config = {}
-
-  tags = {
-    Project = "ProjectX"
-  }
-
-  # The compatibility input remains required by the module while the v2
-  # GitHub configuration is supplied through experimental_global_config_github.
-  github_app = {
-    key_base64     = var.github_app.key_base64
-    id             = var.github_app.id
-    webhook_secret = random_id.random.hex
-  }
 
   experimental_global_config = {
     tags = {
       Example = local.environment
+      Project = "ProjectX"
     }
     runner = {
       os           = "linux"
