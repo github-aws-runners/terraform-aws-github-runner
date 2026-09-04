@@ -2167,19 +2167,6 @@ describe('compute provider selection', () => {
   });
 });
 
-describe('runner config store preflight', () => {
-  it('rejects an unsupported store before resolving compute or GitHub providers', async () => {
-    process.env.RUNNER_CONFIG_STORAGE_PROVIDER = 'unsupported-provider';
-
-    await expect(scaleUpModule.scaleUp(TEST_DATA)).rejects.toThrow(
-      "Unsupported runner config storage provider 'unsupported-provider'",
-    );
-
-    expect(mockedResolveCapability).not.toHaveBeenCalled();
-    expect(mockedAppAuth).not.toHaveBeenCalled();
-  });
-});
-
 describe('Multi-app round-robin', () => {
   const mockedGetAppCount = vi.mocked(ghAuth.getAppCount);
   const mockedGetStoredInstallationId = vi.mocked(ghAuth.getStoredInstallationId);

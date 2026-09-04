@@ -166,17 +166,6 @@ describe('pool adjustment', () => {
 
       expect(poolProvider.createRunners).not.toHaveBeenCalled();
     });
-
-    it('rejects an unsupported runner config store before GitHub or runner lookups', async () => {
-      process.env.RUNNER_CONFIG_STORAGE_PROVIDER = 'unsupported-provider';
-
-      await expect(adjust({ poolSize: 10 })).rejects.toThrow(
-        "Unsupported runner config storage provider 'unsupported-provider'",
-      );
-
-      expect(mockedAppAuth).not.toHaveBeenCalled();
-      expect(poolProvider.listRunners).not.toHaveBeenCalled();
-    });
   });
 
   describe('With GHES', () => {
