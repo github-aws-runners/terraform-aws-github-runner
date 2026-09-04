@@ -32,17 +32,4 @@ resource "random_string" "random" {
   length  = 24
   special = false
   upper   = false
-
-  lifecycle {
-    precondition {
-      condition = local.use_v2_config || (
-        var.github_app.key_base64 != null || var.github_app.key_base64_ssm != null
-        ) && (
-        var.github_app.id != null || var.github_app.id_ssm != null
-        ) && (
-        var.github_app.webhook_secret != null || var.github_app.webhook_secret_ssm != null
-      ) && var.vpc_id != null && var.subnet_ids != null && length(var.multi_runner_config) > 0
-      error_message = "Stable v1 configuration requires github_app, vpc_id, subnet_ids, and multi_runner_config; v2 configuration supplies these through experimental inputs."
-    }
-  }
 }
