@@ -10,8 +10,9 @@ export type {
   RunnerGroupCacheRecord,
   RunnerGroupCacheStore,
 } from './core';
-export { createGitHubAppCredentialsStore } from './github-app-credentials';
 export { createRunnerConfigHousekeeper } from './runner-config-housekeeper';
-export { createRunnerConfigStore } from './runner-config';
-export { createRunnerGroupCacheStore } from './runner-group-cache';
 export { createRunnerConfigConsumer, type RunnerConfigConsumerConfig } from './runner-config-consumer';
+export { resolveRunnerConfigStorageProvider, runnerConfigStorageProviders } from './provider';
+export type { RunnerConfigStorageProvider } from './provider';
+export { createCommonStorage, createStorageProviders } from './storage-providers';
+export type { StorageProviders, RunnerConfigStorage, CommonStorage } from './core';

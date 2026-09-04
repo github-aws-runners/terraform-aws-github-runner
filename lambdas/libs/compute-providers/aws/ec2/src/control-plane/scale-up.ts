@@ -55,7 +55,7 @@ export function createEc2ScaleUpCapability(
     resolveLabelsForRunners: (labels) => resolveEc2ScaleUpRunnerLabels(ec2Operations, labels),
     getCurrentRunners: async (_state, { runnerType, runnerOwner }) =>
       (await ec2Operations.list({ environment: process.env.ENVIRONMENT, runnerType, runnerOwner })).length,
-    createRunners: async ({ githubRunnerConfig, numberOfRunners, githubInstallationClient, state }) => {
+    createRunners: async ({ githubRunnerConfig, numberOfRunners, githubInstallationClient, state, storage }) => {
       const config = loadEc2ScaleUpProviderConfig();
 
       return await createRunners(
@@ -69,6 +69,7 @@ export function createEc2ScaleUpCapability(
         githubInstallationClient,
         createStartRunnerConfig,
         'scale-up-lambda',
+        storage,
       );
     },
   };

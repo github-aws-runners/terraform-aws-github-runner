@@ -31,7 +31,6 @@ vi.mock('../scale-runners/github-runner', () => ({
     ghesApiUrl: '',
     ghesBaseUrl: '',
   }),
-  validateSsmParameterStoreTags: vi.fn().mockReturnValue([]),
 }));
 
 const mockedAppAuth = vi.mocked(ghAuth.createGithubAppAuth);
@@ -93,6 +92,9 @@ beforeEach(() => {
   process.env.RUNNERS_MAXIMUM_COUNT = '-1';
   process.env.ENVIRONMENT = 'unit-test-environment';
   process.env.SSM_TOKEN_PATH = '/github-action-runners/default/runners/tokens';
+  process.env.SSM_CONFIG_PATH = '/github-action-runners/default/runners/config';
+  process.env.PARAMETER_GITHUB_APP_ID_NAME = 'github-app-id';
+  process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME = 'github-app-key';
   process.env.RUNNER_OWNER = ORG;
 
   githubClient.paginate.mockResolvedValue(githubRunnersRegistered);
@@ -325,7 +327,7 @@ describe('pool adjustment', () => {
 
       await adjust({ poolSize: 3 });
 
-      expect(mockedInstallationAuth).toHaveBeenCalledWith(expect.any(Number), expect.any(String), 1);
+      expect(mockedInstallationAuth).toHaveBeenCalledWith(expect.any(Number), expect.any(String), 1, expect.anything());
     });
 
     it('looks up installationId using the selected app JWT', async () => {

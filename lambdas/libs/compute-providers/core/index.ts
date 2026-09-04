@@ -21,8 +21,6 @@ export interface CreateGitHubRunnerConfig {
   runnerOwner: string;
   runnerType: RunnerType;
   disableAutoUpdate: boolean;
-  ssmConfigPath: string;
-  ssmParameterStoreTags: { Key: string; Value: string }[];
 }
 
 export interface GitHubRunnerMetadata {
@@ -31,6 +29,7 @@ export interface GitHubRunnerMetadata {
 }
 
 export interface StartRunnerConfigOptions {
+  runnerConfigStore?: import('@aws-github-runner/storage-providers').RunnerConfigStore;
   runnerGroupCacheStore?: import('@aws-github-runner/storage-providers').RunnerGroupCacheStore;
   getRunnerConfigMetadata?: (runnerId: string) => { key: string; value: string }[];
   onJitConfigCreated?: (runnerId: string, metadata: GitHubRunnerMetadata) => Promise<void>;
@@ -53,6 +52,7 @@ export interface CreateScaleUpRunnersInput<TState = unknown> {
   numberOfRunners: number;
   githubInstallationClient: Octokit;
   state: TState;
+  storage?: import('@aws-github-runner/storage-providers').RunnerConfigStorage;
 }
 
 export interface RunnerLabelResolution<TState = unknown> {
@@ -114,6 +114,7 @@ export interface CreatePoolRunnersInput {
   githubRunnerConfig: CreateGitHubRunnerConfig;
   numberOfRunners: number;
   githubInstallationClient: Octokit;
+  storage?: import('@aws-github-runner/storage-providers').RunnerConfigStorage;
 }
 
 export interface PoolComputeProvider<TRunner = unknown> extends ComputeProvider {

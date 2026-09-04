@@ -20,7 +20,6 @@ vi.mock('../github/auth', () => ({
 vi.mock('../scale-runners/github-runner', () => ({
   createStartRunnerConfig: vi.fn(),
   getGitHubEnterpriseApiUrl: vi.fn(),
-  validateSsmParameterStoreTags: vi.fn(),
 }));
 
 const mockedAppAuth = vi.mocked(ghAuth.createGithubAppAuth);
@@ -49,6 +48,9 @@ beforeEach(() => {
   vi.clearAllMocks();
   process.env = { ...cleanEnv };
   process.env.SSM_TOKEN_PATH = '/github-action-runners/default/runners/tokens';
+  process.env.SSM_CONFIG_PATH = '/github-action-runners/default/runners/config';
+  process.env.PARAMETER_GITHUB_APP_ID_NAME = 'github-app-id';
+  process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME = 'github-app-key';
 
   mockedAppAuth.mockResolvedValue({ type: 'app', token: 'app-token', appId: 1, expiresAt: 'some-date' });
   mockedInstallationAuth.mockResolvedValue({
@@ -63,7 +65,6 @@ beforeEach(() => {
   });
   mockedCreateClient.mockResolvedValue(githubClient);
   vi.mocked(githubRunner.getGitHubEnterpriseApiUrl).mockReturnValue({ ghesApiUrl: '', ghesBaseUrl: '' });
-  vi.mocked(githubRunner.validateSsmParameterStoreTags).mockReturnValue([]);
   vi.mocked(githubClient.apps.getOrgInstallation).mockResolvedValue({ data: { id: 2 } } as never);
   vi.mocked(githubClient.paginate).mockResolvedValue([]);
 });
