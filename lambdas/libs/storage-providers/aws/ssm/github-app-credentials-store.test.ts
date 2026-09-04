@@ -53,13 +53,10 @@ describe('aws_ssm GitHub App credentials store', () => {
     ]);
   });
 
-  it.each(['PARAMETER_GITHUB_APP_ID_NAME', 'PARAMETER_GITHUB_APP_KEY_BASE64_NAME'])(
-    'requires %s',
-    (name) => {
-      delete process.env[name];
-      expect(() => createAwsSsmGitHubAppCredentialsStore()).toThrow(`Environment variable ${name} is not set`);
-    },
-  );
+  it.each(['PARAMETER_GITHUB_APP_ID_NAME', 'PARAMETER_GITHUB_APP_KEY_BASE64_NAME'])('requires %s', (name) => {
+    delete process.env[name];
+    expect(() => createAwsSsmGitHubAppCredentialsStore()).toThrow(`Environment variable ${name} is not set`);
+  });
 
   it('rejects mismatched app and key parameter lists', () => {
     process.env.PARAMETER_GITHUB_APP_ID_NAME = 'id-0:id-1';

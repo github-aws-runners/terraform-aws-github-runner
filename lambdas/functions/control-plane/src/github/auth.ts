@@ -143,7 +143,11 @@ function signJwt(payload: Record<string, unknown>, privateKey: string): string {
   return `${message}.${signature}`;
 }
 
-async function createAuth(installationId: number | undefined, ghesApiUrl: string, appIndex?: number): Promise<AuthInterface> {
+async function createAuth(
+  installationId: number | undefined,
+  ghesApiUrl: string,
+  appIndex?: number,
+): Promise<AuthInterface> {
   const credentials = await getAppCredentials();
   const selected =
     appIndex !== undefined ? credentials[appIndex] : credentials[Math.floor(Math.random() * credentials.length)];
@@ -160,7 +164,11 @@ async function createAuth(installationId: number | undefined, ghesApiUrl: string
     return { jwt, expiresAt: new Date(exp * 1000).toISOString() };
   };
 
-  const authOptions: StrategyOptions = { appId: selected.appId, createJwt, ...(installationId ? { installationId } : {}) };
+  const authOptions: StrategyOptions = {
+    appId: selected.appId,
+    createJwt,
+    ...(installationId ? { installationId } : {}),
+  };
   if (ghesApiUrl) {
     authOptions.request = request.defaults({ baseUrl: ghesApiUrl });
   }
