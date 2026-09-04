@@ -83,6 +83,69 @@ variables {
   runners_lambda_s3_key = "runners.zip"
   webhook_lambda_s3_key = "webhook.zip"
   syncer_lambda_s3_key  = "runner-binaries-syncer.zip"
+
+  experimental_global_config_github = {
+    app = {
+      key_base64     = "experimental-app-key"
+      id             = "experimental-app-id"
+      webhook_secret = "experimental-webhook-secret"
+    }
+  }
+
+  experimental_global_config_lambda = {
+    artifact = {
+      s3 = {
+        bucket = "test-lambda-artifacts"
+      }
+    }
+  }
+
+  experimental_global_config_orchestration_provider = {
+    webhook = {
+      lambda = {
+        artifact = {
+          s3 = {
+            key = "runners.zip"
+          }
+        }
+        webhook = {
+          artifact = {
+            s3 = {
+              key = "webhook.zip"
+            }
+          }
+        }
+      }
+    }
+  }
+
+  experimental_global_config_ssm = {
+    housekeeper = {
+      lambda = {
+        artifact = {
+          s3 = {
+            key = "runners.zip"
+          }
+        }
+      }
+    }
+  }
+
+  experimental_global_config_compute_provider = {
+    aws = {
+      ec2 = {
+        runner_binaries = {
+          syncer = {
+            artifact = {
+              s3 = {
+                key = "runner-binaries-syncer.zip"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
 run "v1_stable_inputs_translate_into_effective_base" {
@@ -173,9 +236,6 @@ run "v2_experimental_inputs_resolve_lane_over_global" {
         ec2 = {
           vpc_id     = "vpc-global"
           subnet_ids = ["subnet-global"]
-          runner_binaries = {
-            enabled = false
-          }
           instance_termination_watcher = {
             features = {
               runner_deregistration = {
@@ -186,6 +246,16 @@ run "v2_experimental_inputs_resolve_lane_over_global" {
               }
               spot_termination_notification_watcher = {
                 enabled = false
+              }
+            }
+          }
+          runner_binaries = {
+            enabled = false
+            syncer = {
+              artifact = {
+                s3 = {
+                  key = "runner-binaries-syncer.zip"
+                }
               }
             }
           }
@@ -212,6 +282,20 @@ run "v2_experimental_inputs_resolve_lane_over_global" {
         eventbridge = {
           enabled = false
         }
+        lambda = {
+          artifact = {
+            s3 = {
+              key = "global-runners.zip"
+            }
+          }
+          webhook = {
+            artifact = {
+              s3 = {
+                key = "global-webhook.zip"
+              }
+            }
+          }
+        }
       }
     }
 
@@ -219,7 +303,9 @@ run "v2_experimental_inputs_resolve_lane_over_global" {
       housekeeper = {
         lambda = {
           artifact = {
-            zip = "global-housekeeper.zip"
+            s3 = {
+              key = "global-housekeeper.zip"
+            }
           }
         }
       }
