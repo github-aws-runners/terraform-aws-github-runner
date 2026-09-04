@@ -20,9 +20,9 @@ describe('StorageJitConfigSource', () => {
         return 'encoded-jit';
       }),
     };
-    const exportEnvironment = vi.fn((context: RunnerConfigStorageContext, target: NodeJS.ProcessEnv) => {
+    const exportEnvironment = vi.fn((context: RunnerConfigStorageContext) => {
       events.push('export');
-      Object.assign(target, context);
+      return context;
     });
     const createConsumer = vi.fn((target: NodeJS.ProcessEnv) => {
       events.push('create');
@@ -61,9 +61,7 @@ describe('StorageJitConfigSource', () => {
   it('rejects storage context changes after the one-time environment export', async () => {
     const environment: NodeJS.ProcessEnv = {};
     const consumer: RunnerConfigConsumer = { consume: vi.fn().mockResolvedValue('encoded-jit') };
-    const exportEnvironment = vi.fn((context: RunnerConfigStorageContext, target: NodeJS.ProcessEnv) => {
-      Object.assign(target, context);
-    });
+    const exportEnvironment = vi.fn((context: RunnerConfigStorageContext) => context);
     const createConsumer = vi.fn().mockReturnValue(consumer);
     const source = new StorageJitConfigSource({ createConsumer, environment, exportEnvironment });
     const options = { deadlineMs: 123_456, signal: new AbortController().signal };
