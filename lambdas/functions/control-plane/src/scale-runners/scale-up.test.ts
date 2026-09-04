@@ -330,7 +330,9 @@ describe('scaleUp with GHES', () => {
     it('returns a retryable failure if runner group lookup fails for ephemeral runners', async () => {
       process.env.RUNNER_GROUP_NAME = 'test-runner-group';
       mockSSMgetParameter.mockImplementation(async () => {
-        throw new Error('ParameterNotFound');
+        const error = new Error('ParameterNotFound');
+        error.name = 'ParameterNotFound';
+        throw error;
       });
 
       await expect(scaleUpModule.scaleUp(TEST_DATA)).resolves.toEqual(['foobar']);
@@ -348,7 +350,9 @@ describe('scaleUp with GHES', () => {
 
     it('create SSM parameter for runner group id if it does not exist', async () => {
       mockSSMgetParameter.mockImplementation(async () => {
-        throw new Error('ParameterNotFound');
+        const error = new Error('ParameterNotFound');
+        error.name = 'ParameterNotFound';
+        throw error;
       });
       await scaleUpModule.scaleUp(TEST_DATA);
       expect(mockOctokit.paginate).toHaveBeenCalledTimes(1);
@@ -2339,12 +2343,15 @@ function defaultOctokitMockImpl() {
 
 function defaultSSMGetParameterMockImpl() {
   mockSSMgetParameter.mockImplementation(async (name: string) => {
-    if (name === `${process.env.SSM_CONFIG_PATH}/runner-group/${process.env.RUNNER_GROUP_NAME}`) {
+    const runnerGroupName = process.env.RUNNER_GROUP_NAME || 'Default';
+    if (name === `${process.env.SSM_CONFIG_PATH}/runner-group/${runnerGroupName}`) {
       return '1';
     } else if (name === `${process.env.PARAMETER_GITHUB_APP_ID_NAME}`) {
       return `${process.env.GITHUB_APP_ID}`;
     } else {
-      throw new Error(`ParameterNotFound: ${name}`);
+      const error = new Error(`ParameterNotFound: ${name}`);
+      error.name = 'ParameterNotFound';
+      throw error;
     }
   });
 }
