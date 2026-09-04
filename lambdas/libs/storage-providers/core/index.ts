@@ -13,6 +13,10 @@ export interface RunnerConfigStore {
   create(record: RunnerConfigRecord, options?: { metadata?: RunnerConfigMetadata[] }): Promise<void>;
 }
 
+export interface RunnerConfigHousekeeper {
+  houseKeeper(): Promise<void>;
+}
+
 export interface RunnerGroupCacheRecord {
   runnerGroupName: string;
   runnerGroupId: number;
