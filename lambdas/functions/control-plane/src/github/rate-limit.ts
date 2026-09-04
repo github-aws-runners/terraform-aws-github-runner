@@ -10,9 +10,14 @@ import { getParameter } from '@aws-github-runner/aws-ssm-util';
 const appIdPromises = new Map<number, Promise<string>>();
 
 async function getAppId(appIndex = 0): Promise<string> {
+  const paramNames = process.env.PARAMETER_GITHUB_APP_ID_NAME;
+  if (!paramNames) {
+    // Enterprise runners don't have a GitHub App ID — use a descriptive label
+    return 'enterprise-pat';
+  }
   let cached = appIdPromises.get(appIndex);
   if (!cached) {
-    const paramName = process.env.PARAMETER_GITHUB_APP_ID_NAME.split(':')[appIndex];
+    const paramName = paramNames.split(':')[appIndex];
     cached = getParameter(paramName);
     appIdPromises.set(appIndex, cached);
   }

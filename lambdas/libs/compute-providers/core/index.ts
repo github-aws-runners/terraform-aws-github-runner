@@ -7,7 +7,7 @@ export interface ComputeProvider {
 }
 
 export type RunnerSource = 'scale-up-lambda' | 'pool-lambda';
-export type RunnerType = 'Org' | 'Repo';
+export type RunnerType = 'Org' | 'Repo' | 'Enterprise';
 
 export interface CreateGitHubRunnerConfig {
   /** Index of the GitHub App selected for this flow; used to attribute rate-limit metrics per app. */
@@ -20,6 +20,7 @@ export interface CreateGitHubRunnerConfig {
   runnerNamePrefix: string;
   runnerOwner: string;
   runnerType: RunnerType;
+  enterpriseSlug?: string;
   disableAutoUpdate: boolean;
   ssmTokenPath: string;
   ssmConfigPath: string;
@@ -79,6 +80,7 @@ export interface RunnerInfo {
   type: RunnerType;
   repo?: string;
   org?: string;
+  enterprise?: string;
   orphan?: boolean;
   githubRunnerId?: string;
   bypassRemoval?: boolean;

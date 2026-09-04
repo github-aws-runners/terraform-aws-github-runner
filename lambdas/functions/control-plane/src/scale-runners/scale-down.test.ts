@@ -15,6 +15,7 @@ vi.mock('../github/auth', () => ({
   createGithubInstallationAuth: vi.fn(),
   createOctokitClient: vi.fn(),
   getStoredInstallationId: vi.fn().mockResolvedValue(undefined),
+  createEnterprisePATClient: vi.fn(),
 }));
 
 const mockOctokit = {
@@ -31,6 +32,7 @@ const mockOctokit = {
     getSelfHostedRunnerForRepo: vi.fn(),
   },
   paginate: vi.fn(),
+  request: vi.fn(),
 };
 
 const mockComputeProvider = {
@@ -45,6 +47,7 @@ const mockedResolveCapability = vi.spyOn(controlPlaneProviderRegistry, 'capabili
 const mockedAppAuth = vi.mocked(ghAuth.createGithubAppAuth);
 const mockedInstallationAuth = vi.mocked(ghAuth.createGithubInstallationAuth);
 const mockCreateClient = vi.mocked(ghAuth.createOctokitClient);
+const mockedEnterprisePatClient = vi.mocked(ghAuth.createEnterprisePATClient);
 const mockListRunners = vi.mocked(mockComputeProvider.list);
 const mockBootTimeExceeded = vi.mocked(mockComputeProvider.bootTimeExceeded);
 const mockMarkOrphan = vi.mocked(mockComputeProvider.markOrphan);
@@ -751,3 +754,96 @@ function createRunnerTestData(
     bypassRemoval: false,
   };
 }
+
+describe('enterprise scale-down', () => {
+  beforeEach(() => {
+    process.env = { ...cleanEnv };
+    process.env.SCALE_DOWN_CONFIG = '[]';
+    process.env.ENVIRONMENT = ENVIRONMENT;
+    process.env.MINIMUM_RUNNING_TIME_IN_MINUTES = MINIMUM_TIME_RUNNING_IN_MINUTES.toString();
+    process.env.RUNNER_BOOT_TIME_IN_MINUTES = MINIMUM_BOOT_TIME.toString();
+    process.env.COMPUTE_PROVIDER_TYPE = defaultComputeProvider;
+    process.env.RUNNER_REGISTRATION_LEVEL = 'enterprise';
+    process.env.GHES_URL = 'https://ghe.example.com';
+
+    vi.clearAllMocks();
+    githubCache.clients.clear();
+    githubCache.runners.clear();
+
+    mockedResolveCapability.mockReturnValue(() => mockComputeProvider);
+    mockBootTimeExceeded.mockReturnValue(true);
+    mockMarkOrphan.mockResolvedValue();
+    mockUnmarkOrphan.mockResolvedValue();
+    mockTerminateRunners.mockResolvedValue();
+    mockListRunners.mockResolvedValue([]);
+    mockedEnterprisePatClient.mockResolvedValue(mockOctokit as unknown as Octokit);
+    mockOctokit.paginate.mockResolvedValue([]);
+    mockOctokit.request.mockReset();
+    mockOctokit.request.mockResolvedValue({ data: { busy: false, status: 'online' }, status: 204, headers: {} });
+  });
+
+  function createEnterpriseRunner(id: string, launchMinutesAgo: number): RunnerInfo {
+    return {
+      id,
+      launchTime: moment(new Date()).subtract(launchMinutesAgo, 'minutes').toDate(),
+      owner: 'acme-enterprise',
+      type: 'Enterprise',
+      githubRunnerId: '123',
+    };
+  }
+
+  it('uses PAT auth and enterprise endpoints to terminate an idle runner', async () => {
+    const runner = createEnterpriseRunner('i-enterprise-idle', 40);
+    mockListRunners.mockImplementation(async (_env: string, orphan?: boolean) => (orphan ? [] : [runner]));
+    mockOctokit.paginate.mockResolvedValue([{ id: 123, name: 'prefix-i-enterprise-idle' }]);
+    mockOctokit.request.mockImplementation(async (route: string) => {
+      if (route.startsWith('GET')) {
+        return { data: { busy: false, status: 'online' }, headers: {} };
+      }
+      return { status: 204, headers: {} };
+    });
+
+    await scaleDown();
+
+    expect(mockedEnterprisePatClient).toHaveBeenCalledWith('https://ghe.example.com/api/v3');
+    expect(mockedAppAuth).not.toHaveBeenCalled();
+    expect(mockOctokit.paginate).toHaveBeenCalledWith('GET /enterprises/{enterprise}/actions/runners', {
+      enterprise: 'acme-enterprise',
+      per_page: 100,
+    });
+    expect(mockOctokit.request).toHaveBeenCalledWith('DELETE /enterprises/{enterprise}/actions/runners/{runner_id}', {
+      enterprise: 'acme-enterprise',
+      runner_id: 123,
+    });
+    expect(mockTerminateRunners).toHaveBeenCalledWith('i-enterprise-idle');
+  });
+
+  it('does not terminate the provider runner when enterprise deregistration fails', async () => {
+    const runner = createEnterpriseRunner('i-enterprise-idle', 40);
+    mockListRunners.mockImplementation(async (_env: string, orphan?: boolean) => (orphan ? [] : [runner]));
+    mockOctokit.paginate.mockResolvedValue([{ id: 123, name: 'i-enterprise-idle' }]);
+    mockOctokit.request.mockImplementation(async (route: string) => {
+      if (route.startsWith('GET')) {
+        return { data: { busy: false, status: 'online' }, headers: {} };
+      }
+      throw new Error('delete failed');
+    });
+
+    await scaleDown();
+
+    expect(mockTerminateRunners).not.toHaveBeenCalled();
+  });
+
+  it('treats a missing enterprise runner as orphaned during the last-chance check', async () => {
+    const runner: RunnerInfo = { ...createEnterpriseRunner('i-enterprise-idle', 40), orphan: true };
+    mockListRunners.mockImplementation(async (_env: string, orphan?: boolean) => (orphan ? [runner] : []));
+    const notFound = new RequestError('not found', 404, {
+      request: { method: 'GET', url: 'https://ghe.example.com/test', headers: {} },
+    });
+    mockOctokit.request.mockRejectedValue(notFound);
+
+    await scaleDown();
+
+    expect(mockTerminateRunners).toHaveBeenCalledWith('i-enterprise-idle');
+  });
+});

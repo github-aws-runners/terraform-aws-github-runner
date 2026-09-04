@@ -3,7 +3,12 @@ import { resolveComputeProviderType } from '@aws-github-runner/compute-providers
 import { Octokit } from '@octokit/rest';
 import yn from 'yn';
 
-import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
+import {
+  createEnterprisePATClient,
+  createGithubAppAuth,
+  createGithubInstallationAuth,
+  createOctokitClient,
+} from '../github/auth';
 import { controlPlaneProviderRegistry } from '../control-plane-providers';
 import {
   getGitHubEnterpriseApiUrl,
@@ -14,12 +19,14 @@ import {
   validateSsmParameterStoreTags,
 } from './github-runner';
 import { publishRetryMessage } from './job-retry';
+import { resolveRunnerType } from './runner-config';
 import type {
   ActionRequestMessage,
   ActionRequestMessageRetry,
   ActionRequestMessageSQS,
   CreateGitHubRunnerConfig,
   CreateRunnerResult,
+  RunnerType,
 } from './types';
 
 const logger = createChildLogger('scale-up');
@@ -76,7 +83,9 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
     n_requests: payloads.length,
   });
 
-  const enableOrgLevel = yn(process.env.ENABLE_ORGANIZATION_RUNNERS, { default: true });
+  const runnerType = resolveRunnerType();
+  const enableOrgLevel = runnerType !== 'Repo';
+  const enterpriseSlug = process.env.ENTERPRISE_SLUG;
   const maximumRunners = parseInt(process.env.RUNNERS_MAXIMUM_COUNT || '3');
   const runnerLabels = process.env.RUNNER_LABELS || '';
   const runnerGroup = process.env.RUNNER_GROUP_NAME || 'Default';
@@ -99,11 +108,27 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
 
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
 
+  if (runnerType === 'Enterprise' && !enterpriseSlug) {
+    throw new Error('ENTERPRISE_SLUG must be set when RUNNER_REGISTRATION_LEVEL is enterprise.');
+  }
+
   // Select one GitHub App for this entire invocation so every API call in the
-  // batch draws from the same rate-limit bucket.
-  const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl);
-  const appIdx = ghAuth.appIndex;
-  const githubAppClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
+  // batch draws from the same rate-limit bucket. Not used for enterprise-level
+  // runners, which authenticate with a PAT instead of a GitHub App.
+  let githubAppClient: Octokit | undefined;
+  let appIdx: number | undefined;
+  if (runnerType !== 'Enterprise') {
+    const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl);
+    appIdx = ghAuth.appIndex;
+    githubAppClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
+  }
+
+  // For enterprise-level runners a single PAT-authenticated client is shared by
+  // every message in the batch.
+  let enterpriseClient: Octokit | undefined;
+  if (runnerType === 'Enterprise') {
+    enterpriseClient = await createEnterprisePATClient(ghesApiUrl);
+  }
 
   // A map of either owner or owner/repo name to Octokit client, so we use a
   // single client per installation (set of messages), depending on how the app
@@ -133,7 +158,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       continue;
     }
 
-    if (!isValidRepoOwnerTypeIfOrgLevelEnabled(payload, enableOrgLevel)) {
+    if (!isValidRepoOwnerType(payload, runnerType)) {
       logger.warn(
         `Repository does not belong to a GitHub organization and organization runners are enabled. This is not supported. Not scaling up for this event. Not throwing error to prevent re-queueing and just ignoring the event.`,
         {
@@ -145,9 +170,12 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       continue;
     }
 
-    const runnerOwner = enableOrgLevel
-      ? payload.repositoryOwner
-      : `${payload.repositoryOwner}/${payload.repositoryName}`;
+    const runnerOwner =
+      runnerType === 'Enterprise'
+        ? enterpriseSlug!
+        : runnerType === 'Org'
+          ? payload.repositoryOwner
+          : `${payload.repositoryOwner}/${payload.repositoryName}`;
 
     let key = runnerOwner;
     if (labels?.some((l) => l.startsWith('ghr-'))) {
@@ -160,13 +188,10 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
     // If we've not seen this owner/repo before, we'll need to create a GitHub
     // client for it.
     if (entry === undefined) {
-      const githubInstallationClient = await createGithubInstallationClient(
-        githubAppClient,
-        enableOrgLevel,
-        payload,
-        ghesApiUrl,
-        appIdx,
-      );
+      const githubInstallationClient =
+        runnerType === 'Enterprise'
+          ? enterpriseClient!
+          : await createGithubInstallationClient(githubAppClient!, enableOrgLevel, payload, ghesApiUrl, appIdx);
 
       entry = {
         messages: [],
@@ -179,8 +204,6 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
 
     entry.messages.push(payload);
   }
-
-  const runnerType = enableOrgLevel ? 'Org' : 'Repo';
 
   addPersistentContextToChildLogger({
     runner: {
@@ -317,6 +340,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       runnerNamePrefix,
       runnerOwner: runnerOwner,
       runnerType,
+      enterpriseSlug,
       disableAutoUpdate,
       ssmTokenPath,
       ssmConfigPath,
@@ -373,8 +397,14 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
   return Array.from(retryMessageIds);
 }
 
-function isValidRepoOwnerTypeIfOrgLevelEnabled(payload: ActionRequestMessage, enableOrgLevel: boolean): boolean {
-  return !(enableOrgLevel && payload.repoOwnerType !== 'Organization');
+export function isValidRepoOwnerType(payload: ActionRequestMessage, runnerType: RunnerType): boolean {
+  if (runnerType === 'Enterprise') {
+    return true;
+  }
+  if (runnerType === 'Org') {
+    return payload.repoOwnerType === 'Organization';
+  }
+  return true;
 }
 
 function labelsHash(labels: string[]): string {

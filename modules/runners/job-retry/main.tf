@@ -3,7 +3,8 @@ locals {
   name       = "job-retry"
 
   environment_variables = {
-    ENABLE_ORGANIZATION_RUNNERS               = var.config.enable_organization_runners
+    RUNNER_REGISTRATION_LEVEL                 = var.config.runner_registration_level != null ? var.config.runner_registration_level : ""
+    ENTERPRISE_SLUG                           = var.config.enterprise_slug != null ? var.config.enterprise_slug : ""
     ENABLE_METRIC_JOB_RETRY                   = var.config.metrics.enable && var.config.metrics.metric.enable_job_retry
     ENABLE_METRIC_GITHUB_APP_RATE_LIMIT       = var.config.metrics.enable && var.config.metrics.metric.enable_github_app_rate_limit
     GHES_URL                                  = var.config.ghes_url
@@ -12,6 +13,7 @@ locals {
     PARAMETER_GITHUB_APP_ID_NAME              = join(":", [for p in var.config.github_app_parameters.id : p.name])
     PARAMETER_GITHUB_APP_KEY_BASE64_NAME      = join(":", [for p in var.config.github_app_parameters.key_base64 : p.name])
     PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME = join(":", [for p in var.config.github_app_parameters.installation_id : p != null ? p.name : ""])
+    PARAMETER_ENTERPRISE_PAT_NAME             = try(var.config.enterprise_pat_parameter.name, "")
   }
 
   config = merge(var.config, {
@@ -70,6 +72,7 @@ resource "aws_iam_role_policy" "job_retry" {
       [for p in var.config.github_app_parameters.id : p.arn],
       [for p in var.config.github_app_parameters.key_base64 : p.arn],
       [for p in var.config.github_app_parameters.installation_id : p.arn if p != null],
+      var.config.enterprise_pat_parameter != null ? [var.config.enterprise_pat_parameter.arn] : []
     ))
   })
 }

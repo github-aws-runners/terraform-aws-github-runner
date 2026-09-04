@@ -4,6 +4,7 @@ import { resolveComputeProviderType } from '@aws-github-runner/compute-providers
 import yn from 'yn';
 
 import {
+  createEnterprisePATClient,
   createGithubAppAuth,
   createGithubInstallationAuth,
   createOctokitClient,
@@ -11,6 +12,8 @@ import {
 } from '../github/auth';
 import { controlPlaneProviderRegistry } from '../control-plane-providers';
 import { getGitHubEnterpriseApiUrl, validateSsmParameterStoreTags } from '../scale-runners/github-runner';
+import { resolveRunnerType } from '../scale-runners/runner-config';
+import type { RunnerType } from '../scale-runners/types';
 import type { RunnerStatus } from './pool-provider';
 
 const logger = createChildLogger('pool');
@@ -37,6 +40,8 @@ export async function adjust(event: PoolEvent): Promise<void> {
   const enableJitConfig = yn(process.env.ENABLE_JIT_CONFIG, { default: ephemeral });
   const disableAutoUpdate = yn(process.env.DISABLE_RUNNER_AUTOUPDATE, { default: false });
   const runnerOwner = process.env.RUNNER_OWNER;
+  const runnerType = resolveRunnerType();
+  const enterpriseSlug = process.env.ENTERPRISE_SLUG;
   const ssmParameterStoreTags: { Key: string; Value: string }[] =
     process.env.SSM_PARAMETER_STORE_TAGS && process.env.SSM_PARAMETER_STORE_TAGS.trim() !== ''
       ? validateSsmParameterStoreTags(process.env.SSM_PARAMETER_STORE_TAGS)
@@ -48,27 +53,44 @@ export async function adjust(event: PoolEvent): Promise<void> {
 
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
 
-  // Select one GitHub App for this entire invocation so every API call draws
-  // from the same rate-limit bucket.
-  const ghAppAuth = await createGithubAppAuth(undefined, ghesApiUrl);
-  const appIdx = ghAppAuth.appIndex;
+  if (runnerType === 'Enterprise' && !enterpriseSlug) {
+    throw new Error('ENTERPRISE_SLUG must be set when RUNNER_REGISTRATION_LEVEL is enterprise.');
+  }
+  if (!runnerOwner && runnerType !== 'Enterprise') {
+    throw new Error('RUNNER_OWNER must be set for org and repo runner registration levels.');
+  }
 
-  const installationId = await getInstallationId(ghAppAuth.token, ghesApiUrl, runnerOwner, appIdx);
-  const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl, appIdx);
-  const githubInstallationClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
+  const githubOwner = runnerType === 'Enterprise' ? enterpriseSlug! : runnerOwner!;
+
+  // Select one GitHub App for this entire invocation so every API call draws
+  // from the same rate-limit bucket. Not used for enterprise-level runners,
+  // which authenticate with a PAT instead of a GitHub App.
+  let githubInstallationClient: Octokit;
+  let appIdx: number | undefined;
+  if (runnerType === 'Enterprise') {
+    githubInstallationClient = await createEnterprisePATClient(ghesApiUrl);
+  } else {
+    const ghAppAuth = await createGithubAppAuth(undefined, ghesApiUrl);
+    appIdx = ghAppAuth.appIndex;
+
+    const installationId = await getInstallationId(ghAppAuth.token, ghesApiUrl, githubOwner, appIdx);
+    const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl, appIdx);
+    githubInstallationClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
+  }
 
   // Get statuses of runners registered in GitHub
   const runnerStatusses = await getGitHubRegisteredRunnnerStatusses(
     githubInstallationClient,
-    runnerOwner,
+    githubOwner,
     runnerNamePrefix,
+    runnerType,
   );
 
   // Look up the managed provider runners, but running does not mean idle.
   const poolRunners = await computeProvider.listRunners({
     environment,
-    runnerOwner,
-    runnerType: 'Org',
+    runnerOwner: githubOwner,
+    runnerType,
   });
 
   const numberOfRunnersInPool = computeProvider.countAvailableRunners(poolRunners, runnerStatusses, includeBusyRunners);
@@ -99,9 +121,10 @@ export async function adjust(event: PoolEvent): Promise<void> {
         ghesBaseUrl,
         runnerLabels,
         runnerGroup,
-        runnerOwner,
+        runnerOwner: githubOwner,
         runnerNamePrefix,
-        runnerType: 'Org',
+        runnerType,
+        enterpriseSlug,
         disableAutoUpdate: disableAutoUpdate,
         ssmTokenPath,
         ssmConfigPath,
@@ -133,11 +156,18 @@ async function getGitHubRegisteredRunnnerStatusses(
   ghClient: Octokit,
   runnerOwner: string,
   runnerNamePrefix: string,
+  runnerType: RunnerType,
 ): Promise<Map<string, RunnerStatus>> {
-  const runners = await ghClient.paginate(ghClient.actions.listSelfHostedRunnersForOrg, {
-    org: runnerOwner,
-    per_page: 100,
-  });
+  const runners =
+    runnerType === 'Enterprise'
+      ? ((await ghClient.paginate('GET /enterprises/{enterprise}/actions/runners', {
+          enterprise: runnerOwner,
+          per_page: 100,
+        })) as { name: string; busy: boolean; status: string }[])
+      : await ghClient.paginate(ghClient.actions.listSelfHostedRunnersForOrg, {
+          org: runnerOwner,
+          per_page: 100,
+        });
   const runnerStatus = new Map<string, RunnerStatus>();
   for (const runner of runners) {
     runner.name = runnerNamePrefix ? runner.name.replace(runnerNamePrefix, '') : runner.name;
