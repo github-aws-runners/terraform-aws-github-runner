@@ -1,0 +1,285 @@
+#!/bin/sh
+
+set -eu
+
+export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-000000000000}"
+export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-test-only}"
+export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-eu-west-1}"
+export AWS_REGION="${AWS_REGION:-eu-west-1}"
+export AWS_ENDPOINT_URL="${AWS_ENDPOINT_URL:-http://127.0.0.1:4566}"
+export AWS_EC2_METADATA_DISABLED="${AWS_EC2_METADATA_DISABLED:-true}"
+
+action="${1:-}"
+example="${2:-}"
+tfvars_file="${3:-${MINISTACK_TFVARS_FILE:-}}"
+
+case "$example" in
+  base | prebuilt | default | ephemeral | multi-runner)
+    use_tfvars=true
+    ;;
+  termination-watcher)
+    use_tfvars=false
+    ;;
+  *)
+  echo "Supported examples for the runner are: base, prebuilt, default, ephemeral, multi-runner, termination-watcher" >&2
+  exit 64
+  ;;
+esac
+
+case "$action" in
+  init | plan | apply | destroy) ;;
+  *)
+    echo "Usage: $0 {init|plan|apply|destroy} {base|prebuilt|default|ephemeral|multi-runner|termination-watcher} [TFVARS_FILE]" >&2
+    exit 64
+    ;;
+esac
+
+script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+source_root=$(CDPATH='' cd -- "$script_dir/../.." && pwd)
+example_root="$source_root/examples/$example"
+
+if [ "$use_tfvars" = true ]; then
+  if [ -z "$tfvars_file" ]; then
+    tfvars_file="$script_dir/$example.tfvars"
+  fi
+
+  case "$tfvars_file" in
+    /*) ;;
+    *) tfvars_file="$PWD/$tfvars_file" ;;
+  esac
+
+  if [ ! -f "$tfvars_file" ]; then
+    echo "Terraform variables file not found: $tfvars_file" >&2
+    echo "Pass it as the third argument or set MINISTACK_TFVARS_FILE." >&2
+    exit 66
+  fi
+fi
+
+lambda_fixture_dir=""
+lambda_created_paths=""
+ami_created_ids=""
+ssm_created_names=""
+override_created_paths=""
+lambda_zip_paths="
+$source_root/lambdas/functions/ami-housekeeper/ami-housekeeper.zip
+$source_root/lambdas/functions/control-plane/runners.zip
+$source_root/lambdas/functions/gh-agent-syncer/runner-binaries-syncer.zip
+$source_root/lambdas/functions/webhook/webhook.zip
+$source_root/lambdas/functions/termination-watcher/termination-watcher.zip
+"
+
+cleanup() {
+  for override_file in $override_created_paths; do
+    rm -f "$override_file"
+  done
+
+  for name in $ssm_created_names; do
+    ministack_aws ssm delete-parameter --name "$name" >/dev/null 2>&1 || true
+  done
+
+  for image_id in $ami_created_ids; do
+    ministack_aws ec2 deregister-image --image-id "$image_id" >/dev/null 2>&1 || true
+  done
+
+  for lambda_zip in $lambda_created_paths; do
+    rm -f "$lambda_zip"
+  done
+
+  if [ -n "$lambda_fixture_dir" ]; then
+    rm -rf "$lambda_fixture_dir"
+  fi
+}
+trap cleanup EXIT INT TERM
+
+ministack_aws() {
+  aws --endpoint-url "$AWS_ENDPOINT_URL" --region "$AWS_DEFAULT_REGION" "$@"
+}
+
+wait_for_ministack() {
+  attempts=60
+
+  while ! curl -fsS --max-time 2 "$AWS_ENDPOINT_URL/_ministack/health" >/dev/null 2>&1; do
+    attempts=$((attempts - 1))
+    if [ "$attempts" -le 0 ]; then
+      echo "MiniStack did not become ready at $AWS_ENDPOINT_URL." >&2
+      exit 70
+    fi
+    sleep 1
+  done
+}
+
+create_ami_fixture() {
+  ami_name="$1"
+  architecture="$2"
+  ami_id=$(ministack_aws ec2 describe-images \
+    --owners self \
+    --filters "Name=name,Values=$ami_name" "Name=state,Values=available" \
+    --query 'Images[0].ImageId' \
+    --output text)
+
+  if [ "$ami_id" = "None" ]; then
+    ami_id=$(ministack_aws ec2 register-image \
+      --name "$ami_name" \
+      --description "MiniStack test-only AMI" \
+      --architecture "$architecture" \
+      --root-device-name /dev/xvda \
+      --virtualization-type hvm \
+      --image-location alpine:3.20 \
+      --query 'ImageId' \
+      --output text)
+    ami_created_ids="$ami_created_ids
+$ami_id"
+  fi
+
+}
+
+create_ssm_fixture() {
+  name="$1"
+  value="$2"
+
+  if ministack_aws ssm get-parameter --name "$name" >/dev/null 2>&1; then
+    return
+  fi
+
+  ministack_aws ssm put-parameter \
+    --name "$name" \
+    --type String \
+    --value "$value" \
+    --overwrite >/dev/null
+  ssm_created_names="$ssm_created_names
+$name"
+}
+
+create_ami_override() {
+  override_file="$example_root/zz_ministack_ami_override.tf"
+  printf '%s\n' \
+    'module "runners" {' \
+    '  ami = {' \
+    '    filter = {' \
+    '      name  = ["amzn2-ami-hvm-2.0.20231116.0-x86_64-gp2"]' \
+    '      state = ["available"]' \
+    '    }' \
+    '    owners = ["amazon"]' \
+    '  }' \
+    '  enable_runner_binaries_syncer = false' \
+    '}' \
+    '' \
+    'output "runners" {' \
+    '  value = { lambda_syncer_name = null }' \
+    '}' > "$override_file"
+  override_created_paths="$override_created_paths
+$override_file"
+}
+
+create_multi_runner_override() {
+  override_file="$example_root/zz_ministack_override.tf"
+  printf '%s\n' \
+    'module "runners" {' \
+    '  multi_runner_config = {' \
+    '    for name, config in local.multi_runner_config :' \
+    '    name => merge(config, {' \
+    '      runner_config = merge(config.runner_config, {' \
+    '        enable_runner_binaries_syncer = false' \
+    '        ami = {' \
+    '          filter = {' \
+    '            name = [length(regexall("windows", name)) > 0 ? "Windows_Server-2022-English-Full-Base" : length(regexall("ubuntu", name)) > 0 ? "ubuntu/images/hvm-ssd/ubuntu-22.04-amd64-server" : "amzn2-ami-hvm-2.0.20231116.0-x86_64-gp2"]' \
+    '            state = ["available"]' \
+    '          }' \
+    '          owners = [length(regexall("ubuntu", name)) > 0 ? "099720109477" : "amazon"]' \
+    '        }' \
+    '      })' \
+    '    })' \
+    '  }' \
+    '}' > "$override_file"
+  override_created_paths="$override_created_paths
+$override_file"
+}
+
+create_ministack_fixtures() {
+  if ! command -v aws >/dev/null 2>&1; then
+    echo "AWS CLI is required to seed MiniStack API fixtures." >&2
+    exit 69
+  fi
+
+  if ! command -v zip >/dev/null 2>&1; then
+    echo "zip is required to create Lambda fixture packages." >&2
+    exit 69
+  fi
+
+  if ! command -v curl >/dev/null 2>&1; then
+    echo "curl is required to check MiniStack readiness." >&2
+    exit 69
+  fi
+
+  wait_for_ministack
+
+  lambda_fixture_dir=$(mktemp -d "${TMPDIR:-/tmp}/terraform-aws-github-runner-ministack-lambda.XXXXXX")
+  printf '%s\n' 'exports.handler = async () => ({ statusCode: 200, body: "ministack" });' > "$lambda_fixture_dir/index.js"
+  (CDPATH='' cd -- "$lambda_fixture_dir" && zip -q ministack-lambda.zip index.js)
+
+  for lambda_zip in $lambda_zip_paths; do
+    if [ -e "$lambda_zip" ]; then
+      continue
+    fi
+    mkdir -p "$(dirname "$lambda_zip")"
+    cp "$lambda_fixture_dir/ministack-lambda.zip" "$lambda_zip"
+    lambda_created_paths="$lambda_created_paths
+$lambda_zip"
+  done
+
+  case "$example" in
+    default | ephemeral)
+      create_ami_override
+      ;;
+    prebuilt)
+      create_ami_fixture \
+        "amzn2-ami-hvm-2.0.20231116.0-x86_64-gp2" \
+        x86_64 >/dev/null
+      ;;
+    multi-runner)
+      create_multi_runner_override
+      create_ssm_fixture \
+        "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64" \
+        "ami-0abcdef1234567890"
+      create_ssm_fixture \
+        "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-arm64" \
+        "ami-0abcdef1234567890"
+      ;;
+  esac
+}
+
+case "$action" in
+  plan | apply | destroy)
+    create_ministack_fixtures
+    ;;
+esac
+
+terraform_init() {
+  terraform -chdir="$example_root" init -backend=false -input=false -lockfile=readonly
+}
+
+terraform_example() {
+  if [ "$use_tfvars" = true ]; then
+    terraform -chdir="$example_root" "$@" -var-file="$tfvars_file"
+  else
+    terraform -chdir="$example_root" "$@"
+  fi
+}
+
+case "$action" in
+  init)
+    terraform_init
+    ;;
+  plan)
+    terraform_init
+    terraform_example plan -input=false
+    ;;
+  apply)
+    terraform_init
+    terraform_example apply -auto-approve -input=false
+    ;;
+  destroy)
+    terraform_init
+    terraform_example destroy -auto-approve -input=false
+    ;;
+esac
