@@ -36,7 +36,7 @@ export class StorageJitConfigSource implements JitConfigSource {
   public async consume(context: RunContext, options: ConsumeOptions): Promise<RunnerBootstrap> {
     const fingerprint = storageContextFingerprint(context.storage);
     if (this.exportedStorageFingerprint === undefined) {
-      this.exportEnvironment(context.storage, this.environment);
+      Object.assign(this.environment, this.exportEnvironment(context.storage));
       this.exportedStorageFingerprint = fingerprint;
     } else if (this.exportedStorageFingerprint !== fingerprint) {
       throw new Error('runner configuration storage context cannot change after initialization');
