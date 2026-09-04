@@ -1,14 +1,17 @@
 export type {
-  RunnerConfigMetadata,
+  GitHubAppCredential,
+  GitHubAppCredentialsStore,
+  RunnerConfigConsumer,
+  RunnerConfigConsumeOptions,
   RunnerConfigHousekeeper,
+  RunnerConfigMetadata,
   RunnerConfigRecord,
   RunnerConfigStore,
   RunnerGroupCacheRecord,
   RunnerGroupCacheStore,
-  GitHubAppCredential,
-  GitHubAppCredentialsStore,
 } from './core';
-export { createRunnerConfigStore } from './runner-config';
-export { createRunnerConfigHousekeeper } from './runner-config-housekeeper';
-export { createRunnerGroupCacheStore } from './runner-group-cache';
 export { createGitHubAppCredentialsStore } from './github-app-credentials';
+export { createRunnerConfigHousekeeper } from './runner-config-housekeeper';
+export { createRunnerConfigStore } from './runner-config';
+export { createRunnerGroupCacheStore } from './runner-group-cache';
+export { createRunnerConfigConsumer, type RunnerConfigConsumerConfig } from './runner-config-consumer';
