@@ -1033,18 +1033,8 @@ describe('scaleUp with GHES', () => {
       await scaleUpModule.scaleUp(messages);
 
       expect(mockCreateClient).toHaveBeenCalledTimes(3); // 1 app client, 2 repo installation clients
-      expect(mockedInstallationAuth).toHaveBeenCalledWith(
-        100,
-        'https://github.enterprise.something/api/v3',
-        0,
-        expect.anything(),
-      );
-      expect(mockedInstallationAuth).toHaveBeenCalledWith(
-        200,
-        'https://github.enterprise.something/api/v3',
-        0,
-        expect.anything(),
-      );
+      expect(mockedInstallationAuth).toHaveBeenCalledWith(100, 'https://github.enterprise.something/api/v3', 0);
+      expect(mockedInstallationAuth).toHaveBeenCalledWith(200, 'https://github.enterprise.something/api/v3', 0);
     });
 
     it('Should reuse GitHub clients for same installation', async () => {
@@ -1477,8 +1467,8 @@ describe('scaleUp with public GH', () => {
       await scaleUpModule.scaleUp(messages);
 
       expect(mockCreateClient).toHaveBeenCalledTimes(3); // 1 app client, 2 repo installation clients
-      expect(mockedInstallationAuth).toHaveBeenCalledWith(100, '', 0, expect.anything());
-      expect(mockedInstallationAuth).toHaveBeenCalledWith(200, '', 0, expect.anything());
+      expect(mockedInstallationAuth).toHaveBeenCalledWith(100, '', 0);
+      expect(mockedInstallationAuth).toHaveBeenCalledWith(200, '', 0);
     });
 
     it('Should reuse GitHub clients for same installation', async () => {
@@ -1955,8 +1945,8 @@ describe('scaleUp with Github Data Residency', () => {
       await scaleUpModule.scaleUp(messages);
 
       expect(mockCreateClient).toHaveBeenCalledTimes(3); // 1 app client, 2 repo installation clients
-      expect(mockedInstallationAuth).toHaveBeenCalledWith(100, '', 0, expect.anything());
-      expect(mockedInstallationAuth).toHaveBeenCalledWith(200, '', 0, expect.anything());
+      expect(mockedInstallationAuth).toHaveBeenCalledWith(100, '', 0);
+      expect(mockedInstallationAuth).toHaveBeenCalledWith(200, '', 0);
     });
 
     it('Should reuse GitHub clients for same installation', async () => {
@@ -2219,7 +2209,6 @@ describe('Multi-app round-robin', () => {
       expect.any(Number),
       expect.any(String),
       1, // appIndex must match the one from createGithubAppAuth
-      expect.anything(),
     );
   });
 
@@ -2245,7 +2234,6 @@ describe('Multi-app round-robin', () => {
       TEST_DATA_SINGLE.installationId, // from mockOctokit.apps.getOrgInstallation mock
       expect.any(String),
       1,
-      expect.anything(),
     );
   });
 
@@ -2263,7 +2251,7 @@ describe('Multi-app round-robin', () => {
 
     // Should use 999 from webhook directly — no API lookup
     expect(mockOctokit.apps.getOrgInstallation).not.toHaveBeenCalled();
-    expect(mockedInstallationAuth).toHaveBeenCalledWith(999, expect.any(String), 0, expect.anything());
+    expect(mockedInstallationAuth).toHaveBeenCalledWith(999, expect.any(String), 0);
   });
 
   it('primary app (appIndex 0) reuses webhook installationId even in multi-app deployment', async () => {
@@ -2282,7 +2270,7 @@ describe('Multi-app round-robin', () => {
 
     // Primary app must NOT do an API lookup — reuses webhook installationId
     expect(mockOctokit.apps.getOrgInstallation).not.toHaveBeenCalled();
-    expect(mockedInstallationAuth).toHaveBeenCalledWith(999, expect.any(String), 0, expect.anything());
+    expect(mockedInstallationAuth).toHaveBeenCalledWith(999, expect.any(String), 0);
   });
 
   it('stored installationId takes precedence over webhook payload for additional app', async () => {
@@ -2301,7 +2289,7 @@ describe('Multi-app round-robin', () => {
 
     // Stored id (77) wins — no API lookup needed
     expect(mockOctokit.apps.getOrgInstallation).not.toHaveBeenCalled();
-    expect(mockedInstallationAuth).toHaveBeenCalledWith(77, expect.any(String), 1, expect.anything());
+    expect(mockedInstallationAuth).toHaveBeenCalledWith(77, expect.any(String), 1);
   });
 });
 
