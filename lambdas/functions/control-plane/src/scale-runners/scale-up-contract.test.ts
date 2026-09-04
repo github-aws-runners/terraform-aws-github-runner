@@ -57,6 +57,9 @@ beforeEach(() => {
   vi.clearAllMocks();
   process.env = { ...cleanEnv };
   process.env.SSM_TOKEN_PATH = '/github-action-runners/default/runners/tokens';
+  process.env.SSM_CONFIG_PATH = '/github-action-runners/default/runners/config';
+  process.env.PARAMETER_GITHUB_APP_ID_NAME = 'github-app-id';
+  process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME = 'github-app-key';
 
   mockedAppAuth.mockResolvedValue({ type: 'app', token: 'app-token', appId: 1, expiresAt: 'some-date' });
   mockedInstallationAuth.mockResolvedValue({
