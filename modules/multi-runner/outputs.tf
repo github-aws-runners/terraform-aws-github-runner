@@ -1,5 +1,6 @@
 
 output "runners_map" {
+  description = "Stable v1 runner resources keyed by runner configuration. Entries retain the historical flat output shape."
   value = { for runner_key, runner in module.runners : runner_key => {
     launch_template_name    = runner.launch_template.name
     launch_template_id      = runner.launch_template.id
@@ -17,6 +18,19 @@ output "runners_map" {
     role_pool               = runner.role_pool
     runners_log_groups      = runner.runners_log_groups
     logfiles                = runner.logfiles
+    }
+  }
+}
+
+output "runners_map_v2" {
+  description = "Experimental v2 runner resources keyed by runner configuration. Compute resources are grouped under `provider.<namespace>.<type>`, currently `provider.aws.ec2`. The `orchestration_provider` object is canonical; `scale_up`, `scale_down`, and `pool` remain compatibility aliases."
+  value = { for runner_key, runner in module.runner_configs : runner_key => {
+    runner                 = runner.runner
+    orchestration_provider = runner.orchestration_provider
+    scale_up               = runner.scale_up
+    scale_down             = runner.scale_down
+    pool                   = runner.pool
+    provider               = runner.provider
     }
   }
 }
@@ -39,8 +53,8 @@ output "webhook" {
     lambda_role      = module.webhook.role
     endpoint         = "${module.webhook.gateway.api_endpoint}/${module.webhook.endpoint_relative_path}"
     webhook          = module.webhook.webhook
-    dispatcher       = var.eventbridge.enable ? module.webhook.dispatcher : null
-    eventbridge      = var.eventbridge.enable ? module.webhook.eventbridge : null
+    dispatcher       = local.translated_experimental.orchestration_provider.webhook.eventbridge.enable ? module.webhook.dispatcher : null
+    eventbridge      = local.translated_experimental.orchestration_provider.webhook.eventbridge.enable ? module.webhook.eventbridge : null
   }
 }
 
@@ -67,7 +81,7 @@ output "ssm_parameters" {
 }
 
 output "instance_termination_watcher" {
-  value = var.instance_termination_watcher.enable && var.instance_termination_watcher.features.enable_spot_termination_notification_watcher ? {
+  value = local.translated_experimental.compute_provider.aws.ec2.instance_termination_watcher.enabled && local.translated_experimental.compute_provider.aws.ec2.instance_termination_watcher.features.enable_spot_termination_notification_watcher ? {
     lambda           = module.instance_termination_watcher[0].spot_termination_notification.lambda
     lambda_log_group = module.instance_termination_watcher[0].spot_termination_notification.lambda_log_group
     lambda_role      = module.instance_termination_watcher[0].spot_termination_notification.lambda_role
@@ -75,7 +89,7 @@ output "instance_termination_watcher" {
 }
 
 output "instance_termination_handler" {
-  value = var.instance_termination_watcher.enable && var.instance_termination_watcher.features.enable_spot_termination_handler ? {
+  value = local.translated_experimental.compute_provider.aws.ec2.instance_termination_watcher.enabled && local.translated_experimental.compute_provider.aws.ec2.instance_termination_watcher.features.enable_spot_termination_handler ? {
     lambda           = module.instance_termination_watcher[0].spot_termination_handler.lambda
     lambda_log_group = module.instance_termination_watcher[0].spot_termination_handler.lambda_log_group
     lambda_role      = module.instance_termination_watcher[0].spot_termination_handler.lambda_role

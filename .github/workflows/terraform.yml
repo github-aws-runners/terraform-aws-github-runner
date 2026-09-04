@@ -85,7 +85,15 @@ jobs:
             "download-lambda",
             "lambda",
             "multi-runner",
+            "compute-providers/aws/ec2",
+            "compute-providers/aws/ec2/trust-policy",
             "runner-binaries-syncer",
+            "orchestration-providers/webhook",
+            "orchestration-providers/webhook/job-retry",
+            "orchestration-providers/webhook/pool",
+            "orchestration-providers/webhook/scale-runners",
+            "runner-config",
+            "runner-config/ssm-housekeeper",
             "runners",
             "setup-iam-permissions",
             "ssm",
@@ -214,6 +222,15 @@ jobs:
       matrix:
         module:
           - modules/runners
+          - modules/multi-runner
+          - modules/orchestration-providers/webhook
+          - modules/orchestration-providers/webhook/job-retry
+          - modules/orchestration-providers/webhook/pool
+          - modules/orchestration-providers/webhook/scale-runners
+          - modules/runner-config
+          - modules/runner-config/ssm-housekeeper
+          - modules/compute-providers/aws/ec2
+          - modules/compute-providers/aws/ec2/trust-policy
     defaults:
       run:
         working-directory: ${{ matrix.module }}

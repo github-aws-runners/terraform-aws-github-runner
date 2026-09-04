@@ -1,10 +1,6 @@
 locals {
-  tags = merge(var.tags, {
-    "ghr:environment" = var.prefix
-  })
-
-  primary_app_id         = coalesce(var.github_app.id_ssm, module.ssm.parameters.github_app_id)
-  primary_app_key_base64 = coalesce(var.github_app.key_base64_ssm, module.ssm.parameters.github_app_key_base64)
+  primary_app_id         = coalesce(local.translated_experimental.github.app.id_ssm, module.ssm.parameters.github_app_id)
+  primary_app_key_base64 = coalesce(local.translated_experimental.github.app.key_base64_ssm, module.ssm.parameters.github_app_key_base64)
 
   github_app_parameters = {
     id = concat(
@@ -19,24 +15,24 @@ locals {
       [null],
       [for p in module.ssm.additional_app_parameters : p.installation_id]
     )
-    webhook_secret = coalesce(var.github_app.webhook_secret_ssm, module.ssm.parameters.github_app_webhook_secret)
+    webhook_secret = coalesce(local.translated_experimental.github.app.webhook_secret_ssm, module.ssm.parameters.github_app_webhook_secret)
   }
 
-  runner_extra_labels = { for k, v in var.multi_runner_config : k => sort(setunion(flatten(v.matcherConfig.labelMatchers), compact(v.runner_config.runner_extra_labels))) }
-
-  runner_config = { for k, v in var.multi_runner_config : k => merge(
-    {
-      id  = aws_sqs_queue.queued_builds[k].id
-      arn = aws_sqs_queue.queued_builds[k].arn
-      url = aws_sqs_queue.queued_builds[k].url
-    },
-    merge(v, { runner_config = merge(v.runner_config, { runner_extra_labels = local.runner_extra_labels[k] }) }),
-  ) }
-
-  tmp_distinct_list_unique_os_and_arch = distinct([for i, config in local.runner_config : { "os_type" : config.runner_config.runner_os, "architecture" : config.runner_config.runner_architecture } if config.runner_config.enable_runner_binaries_syncer])
-  unique_os_and_arch                   = { for i, v in local.tmp_distinct_list_unique_os_and_arch : "${v.os_type}_${v.architecture}" => v }
-
-  ssm_root_path = "/${var.ssm_paths.root}/${var.prefix}"
+  # Keep a concrete map type when unrelated configuration values are unknown until apply.
+  tmp_distinct_list_unique_os_and_arch = distinct([
+    for _, config in lookup(local.runner_config_by_provider, "aws_ec2", {}) : {
+      "os_type" : config.runner.os,
+      "architecture" : config.runner.architecture
+    }
+    if config.compute_provider.aws.ec2.binaries_syncer.enabled
+  ])
+  configured_runner_binary_targets = local.use_multi_runner_config_v2 ? var.experimental.compute_provider.aws.ec2.runner_binaries.targets : null
+  unique_os_and_arch = local.configured_runner_binary_targets != null ? {
+    for key, target in local.configured_runner_binary_targets : key => {
+      os_type      = target.os
+      architecture = target.architecture
+    }
+  } : { for _, v in local.tmp_distinct_list_unique_os_and_arch : "${v.os_type}_${v.architecture}" => v }
 }
 
 resource "random_string" "random" {
