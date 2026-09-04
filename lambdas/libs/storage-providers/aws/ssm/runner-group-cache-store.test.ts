@@ -49,6 +49,6 @@ describe('aws_ssm runner group cache store', () => {
   it('rejects a non-numeric cached ID', async () => {
     getParameterMock.mockResolvedValue('not-a-number');
 
-    await expect(createAwsSsmRunnerGroupCacheStore().get('Default')).rejects.toThrow('cached runner group ID');
+    await expect(createAwsSsmRunnerGroupCacheStore().get('Default')).rejects.toThrow(/cached runner group ID/i);
   });
 });
