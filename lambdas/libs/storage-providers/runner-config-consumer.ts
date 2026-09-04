@@ -7,7 +7,6 @@ export type { RunnerConfigConsumeOptions, RunnerConfigConsumer } from './core';
 export type { AwsSsmRunnerConfigApi } from './aws/ssm/runner-config-consumer';
 
 type Environment = Readonly<Record<string, string | undefined>>;
-type MutableEnvironment = Record<string, string | undefined>;
 
 export interface RunnerConfigConsumerConfig extends RunnerConfigPollingOptions {
   awsSsmApi?: AwsSsmRunnerConfigApi;
@@ -73,10 +72,7 @@ export function runnerConfigStorageEnvironment(context: RunnerConfigStorageConte
 }
 
 /** Returns an allowlisted environment object without mutating process.env or a caller-owned target. */
-export function exportRunnerConfigStorageEnvironment(
-  context: RunnerConfigStorageContext,
-  ..._ignoredTarget: [MutableEnvironment?]
-): RunnerConfigStorageEnvironment {
+export function exportRunnerConfigStorageEnvironment(context: RunnerConfigStorageContext): RunnerConfigStorageEnvironment {
   return runnerConfigStorageEnvironment(context);
 }
 

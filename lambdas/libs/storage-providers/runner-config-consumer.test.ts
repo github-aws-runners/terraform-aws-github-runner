@@ -72,26 +72,16 @@ describe('runner config storage context', () => {
   it('round-trips each producer environment through payload context and hook environment export', () => {
     for (const producerEnvironment of [ssmContext]) {
       const payloadContext = loadRunnerConfigStorageContextFromEnvironment(producerEnvironment);
-      const hookEnvironment: Record<string, string | undefined> = {
-        SSM_TOKEN_PATH: '/stale/path',
-        UNRELATED: 'preserved',
-      };
-
-      const exported = exportRunnerConfigStorageEnvironment(payloadContext, hookEnvironment);
+      const exported = exportRunnerConfigStorageEnvironment(payloadContext);
       expect(exported).toEqual(payloadContext);
       expect(loadRunnerConfigStorageContextFromEnvironment(exported)).toEqual(payloadContext);
-      expect(hookEnvironment.UNRELATED).toBe('preserved');
-      expect(hookEnvironment.SSM_TOKEN_PATH).toBe('/stale/path');
     }
   });
 
-  it('does not mutate a target when context validation fails', () => {
-    const target = { ...ssmContext } as Record<string, string | undefined>;
-
+  it('rejects unexpected context keys', () => {
     expect(() =>
-      exportRunnerConfigStorageEnvironment({ ...ssmContext, unexpected: 'forbidden' } as never, target),
+      exportRunnerConfigStorageEnvironment({ ...ssmContext, unexpected: 'forbidden' } as never),
     ).toThrow();
-    expect(target).toEqual(ssmContext);
   });
 });
 
