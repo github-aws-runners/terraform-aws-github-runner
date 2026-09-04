@@ -4,6 +4,8 @@
 
 This module creates many runners with one or more GitHub Apps. The module utilizes the internal modules and deploys parts of the stack for each runner defined.
 
+Terraform 1.4 or later is required. Terraform 1.3 and earlier are no longer supported by this module.
+
 ### GitHub App round-robin
 
 To distribute GitHub API rate limit usage, this module supports configuring multiple GitHub Apps via the `additional_github_apps` variable. The control-plane lambdas (scale-up, scale-down, pool, job-retry) randomly select an app for each API call, spreading the load across all configured apps.
