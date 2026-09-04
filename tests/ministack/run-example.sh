@@ -182,10 +182,10 @@ create_multi_runner_override() {
     '        enable_runner_binaries_syncer = false' \
     '        ami = {' \
     '          filter = {' \
-    '            name = [strcontains(name, "windows") ? "Windows_Server-2022-English-Full-Base" : strcontains(name, "ubuntu") ? "ubuntu/images/hvm-ssd/ubuntu-22.04-amd64-server" : "amzn2-ami-hvm-2.0.20231116.0-x86_64-gp2"]' \
+    '            name = [length(regexall("windows", name)) > 0 ? "Windows_Server-2022-English-Full-Base" : length(regexall("ubuntu", name)) > 0 ? "ubuntu/images/hvm-ssd/ubuntu-22.04-amd64-server" : "amzn2-ami-hvm-2.0.20231116.0-x86_64-gp2"]' \
     '            state = ["available"]' \
     '          }' \
-    '          owners = [strcontains(name, "ubuntu") ? "099720109477" : "amazon"]' \
+    '          owners = [length(regexall("ubuntu", name)) > 0 ? "099720109477" : "amazon"]' \
     '        }' \
     '      })' \
     '    })' \

@@ -40,7 +40,7 @@ env:
 
 jobs:
   terraform_lifecycle:
-    name: Apply/destroy ${{ matrix.example }} against MiniStack
+    name: Apply/destroy ${{ matrix.example }} against MiniStack (Terraform ${{ matrix.terraform }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -54,6 +54,9 @@ jobs:
           - ephemeral
           - multi-runner
           - termination-watcher
+        terraform:
+          - "1.4.0"
+          - latest
     services:
       ministack:
         image: ghcr.io/ministackorg/ministack:1.5.7@sha256:37361b9ef886463d5632d5a4b2d114da4b7a5c5793f52f07dbc72579f2fd9207
@@ -76,7 +79,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
-          terraform_version: 1.14.0
+          terraform_version: ${{ matrix.terraform }}
           terraform_wrapper: false
 
       - name: Mark repository as safe
