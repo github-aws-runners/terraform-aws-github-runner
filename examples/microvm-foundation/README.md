@@ -14,7 +14,7 @@ terraform output
 ```
 
 Apply this foundation before building an image with the direct Packer commands
-documented in `../../images/microvm/README.md`. Use the outputs as the build inputs:
+documented in `../../images/microvm-ubuntu/README.md`. Use the outputs as the build inputs:
 
 - `artifact_bucket_name` -> `MICROVM_ARTIFACT_BUCKET`
 - `build_role_arn` -> `MICROVM_BUILD_ROLE_ARN`
