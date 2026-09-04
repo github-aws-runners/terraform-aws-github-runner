@@ -1,8 +1,8 @@
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import { getParameter, putParameter } from '@aws-github-runner/aws-ssm-util';
 import {
-  getRunnerConfigStore,
-  type RunnerConfigMetadataTag,
+  createRunnerConfigStore,
+  type RunnerConfigMetadata,
   type RunnerConfigStore,
 } from '@aws-github-runner/storage-providers';
 import { Octokit } from '@octokit/rest';
@@ -19,7 +19,7 @@ export interface GitHubRunnerMetadata {
 }
 
 export interface StartRunnerConfigOptions {
-  getRunnerConfigMetadataTags?: (runnerId: string) => RunnerConfigMetadataTag[];
+  getRunnerConfigMetadata?: (runnerId: string) => RunnerConfigMetadata[];
   onJitConfigCreated?: (runnerId: string, metadata: GitHubRunnerMetadata) => Promise<void>;
 }
 
@@ -255,7 +255,7 @@ export async function createStartRunnerConfig(
   ghClient: Octokit,
   options: StartRunnerConfigOptions = {},
 ): Promise<string[]> {
-  const runnerConfigStore = getRunnerConfigStore();
+  const runnerConfigStore = createRunnerConfigStore();
   if (githubRunnerConfig.enableJitConfig && githubRunnerConfig.ephemeral) {
     return await createJitConfig(githubRunnerConfig, runnerIds, ghClient, runnerConfigStore, options);
   } else {
@@ -294,7 +294,7 @@ async function createRegistrationTokenConfig(
   for (const runnerId of runnerIds) {
     await runnerConfigStore.create(
       { runnerId, value: runnerServiceConfig.join(' ') },
-      { metadataTags: options.getRunnerConfigMetadataTags?.(runnerId) },
+      { metadata: options.getRunnerConfigMetadata?.(runnerId) },
     );
     if (isDelay) {
       // Delay to stay within the selected store's maximum write throughput.
@@ -362,7 +362,7 @@ async function createJitConfig(
       });
       await runnerConfigStore.create(
         { runnerId, value: runnerConfig.data.encoded_jit_config },
-        { metadataTags: options.getRunnerConfigMetadataTags?.(runnerId) },
+        { metadata: options.getRunnerConfigMetadata?.(runnerId) },
       );
       if (isDelay) {
         // Delay to stay within the selected store's maximum write throughput.

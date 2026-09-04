@@ -1,2 +1,2 @@
-export type { RunnerConfigMetadataTag, RunnerConfigRecord, RunnerConfigStore } from './core';
-export { getRunnerConfigStore, resetRunnerConfigStore } from './runner-config';
+export type { RunnerConfigMetadata, RunnerConfigRecord, RunnerConfigStore } from './core';
+export { createRunnerConfigStore } from './runner-config';

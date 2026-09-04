@@ -1,6 +1,6 @@
 import { putParameter } from '@aws-github-runner/aws-ssm-util';
 
-import type { RunnerConfigMetadataTag, RunnerConfigRecord, RunnerConfigStore } from '../../core';
+import type { RunnerConfigMetadata, RunnerConfigRecord, RunnerConfigStore } from '../../core';
 import type {} from './environment';
 import { loadSsmParameterStoreTagsFromEnvironment } from './parameter-store-tags';
 
@@ -26,10 +26,10 @@ class AwsSsmRunnerConfigStore implements RunnerConfigStore {
 
   constructor(private readonly config: AwsSsmRunnerConfigStoreConfig) {}
 
-  async create(record: RunnerConfigRecord, options: { metadataTags?: RunnerConfigMetadataTag[] } = {}): Promise<void> {
+  async create(record: RunnerConfigRecord, options: { metadata?: RunnerConfigMetadata[] } = {}): Promise<void> {
     await putParameter(`${this.config.tokenPath}/${record.runnerId}`, record.value, true, {
       tags: [
-        ...(options.metadataTags ?? []).map(({ key, value }) => ({ Key: key, Value: value })),
+        ...(options.metadata ?? []).map(({ key, value }) => ({ Key: key, Value: value })),
         ...this.config.parameterStoreTags,
       ],
     });

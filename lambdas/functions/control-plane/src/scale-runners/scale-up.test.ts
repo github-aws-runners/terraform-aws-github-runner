@@ -18,7 +18,6 @@ import type {
 } from './types';
 import { defaultComputeProvider } from '@aws-github-runner/compute-providers/provider-types';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
-import { resetRunnerConfigStore } from '@aws-github-runner/storage-providers';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Octokit } from '@octokit/rest';
 
@@ -170,7 +169,7 @@ async function createTestProviderRunners(input: CreateScaleUpRunnersInput<unknow
       result.instances,
       input.githubInstallationClient,
       {
-        getRunnerConfigMetadataTags: (runnerId) => [{ key: 'RunnerId', value: runnerId }],
+        getRunnerConfigMetadata: (runnerId) => [{ key: 'RunnerId', value: runnerId }],
       },
     );
   } catch {
@@ -189,7 +188,6 @@ beforeEach(() => {
   vi.resetModules();
   vi.clearAllMocks();
   setDefaults();
-  resetRunnerConfigStore();
 
   defaultSSMGetParameterMockImpl();
   defaultOctokitMockImpl();

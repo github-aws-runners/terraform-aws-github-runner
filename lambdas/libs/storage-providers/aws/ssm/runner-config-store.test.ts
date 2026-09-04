@@ -27,7 +27,7 @@ describe('aws_ssm runner config store', () => {
 
     await store.create(
       { runnerId: 'i-123', value: 'encoded-jit-config' },
-      { metadataTags: [{ key: 'InstanceId', value: 'i-123' }] },
+      { metadata: [{ key: 'InstanceId', value: 'i-123' }] },
     );
 
     expect(store.maxWritesPerSecond).toBe(40);

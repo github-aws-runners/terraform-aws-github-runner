@@ -1,4 +1,4 @@
-export interface RunnerConfigMetadataTag {
+export interface RunnerConfigMetadata {
   key: string;
   value: string;
 }
@@ -10,5 +10,5 @@ export interface RunnerConfigRecord {
 
 export interface RunnerConfigStore {
   readonly maxWritesPerSecond?: number;
-  create(record: RunnerConfigRecord, options?: { metadataTags?: RunnerConfigMetadataTag[] }): Promise<void>;
+  create(record: RunnerConfigRecord, options?: { metadata?: RunnerConfigMetadata[] }): Promise<void>;
 }

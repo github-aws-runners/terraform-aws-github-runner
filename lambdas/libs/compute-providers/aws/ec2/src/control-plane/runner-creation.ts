@@ -148,7 +148,7 @@ async function terminateFailedInstances(
 
 function createEc2StartRunnerConfigOptions(ec2Operations: Ec2RunnerResourceOperations): StartRunnerConfigOptions {
   return {
-    getRunnerConfigMetadataTags: (instanceId) => [{ key: 'InstanceId', value: instanceId }],
+    getRunnerConfigMetadata: (instanceId) => [{ key: 'InstanceId', value: instanceId }],
     onJitConfigCreated: async (instanceId, metadata) =>
       await tagEc2RunnerMetadata(ec2Operations, instanceId, metadata),
   };
