@@ -1,6 +1,6 @@
 import { Webhooks } from '@octokit/webhooks';
 import { WorkflowJobEvent } from '@octokit/webhooks-types';
-import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
+import { createChildLogger, tracer } from '@aws-github-runner/aws-powertools-util';
 import { IncomingHttpHeaders } from 'http';
 
 import { Response } from '../lambda';
@@ -164,7 +164,32 @@ function readWorkflowJobEvent(
     },
   });
 
+  instrumentGithubLatency(event.workflow_job.created_at);
+
   return { event, eventType };
+}
+
+// Adds X-Ray visibility into the delay between GitHub creating the event and this Lambda
+// processing it. Disabled by default; enable via WEBHOOK_XRAY_GITHUB_LATENCY_ENABLED since
+// the synthetic 'github' subsegment intentionally backdates its start_time, which is an
+// unusual X-Ray pattern not every consumer of this module will want on by default.
+function instrumentGithubLatency(githubCreatedAt: string): void {
+  if (process.env.WEBHOOK_XRAY_GITHUB_LATENCY_ENABLED !== 'true') return;
+
+  const segment = tracer.getSegment();
+  if (!segment) return;
+
+  const createdAtMs = new Date(githubCreatedAt).getTime();
+  const lagMs = Date.now() - createdAtMs;
+
+  tracer.putAnnotation('event_lag_ms', lagMs);
+
+  const githubNode = segment.addNewSubsegment('github');
+  githubNode.namespace = 'remote';
+  githubNode.start_time = createdAtMs / 1000; // X-Ray uses epoch seconds
+  githubNode.addAnnotation('workflow_job_created_at', githubCreatedAt);
+  githubNode.addAnnotation('event_lag_ms', lagMs);
+  githubNode.close();
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

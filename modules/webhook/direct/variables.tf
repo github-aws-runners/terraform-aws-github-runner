@@ -48,5 +48,6 @@ variable "config" {
       arn     = string
       version = string
     }))
+    webhook_xray_github_latency_enabled = optional(bool, false)
   })
 }

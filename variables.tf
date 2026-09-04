@@ -180,6 +180,12 @@ variable "webhook_lambda_timeout" {
   default     = 10
 }
 
+variable "webhook_xray_github_latency_enabled" {
+  description = "Add X-Ray instrumentation (an annotation plus a synthetic 'github' node) measuring the delay between a GitHub workflow_job event's created_at timestamp and this Lambda's invocation. Disabled by default."
+  type        = bool
+  default     = false
+}
+
 variable "runners_lambda_zip" {
   description = "File location of the lambda zip file for scaling runners."
   type        = string

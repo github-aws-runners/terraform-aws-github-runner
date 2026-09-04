@@ -31,6 +31,7 @@ resource "aws_lambda_function" "webhook" {
         QUEUE_SELECTION_STRATEGY                 = var.config.queue_selection_strategy
         PARAMETER_RUNNER_MATCHER_CONFIG_PATH     = join(":", [for p in var.config.ssm_parameter_runner_matcher_config : p.name])
         PARAMETER_RUNNER_MATCHER_VERSION         = join(":", [for p in var.config.ssm_parameter_runner_matcher_config : p.version]) # enforce cold start after Changes in SSM parameter
+        WEBHOOK_XRAY_GITHUB_LATENCY_ENABLED      = var.config.webhook_xray_github_latency_enabled
       } : k => v if v != null
     }
   }

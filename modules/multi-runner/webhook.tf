@@ -40,5 +40,6 @@ module "webhook" {
   lambda_security_group_ids = var.lambda_security_group_ids
   aws_partition             = var.aws_partition
 
-  log_level = var.log_level
+  log_level                           = var.log_level
+  webhook_xray_github_latency_enabled = var.webhook_xray_github_latency_enabled
 }

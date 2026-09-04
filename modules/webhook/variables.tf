@@ -246,3 +246,9 @@ EOF
     accept_events = optional(list(string), null)
   })
 }
+
+variable "webhook_xray_github_latency_enabled" {
+  description = "Add X-Ray instrumentation (an annotation plus a synthetic 'github' node) measuring the delay between a GitHub workflow_job event's created_at timestamp and this Lambda's invocation. Disabled by default since the synthetic node intentionally backdates its X-Ray start_time, an unusual tracing pattern."
+  type        = bool
+  default     = false
+}

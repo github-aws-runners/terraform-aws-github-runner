@@ -37,6 +37,7 @@ resource "aws_lambda_function" "webhook" {
         EVENT_BUS_NAME                       = aws_cloudwatch_event_bus.main.name
         PARAMETER_GITHUB_APP_WEBHOOK_SECRET  = var.config.github_app_parameters.webhook_secret.name
         PARAMETER_RUNNER_MATCHER_CONFIG_PATH = join(":", [for p in var.config.ssm_parameter_runner_matcher_config : p.name])
+        WEBHOOK_XRAY_GITHUB_LATENCY_ENABLED  = var.config.webhook_xray_github_latency_enabled
       } : k => v if v != null
     }
   }
