@@ -156,6 +156,7 @@ describe('createEc2PoolCapability.createRunners', () => {
       githubInstallationClient,
       createStartRunnerConfig,
       'pool-lambda',
+      undefined,
     );
   });
 });
