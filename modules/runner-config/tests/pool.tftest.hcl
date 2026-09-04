@@ -210,8 +210,9 @@ run "plan_with_pool_enabled" {
 
   assert {
     condition = (
-      toset(keys(output.orchestration_provider)) == toset(["webhook"])
+      toset(keys(output.orchestration_provider)) == toset(["scale_set", "webhook"])
       && output.orchestration_provider.webhook != null
+      && output.orchestration_provider.scale_set == null
       && output.orchestration_provider.webhook.scale_up != null
       && output.orchestration_provider.webhook.scale_down != null
       && output.orchestration_provider.webhook.pool != null

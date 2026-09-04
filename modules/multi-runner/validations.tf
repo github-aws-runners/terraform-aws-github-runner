@@ -52,30 +52,35 @@ resource "terraform_data" "validate_v2" {
     precondition {
       condition = (
         (
-          try(var.global_config_github.app.key_base64, null) != null ||
-          try(var.global_config_github.app.key_base64_ssm, null) != null
+          try(var.experimental_global_config_github.app.key_base64, null) != null ||
+          try(var.experimental_global_config_github.app.key_base64_ssm, null) != null
           ) && (
-          try(var.global_config_github.app.id, null) != null ||
-          try(var.global_config_github.app.id_ssm, null) != null
+          try(var.experimental_global_config_github.app.id, null) != null ||
+          try(var.experimental_global_config_github.app.id_ssm, null) != null
           ) && (
-          try(var.global_config_github.app.webhook_secret, null) != null ||
-          try(var.global_config_github.app.webhook_secret_ssm, null) != null
+          try(var.experimental_global_config_github.app.webhook_secret, null) != null ||
+          try(var.experimental_global_config_github.app.webhook_secret_ssm, null) != null
         )
       )
-      error_message = "Experimental v2 configuration requires a complete GitHub App under global_config_github.app."
+      error_message = "Experimental v2 configuration requires a complete GitHub App under experimental_global_config_github.app."
     }
 
     precondition {
       condition = alltrue([
         for config in local.resolved_config.multi_runner_config : (
-          try(config.orchestration_provider.webhook != null, false) &&
+          (
+            (
+              try(config.orchestration_provider.webhook != null, false) &&
+              try(length(config.orchestration_provider.webhook.matcherConfig.labelMatchers) > 0, false)
+            ) || try(config.orchestration_provider.scale_set != null, false)
+          ) &&
           try(config.compute_provider.aws.ec2 != null, false) &&
           try(length(config.compute_provider.aws.ec2.instance_types) > 0, false) &&
           try(config.compute_provider.aws.ec2.vpc_id != null, false) &&
           try(length(config.compute_provider.aws.ec2.subnet_ids) > 0, false)
         )
       ])
-      error_message = "Each experimental v2 runner lane requires a webhook provider, EC2 instance_types, vpc_id, and at least one subnet."
+      error_message = "Each experimental v2 runner lane requires either a webhook matcher or scale_set orchestration, plus EC2 instance_types, vpc_id, and at least one subnet."
     }
   }
 }
