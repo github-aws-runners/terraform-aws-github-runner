@@ -14,6 +14,14 @@ The examples are using standard AMI's for different operating systems. Instances
 
 ## Attestation
 
-The module is released using GitHub actions and the lambda artifacts are attached to the release as attachment. During the release attestations are created. The attestations are created by the release pipeline. You find a link to the attestation in the GitHub release. The attestation only provides provenance information about the release. The attestations are not a security guarantee. We recommend you to verify the attestation after downloading the lambda artifacts.
+The module is released using GitHub Actions and the Lambda artifacts are attached to the release. The release pipeline creates provenance attestations for those artifacts. You can find a link to the attestation in the GitHub release. The attestation only provides provenance information about the release; it is not a security guarantee. We recommend verifying the attestation after downloading the Lambda artifacts.
+
+Releases also publish the multi-architecture scale-set service image to the GitHub Container Registry with an SBOM, build provenance, and a registry attestation. The convenience image default follows the latest module release. Production deployments should override it with the immutable image digest printed in the release notes, then verify that image with:
+
+```bash
+gh attestation verify \
+  oci://ghcr.io/github-aws-runners/terraform-aws-github-runner-scale-set-service@sha256:<digest> \
+  --repo github-aws-runners/terraform-aws-github-runner
+```
 
 --8<-- "SECURITY.md:mkdocsrunners"
