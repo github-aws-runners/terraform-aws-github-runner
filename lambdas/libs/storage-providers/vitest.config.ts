@@ -7,7 +7,17 @@ export default mergeConfig(defaultConfig, {
   test: {
     setupFiles: [resolve(__dirname, '../../aws-vitest-setup.ts')],
     coverage: {
-      include: ['index.ts', 'runner-config.ts', 'core/**/*.ts', 'aws/**/*.ts'],
+      include: [
+        'index.ts',
+        'github-app-credentials.ts',
+        'runner-config.ts',
+        'runner-config-housekeeper.ts',
+        'runner-config-consumer.ts',
+        'runner-config-consumer-common.ts',
+        'runner-group-cache.ts',
+        'core/**/*.ts',
+        'aws/**/*.ts',
+      ],
       exclude: ['**/*.test.ts', '**/*.d.ts'],
     },
   },
