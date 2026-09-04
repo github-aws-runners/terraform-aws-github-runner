@@ -49,19 +49,8 @@ export async function adjust(event: PoolEvent): Promise<void> {
   const ghAppAuth = await createGithubAppAuth(undefined, ghesApiUrl, undefined, storage.githubAppCredentials);
   const appIdx = ghAppAuth.appIndex;
 
-  const installationId = await getInstallationId(
-    ghAppAuth.token,
-    ghesApiUrl,
-    runnerOwner,
-    appIdx,
-    storage,
-  );
-  const ghAuth = await createGithubInstallationAuth(
-    installationId,
-    ghesApiUrl,
-    appIdx,
-    storage.githubAppCredentials,
-  );
+  const installationId = await getInstallationId(ghAppAuth.token, ghesApiUrl, runnerOwner, appIdx, storage);
+  const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl, appIdx, storage.githubAppCredentials);
   const githubInstallationClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
 
   // Get statuses of runners registered in GitHub

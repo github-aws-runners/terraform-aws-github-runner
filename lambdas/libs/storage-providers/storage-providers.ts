@@ -23,10 +23,7 @@ export function createStorageProviders(environment: Environment = process.env): 
   return {
     runnerConfig: createAwsSsmRunnerConfigStore({ tokenPath, parameterStoreTags }),
     runnerGroupCache: createAwsSsmRunnerGroupCacheStore({ configPath, parameterStoreTags }),
-    consumer: createAwsSsmRunnerConfigConsumer(
-      { SSM_TOKEN_PATH: tokenPath },
-      consumerConfig,
-    ),
+    consumer: createAwsSsmRunnerConfigConsumer({ SSM_TOKEN_PATH: tokenPath }, consumerConfig),
     ...createCommonStorage(environment),
   };
 }
