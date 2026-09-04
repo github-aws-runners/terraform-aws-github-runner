@@ -87,6 +87,7 @@ jobs:
             "multi-runner",
             "compute-providers/aws/microvm",
             "compute-providers/aws/microvm/trust-policy",
+            "microvm-foundation",
             "runner-binaries-syncer",
             "runners",
             "setup-iam-permissions",
@@ -158,7 +159,8 @@ jobs:
             "termination-watcher",
             "multi-runner",
             "multi-runner-v2",
-            "external-managed-ssm-secrets"
+            "external-managed-ssm-secrets",
+            "microvm-foundation"
           ]
     defaults:
       run:
