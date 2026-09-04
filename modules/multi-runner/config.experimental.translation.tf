@@ -128,7 +128,6 @@ locals {
           runner_owner                   = null
           tags                           = {}
         }
-        scale_set = null
       }
       queue = {
         delay_webhook_event            = 30
@@ -429,6 +428,7 @@ locals {
             }
           }
         }
+        scale_set = null
       }
 
       ssm = {
