@@ -1,0 +1,15 @@
+aws_region = "eu-west-1"
+
+network_connectors = {
+  cicd = {
+    name       = "github-actions-runner-egress"
+    vpc_id     = "vpc-0123456789abcdef0"
+    subnet_ids = ["subnet-0123456789abcdef0", "subnet-0fedcba9876543210"]
+  }
+}
+
+# Add the private ECR repository that contains the regional Ubuntu base image
+# when the image build pulls from ECR.
+# ecr_repository_arns = [
+#   "arn:aws:ecr:eu-west-1:123456789012:repository/actions-runner-base-image",
+# ]
