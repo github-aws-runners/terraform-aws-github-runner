@@ -367,7 +367,6 @@ export async function scaleDown(): Promise<void> {
     ...controlPlaneProviderRegistry.capability(computeProviderType, 'scaleDown')(),
     type: computeProviderType,
   };
-
   // first runners marked to be orphan.
   await terminateOrphan(environment, computeProvider);
 

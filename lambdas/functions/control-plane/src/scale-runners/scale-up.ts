@@ -110,7 +110,6 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
     ...controlPlaneProviderRegistry.capability(computeProviderType, 'scaleUp')(),
     type: computeProviderType,
   };
-
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
 
   // Select one GitHub App for this entire invocation so every API call in the
