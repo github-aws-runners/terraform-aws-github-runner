@@ -214,6 +214,7 @@ jobs:
       matrix:
         module:
           - modules/runners
+          - modules/termination-watcher
     defaults:
       run:
         working-directory: ${{ matrix.module }}
