@@ -1,11 +1,25 @@
 import { DeleteParameterCommand, GetParameterCommand, type SSMClient } from '@aws-sdk/client-ssm';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   AwsSdkSsmRunnerConfigApi,
   createAwsSsmRunnerConfigConsumer,
   type AwsSsmRunnerConfigApi,
 } from './runner-config-consumer';
+
+const loggerMock = vi.hoisted(() => ({
+  debug: vi.fn(),
+  error: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+}));
+
+vi.mock('@aws-github-runner/aws-powertools-util', () => ({
+  createChildLogger: vi.fn(() => ({
+    ...loggerMock,
+    appendPersistentKeys: vi.fn(),
+  })),
+}));
 
 function namedError(name: string, message = 'provider detail'): Error {
   const error = new Error(message);
@@ -38,6 +52,10 @@ describe('AWS SDK SSM runner config API', () => {
 });
 
 describe('SSM runner config consumer', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   afterEach(() => {
     vi.useRealTimers();
   });
@@ -49,7 +67,7 @@ describe('SSM runner config consumer', () => {
       .mockResolvedValueOnce('encoded-jit');
     const deleteParameter = vi.fn<AwsSsmRunnerConfigApi['deleteParameter']>().mockResolvedValue(undefined);
     const consumer = createAwsSsmRunnerConfigConsumer(
-      { RUNNER_CONFIG_STORAGE_PROVIDER: 'aws_ssm', SSM_TOKEN_PATH: '/runner/tokens' },
+      { SSM_TOKEN_PATH: '/runner/tokens' },
       {
         api: { getParameter, deleteParameter },
         callTimeoutMs: 100,
@@ -80,7 +98,7 @@ describe('SSM runner config consumer', () => {
         .mockResolvedValueOnce(undefined),
     };
     const consumer = createAwsSsmRunnerConfigConsumer(
-      { RUNNER_CONFIG_STORAGE_PROVIDER: 'aws_ssm', SSM_TOKEN_PATH: '/runner/tokens' },
+      { SSM_TOKEN_PATH: '/runner/tokens' },
       { api, callTimeoutMs: 100, configTimeoutMs: 2_000, deleteAttempts: 2, pollIntervalMs: 1 },
     );
 
@@ -95,31 +113,42 @@ describe('SSM runner config consumer', () => {
   });
 
   it('fails closed when another reader deletes the SSM parameter first', async () => {
+    const deleteError = namedError('ParameterNotFound');
     const api: AwsSsmRunnerConfigApi = {
       getParameter: vi.fn().mockResolvedValue('encoded-jit'),
-      deleteParameter: vi.fn().mockRejectedValue(namedError('ParameterNotFound')),
+      deleteParameter: vi.fn().mockRejectedValue(deleteError),
     };
     const consumer = createAwsSsmRunnerConfigConsumer(
-      { RUNNER_CONFIG_STORAGE_PROVIDER: 'aws_ssm', SSM_TOKEN_PATH: '/runner/tokens' },
+      { SSM_TOKEN_PATH: '/runner/tokens' },
       { api, callTimeoutMs: 100, configTimeoutMs: 100, deleteAttempts: 3, pollIntervalMs: 1 },
     );
 
-    await expect(
-      consumer.consume('runner-123', {
-        deadlineMs: Date.now() + 1_000,
-        signal: new AbortController().signal,
-      }),
-    ).rejects.toThrow('runner configuration could not be deleted from SSM');
+    const pending = consumer.consume('runner-123', {
+      deadlineMs: Date.now() + 1_000,
+      signal: new AbortController().signal,
+    });
+
+    await expect(pending).rejects.toMatchObject({
+      message: 'runner configuration could not be deleted from SSM',
+      cause: deleteError,
+    });
     expect(api.deleteParameter).toHaveBeenCalledOnce();
+    expect(loggerMock.error).toHaveBeenCalledWith('Failed to delete consumed runner configuration', {
+      runnerId: 'runner-123',
+      parameterName: '/runner/tokens/runner-123',
+      deleteAttempts: 1,
+      errorNames: ['ParameterNotFound'],
+    });
   });
 
   it('sanitizes non-retryable provider failures', async () => {
+    const providerError = namedError('AccessDeniedException', 'encoded-jit-secret');
     const api: AwsSsmRunnerConfigApi = {
-      getParameter: vi.fn().mockRejectedValue(namedError('AccessDeniedException', 'encoded-jit-secret')),
+      getParameter: vi.fn().mockRejectedValue(providerError),
       deleteParameter: vi.fn(),
     };
     const consumer = createAwsSsmRunnerConfigConsumer(
-      { RUNNER_CONFIG_STORAGE_PROVIDER: 'aws_ssm', SSM_TOKEN_PATH: '/runner/tokens' },
+      { SSM_TOKEN_PATH: '/runner/tokens' },
       { api, callTimeoutMs: 100, configTimeoutMs: 100, pollIntervalMs: 1 },
     );
 
@@ -127,9 +156,18 @@ describe('SSM runner config consumer', () => {
       deadlineMs: Date.now() + 1_000,
       signal: new AbortController().signal,
     });
-    await expect(pending).rejects.toThrow('failed to read runner configuration from SSM');
-    await expect(pending).rejects.not.toThrow('encoded-jit-secret');
+    await expect(pending).rejects.toMatchObject({
+      message: 'failed to read runner configuration from SSM',
+      cause: providerError,
+    });
     expect(api.deleteParameter).not.toHaveBeenCalled();
+    expect(loggerMock.error).toHaveBeenCalledWith('Failed to read runner configuration', {
+      runnerId: 'runner-123',
+      parameterName: '/runner/tokens/runner-123',
+      pollAttempt: 1,
+      errorNames: ['AccessDeniedException'],
+    });
+    expect(JSON.stringify(loggerMock.error.mock.calls)).not.toContain('encoded-jit-secret');
   });
 
   it('rejects an empty SSM parameter value without attempting deletion', async () => {
@@ -138,7 +176,7 @@ describe('SSM runner config consumer', () => {
       deleteParameter: vi.fn(),
     };
     const consumer = createAwsSsmRunnerConfigConsumer(
-      { RUNNER_CONFIG_STORAGE_PROVIDER: 'aws_ssm', SSM_TOKEN_PATH: '/runner/tokens' },
+      { SSM_TOKEN_PATH: '/runner/tokens' },
       { api, callTimeoutMs: 100, configTimeoutMs: 100, pollIntervalMs: 1 },
     );
 
@@ -157,7 +195,7 @@ describe('SSM runner config consumer', () => {
       deleteParameter: vi.fn(),
     };
     const consumer = createAwsSsmRunnerConfigConsumer(
-      { RUNNER_CONFIG_STORAGE_PROVIDER: 'aws_ssm', SSM_TOKEN_PATH: `/${'x'.repeat(890)}` },
+      { SSM_TOKEN_PATH: `/${'x'.repeat(890)}` },
       { api, callTimeoutMs: 100, configTimeoutMs: 100, pollIntervalMs: 1 },
     );
 
@@ -177,7 +215,7 @@ describe('SSM runner config consumer', () => {
     };
     const controller = new AbortController();
     const consumer = createAwsSsmRunnerConfigConsumer(
-      { RUNNER_CONFIG_STORAGE_PROVIDER: 'aws_ssm', SSM_TOKEN_PATH: '/runner/tokens' },
+      { SSM_TOKEN_PATH: '/runner/tokens' },
       { api, callTimeoutMs: 10_000, configTimeoutMs: 10_000, pollIntervalMs: 1 },
     );
     const pending = consumer.consume('runner-123', {
@@ -202,7 +240,7 @@ describe('SSM runner config consumer', () => {
       }),
     };
     const consumer = createAwsSsmRunnerConfigConsumer(
-      { RUNNER_CONFIG_STORAGE_PROVIDER: 'aws_ssm', SSM_TOKEN_PATH: '/runner/tokens' },
+      { SSM_TOKEN_PATH: '/runner/tokens' },
       { api, callTimeoutMs: 100, configTimeoutMs: 1_000, pollIntervalMs: 99 },
     );
 

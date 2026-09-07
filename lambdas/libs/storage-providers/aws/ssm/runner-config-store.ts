@@ -2,7 +2,10 @@ import { putParameter } from '@aws-github-runner/aws-ssm-util';
 
 import type { RunnerConfigMetadata, RunnerConfigRecord, RunnerConfigStore } from '../../core';
 import type {} from './environment';
+import { createAwsSsmStorageLogger, getErrorNames } from './logger';
 import { loadSsmParameterStoreTagsFromEnvironment } from './parameter-store-tags';
+
+const logger = createAwsSsmStorageLogger('runner-config-store');
 
 export interface AwsSsmRunnerConfigStoreConfig {
   tokenPath: string;
@@ -35,11 +38,31 @@ class AwsSsmRunnerConfigStore implements RunnerConfigStore {
   constructor(private readonly config: AwsSsmRunnerConfigStoreConfig) {}
 
   async create(record: RunnerConfigRecord, options: { metadata?: RunnerConfigMetadata[] } = {}): Promise<void> {
-    await putParameter(`${this.config.tokenPath}/${record.runnerId}`, record.value, true, {
-      tags: [
-        ...(options.metadata ?? []).map(({ key, value }) => ({ Key: key, Value: value })),
-        ...this.config.parameterStoreTags,
-      ],
+    const parameterName = `${this.config.tokenPath}/${record.runnerId}`;
+    logger.debug('Writing runner configuration', {
+      runnerId: record.runnerId,
+      parameterName,
+    });
+
+    try {
+      await putParameter(parameterName, record.value, true, {
+        tags: [
+          ...(options.metadata ?? []).map(({ key, value }) => ({ Key: key, Value: value })),
+          ...this.config.parameterStoreTags,
+        ],
+      });
+    } catch (error) {
+      logger.error('Failed to write runner configuration', {
+        runnerId: record.runnerId,
+        parameterName,
+        errorNames: getErrorNames(error),
+      });
+      throw error;
+    }
+
+    logger.debug('Stored runner configuration', {
+      runnerId: record.runnerId,
+      parameterName,
     });
   }
 }

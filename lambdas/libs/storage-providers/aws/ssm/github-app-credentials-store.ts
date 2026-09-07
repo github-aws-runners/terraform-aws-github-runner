@@ -1,6 +1,9 @@
 import { getParameters } from '@aws-github-runner/aws-ssm-util';
 
 import type { GitHubAppCredential, GitHubAppCredentialsStore } from '../../core';
+import { createAwsSsmStorageLogger, getErrorNames } from './logger';
+
+const logger = createAwsSsmStorageLogger('github-app-credentials-store');
 
 interface AwsSsmGitHubAppCredentialsEnvironment {
   PARAMETER_GITHUB_APP_ID_NAME?: string;
@@ -33,19 +36,47 @@ class AwsSsmGitHubAppCredentialsStore implements GitHubAppCredentialsStore {
   ) {}
 
   async get(): Promise<GitHubAppCredential[]> {
-    const parameters = await getParameters([
+    const parameterNames = [
       ...this.idParameters,
       ...this.keyParameters,
       ...this.installationIdParameters.filter(Boolean),
-    ]);
-    return this.idParameters.map((idParameter, index) => {
+    ];
+    logger.debug('Reading GitHub App credential parameters', {
+      parameterCount: parameterNames.length,
+      appCount: this.idParameters.length,
+    });
+
+    let parameters: Map<string, string>;
+    try {
+      parameters = await getParameters(parameterNames);
+    } catch (error) {
+      logger.error('Failed to read GitHub App credential parameters', {
+        parameterCount: parameterNames.length,
+        appCount: this.idParameters.length,
+        errorNames: getErrorNames(error),
+      });
+      throw error;
+    }
+
+    const credentials = this.idParameters.map((idParameter, index) => {
       const appIdValue = parameters.get(idParameter);
       if (!appIdValue) {
+        logger.error('GitHub App credential parameter is missing', {
+          credentialField: 'appId',
+          appIndex: index,
+          parameterName: idParameter,
+        });
         throw new Error(`Parameter ${idParameter} not found`);
       }
-      const privateKeyBase64 = parameters.get(this.keyParameters[index]);
+      const keyParameter = this.keyParameters[index];
+      const privateKeyBase64 = parameters.get(keyParameter);
       if (!privateKeyBase64) {
-        throw new Error(`Parameter ${this.keyParameters[index]} not found`);
+        logger.error('GitHub App credential parameter is missing', {
+          credentialField: 'privateKey',
+          appIndex: index,
+          parameterName: keyParameter,
+        });
+        throw new Error(`Parameter ${keyParameter} not found`);
       }
       const installationIdParameter = this.installationIdParameters[index];
       const installationIdValue = installationIdParameter ? parameters.get(installationIdParameter) : undefined;
@@ -55,6 +86,12 @@ class AwsSsmGitHubAppCredentialsStore implements GitHubAppCredentialsStore {
         installationId: installationIdValue ? Number.parseInt(installationIdValue, 10) : undefined,
       };
     });
+
+    logger.debug('Loaded GitHub App credential parameters', {
+      appCount: credentials.length,
+      installationIdCount: credentials.filter(({ installationId }) => installationId !== undefined).length,
+    });
+    return credentials;
   }
 }
 

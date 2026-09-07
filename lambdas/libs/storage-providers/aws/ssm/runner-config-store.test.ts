@@ -9,6 +9,19 @@ vi.mock('@aws-github-runner/aws-ssm-util', () => ({
 
 const putParameterMock = vi.mocked(putParameter);
 const cleanEnv = process.env;
+const loggerMock = vi.hoisted(() => ({
+  debug: vi.fn(),
+  error: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+}));
+
+vi.mock('@aws-github-runner/aws-powertools-util', () => ({
+  createChildLogger: vi.fn(() => ({
+    ...loggerMock,
+    appendPersistentKeys: vi.fn(),
+  })),
+}));
 
 describe('aws_ssm runner config store', () => {
   beforeEach(() => {
@@ -76,6 +89,22 @@ describe('aws_ssm runner config store', () => {
     await store.create({ runnerId: 'runner-1', value: 'jit-config' });
 
     expect(putParameterMock).toHaveBeenCalledWith('/runner/tokens/runner-1', 'jit-config', true, { tags: [] });
+  });
+
+  it('logs safe context when a runner configuration write fails', async () => {
+    const error = Object.assign(new Error('encoded-jit-secret'), { name: 'ThrottlingException' });
+    putParameterMock.mockRejectedValue(error);
+
+    await expect(
+      createAwsSsmRunnerConfigStore().create({ runnerId: 'runner-1', value: 'encoded-jit-secret' }),
+    ).rejects.toBe(error);
+
+    expect(loggerMock.error).toHaveBeenCalledWith('Failed to write runner configuration', {
+      runnerId: 'runner-1',
+      parameterName: '/runner/tokens/runner-1',
+      errorNames: ['ThrottlingException'],
+    });
+    expect(JSON.stringify(loggerMock.error.mock.calls)).not.toContain('encoded-jit-secret');
   });
 });
 
