@@ -33,7 +33,7 @@ class AwsSsmRunnerGroupCacheStore implements RunnerGroupCacheStore {
       }
       return runnerGroupId;
     } catch (error) {
-      if (error !== null && typeof error === 'object' && 'name' in error && error.name === 'ParameterNotFound') {
+      if (isParameterNotFoundError(error)) {
         return undefined;
       }
       throw error;
@@ -49,4 +49,19 @@ class AwsSsmRunnerGroupCacheStore implements RunnerGroupCacheStore {
   private parameterName(runnerGroupName: string): string {
     return `${this.config.configPath}/runner-group/${runnerGroupName}`;
   }
+}
+
+function isParameterNotFoundError(error: unknown): boolean {
+  const seen = new Set<object>();
+  let current: unknown = error;
+
+  while (current !== null && typeof current === 'object' && !seen.has(current)) {
+    seen.add(current);
+    if ('name' in current && current.name === 'ParameterNotFound') {
+      return true;
+    }
+    current = 'cause' in current ? current.cause : undefined;
+  }
+
+  return false;
 }

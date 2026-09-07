@@ -39,6 +39,15 @@ describe('aws_ssm runner group cache store', () => {
     await expect(createAwsSsmRunnerGroupCacheStore().get('Default')).resolves.toBeUndefined();
   });
 
+  it('returns undefined when ParameterNotFound is wrapped by the SSM provider', async () => {
+    const cause = Object.assign(new Error('missing'), { name: 'ParameterNotFound' });
+    getParameterMock.mockRejectedValue(
+      Object.assign(new Error('failed to get parameter'), { name: 'GetParameterError', cause }),
+    );
+
+    await expect(createAwsSsmRunnerGroupCacheStore().get('Default')).resolves.toBeUndefined();
+  });
+
   it('propagates access and service errors', async () => {
     const error = Object.assign(new Error('denied'), { name: 'AccessDeniedException' });
     getParameterMock.mockRejectedValue(error);
