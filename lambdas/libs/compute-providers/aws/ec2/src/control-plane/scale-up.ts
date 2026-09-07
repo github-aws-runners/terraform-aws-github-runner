@@ -1,4 +1,4 @@
-import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
+import { createEc2ComputeProviderLogger } from '../../logger';
 import type { CreateStartRunnerConfig, RunnerLabelResolution, ScaleUpComputeProvider } from '../../../../core';
 import yn from 'yn';
 
@@ -13,7 +13,7 @@ import {
 import { createRunners, loadEc2ProviderConfig } from './runner-creation';
 import type { CreateEC2RunnerConfig } from './runner-creation';
 
-const logger = createChildLogger('ec2-scale-up');
+const logger = createEc2ComputeProviderLogger('ec2-scale-up');
 
 interface Ec2ScaleUpState {
   ec2OverrideConfig?: Ec2OverrideConfig;
