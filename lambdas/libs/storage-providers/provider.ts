@@ -1,10 +1,13 @@
-export const runnerConfigStorageProviders = ['aws_ssm'] as const;
+export const runnerConfigStorageProvider = {
+  awsSsm: 'aws_ssm',
+} as const;
+export const runnerConfigStorageProviders = [runnerConfigStorageProvider.awsSsm] as const;
 
 export type RunnerConfigStorageProvider = (typeof runnerConfigStorageProviders)[number];
 
 export function resolveRunnerConfigStorageProvider(value: unknown): RunnerConfigStorageProvider {
   if (value === undefined || (typeof value === 'string' && value.trim() === '')) {
-    return 'aws_ssm';
+    return runnerConfigStorageProvider.awsSsm;
   }
   if (
     typeof value !== 'string' ||
