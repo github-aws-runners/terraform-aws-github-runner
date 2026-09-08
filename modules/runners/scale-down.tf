@@ -37,6 +37,7 @@ resource "aws_lambda_function" "scale_down" {
       PARAMETER_GITHUB_APP_ID_NAME              = join(":", [for p in var.github_app_parameters.id : p.name])
       PARAMETER_GITHUB_APP_KEY_BASE64_NAME      = join(":", [for p in var.github_app_parameters.key_base64 : p.name])
       PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME = join(":", [for p in var.github_app_parameters.installation_id : p != null ? p.name : ""])
+      PARAMETER_ENTERPRISE_PAT_NAME             = var.enterprise_pat_parameter != null ? var.enterprise_pat_parameter.name : ""
       POWERTOOLS_LOGGER_LOG_EVENT               = var.log_level == "debug" ? "true" : "false"
       RUNNER_BOOT_TIME_IN_MINUTES               = var.runner_boot_time_in_minutes
       SCALE_DOWN_CONFIG                         = jsonencode(var.idle_config)
@@ -109,6 +110,7 @@ resource "aws_iam_role_policy" "scale_down" {
       [for p in var.github_app_parameters.id : p.arn],
       [for p in var.github_app_parameters.key_base64 : p.arn],
       [for p in var.github_app_parameters.installation_id : p.arn if p != null],
+      var.enterprise_pat_parameter != null ? [var.enterprise_pat_parameter.arn] : []
     ))
     kms_key_arn = local.kms_key_arn
   })

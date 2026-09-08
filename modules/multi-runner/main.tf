@@ -3,8 +3,11 @@ locals {
     "ghr:environment" = var.prefix
   })
 
-  primary_app_id         = coalesce(var.github_app.id_ssm, module.ssm.parameters.github_app_id)
-  primary_app_key_base64 = coalesce(var.github_app.key_base64_ssm, module.ssm.parameters.github_app_key_base64)
+  # For enterprise runners, app id and key_base64 are not required. When not
+  # provided, fall back to empty placeholder values so downstream Lambda env
+  # vars are set but unused.
+  primary_app_id         = coalesce(var.github_app.id_ssm, module.ssm.parameters.github_app_id, { name = "", arn = "" })
+  primary_app_key_base64 = coalesce(var.github_app.key_base64_ssm, module.ssm.parameters.github_app_key_base64, { name = "", arn = "" })
 
   github_app_parameters = {
     id = concat(
@@ -21,6 +24,25 @@ locals {
     )
     webhook_secret = coalesce(var.github_app.webhook_secret_ssm, module.ssm.parameters.github_app_webhook_secret)
   }
+
+  enterprise_pat_parameters = var.enterprise_pat != null ? {
+    name = coalesce(
+      try(var.enterprise_pat.pat_ssm.name, null),
+      try(module.ssm.parameters.enterprise_pat.name, null)
+    )
+    arn = coalesce(
+      try(var.enterprise_pat.pat_ssm.arn, null),
+      try(module.ssm.parameters.enterprise_pat.arn, null)
+    )
+  } : null
+
+  # True when any configured runner registers at the enterprise level. Used to
+  # relax the shared SSM `github_app` validation, since enterprise runners
+  # authenticate with a PAT and don't require a GitHub App id/key.
+  any_enterprise_runners = anytrue([
+    for k, v in var.multi_runner_config :
+    (v.runner_config.enable_organization_runners ? false : coalesce(v.runner_config.runner_registration_level, "repo") == "enterprise")
+  ])
 
   runner_extra_labels = { for k, v in var.multi_runner_config : k => sort(setunion(flatten(v.matcherConfig.labelMatchers), compact(v.runner_config.runner_extra_labels))) }
 

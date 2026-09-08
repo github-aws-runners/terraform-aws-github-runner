@@ -6,6 +6,7 @@ import { resolveComputeProviderType } from '@aws-github-runner/compute-providers
 import moment from 'moment';
 
 import {
+  createEnterprisePATClient,
   createGithubAppAuth,
   createGithubInstallationAuth,
   createOctokitClient,
@@ -35,6 +36,13 @@ async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
 
   logger.debug(`[createGitHubClientForRunner] Cache miss for ${key}`);
   const { ghesApiUrl } = getGitHubEnterpriseApiUrl();
+
+  if (runner.type === 'Enterprise') {
+    const octokit = await createEnterprisePATClient(ghesApiUrl);
+    githubCache.clients.set(key, octokit);
+    return octokit;
+  }
+
   const ghAuthPre = await createGithubAppAuth(undefined, ghesApiUrl);
   const appIdx = ghAuthPre.appIndex;
 
@@ -70,19 +78,24 @@ async function getGitHubSelfHostedRunnerState(
 ): Promise<RunnerState | null> {
   try {
     const state =
-      runner.type === 'Org'
-        ? await client.actions.getSelfHostedRunnerForOrg({
+      runner.type === 'Enterprise'
+        ? await client.request('GET /enterprises/{enterprise}/actions/runners/{runner_id}', {
             runner_id: runnerId,
-            org: runner.owner,
+            enterprise: runner.owner,
           })
-        : await client.actions.getSelfHostedRunnerForRepo({
-            runner_id: runnerId,
-            owner: runner.owner.split('/')[0],
-            repo: runner.owner.split('/')[1],
-          });
+        : runner.type === 'Org'
+          ? await client.actions.getSelfHostedRunnerForOrg({
+              runner_id: runnerId,
+              org: runner.owner,
+            })
+          : await client.actions.getSelfHostedRunnerForRepo({
+              runner_id: runnerId,
+              owner: runner.owner.split('/')[0],
+              repo: runner.owner.split('/')[1],
+            });
     metricGitHubAppRateLimit(state.headers);
 
-    return state.data;
+    return state.data as RunnerState;
   } catch (error) {
     if (error instanceof RequestError && error.status === 404) {
       logger.info(`Runner '${runner.id}' with GitHub Runner ID '${runnerId}' not found on GitHub (404)`);
@@ -113,7 +126,12 @@ async function listGitHubRunners(runner: RunnerInfo): Promise<GhRunners> {
   logger.debug(`[listGithubRunners] Cache miss for ${key}`);
   const client = await getOrCreateOctokit(runner);
   let runners;
-  if (runner.type === 'Org') {
+  if (runner.type === 'Enterprise') {
+    runners = (await client.paginate('GET /enterprises/{enterprise}/actions/runners', {
+      enterprise: runner.owner,
+      per_page: 100,
+    })) as GhRunners;
+  } else if (runner.type === 'Org') {
     runners = await client.paginate(client.actions.listSelfHostedRunnersForOrg, {
       org: runner.owner,
       per_page: 100,
@@ -146,7 +164,15 @@ async function deleteGitHubRunner(
 ): Promise<{ ghRunnerId: number; status: number; success: boolean }> {
   try {
     let response;
-    if (runner.type === 'Org') {
+    if (runner.type === 'Enterprise') {
+      response = await githubInstallationClient.request(
+        'DELETE /enterprises/{enterprise}/actions/runners/{runner_id}',
+        {
+          runner_id: ghRunnerId,
+          enterprise: runner.owner,
+        },
+      );
+    } else if (runner.type === 'Org') {
       response = await githubInstallationClient.actions.deleteSelfHostedRunnerFromOrg({
         runner_id: ghRunnerId,
         org: runner.owner,

@@ -39,3 +39,11 @@ resource "aws_ssm_parameter" "token_path" {
   value = "${var.ssm_paths.root}/${var.ssm_paths.tokens}"
   tags  = local.tags
 }
+
+resource "aws_ssm_parameter" "runner_registration_level" {
+  name  = "${var.ssm_paths.root}/${var.ssm_paths.config}/runner_registration_level"
+  type  = "String"
+  value = var.runner_registration_level != null ? var.runner_registration_level : "repo"
+  tags  = local.tags
+}
+

@@ -36,7 +36,9 @@ resource "aws_lambda_function" "scale_up" {
       ENABLE_JIT_CONFIG                         = var.enable_jit_config
       ENABLE_JOB_QUEUED_CHECK                   = local.enable_job_queued_check
       ENABLE_METRIC_GITHUB_APP_RATE_LIMIT       = var.metrics.enable && var.metrics.metric.enable_github_app_rate_limit
-      ENABLE_ORGANIZATION_RUNNERS               = var.enable_organization_runners
+      RUNNER_REGISTRATION_LEVEL                 = var.runner_registration_level != null ? var.runner_registration_level : ""
+      ENTERPRISE_SLUG                           = var.enterprise_slug != null ? var.enterprise_slug : ""
+      PARAMETER_ENTERPRISE_PAT_NAME             = var.enterprise_pat_parameter != null ? var.enterprise_pat_parameter.name : ""
       ENVIRONMENT                               = var.prefix
       GHES_URL                                  = var.ghes_url
       USER_AGENT                                = var.user_agent
@@ -134,7 +136,8 @@ resource "aws_iam_role_policy" "scale_up" {
       [for p in var.github_app_parameters.id : p.arn],
       [for p in var.github_app_parameters.key_base64 : p.arn],
       [for p in var.github_app_parameters.installation_id : p.arn if p != null],
-      ["arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm_paths.root}/${var.ssm_paths.config}/*"]
+      ["arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm_paths.root}/${var.ssm_paths.config}/*"],
+      var.enterprise_pat_parameter != null ? [var.enterprise_pat_parameter.arn] : []
     ))
     kms_key_arn              = local.kms_key_arn
     ami_kms_key_arn          = local.ami_kms_key_arn

@@ -50,7 +50,10 @@ resource "aws_lambda_function" "pool" {
       RUNNER_LABELS                             = lower(join(",", var.config.runner.labels))
       RUNNER_GROUP_NAME                         = var.config.runner.group_name
       RUNNER_NAME_PREFIX                        = var.config.runner.name_prefix
-      RUNNER_OWNER                              = var.config.runner.pool_owner
+      RUNNER_OWNER                              = var.config.runner.pool_owner != null ? var.config.runner.pool_owner : (var.config.enterprise_slug != null ? var.config.enterprise_slug : "")
+      RUNNER_REGISTRATION_LEVEL                 = var.config.runner_registration_level != null ? var.config.runner_registration_level : ""
+      ENTERPRISE_SLUG                           = var.config.enterprise_slug != null ? var.config.enterprise_slug : ""
+      PARAMETER_ENTERPRISE_PAT_NAME             = try(var.config.enterprise_pat_parameter.name, "")
       RUNNERS_MAXIMUM_COUNT                     = var.config.runners_maximum_count
       SSM_TOKEN_PATH                            = var.config.ssm_token_path
       SSM_CONFIG_PATH                           = var.config.ssm_config_path
@@ -109,6 +112,7 @@ resource "aws_iam_role_policy" "pool" {
       [for p in var.config.github_app_parameters.id : p.arn],
       [for p in var.config.github_app_parameters.key_base64 : p.arn],
       [for p in var.config.github_app_parameters.installation_id : p.arn if p != null],
+      var.config.enterprise_pat_parameter != null ? [var.config.enterprise_pat_parameter.arn] : []
     ))
     kms_key_arn              = var.config.kms_key_arn
     ami_kms_key_arn          = var.config.ami_kms_key_arn

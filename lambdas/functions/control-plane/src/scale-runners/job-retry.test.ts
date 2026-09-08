@@ -156,7 +156,7 @@ describe(`Test job retry check`, () => {
       repoOwnerType: 'Organization',
       retryCounter: 0,
     };
-    process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+    process.env.RUNNER_REGISTRATION_LEVEL = 'org';
     process.env.RUNNER_NAME_PREFIX = 'test';
     process.env.JOB_QUEUE_SCALE_UP_URL =
       'https://sqs.eu-west-1.amazonaws.com/123456789/webhook_events_workflow_job_queue';
@@ -192,7 +192,7 @@ describe(`Test job retry check`, () => {
       retryCounter: 1,
     };
 
-    process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+    process.env.RUNNER_REGISTRATION_LEVEL = 'org';
     process.env.ENVIRONMENT = 'test';
     process.env.RUNNER_NAME_PREFIX = 'test';
     process.env.ENABLE_METRIC_JOB_RETRY = 'true';
@@ -233,7 +233,7 @@ describe(`Test job retry check`, () => {
       repoOwnerType: 'Organization',
       retryCounter: 0,
     };
-    process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+    process.env.RUNNER_REGISTRATION_LEVEL = 'org';
     process.env.RUNNER_NAME_PREFIX = 'test';
     process.env.JOB_QUEUE_SCALE_UP_URL =
       'https://sqs.eu-west-1.amazonaws.com/123456789/webhook_events_workflow_job_queue';
@@ -262,7 +262,7 @@ describe(`Test job retry check`, () => {
       repoOwnerType: 'Organization',
       retryCounter: 0,
     };
-    process.env.ENABLE_ORGANIZATION_RUNNERS = 'false';
+    process.env.RUNNER_REGISTRATION_LEVEL = 'repo';
 
     // act
     await checkAndRetryJob(message);
@@ -319,7 +319,7 @@ describe('Test job retry handler (batch processing)', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+    process.env.RUNNER_REGISTRATION_LEVEL = 'org';
     process.env.JOB_QUEUE_SCALE_UP_URL = 'https://sqs.example.com/queue';
   });
 
