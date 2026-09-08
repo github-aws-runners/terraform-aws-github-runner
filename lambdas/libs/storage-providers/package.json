@@ -4,7 +4,8 @@
   "main": "index.ts",
   "exports": {
     ".": "./index.ts",
-    "./aws/ssm/runner-config-housekeeper": "./aws/ssm/runner-config-housekeeper.ts"
+    "./aws/ssm/runner-config-housekeeper": "./aws/ssm/runner-config-housekeeper.ts",
+    "./runner-config-consumer": "./runner-config-consumer.ts"
   },
   "type": "module",
   "license": "MIT",

@@ -27,6 +27,16 @@ export interface GitHubAppCredentialsStore {
   get(): Promise<GitHubAppCredential[]>;
 }
 
+export interface RunnerConfigConsumeOptions {
+  /** Absolute Unix time in milliseconds after which the operation must stop. */
+  deadlineMs: number;
+  signal: AbortSignal;
+}
+
+export interface RunnerConfigConsumer {
+  consume(runnerId: string, options: RunnerConfigConsumeOptions): Promise<string>;
+}
+
 export interface RunnerGroupCacheRecord {
   runnerGroupName: string;
   runnerGroupId: number;
