@@ -3,11 +3,12 @@ import { createSingleMetric } from '@aws-github-runner/aws-powertools-util';
 import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import { metricGitHubAppRateLimit } from './rate-limit';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { getLoadedAppId } from './auth';
+import { getLoadedAppId, reportAppRateLimit } from './auth';
 
 vi.mock('./auth', async () => ({
   // App ids per index, as loaded by the auth module from SSM.
   getLoadedAppId: vi.fn(async (appIndex: number) => [1234, 5678][appIndex]),
+  reportAppRateLimit: vi.fn(),
 }));
 
 vi.mock('@aws-github-runner/aws-powertools-util', async () => {
@@ -89,6 +90,15 @@ describe('metricGitHubAppRateLimit', () => {
     expect(createSingleMetric).toHaveBeenCalledWith('GitHubAppRateLimitRemaining', MetricUnit.Count, 75, {
       AppId: '1234',
     });
+  });
+
+  it('feeds the app selector with the remaining budget even when metrics are disabled', async () => {
+    process.env.ENABLE_METRIC_GITHUB_APP_RATE_LIMIT = 'false';
+    const headers: ResponseHeaders = { 'x-ratelimit-remaining': '4200', 'x-ratelimit-limit': '5000' };
+
+    await metricGitHubAppRateLimit(headers, 1);
+
+    expect(reportAppRateLimit).toHaveBeenCalledWith(1, 4200);
   });
 
   it('should label metric with an empty AppId when the appIndex is unknown', async () => {
