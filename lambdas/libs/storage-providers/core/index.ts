@@ -17,6 +17,16 @@ export interface RunnerConfigHousekeeper {
   houseKeeper(): Promise<void>;
 }
 
+export interface GitHubAppCredential {
+  appId: number;
+  privateKey: string;
+  installationId?: number;
+}
+
+export interface GitHubAppCredentialsStore {
+  get(): Promise<GitHubAppCredential[]>;
+}
+
 export interface RunnerGroupCacheRecord {
   runnerGroupName: string;
   runnerGroupId: number;
