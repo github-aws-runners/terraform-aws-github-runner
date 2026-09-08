@@ -1,7 +1,11 @@
 import { addPersistentContextToChildLogger, createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import { InvalidRunnerLabelsError } from '@aws-github-runner/compute-providers/core';
 import { resolveComputeProviderType } from '@aws-github-runner/compute-providers/provider-types';
-import { createStorageProviders, type StorageProviders } from '@aws-github-runner/storage-providers';
+import {
+  createStorageProviders,
+  getRunnerStateStore,
+  type StorageProviders,
+} from '@aws-github-runner/storage-providers';
 import { Octokit } from '@octokit/rest';
 import yn from 'yn';
 

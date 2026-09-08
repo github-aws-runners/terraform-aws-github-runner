@@ -16,6 +16,9 @@ vi.mock('../github/auth', () => ({
 }));
 
 vi.mock('@aws-github-runner/storage-providers', () => ({
+  createStorageProviders: vi.fn().mockReturnValue({
+    githubAppCredentials: { get: vi.fn() },
+  }),
   getRunnerConfigStore: vi.fn(),
   getRunnerGroupCacheStore: vi.fn(),
   getRunnerStateStore: vi.fn().mockReturnValue(undefined),

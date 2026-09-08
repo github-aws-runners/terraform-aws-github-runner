@@ -67,7 +67,7 @@ locals {
   }
 
   dynamodb_entry_records = {
-      for entry_id, entry in local.effective_config.multi_runner_config : entry_id => {
+    for entry_id, entry in local.effective_config.multi_runner_config : entry_id => {
       run_as                 = entry.runner.run_as_root ? "root" : entry.runner.run_as
       agent_mode             = entry.orchestration_provider.webhook.runner.ephemeral ? "ephemeral" : "persistent"
       disable_default_labels = entry.runner.disable_default_labels

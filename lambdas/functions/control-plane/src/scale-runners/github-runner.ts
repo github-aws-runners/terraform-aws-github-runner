@@ -1,7 +1,6 @@
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import {
   createStorageProviders,
-  getRunnerGroupCacheStore,
   getRunnerConfigStore,
   getRunnerStateStore,
   type RunnerConfigMetadata,

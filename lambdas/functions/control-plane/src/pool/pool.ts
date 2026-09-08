@@ -138,6 +138,19 @@ async function getInstallationId(
   appIndex: number,
   storage?: StorageProviders,
 ): Promise<number> {
+  // Use the pre-configured installation ID when available (avoids an API call).
+  const storedId = await getStoredInstallationId(appIndex, storage?.githubAppCredentials);
+  if (storedId !== undefined) return storedId;
+
+  const githubClient = await createOctokitClient(appToken, ghesApiUrl, appIndex);
+
+  return (
+    await githubClient.apps.getOrgInstallation({
+      org,
+    })
+  ).data.id;
+}
+
 function countAvailableStoredRunners(
   runnerStates: RunnerStateRecord[],
   runnerStatuses: Map<string, RunnerStatus>,
@@ -163,19 +176,6 @@ function runnerBootTimeExceeded(createdAt: string): boolean {
   const bootTimeMinutes = Number(process.env.RUNNER_BOOT_TIME_IN_MINUTES);
   const launchTime = new Date(createdAt).getTime();
   return launchTime + bootTimeMinutes * 60_000 < Date.now();
-}
-
-  // Use the pre-configured installation ID when available (avoids an API call).
-  const storedId = await getStoredInstallationId(appIndex, storage?.githubAppCredentials);
-  if (storedId !== undefined) return storedId;
-
-  const githubClient = await createOctokitClient(appToken, ghesApiUrl, appIndex);
-
-  return (
-    await githubClient.apps.getOrgInstallation({
-      org,
-    })
-  ).data.id;
 }
 
 async function getGitHubRegisteredRunnnerStatusses(
