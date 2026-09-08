@@ -1,6 +1,6 @@
-# Experimental global compute-provider configuration.
-variable "experimental_global_config_compute_provider" {
-  description = "Experimental global compute-provider configuration."
+# Global compute-provider configuration.
+variable "global_config_compute_provider" {
+  description = "Global compute-provider configuration."
   type = object({
     selections = optional(map(object({
       namespace = string

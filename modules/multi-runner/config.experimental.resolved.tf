@@ -1,39 +1,52 @@
-# Project stable v1 inputs into the experimental schema, resolve every runner
-# configuration against the experimental global defaults, and assemble the
+# Project stable v1 inputs into the v2 schema, resolve every runner
+# configuration against the v2 global defaults, and assemble the
 # resource-ready configuration consumed by the multi-runner resources.
 locals {
+  # A single public map accepts either the stable v1 lane shape or the
+  # provider-boundary v2 shape. Keep the two projections separate so the
+  # legacy resources only see legacy lanes and v2 normalization can combine
+  # translated legacy lanes with native v2 lanes.
+  legacy_multi_runner_config = {
+    for k, v in var.multi_runner_config : k => v
+    if try(v.runner_config.runner_os, null) != null
+  }
+
+  v2_multi_runner_config = {
+    for k, v in var.multi_runner_config : k => v
+    if try(v.orchestration_provider.webhook.matcherConfig.labelMatchers, null) != null
+  }
+
   # Reassemble the split experimental inputs into the canonical shape consumed
   # by the translation and precedence logic below.
-  experimental = {
-    tags                   = var.experimental_global_config.tags
-    roles                  = var.experimental_global_config.roles
-    runner                 = var.experimental_global_config.runner
-    github                 = var.experimental_global_config_github
-    lambda                 = var.experimental_global_config_lambda
-    orchestration_provider = var.experimental_global_config_orchestration_provider
-    ssm                    = var.experimental_global_config_ssm
-    observability          = var.experimental_global_config_observability
-    compute_provider       = var.experimental_global_config_compute_provider
-    multi_runner_config    = var.experimental_multi_runner_config
+  v2_config = {
+    tags                   = var.global_config.tags
+    roles                  = var.global_config.roles
+    runner                 = var.global_config.runner
+    github                 = var.global_config_github
+    lambda                 = var.global_config_lambda
+    orchestration_provider = var.global_config_orchestration_provider
+    ssm                    = var.global_config_ssm
+    observability          = var.global_config_observability
+    compute_provider       = var.global_config_compute_provider
+    multi_runner_config    = merge(local.stable_to_v2_multi_runner_config, local.v2_multi_runner_config)
   }
 
-  stable_to_experimental = {
-    tags                   = local.stable_to_experimental_tags
-    roles                  = local.stable_to_experimental_roles
-    runner                 = local.stable_to_experimental_runner
-    github                 = local.stable_to_experimental_github
-    lambda                 = local.stable_to_experimental_lambda
-    orchestration_provider = local.stable_to_experimental_orchestration_provider
-    ssm                    = local.stable_to_experimental_ssm
-    observability          = local.stable_to_experimental_observability
-    compute_provider       = local.stable_to_experimental_compute_provider
-    multi_runner_config    = local.stable_to_experimental_multi_runner_config
+  stable_to_v2 = {
+    tags                   = local.stable_to_v2_tags
+    roles                  = local.stable_to_v2_roles
+    runner                 = local.stable_to_v2_runner
+    github                 = local.stable_to_v2_github
+    lambda                 = local.stable_to_v2_lambda
+    orchestration_provider = local.stable_to_v2_orchestration_provider
+    ssm                    = local.stable_to_v2_ssm
+    observability          = local.stable_to_v2_observability
+    compute_provider       = local.stable_to_v2_compute_provider
+    multi_runner_config    = local.stable_to_v2_multi_runner_config
   }
 
-  # A non-empty experimental map selects v2 normalization.
-  use_v2_config = length(var.experimental_multi_runner_config) > 0
+  use_v2_config = length(local.v2_multi_runner_config) > 0
 
-  normalized_config = local.use_v2_config ? local.experimental : local.stable_to_experimental
+  normalized_config = local.use_v2_config ? local.v2_config : local.stable_to_v2
 }
 
 locals {

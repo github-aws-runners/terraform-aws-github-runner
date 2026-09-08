@@ -1,6 +1,6 @@
-# Experimental global observability configuration.
-variable "experimental_global_config_observability" {
-  description = "Experimental global observability configuration."
+# Global observability configuration.
+variable "global_config_observability" {
+  description = "Global observability configuration."
   type = object({
     logs = optional(object({
       level             = optional(string, "info")

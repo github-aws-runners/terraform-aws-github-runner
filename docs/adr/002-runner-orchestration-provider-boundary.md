@@ -38,7 +38,7 @@ scale-set API client, controller, container image, or ECS resources.
 
 ## Terminology
 
-- **Runner configuration**: One entry in `experimental_multi_runner_config`,
+- **Runner configuration**: One entry in `multi_runner_config`,
   including common runner behavior, one orchestration provider, and one compute
   provider.
 - **Orchestration provider**: The implementation that receives or reconciles
@@ -61,31 +61,31 @@ exactly one provider of each type.
 The experimental interface is intentionally represented by separate Terraform
 variables rather than one monolithic `experimental` object:
 
-- `experimental_global_config` contains common global defaults such as tags,
+- `global_config` contains common global defaults such as tags,
   roles, and runner identity.
-- `experimental_global_config_github` contains shared GitHub settings.
-- `experimental_global_config_lambda` contains provider-neutral Lambda
+- `global_config_github` contains shared GitHub settings.
+- `global_config_lambda` contains provider-neutral Lambda
   substrate and the shared artifact bucket.
-- `experimental_global_config_orchestration_provider` contains global webhook
+- `global_config_orchestration_provider` contains global webhook
   defaults and shared webhook settings.
-- `experimental_global_config_ssm` contains global SSM settings.
-- `experimental_global_config_observability` contains logs, tracing, and
+- `global_config_ssm` contains global SSM settings.
+- `global_config_observability` contains logs, tracing, and
   metrics defaults.
-- `experimental_global_config_compute_provider` contains global compute
+- `global_config_compute_provider` contains global compute
   provider settings.
-- `experimental_multi_runner_config` contains per-runner configuration
+- `multi_runner_config` contains per-runner configuration
   overrides and provider selections.
 
 For example:
 
 ```hcl
-experimental_global_config = {
+global_config = {
   tags = {
     Environment = "ci"
   }
 }
 
-experimental_global_config_observability = {
+global_config_observability = {
   metrics = {
     enabled = true
     metric = {
@@ -95,7 +95,7 @@ experimental_global_config_observability = {
   }
 }
 
-experimental_global_config_orchestration_provider = {
+global_config_orchestration_provider = {
   webhook = {
     eventbridge = {
       enabled = true
@@ -103,7 +103,7 @@ experimental_global_config_orchestration_provider = {
   }
 }
 
-experimental_multi_runner_config = {
+multi_runner_config = {
   linux_arm64 = {
     orchestration_provider = {
       webhook = {
@@ -150,7 +150,7 @@ provider may remain unknown until apply.
 
 ### Provider selection is per runner configuration
 
-Every entry in `experimental_multi_runner_config` must contain exactly one
+Every entry in `multi_runner_config` must contain exactly one
 non-null typed `orchestration_provider` block and exactly one non-null typed
 `compute_provider` block. In this phase the supported blocks are:
 
@@ -165,11 +165,11 @@ providers.
 
 ### Global provider blocks provide defaults; they do not select providers
 
-`experimental_global_config_orchestration_provider.webhook` is the global
+`global_config_orchestration_provider.webhook` is the global
 defaults and shared-component namespace for webhook orchestration. Its
 presence does not select webhook orchestration for every runner configuration.
 Selection remains under
-`experimental_multi_runner_config.<runner>.orchestration_provider`.
+`multi_runner_config.<runner>.orchestration_provider`.
 
 The global webhook namespace owns queue selection, EventBridge routing,
 matcher-parameter tier, repository filtering, build-queue defaults, redrive
@@ -269,11 +269,13 @@ must not add scale-set conditionals to webhook leaves.
 ### Compatibility and state are explicit
 
 Stable inputs are translated into the same internal canonical representation so
-defaults and shared singleton values have one resolution path. Stable runner
-configurations continue to use the existing `modules/runners` implementation.
-Opting into experimental v2 is module-wide: a non-empty
-`experimental_multi_runner_config` replaces, rather than merges with, the
-stable `multi_runner_config` map.
+defaults and shared singleton values have one resolution path. The unified
+`multi_runner_config` input accepts either the stable v1 entry shape or the v2
+provider-boundary entry shape. Stable entries continue to use the existing
+`modules/runners` implementation when no v2 entries are present. When v2
+entries are present, `experimental_features = ["multi-runner-v2"]` is required;
+the v2 path combines native v2 entries with translated v1 entries from the
+same map.
 
 The canonical v2 output groups orchestration resources under
 `orchestration_provider.webhook` and compute resources under the selected

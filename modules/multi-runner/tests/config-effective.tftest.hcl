@@ -91,8 +91,6 @@ run "v1_effective_config_contains_derived_runner_labels" {
   command = plan
 
   variables {
-    experimental_multi_runner_config = {}
-
     multi_runner_config = {
       stable = {
         runner_config = {
@@ -123,14 +121,16 @@ run "v2_effective_config_contains_derived_values" {
   command = apply
 
   variables {
-    experimental_global_config = {
+    experimental_features = ["multi-runner-v2"]
+
+    global_config = {
       runner = {
         os           = "linux"
         architecture = "x64"
       }
     }
 
-    experimental_global_config_lambda = {
+    global_config_lambda = {
       artifact = {
         s3 = {
           bucket = "global-lambda-artifacts"
@@ -138,7 +138,7 @@ run "v2_effective_config_contains_derived_values" {
       }
     }
 
-    experimental_global_config_orchestration_provider = {
+    global_config_orchestration_provider = {
       webhook = {
         lambda = {
           artifact = {
@@ -155,11 +155,11 @@ run "v2_effective_config_contains_derived_values" {
       }
     }
 
-    experimental_global_config_ssm = {
+    global_config_ssm = {
       kms_key_id = "kms-global-ssm"
     }
 
-    experimental_global_config_compute_provider = {
+    global_config_compute_provider = {
       aws = {
         ec2 = {
           runner_binaries = {
@@ -169,7 +169,7 @@ run "v2_effective_config_contains_derived_values" {
       }
     }
 
-    experimental_multi_runner_config = {
+    multi_runner_config = {
       lane = {
         runner = {
           extra_labels = ["lane-label"]

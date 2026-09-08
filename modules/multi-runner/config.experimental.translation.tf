@@ -1,13 +1,13 @@
 # Translate stable v1 inputs into the experimental v2 structure.
 locals {
-  stable_to_experimental_tags = var.tags
+  stable_to_v2_tags = var.tags
 
-  stable_to_experimental_roles = {
+  stable_to_v2_roles = {
     path                 = var.role_path
     permissions_boundary = var.role_permissions_boundary
   }
 
-  stable_to_experimental_runner = {
+  stable_to_v2_runner = {
     os                     = null
     architecture           = null
     disable_default_labels = false
@@ -31,7 +31,7 @@ locals {
     }
   }
 
-  stable_to_experimental_github = {
+  stable_to_v2_github = {
     app             = var.github_app
     additional_apps = var.additional_github_apps
     enterprise_server = {
@@ -41,7 +41,7 @@ locals {
     user_agent = var.user_agent
   }
 
-  stable_to_experimental_lambda = {
+  stable_to_v2_lambda = {
     artifact = {
       s3 = {
         bucket = var.lambda_s3_bucket
@@ -59,7 +59,7 @@ locals {
     }
   }
 
-  stable_to_experimental_orchestration_provider = {
+  stable_to_v2_orchestration_provider = {
     webhook = {
       queue_selection_strategy = var.queue_selection_strategy
       eventbridge = {
@@ -142,7 +142,7 @@ locals {
     }
   }
 
-  stable_to_experimental_ssm = {
+  stable_to_v2_ssm = {
     paths = {
       root    = "/${var.ssm_paths.root}/${var.prefix}"
       app     = var.ssm_paths.app
@@ -178,7 +178,7 @@ locals {
     }
   }
 
-  stable_to_experimental_observability = {
+  stable_to_v2_observability = {
     logs = {
       level             = var.log_level
       retention_in_days = var.logging_retention_in_days
@@ -204,7 +204,7 @@ locals {
     }
   }
 
-  stable_to_experimental_compute_provider = {
+  stable_to_v2_compute_provider = {
     selections = null
     aws = {
       ec2 = {
@@ -304,8 +304,8 @@ locals {
     }
   }
 
-  stable_to_experimental_multi_runner_config = {
-    for k, v in var.multi_runner_config : k => {
+  stable_to_v2_multi_runner_config = {
+    for k, v in local.legacy_multi_runner_config : k => {
       tags = {}
 
       runner = {

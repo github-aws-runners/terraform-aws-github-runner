@@ -1,6 +1,6 @@
-# Experimental global defaults shared by all runner lanes.
-variable "experimental_global_config" {
-  description = "Experimental global defaults shared by all runner lanes."
+# Global defaults shared by all runner lanes.
+variable "global_config" {
+  description = "Global defaults shared by all runner lanes."
   type = object({
     tags = optional(map(string), {})
 

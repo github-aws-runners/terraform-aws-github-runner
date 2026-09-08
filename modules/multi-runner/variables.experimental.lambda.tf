@@ -1,6 +1,6 @@
-# Experimental global Lambda configuration.
-variable "experimental_global_config_lambda" {
-  description = "Experimental global Lambda configuration."
+# Global Lambda configuration.
+variable "global_config_lambda" {
+  description = "Global Lambda configuration."
   type = object({
     artifact = optional(object({
       s3 = optional(object({

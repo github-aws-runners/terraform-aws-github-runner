@@ -87,7 +87,7 @@ variables {
   syncer_lambda_s3_key  = "runner-binaries-syncer.zip"
 }
 
-run "empty_experimental_map_translates_stable_inputs" {
+run "empty_v2_map_translates_stable_inputs" {
   command = plan
 
   variables {
@@ -205,7 +205,7 @@ run "empty_experimental_map_translates_stable_inputs" {
     runner_binaries_s3_versioning    = "Enabled"
     state_event_rule_binaries_syncer = "DISABLED"
 
-    experimental_global_config = {
+    global_config = {
       tags = {
         source = "experimental-ignored"
       }
@@ -214,15 +214,15 @@ run "empty_experimental_map_translates_stable_inputs" {
       }
     }
 
-    experimental_global_config_github = {
+    global_config_github = {
       user_agent = "experimental-ignored"
     }
 
-    experimental_global_config_lambda = {
+    global_config_lambda = {
       runtime = "nodejs22.x"
     }
 
-    experimental_global_config_orchestration_provider = {
+    global_config_orchestration_provider = {
       webhook = {
         queue_selection_strategy = "first"
         github = {
@@ -231,7 +231,7 @@ run "empty_experimental_map_translates_stable_inputs" {
       }
     }
 
-    experimental_global_config_compute_provider = {
+    global_config_compute_provider = {
       aws = {
         ec2 = {
           vpc_id     = "vpc-experimental-ignored"
@@ -239,8 +239,6 @@ run "empty_experimental_map_translates_stable_inputs" {
         }
       }
     }
-
-    experimental_multi_runner_config = {}
 
     multi_runner_config = {
       stable = {
@@ -308,22 +306,22 @@ run "empty_experimental_map_translates_stable_inputs" {
       && local.normalized_config.compute_provider.aws.ec2.key_name == var.key_name
       && local.normalized_config.compute_provider.aws.ec2.associate_public_ipv4_address == var.associate_public_ipv4_address
     )
-    error_message = "An empty experimental runner map must translate stable global inputs across every canonical section."
+    error_message = "An empty v2 runner map must translate stable global inputs across every canonical section."
   }
 
   assert {
     condition = (
-      local.stable_to_experimental.tags.source == var.tags.source
-      && local.stable_to_experimental.roles.path == var.role_path
-      && local.stable_to_experimental.github.user_agent == var.user_agent
-      && local.stable_to_experimental.lambda.artifact.s3.bucket == var.lambda_s3_bucket
-      && local.stable_to_experimental.orchestration_provider.webhook.lambda.scale.up.event_source_mapping.batch_size == var.lambda_event_source_mapping_batch_size
-      && local.stable_to_experimental.orchestration_provider.webhook.lambda.scale.down.idle_config == []
-      && local.stable_to_experimental.ssm.parameters.tags.owner == var.parameter_store_tags.owner
-      && local.stable_to_experimental.ssm.housekeeper.lambda.memory_size == var.runners_ssm_housekeeper.lambda_memory_size
-      && local.stable_to_experimental.compute_provider.aws.ec2.runner_binaries.s3.encryption.sse_algorithm == "aws:kms"
-      && local.stable_to_experimental.compute_provider.aws.ec2.runner_binaries.s3.encryption.kms_master_key_id == "arn:aws:kms:eu-west-1:123456789012:key/binaries"
-      && local.stable_to_experimental.compute_provider.aws.ec2.instance_termination_watcher.enabled == var.instance_termination_watcher.enable
+      local.stable_to_v2.tags.source == var.tags.source
+      && local.stable_to_v2.roles.path == var.role_path
+      && local.stable_to_v2.github.user_agent == var.user_agent
+      && local.stable_to_v2.lambda.artifact.s3.bucket == var.lambda_s3_bucket
+      && local.stable_to_v2.orchestration_provider.webhook.lambda.scale.up.event_source_mapping.batch_size == var.lambda_event_source_mapping_batch_size
+      && local.stable_to_v2.orchestration_provider.webhook.lambda.scale.down.idle_config == []
+      && local.stable_to_v2.ssm.parameters.tags.owner == var.parameter_store_tags.owner
+      && local.stable_to_v2.ssm.housekeeper.lambda.memory_size == var.runners_ssm_housekeeper.lambda_memory_size
+      && local.stable_to_v2.compute_provider.aws.ec2.runner_binaries.s3.encryption.sse_algorithm == "aws:kms"
+      && local.stable_to_v2.compute_provider.aws.ec2.runner_binaries.s3.encryption.kms_master_key_id == "arn:aws:kms:eu-west-1:123456789012:key/binaries"
+      && local.stable_to_v2.compute_provider.aws.ec2.instance_termination_watcher.enabled == var.instance_termination_watcher.enable
     )
     error_message = "The stable-to-experimental adapter must preserve nested legacy values without relying on the selector."
   }
@@ -342,30 +340,17 @@ run "empty_experimental_map_translates_stable_inputs" {
   }
 }
 
-run "non_empty_experimental_map_is_authoritative" {
+run "non_empty_v2_map_is_authoritative" {
   command = plan
 
   variables {
+    experimental_features = ["multi-runner-v2"]
+
     tags = {
       source = "stable-ignored"
     }
 
-    multi_runner_config = {
-      stable = {
-        runner_config = {
-          runner_os                     = "linux"
-          runner_architecture           = "x64"
-          instance_types                = ["m5.large"]
-          runners_maximum_count         = 1
-          enable_runner_binaries_syncer = false
-        }
-        matcherConfig = {
-          labelMatchers = [["stable"]]
-        }
-      }
-    }
-
-    experimental_global_config = {
+    global_config = {
       tags = {
         source = "experimental"
       }
@@ -375,7 +360,7 @@ run "non_empty_experimental_map_is_authoritative" {
       }
     }
 
-    experimental_global_config_compute_provider = {
+    global_config_compute_provider = {
       aws = {
         ec2 = {
           runner_binaries = {
@@ -385,7 +370,7 @@ run "non_empty_experimental_map_is_authoritative" {
       }
     }
 
-    experimental_multi_runner_config = {
+    multi_runner_config = {
       experimental = {
         orchestration_provider = {
           webhook = {
@@ -413,12 +398,12 @@ run "non_empty_experimental_map_is_authoritative" {
       && toset(local.normalized_config.multi_runner_config["experimental"].compute_provider.aws.ec2.instance_types) == toset(["c7g.large"])
       && flatten(local.normalized_config.multi_runner_config["experimental"].orchestration_provider.webhook.matcherConfig.labelMatchers) == ["experimental"]
     )
-    error_message = "A non-empty experimental runner map must be authoritative and must not merge stable lanes or flat defaults."
+    error_message = "A non-empty v2 runner map must be authoritative and must not merge stable lanes or flat defaults."
   }
 
   assert {
-    condition     = jsonencode(local.normalized_config) == jsonencode(local.experimental)
-    error_message = "A non-empty experimental runner map must select the experimental object without leaking stable flat inputs."
+    condition     = jsonencode(local.normalized_config) == jsonencode(local.v2_config)
+    error_message = "A non-empty v2 runner map must select the v2 object without leaking stable flat inputs."
   }
 
 }
@@ -427,7 +412,9 @@ run "lane_values_override_experimental_globals" {
   command = plan
 
   variables {
-    experimental_global_config = {
+    experimental_features = ["multi-runner-v2"]
+
+    global_config = {
       tags = {
         scope      = "global"
         precedence = "global"
@@ -446,7 +433,7 @@ run "lane_values_override_experimental_globals" {
       }
     }
 
-    experimental_global_config_orchestration_provider = {
+    global_config_orchestration_provider = {
       webhook = {
         runner = {
           maximum_count = 4
@@ -454,14 +441,14 @@ run "lane_values_override_experimental_globals" {
       }
     }
 
-    experimental_global_config_observability = {
+    global_config_observability = {
       logs = {
         level             = "debug"
         retention_in_days = 30
       }
     }
 
-    experimental_global_config_ssm = {
+    global_config_ssm = {
       housekeeper = {
         lambda = {
           artifact = {
@@ -471,7 +458,7 @@ run "lane_values_override_experimental_globals" {
       }
     }
 
-    experimental_global_config_compute_provider = {
+    global_config_compute_provider = {
       aws = {
         ec2 = {
           vpc_id     = "vpc-experimental"
@@ -487,7 +474,7 @@ run "lane_values_override_experimental_globals" {
       }
     }
 
-    experimental_multi_runner_config = {
+    multi_runner_config = {
       lane = {
         tags = {
           precedence = "lane"
@@ -557,7 +544,7 @@ run "lane_values_override_experimental_globals" {
       && local.resolved_config.multi_runner_config["lane"].ssm.housekeeper.lambda.artifact.zip == null
       && local.resolved_config.multi_runner_config["lane"].ssm.housekeeper.lambda.artifact.s3.key == "lane-housekeeper.zip"
     )
-    error_message = "Lane values must override experimental globals while omitted values inherit their global defaults."
+    error_message = "Lane values must override v2 globals while omitted values inherit their global defaults."
   }
 
   assert {
@@ -575,7 +562,7 @@ run "lane_values_override_experimental_globals" {
         provider   = "lane"
       })
     )
-    error_message = "Tags and EC2 defaults must merge from experimental globals with lane values taking precedence."
+    error_message = "Tags and EC2 defaults must merge from v2 globals with lane values taking precedence."
   }
 
   assert {
@@ -592,7 +579,9 @@ run "global_external_runner_role_suppresses_inherited_iam_overrides" {
   command = plan
 
   variables {
-    experimental_global_config = {
+    experimental_features = ["multi-runner-v2"]
+
+    global_config = {
       runner = {
         os           = "linux"
         architecture = "x64"
@@ -608,7 +597,7 @@ run "global_external_runner_role_suppresses_inherited_iam_overrides" {
       }
     }
 
-    experimental_global_config_compute_provider = {
+    global_config_compute_provider = {
       aws = {
         ec2 = {
           vpc_id     = "vpc-global"
@@ -620,7 +609,7 @@ run "global_external_runner_role_suppresses_inherited_iam_overrides" {
       }
     }
 
-    experimental_multi_runner_config = {
+    multi_runner_config = {
       lane = {
         orchestration_provider = {
           webhook = {
@@ -651,4 +640,31 @@ run "global_external_runner_role_suppresses_inherited_iam_overrides" {
     )
     error_message = "A global external runner role must suppress inherited managed policies and trust-policy additions."
   }
+}
+
+run "v2_map_requires_acknowledgement" {
+  command = plan
+
+  variables {
+    multi_runner_config = {
+      lane = {
+        orchestration_provider = {
+          webhook = {
+            matcherConfig = {
+              labelMatchers = [["lane"]]
+            }
+          }
+        }
+        compute_provider = {
+          aws = {
+            ec2 = {
+              instance_types = ["m5.large"]
+            }
+          }
+        }
+      }
+    }
+  }
+
+  expect_failures = [resource.random_string.random]
 }

@@ -1,6 +1,6 @@
-# Experimental global orchestration-provider configuration.
-variable "experimental_global_config_orchestration_provider" {
-  description = "Experimental global orchestration-provider configuration."
+# Global orchestration-provider configuration.
+variable "global_config_orchestration_provider" {
+  description = "Global orchestration-provider configuration."
   type = object({
     webhook = optional(object({
       queue_selection_strategy = optional(string, "first")

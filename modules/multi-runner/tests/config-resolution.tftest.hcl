@@ -93,13 +93,11 @@ run "v1_stable_inputs_translate_into_effective_base" {
       source = "v1"
     }
 
-    experimental_global_config = {
+    global_config = {
       tags = {
         source = "v2-must-not-leak"
       }
     }
-
-    experimental_multi_runner_config = {}
 
     multi_runner_config = {
       stable = {
@@ -134,30 +132,17 @@ run "v1_stable_inputs_translate_into_effective_base" {
   }
 }
 
-run "v2_experimental_inputs_resolve_lane_over_global" {
+run "v2_inputs_resolve_lane_over_global" {
   command = plan
 
   variables {
+    experimental_features = ["multi-runner-v2"]
+
     tags = {
       source = "v1-must-not-leak"
     }
 
-    multi_runner_config = {
-      stable = {
-        runner_config = {
-          runner_os                     = "windows"
-          runner_architecture           = "x64"
-          instance_types                = ["m5.large"]
-          runners_maximum_count         = 1
-          enable_runner_binaries_syncer = false
-        }
-        matcherConfig = {
-          labelMatchers = [["stable"]]
-        }
-      }
-    }
-
-    experimental_global_config = {
+    global_config = {
       tags = {
         source = "v2"
       }
@@ -168,7 +153,7 @@ run "v2_experimental_inputs_resolve_lane_over_global" {
       }
     }
 
-    experimental_global_config_compute_provider = {
+    global_config_compute_provider = {
       aws = {
         ec2 = {
           vpc_id     = "vpc-global"
@@ -193,7 +178,7 @@ run "v2_experimental_inputs_resolve_lane_over_global" {
       }
     }
 
-    experimental_global_config_observability = {
+    global_config_observability = {
       metrics = {
         enabled = true
         metric = {
@@ -207,7 +192,7 @@ run "v2_experimental_inputs_resolve_lane_over_global" {
       }
     }
 
-    experimental_global_config_orchestration_provider = {
+    global_config_orchestration_provider = {
       webhook = {
         eventbridge = {
           enabled = false
@@ -215,7 +200,7 @@ run "v2_experimental_inputs_resolve_lane_over_global" {
       }
     }
 
-    experimental_global_config_ssm = {
+    global_config_ssm = {
       housekeeper = {
         lambda = {
           artifact = {
@@ -225,7 +210,7 @@ run "v2_experimental_inputs_resolve_lane_over_global" {
       }
     }
 
-    experimental_multi_runner_config = {
+    multi_runner_config = {
       lane = {
         runner = {
           group_name = "lane-group"
@@ -299,6 +284,6 @@ run "v2_experimental_inputs_resolve_lane_over_global" {
       && local.resolved_config.multi_runner_config["lane"].ssm.housekeeper.lambda.artifact.s3.key == "lane-housekeeper.zip"
       && toset(local.effective_config.multi_runner_config["lane"].runner.labels) == toset(["arm64", "linux", "self-hosted"])
     )
-    error_message = "Experimental v2 inputs must resolve lane overrides before experimental global defaults."
+    error_message = "v2 inputs must resolve lane overrides before v2 global defaults."
   }
 }

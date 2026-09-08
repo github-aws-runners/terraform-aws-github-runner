@@ -1,6 +1,6 @@
-# Experimental global SSM configuration.
-variable "experimental_global_config_ssm" {
-  description = "Experimental global SSM configuration."
+# Global SSM configuration.
+variable "global_config_ssm" {
+  description = "Global SSM configuration."
   type = object({
     paths = optional(object({
       root    = optional(string, null)

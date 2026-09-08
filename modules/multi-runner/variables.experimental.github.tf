@@ -1,6 +1,6 @@
-# Experimental global GitHub configuration.
-variable "experimental_global_config_github" {
-  description = "Experimental global GitHub configuration."
+# Global GitHub configuration.
+variable "global_config_github" {
+  description = "Global GitHub configuration."
   type = object({
     app = optional(object({
       key_base64 = optional(string)
