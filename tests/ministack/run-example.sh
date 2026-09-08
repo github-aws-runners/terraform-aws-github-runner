@@ -23,14 +23,14 @@ case "$iac_binary" in
 esac
 
 case "$example" in
-  base | prebuilt | default | ephemeral | multi-runner | multi-runner-v2)
+  base | prebuilt | default | ephemeral | multi-runner | multi-runner-v2 | multi-runner-scale-set)
     use_tfvars=true
     ;;
   termination-watcher)
     use_tfvars=false
     ;;
   *)
-  echo "Supported examples for the runner are: base, prebuilt, default, ephemeral, multi-runner, multi-runner-v2, termination-watcher" >&2
+  echo "Supported examples for the runner are: base, prebuilt, default, ephemeral, multi-runner, multi-runner-v2, multi-runner-scale-set, termination-watcher" >&2
   exit 64
   ;;
 esac
@@ -38,7 +38,7 @@ esac
 case "$action" in
   init | plan | apply | destroy) ;;
   *)
-    echo "Usage: $0 {init|plan|apply|destroy} {base|prebuilt|default|ephemeral|multi-runner|multi-runner-v2|termination-watcher} [TFVARS_FILE]" >&2
+    echo "Usage: $0 {init|plan|apply|destroy} {base|prebuilt|default|ephemeral|multi-runner|multi-runner-v2|multi-runner-scale-set|termination-watcher} [TFVARS_FILE]" >&2
     exit 64
     ;;
 esac
@@ -262,6 +262,140 @@ create_multi_runner_override() {
 $override_file"
 }
 
+create_multi_runner_v2_override() {
+  override_file="$example_root/zz_ministack_override.tf"
+  printf '%s\n' \
+    'module "runners" {' \
+    '  global_config_compute_provider = {' \
+    '    aws = {' \
+    '      ec2 = {' \
+    '        vpc_id      = module.base.vpc.vpc_id' \
+    '        subnet_ids  = module.base.vpc.private_subnets' \
+    '        ssm_enabled = true' \
+    '        runner_binaries = {' \
+    '          enabled = false' \
+    '        }' \
+    '      }' \
+    '    }' \
+    '  }' \
+    '  multi_runner_config = {' \
+    '    linux-arm64 = {' \
+    '      runner = {' \
+    '        architecture = "arm64"' \
+    '        name_prefix  = "amazon-arm64-"' \
+    '        extra_labels = ["amazon"]' \
+    '      }' \
+    '      orchestration_provider = {' \
+    '        webhook = {' \
+    '          runner = { maximum_count = 1 }' \
+    '          matcherConfig = {' \
+    '            exactMatch    = true' \
+    '            labelMatchers = [["self-hosted", "linux", "arm64", "amazon"]]' \
+    '          }' \
+    '        }' \
+    '      }' \
+    '      compute_provider = {' \
+    '        aws = {' \
+    '          ec2 = {' \
+    '            instance_types = ["t4g.large", "c6g.large"]' \
+    '            ami = {' \
+    '              filter = { name = ["ministack-v2-linux-arm64"], state = ["available"] }' \
+    '              owners = ["self"]' \
+    '            }' \
+    '          }' \
+    '        }' \
+    '      }' \
+    '    }' \
+    '    linux-x64 = {' \
+    '      runner = {' \
+    '        name_prefix  = "amazon-x64-"' \
+    '        extra_labels = ["amazon"]' \
+    '      }' \
+    '      orchestration_provider = {' \
+    '        webhook = {' \
+    '          runner = { ephemeral = true, maximum_count = 1 }' \
+    '          matcherConfig = {' \
+    '            labelMatchers = [["self-hosted", "linux", "x64", "amazon"]]' \
+    '            exactMatch    = false' \
+    '            priority      = 1' \
+    '          }' \
+    '          queue     = { delay_webhook_event = 0 }' \
+    '          job_retry = { enabled = true }' \
+    '        }' \
+    '      }' \
+    '      compute_provider = {' \
+    '        aws = {' \
+    '          ec2 = {' \
+    '            instance_types = ["m5a.large", "m5ad.large"]' \
+    '            ami = {' \
+    '              filter = { name = ["ministack-v2-linux-x64"], state = ["available"] }' \
+    '              owners = ["self"]' \
+    '            }' \
+    '          }' \
+    '        }' \
+    '      }' \
+    '    }' \
+    '    windows-x64 = {' \
+    '      runner = {' \
+    '        os          = "windows"' \
+    '        name_prefix = "windows-x64-"' \
+    '      }' \
+    '      orchestration_provider = {' \
+    '        webhook = {' \
+    '          runner = { boot_time_in_minutes = 20, maximum_count = 1 }' \
+    '          matcherConfig = {' \
+    '            exactMatch    = true' \
+    '            labelMatchers = [["self-hosted", "windows", "x64", "servercore-2022"]]' \
+    '          }' \
+    '        }' \
+    '      }' \
+    '      compute_provider = {' \
+    '        aws = {' \
+    '          ec2 = {' \
+    '            instance_types = ["m5.large", "c5.large"]' \
+    '            ami = {' \
+    '              filter = { name = ["ministack-v2-windows-x64"], state = ["available"] }' \
+    '              owners = ["self"]' \
+    '            }' \
+    '          }' \
+    '        }' \
+    '      }' \
+    '    }' \
+    '  }' \
+    '}' > "$override_file"
+  override_created_paths="$override_created_paths
+$override_file"
+}
+
+create_multi_runner_scale_set_override() {
+  override_file="$example_root/zz_ministack_override.tf"
+  printf '%s\n' \
+    'module "runners" {' \
+    '  global_config_compute_provider = {' \
+    '    aws = {' \
+    '      ec2 = {' \
+    '        vpc_id      = module.base.vpc.vpc_id' \
+    '        subnet_ids  = module.base.vpc.private_subnets' \
+    '        ssm_enabled = true' \
+    '        runner_binaries = {' \
+    '          enabled = false' \
+    '        }' \
+    '        ami = {' \
+    '          filter = {' \
+    '            name  = ["ministack-scale-set-linux-x64"]' \
+    '            state = ["available"]' \
+    '          }' \
+    '          owners = ["self"]' \
+    '        }' \
+    '      }' \
+    '    }' \
+    '  }' \
+    '}' \
+    '' > "$override_file"
+  override_created_paths="$override_created_paths
+$override_file"
+}
+
 create_ministack_fixtures() {
   if ! command -v aws >/dev/null 2>&1; then
     echo "AWS CLI is required to seed MiniStack API fixtures." >&2
@@ -316,6 +450,15 @@ $lambda_zip"
       create_ami_fixture "ministack-v2-linux-arm64" arm64 >/dev/null
       create_ami_fixture "ministack-v2-linux-x64" x86_64 >/dev/null
       create_ami_fixture "ministack-v2-windows-x64" x86_64 >/dev/null
+      ;;
+    multi-runner-scale-set)
+      create_multi_runner_scale_set_override
+      create_ami_fixture "ministack-scale-set-linux-x64" x86_64 >/dev/null
+      create_ami_fixture "ministack-scale-set-linux-arm64" arm64 >/dev/null
+      create_ami_fixture "ministack-scale-set-windows-x64" x86_64 >/dev/null
+      create_ssm_fixture \
+        "/ministack/scale-set/installation-id" \
+        "1"
       ;;
   esac
 }

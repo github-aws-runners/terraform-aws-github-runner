@@ -1,8 +1,8 @@
 # Multi-runner scale-set example
 
 This example demonstrates the experimental multi-runner v2 interface. Shared
-defaults are configured with `experimental_global_config*` variables, while
-each runner lane uses `experimental_multi_runner_config` for its matcher,
+defaults are configured with `global_config*` variables, while
+each runner lane uses `multi_runner_config` for its matcher,
 runner lifecycle, and compute-provider settings.
 
 The example creates four lanes from one deployment:
@@ -14,7 +14,7 @@ The example creates four lanes from one deployment:
 
 The v2 interface keeps provider-owned settings inside the selected provider
 configuration. For example, VPC and subnet settings are under
-`experimental_global_config_compute_provider.aws.ec2`, while the per-lane
+`global_config_compute_provider.aws.ec2`, while the per-lane
 instance types and AMI filter are under each lane's compute provider block.
 
 The scale-set lane uses `orchestration_provider.scale_set`. Its controller
