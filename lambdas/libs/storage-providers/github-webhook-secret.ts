@@ -1,3 +1,4 @@
+import { createAwsDynamoDbGitHubWebhookSecretStore } from './aws/dynamodb/github-webhook-secret-store';
 import { createAwsSsmGitHubWebhookSecretStore } from './aws/ssm/github-webhook-secret-store';
 import type { GitHubWebhookSecretStore } from './core';
 import type {} from './environment';
@@ -7,6 +8,7 @@ type GitHubWebhookSecretStoreFactory = () => GitHubWebhookSecretStore;
 
 const providerFactories = {
   aws_ssm: createAwsSsmGitHubWebhookSecretStore,
+  aws_dynamodb: createAwsDynamoDbGitHubWebhookSecretStore,
 } as const satisfies Record<RunnerConfigStorageProvider, GitHubWebhookSecretStoreFactory>;
 
 let githubWebhookSecretStore: GitHubWebhookSecretStore | undefined;
