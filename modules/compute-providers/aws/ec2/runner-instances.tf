@@ -110,6 +110,8 @@ locals {
 }
 
 data "aws_ami" "runner" {
+  count = local.ami_id_ssm_module_managed ? 1 : 0
+
   most_recent = "true"
 
   dynamic "filter" {
@@ -128,20 +130,20 @@ resource "aws_ssm_parameter" "runner_ami_id" {
   name      = "${var.ssm.paths.root}/${var.ssm.paths.config}/ami_id"
   type      = "String"
   data_type = "aws:ec2:image"
-  value     = data.aws_ami.runner.id
+  value     = data.aws_ami.runner[0].id
 
   tags = merge(
     local.provider_tags,
     local.ssm_parameter_tags,
     {
       # Remove parentheses from AMI name to comply with AWS tag constraints
-      "ghr:ami_name" = replace(data.aws_ami.runner.name, "/[()]/", "")
+      "ghr:ami_name" = replace(data.aws_ami.runner[0].name, "/[()]/", "")
     },
     {
-      "ghr:ami_creation_date" = data.aws_ami.runner.creation_date
+      "ghr:ami_creation_date" = data.aws_ami.runner[0].creation_date
     },
     {
-      "ghr:ami_deprecation_time" = data.aws_ami.runner.deprecation_time
+      "ghr:ami_deprecation_time" = data.aws_ami.runner[0].deprecation_time
     }
   )
 }
