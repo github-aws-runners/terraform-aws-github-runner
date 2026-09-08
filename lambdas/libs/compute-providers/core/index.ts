@@ -21,7 +21,6 @@ export interface CreateGitHubRunnerConfig {
   runnerOwner: string;
   runnerType: RunnerType;
   disableAutoUpdate: boolean;
-  ssmTokenPath: string;
   ssmConfigPath: string;
   ssmParameterStoreTags: { Key: string; Value: string }[];
 }
@@ -32,7 +31,7 @@ export interface GitHubRunnerMetadata {
 }
 
 export interface StartRunnerConfigOptions {
-  getSsmParameterTags?: (runnerId: string) => { Key: string; Value: string }[];
+  getRunnerConfigMetadata?: (runnerId: string) => { key: string; value: string }[];
   onJitConfigCreated?: (runnerId: string, metadata: GitHubRunnerMetadata) => Promise<void>;
 }
 

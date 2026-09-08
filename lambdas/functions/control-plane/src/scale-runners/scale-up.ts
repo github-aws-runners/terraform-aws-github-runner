@@ -80,7 +80,6 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
   const maximumRunners = parseInt(process.env.RUNNERS_MAXIMUM_COUNT || '3');
   const runnerLabels = process.env.RUNNER_LABELS || '';
   const runnerGroup = process.env.RUNNER_GROUP_NAME || 'Default';
-  const ssmTokenPath = process.env.SSM_TOKEN_PATH;
   const ephemeralEnabled = yn(process.env.ENABLE_EPHEMERAL_RUNNERS, { default: false });
   const enableJitConfig = yn(process.env.ENABLE_JIT_CONFIG, { default: ephemeralEnabled });
   const disableAutoUpdate = yn(process.env.DISABLE_RUNNER_AUTOUPDATE, { default: false });
@@ -318,7 +317,6 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       runnerOwner: runnerOwner,
       runnerType,
       disableAutoUpdate,
-      ssmTokenPath,
       ssmConfigPath,
       ssmParameterStoreTags,
     };

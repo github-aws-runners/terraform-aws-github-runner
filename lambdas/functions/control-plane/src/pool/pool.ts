@@ -31,7 +31,6 @@ export async function adjust(event: PoolEvent): Promise<void> {
   const runnerGroup = process.env.RUNNER_GROUP_NAME || '';
   const runnerNamePrefix = process.env.RUNNER_NAME_PREFIX || '';
   const environment = process.env.ENVIRONMENT;
-  const ssmTokenPath = process.env.SSM_TOKEN_PATH;
   const ssmConfigPath = process.env.SSM_CONFIG_PATH || '';
   const ephemeral = yn(process.env.ENABLE_EPHEMERAL_RUNNERS, { default: false });
   const enableJitConfig = yn(process.env.ENABLE_JIT_CONFIG, { default: ephemeral });
@@ -103,7 +102,6 @@ export async function adjust(event: PoolEvent): Promise<void> {
         runnerNamePrefix,
         runnerType: 'Org',
         disableAutoUpdate: disableAutoUpdate,
-        ssmTokenPath,
         ssmConfigPath,
         ssmParameterStoreTags,
       },
