@@ -2,7 +2,7 @@
 
 > This module is treated as an internal module; breaking changes do not trigger a major release bump.
 
-This internal module implements the experimental provider-neutral runner configuration selected by `experimental.multi_runner_config`. It is composed by `multi-runner` and is not intended as a standalone public entry point. Its direct contract may change while v2 remains experimental.
+This internal module implements the experimental provider-neutral runner configuration selected by `multi_runner_config`. It is composed by `multi-runner` and is not intended as a standalone public entry point. Its direct contract may change while v2 remains experimental.
 
 The module selects the [`webhook` orchestration provider](../orchestration-providers/webhook), which owns its [`scale-runners`](../orchestration-providers/webhook/scale-runners), [`pool`](../orchestration-providers/webhook/pool), and [`job-retry`](../orchestration-providers/webhook/job-retry) leaves. The configuration module retains the common [`ssm-housekeeper`](./ssm-housekeeper), creates or selects the runner IAM role, manages shared runner configuration in SSM, and dispatches the selected compute provider.
 

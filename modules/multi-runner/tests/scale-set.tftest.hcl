@@ -63,14 +63,14 @@ variables {
   aws_partition = "aws"
   prefix        = "scale-set-test"
 
-  experimental_global_config = {
+  global_config = {
     runner = {
       os           = "linux"
       architecture = "x64"
     }
   }
 
-  experimental_global_config_github = {
+  global_config_github = {
     app = {
       key_base64     = "test-app-key"
       id             = "test-app-id"
@@ -78,7 +78,7 @@ variables {
     }
   }
 
-  experimental_global_config_lambda = {
+  global_config_lambda = {
     artifact = {
       s3 = {
         bucket = "test-lambda-artifacts"
@@ -86,7 +86,7 @@ variables {
     }
   }
 
-  experimental_global_config_orchestration_provider = {
+  global_config_orchestration_provider = {
     scale_set = {
       grouping = {
         strategy = "runner_config"
@@ -114,7 +114,7 @@ variables {
     }
   }
 
-  experimental_global_config_ssm = {
+  global_config_ssm = {
     kms_key_id = "arn:aws:kms:eu-west-1:123456789012:key/test"
     housekeeper = {
       lambda = {
@@ -127,7 +127,7 @@ variables {
     }
   }
 
-  experimental_global_config_compute_provider = {
+  global_config_compute_provider = {
     aws = {
       ec2 = {
         vpc_id     = "vpc-scale-set"
@@ -139,7 +139,7 @@ variables {
     }
   }
 
-  experimental_multi_runner_config = {
+  multi_runner_config = {
     linux = {
       runner = {
         name_prefix = "linux-"
