@@ -43,8 +43,8 @@ variable "network_connector_operator_role_name_prefix" {
   description = "Name prefix for the Lambda Network Connector operator role."
 
   validation {
-    condition     = length(var.network_connector_operator_role_name_prefix) >= 1 && length(var.network_connector_operator_role_name_prefix) <= 64 && can(regex("^[a-zA-Z0-9-_]+-$", var.network_connector_operator_role_name_prefix))
-    error_message = "network_connector_operator_role_name_prefix must be 1 to 64 characters, contain only letters, numbers, hyphens, or underscores, and end with a hyphen."
+    condition     = length(var.network_connector_operator_role_name_prefix) >= 1 && length(var.network_connector_operator_role_name_prefix) <= 38 && can(regex("^[a-zA-Z0-9-_]+-$", var.network_connector_operator_role_name_prefix))
+    error_message = "network_connector_operator_role_name_prefix must be 1 to 38 characters, contain only letters, numbers, hyphens, or underscores, and end with a hyphen."
   }
 }
 
@@ -55,7 +55,7 @@ variable "artifact_bucket_name" {
   nullable    = true
 
   validation {
-    condition     = var.artifact_bucket_name == null || length(var.artifact_bucket_name) > 0
+    condition     = var.artifact_bucket_name == null ? true : length(var.artifact_bucket_name) > 0
     error_message = "artifact_bucket_name must be null or a non-empty string."
   }
 }
@@ -98,12 +98,7 @@ variable "network_connectors" {
     subnet_ids       = set(string)
     network_protocol = optional(string, "IPv4")
   }))
-  description = "Regional Lambda MicroVM Network Connectors keyed by a stable consumer-defined identity."
-
-  validation {
-    condition     = length(var.network_connectors) > 0
-    error_message = "network_connectors must contain at least one connector."
-  }
+  description = "Optional regional Lambda MicroVM Network Connectors keyed by a stable consumer-defined identity."
 
   validation {
     condition = alltrue([

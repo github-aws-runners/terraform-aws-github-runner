@@ -40,7 +40,7 @@ variable "build_role_name_prefix" {
 variable "network_connector_operator_role_name_prefix" {
   type        = string
   description = "Name prefix for the Lambda Network Connector operator role."
-  default     = "github-actions-runner-microvm-network-operator-"
+  default     = "github-actions-microvm-net-operator-"
 }
 
 variable "artifact_bucket_name" {
