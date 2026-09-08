@@ -9,6 +9,19 @@ vi.mock('@aws-github-runner/aws-ssm-util', () => ({
 }));
 
 const getParametersMock = vi.mocked(getParameters);
+const loggerMock = vi.hoisted(() => ({
+  debug: vi.fn(),
+  error: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+}));
+
+vi.mock('@aws-github-runner/aws-powertools-util', () => ({
+  createChildLogger: vi.fn(() => ({
+    ...loggerMock,
+    appendPersistentKeys: vi.fn(),
+  })),
+}));
 
 describe('aws_ssm GitHub App credentials store', () => {
   beforeEach(() => {
@@ -61,5 +74,32 @@ describe('aws_ssm GitHub App credentials store', () => {
   it('rejects mismatched app and key parameter lists', () => {
     process.env.PARAMETER_GITHUB_APP_ID_NAME = 'id-0:id-1';
     expect(() => createAwsSsmGitHubAppCredentialsStore()).toThrow('parameter count mismatch');
+  });
+
+  it('logs safe context when a credential parameter is missing', async () => {
+    getParametersMock.mockResolvedValue(new Map([['app-key', Buffer.from('private-key').toString('base64')]]));
+
+    await expect(createAwsSsmGitHubAppCredentialsStore().get()).rejects.toThrow('Parameter app-id not found');
+
+    expect(loggerMock.error).toHaveBeenCalledWith('GitHub App credential parameter is missing', {
+      credentialField: 'appId',
+      appIndex: 0,
+      parameterName: 'app-id',
+    });
+    expect(JSON.stringify(loggerMock.error.mock.calls)).not.toContain('private-key');
+  });
+
+  it('logs only error names when the provider lookup fails', async () => {
+    const error = Object.assign(new Error('private-key-secret'), { name: 'InternalServerException' });
+    getParametersMock.mockRejectedValue(error);
+
+    await expect(createAwsSsmGitHubAppCredentialsStore().get()).rejects.toBe(error);
+
+    expect(loggerMock.error).toHaveBeenCalledWith('Failed to read GitHub App credential parameters', {
+      parameterCount: 2,
+      appCount: 1,
+      errorNames: ['InternalServerException'],
+    });
+    expect(JSON.stringify(loggerMock.error.mock.calls)).not.toContain('private-key-secret');
   });
 });

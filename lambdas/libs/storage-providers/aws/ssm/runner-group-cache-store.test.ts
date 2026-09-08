@@ -11,6 +11,19 @@ vi.mock('@aws-github-runner/aws-ssm-util', () => ({
 
 const getParameterMock = vi.mocked(getParameter);
 const putParameterMock = vi.mocked(putParameter);
+const loggerMock = vi.hoisted(() => ({
+  debug: vi.fn(),
+  error: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+}));
+
+vi.mock('@aws-github-runner/aws-powertools-util', () => ({
+  createChildLogger: vi.fn(() => ({
+    ...loggerMock,
+    appendPersistentKeys: vi.fn(),
+  })),
+}));
 
 describe('aws_ssm runner group cache store', () => {
   beforeEach(() => {
@@ -46,6 +59,14 @@ describe('aws_ssm runner group cache store', () => {
     );
 
     await expect(createAwsSsmRunnerGroupCacheStore().get('Default')).resolves.toBeUndefined();
+    expect(loggerMock.info).toHaveBeenCalledWith(
+      'Runner group cache miss; caller will resolve the ID from GitHub',
+      expect.objectContaining({
+        runnerGroupName: 'Default',
+        parameterName: '/runner/config/runner-group/Default',
+        errorNames: ['GetParameterError', 'ParameterNotFound'],
+      }),
+    );
   });
 
   it('propagates access and service errors', async () => {

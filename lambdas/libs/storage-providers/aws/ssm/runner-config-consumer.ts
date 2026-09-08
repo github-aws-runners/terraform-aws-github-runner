@@ -13,8 +13,10 @@ import {
   withCallDeadline,
   type RunnerConfigPollingOptions,
 } from './runner-config-consumer-common';
+import { createAwsSsmStorageLogger, getErrorNames } from './logger';
 
 const DEFAULT_DELETE_ATTEMPTS = 3;
+const logger = createAwsSsmStorageLogger('runner-config-consumer');
 
 export interface AwsSsmRunnerConfigApi {
   getParameter(name: string, signal: AbortSignal): Promise<string | undefined>;
@@ -92,9 +94,19 @@ class AwsSsmRunnerConfigConsumer implements RunnerConfigConsumer {
     const deleteReserveMs = Math.min(this.callTimeoutMs, Math.max(1, Math.floor(remainingMs / 2)));
     const pollDeadline = Math.min(startedAt + this.configTimeoutMs, options.deadlineMs - deleteReserveMs);
     let runnerConfig: string | undefined;
+    let pollAttempt = 0;
+
+    logger.debug('Waiting for runner configuration', {
+      runnerId,
+      parameterName,
+      callTimeoutMs: this.callTimeoutMs,
+      pollDeadline,
+      pollIntervalMs: this.pollIntervalMs,
+    });
 
     while (Date.now() < pollDeadline) {
       throwIfCancelled(options.signal);
+      pollAttempt += 1;
       try {
         runnerConfig = await this.read(parameterName, pollDeadline, options.signal);
         if (runnerConfig !== undefined) {
@@ -105,11 +117,23 @@ class AwsSsmRunnerConfigConsumer implements RunnerConfigConsumer {
         }
       } catch (error) {
         if (options.signal.aborted) {
-          throw new Error('runner configuration consumption was cancelled');
+          throw new Error('runner configuration consumption was cancelled', { cause: error });
         }
         if (!isSsmNotFound(error) && !isRetryableProviderError(error)) {
-          throw new Error('failed to read runner configuration from SSM');
+          logger.error('Failed to read runner configuration', {
+            runnerId,
+            parameterName,
+            pollAttempt,
+            errorNames: getErrorNames(error),
+          });
+          throw new Error('failed to read runner configuration from SSM', { cause: error });
         }
+        logger.debug('Runner configuration is not available; polling will continue', {
+          runnerId,
+          parameterName,
+          pollAttempt,
+          errorNames: getErrorNames(error),
+        });
       }
 
       const remaining = pollDeadline - Date.now();
@@ -119,10 +143,21 @@ class AwsSsmRunnerConfigConsumer implements RunnerConfigConsumer {
     }
 
     if (runnerConfig === undefined) {
+      logger.warn('Runner configuration did not become available before the deadline', {
+        runnerId,
+        parameterName,
+        pollAttempts: pollAttempt,
+        pollDeadline,
+      });
       throw new Error('runner configuration did not become available before the deadline');
     }
 
-    await this.delete(parameterName, options);
+    logger.debug('Runner configuration became available', {
+      runnerId,
+      parameterName,
+      pollAttempts: pollAttempt,
+    });
+    await this.delete(parameterName, runnerId, options);
     return runnerConfig;
   }
 
@@ -132,16 +167,25 @@ class AwsSsmRunnerConfigConsumer implements RunnerConfigConsumer {
     );
   }
 
-  private async delete(name: string, options: RunnerConfigConsumeOptions): Promise<void> {
+  private async delete(name: string, runnerId: string, options: RunnerConfigConsumeOptions): Promise<void> {
+    let lastError: unknown;
+    let attemptedDeletes = 0;
     for (let attempt = 1; attempt <= this.deleteAttempts; attempt += 1) {
+      attemptedDeletes = attempt;
       try {
         await withCallDeadline(options.signal, options.deadlineMs, this.callTimeoutMs, (callSignal) =>
           this.api.deleteParameter(name, callSignal),
         );
+        logger.debug('Deleted consumed runner configuration', {
+          runnerId,
+          parameterName: name,
+          deleteAttempt: attempt,
+        });
         return;
       } catch (error) {
+        lastError = error;
         if (options.signal.aborted) {
-          throw new Error('runner configuration consumption was cancelled');
+          throw new Error('runner configuration consumption was cancelled', { cause: error });
         }
         if (!isRetryableProviderError(error) || attempt === this.deleteAttempts) {
           break;
@@ -151,10 +195,22 @@ class AwsSsmRunnerConfigConsumer implements RunnerConfigConsumer {
         if (remaining <= 0) {
           break;
         }
+        logger.debug('Runner configuration deletion failed; retrying', {
+          runnerId,
+          parameterName: name,
+          deleteAttempt: attempt,
+          errorNames: getErrorNames(error),
+        });
         await delay(Math.min(2 ** (attempt - 1) * 1_000, 5_000, remaining), options.signal);
       }
     }
-    throw new Error('runner configuration could not be deleted from SSM');
+    logger.error('Failed to delete consumed runner configuration', {
+      runnerId,
+      parameterName: name,
+      deleteAttempts: attemptedDeletes,
+      errorNames: getErrorNames(lastError),
+    });
+    throw new Error('runner configuration could not be deleted from SSM', { cause: lastError });
   }
 }
 

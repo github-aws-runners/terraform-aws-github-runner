@@ -2,7 +2,10 @@ import { getParameter, putParameter } from '@aws-github-runner/aws-ssm-util';
 
 import type { RunnerGroupCacheRecord, RunnerGroupCacheStore } from '../../core';
 import type {} from './environment';
+import { createAwsSsmStorageLogger, getErrorNames } from './logger';
 import { loadSsmParameterStoreTagsFromEnvironment } from './parameter-store-tags';
+
+const logger = createAwsSsmStorageLogger('runner-group-cache-store');
 
 export interface AwsSsmRunnerGroupCacheStoreConfig {
   configPath: string;
@@ -33,24 +36,53 @@ class AwsSsmRunnerGroupCacheStore implements RunnerGroupCacheStore {
   constructor(private readonly config: AwsSsmRunnerGroupCacheStoreConfig) {}
 
   async get(runnerGroupName: string): Promise<number | undefined> {
+    const parameterName = this.parameterName(runnerGroupName);
+    logger.debug('Reading runner group ID from cache', {
+      runnerGroupName,
+      parameterName,
+    });
+
     try {
-      const value = await getParameter(this.parameterName(runnerGroupName));
+      const value = await getParameter(parameterName);
       const runnerGroupId = Number.parseInt(value, 10);
       if (Number.isNaN(runnerGroupId)) {
         throw new Error(`Cached runner group ID for ${runnerGroupName} is invalid`);
       }
+
+      logger.debug('Runner group cache hit', {
+        runnerGroupName,
+        parameterName,
+        runnerGroupId,
+      });
       return runnerGroupId;
     } catch (error) {
       if (isParameterNotFoundError(error)) {
+        logger.info('Runner group cache miss; caller will resolve the ID from GitHub', {
+          runnerGroupName,
+          parameterName,
+          errorNames: getErrorNames(error),
+        });
         return undefined;
       }
+
+      logger.error('Runner group cache lookup failed', {
+        runnerGroupName,
+        parameterName,
+        errorNames: getErrorNames(error),
+      });
       throw error;
     }
   }
 
   async create(record: RunnerGroupCacheRecord): Promise<void> {
-    await putParameter(this.parameterName(record.runnerGroupName), record.runnerGroupId.toString(), false, {
+    const parameterName = this.parameterName(record.runnerGroupName);
+    await putParameter(parameterName, record.runnerGroupId.toString(), false, {
       tags: [...this.config.parameterStoreTags],
+    });
+    logger.info('Stored runner group ID in cache', {
+      runnerGroupName: record.runnerGroupName,
+      parameterName,
+      runnerGroupId: record.runnerGroupId,
     });
   }
 
@@ -60,16 +92,5 @@ class AwsSsmRunnerGroupCacheStore implements RunnerGroupCacheStore {
 }
 
 function isParameterNotFoundError(error: unknown): boolean {
-  const seen = new Set<object>();
-  let current: unknown = error;
-
-  while (current !== null && typeof current === 'object' && !seen.has(current)) {
-    seen.add(current);
-    if ('name' in current && current.name === 'ParameterNotFound') {
-      return true;
-    }
-    current = 'cause' in current ? current.cause : undefined;
-  }
-
-  return false;
+  return getErrorNames(error).includes('ParameterNotFound');
 }
