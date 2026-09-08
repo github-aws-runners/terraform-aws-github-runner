@@ -8,12 +8,12 @@ locals {
   # translated legacy lanes with native v2 lanes.
   legacy_multi_runner_config = {
     for k, v in var.multi_runner_config : k => v
-    if try(v.runner_config, null) != null
+    if can(v.runner_config.runner_os)
   }
 
   v2_multi_runner_config = {
     for k, v in var.multi_runner_config : k => v
-    if try(v.runner_config, null) == null
+    if !can(v.runner_config.runner_os)
   }
 
   # Reassemble the split experimental inputs into the canonical shape consumed

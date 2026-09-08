@@ -684,8 +684,8 @@ variable "multi_runner_config" {
 
   validation {
     condition = (
-      length([for config in var.multi_runner_config : config if try(config.runner_config, null) != null]) == 0
-      || length([for config in var.multi_runner_config : config if try(config.runner_config, null) == null]) == 0
+      length([for config in var.multi_runner_config : config if can(config.runner_config.runner_os)]) == 0
+      || length([for config in var.multi_runner_config : config if !can(config.runner_config.runner_os)]) == 0
     )
     error_message = "Use one multi_runner_config shape per module invocation: provide either v1 entries with runner_config or v2 entries without runner_config, not both in the same map."
   }
