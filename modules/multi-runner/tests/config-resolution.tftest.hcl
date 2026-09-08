@@ -212,8 +212,6 @@ run "v2_inputs_resolve_lane_over_global" {
   command = plan
 
   variables {
-    experimental_features = ["multi-runner-v2"]
-
     tags = {
       source = "v1-must-not-leak"
     }
