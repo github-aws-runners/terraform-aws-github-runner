@@ -34,7 +34,7 @@ module "microvm_foundation" {
   tags                                        = { Environment = "example" }
   build_policy_name_prefix                    = "github-actions-runner-microvm-build-policy-"
   build_role_name_prefix                      = "github-actions-runner-microvm-build-"
-  network_connector_operator_role_name_prefix = "github-actions-runner-microvm-network-operator-"
+  network_connector_operator_role_name_prefix = "github-actions-microvm-net-operator-"
   usage_policy_name_prefix                    = "github-actions-runner-microvm-runtime-usage-policy-"
 
   image_name_prefix = "github-actions-runner-ubuntu-arm64"
@@ -116,7 +116,7 @@ No modules.
 | <a name="input_ecr_repository_arns"></a> [ecr\_repository\_arns](#input\_ecr\_repository\_arns) | Optional regional ECR repository ARNs from which MicroVM image builds can pull runner base images. | `set(string)` | `[]` | no |
 | <a name="input_image_name_prefix"></a> [image\_name\_prefix](#input\_image\_name\_prefix) | IAM namespace prefix reserved for externally published Lambda MicroVM image names. This module does not create or enumerate images. | `string` | n/a | yes |
 | <a name="input_network_connector_operator_role_name_prefix"></a> [network\_connector\_operator\_role\_name\_prefix](#input\_network\_connector\_operator\_role\_name\_prefix) | Name prefix for the Lambda Network Connector operator role. | `string` | n/a | yes |
-| <a name="input_network_connectors"></a> [network\_connectors](#input\_network\_connectors) | Regional Lambda MicroVM Network Connectors keyed by a stable consumer-defined identity. | <pre>map(object({<br/>    name             = string<br/>    vpc_id           = string<br/>    subnet_ids       = set(string)<br/>    network_protocol = optional(string, "IPv4")<br/>  }))</pre> | n/a | yes |
+| <a name="input_network_connectors"></a> [network\_connectors](#input\_network\_connectors) | Optional regional Lambda MicroVM Network Connectors keyed by a stable consumer-defined identity. | <pre>map(object({<br/>    name             = string<br/>    vpc_id           = string<br/>    subnet_ids       = set(string)<br/>    network_protocol = optional(string, "IPv4")<br/>  }))</pre> | n/a | yes |
 | <a name="input_tags"></a> [tags](#input\_tags) | A map of module-specific tags to apply to resources. | `map(string)` | n/a | yes |
 | <a name="input_usage_policy_name_prefix"></a> [usage\_policy\_name\_prefix](#input\_usage\_policy\_name\_prefix) | Name prefix for the Lambda MicroVM runtime usage policy. | `string` | n/a | yes |
 
