@@ -546,6 +546,22 @@ run "rejects_invalid_metadata_path" {
   expect_failures = [terraform_data.validate_config]
 }
 
+run "rejects_metadata_path_with_duplicate_separators" {
+  command = plan
+
+  variables {
+    ssm = {
+      paths = {
+        root   = "/github-action-runners"
+        tokens = "tokens"
+        config = "config//invalid"
+      }
+    }
+  }
+
+  expect_failures = [terraform_data.validate_config]
+}
+
 run "rejects_invalid_image_resource_allowlist" {
   command = plan
 
