@@ -29,6 +29,7 @@ import {
   VolumeType,
 } from '@aws-sdk/client-ec2';
 
+import { InvalidRunnerLabelsError } from '../../../../core';
 import { Ec2OverrideConfig } from '../runners.d';
 
 const EC2_OVERRIDE_LIST_VALUE_SEPARATOR = ';';
@@ -331,6 +332,12 @@ export function parseEc2OverrideConfig(
   }
 
   return Object.keys(config).length > 0 ? config : undefined;
+}
+
+export function validateEc2OverrideConfig(config: Ec2OverrideConfig): void {
+  if (config.InstanceType && config.InstanceRequirements) {
+    throw new InvalidRunnerLabelsError('InstanceType and InstanceRequirements cannot be used together');
+  }
 }
 
 function splitEc2OverrideListValue(value: string): string[] {

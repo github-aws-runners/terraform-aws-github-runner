@@ -1,8 +1,9 @@
+import { InvalidRunnerLabelsError } from '../../../../core';
 import type { CreateGitHubRunnerConfig, CreateStartRunnerConfig, RunnerType } from '../../../../core';
 import type { Octokit } from '@octokit/rest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { parseEc2OverrideConfig } from './dynamic-labels';
+import { parseEc2OverrideConfig, validateEc2OverrideConfig } from './dynamic-labels';
 import { EC2_TAG_VALUE_MAX_LENGTH, RUNNER_LABELS_TAG_MAX_COUNT } from './runner-creation';
 import type { Ec2RunnerProvisioningOperations } from '../runners';
 import type { RunnerInputParameters } from '../runners.d';
@@ -453,20 +454,40 @@ describe('scaleUp with GHES', () => {
       );
     });
 
-    it('includes both instance type and ec2OverrideConfig when both specified', async () => {
-      await createProviderRunners({
-        baseRunnerLabels: 'base-label',
-        labels: ['self-hosted', 'ghr-ec2-instance-type:c5.xlarge', 'ghr-ec2-vcpu-count-min:4'],
-      });
-      expect(mockCreateRunner).toHaveBeenCalledWith(
-        expect.objectContaining({
-          ec2instanceCriteria: expect.objectContaining({ instanceTypes: ['t3.medium', 't3.large'] }),
-          ec2OverrideConfig: expect.objectContaining({
-            InstanceType: 'c5.xlarge',
-            InstanceRequirements: expect.objectContaining({ VCpuCount: { Min: 4 } }),
-          }),
+    it('rejects instance type and instance requirements before runner creation', async () => {
+      await expect(
+        createProviderRunners({
+          baseRunnerLabels: 'base-label',
+          labels: ['self-hosted', 'ghr-ec2-instance-type:c5.xlarge', 'ghr-ec2-vcpu-count-min:4'],
         }),
-      );
+      ).rejects.toThrow(InvalidRunnerLabelsError);
+
+      expect(mockCreateRunner).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('validateEc2OverrideConfig', () => {
+    it('accepts instance requirements without an instance type', () => {
+      expect(() =>
+        validateEc2OverrideConfig({
+          InstanceRequirements: {
+            VCpuCount: { Min: 4 },
+            MemoryMiB: { Min: 8192 },
+          },
+        }),
+      ).not.toThrow();
+    });
+
+    it('rejects instance type with instance requirements', () => {
+      expect(() =>
+        validateEc2OverrideConfig({
+          InstanceType: 'c5.xlarge',
+          InstanceRequirements: {
+            VCpuCount: { Min: 4 },
+            MemoryMiB: { Min: 8192 },
+          },
+        }),
+      ).toThrow(InvalidRunnerLabelsError);
     });
   });
 

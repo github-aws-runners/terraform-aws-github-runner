@@ -676,6 +676,49 @@ describe('create runner', () => {
     });
   });
 
+  it('uses InstanceRequirements without static InstanceType overrides', async () => {
+    const instanceRequirements = {
+      VCpuCount: { Min: 4, Max: 8 },
+      MemoryMiB: { Min: 8192, Max: 16384 },
+      AllowedInstanceTypes: ['c7i.*', 'm7i.*'],
+    };
+
+    await ec2Operations.create({
+      ...createRunnerConfig(defaultRunnerConfig),
+      ec2OverrideConfig: { InstanceRequirements: instanceRequirements },
+    });
+
+    expect(mockEC2Client).toHaveReceivedCommandWith(CreateFleetCommand, {
+      LaunchTemplateConfigs: [
+        {
+          LaunchTemplateSpecification: {
+            LaunchTemplateName: 'lt-1',
+            Version: '$Default',
+          },
+          Overrides: [
+            {
+              InstanceRequirements: instanceRequirements,
+              SubnetId: 'subnet-123',
+            },
+            {
+              InstanceRequirements: instanceRequirements,
+              SubnetId: 'subnet-456',
+            },
+          ],
+        },
+      ],
+      SpotOptions: {
+        AllocationStrategy: SpotAllocationStrategy.CAPACITY_OPTIMIZED,
+      },
+      TagSpecifications: expect.any(Array),
+      TargetCapacitySpecification: {
+        DefaultTargetCapacityType: 'spot',
+        TotalTargetCapacity: 1,
+      },
+      Type: 'instant',
+    });
+  });
+
   it('overrides ImageId when specified in ec2OverrideConfig', async () => {
     await ec2Operations.create({
       ...createRunnerConfig(defaultRunnerConfig),
