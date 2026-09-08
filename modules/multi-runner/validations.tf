@@ -68,11 +68,10 @@ resource "terraform_data" "validate_v2" {
     precondition {
       condition = alltrue([
         for config in local.resolved_config.multi_runner_config : (
-          try(config.orchestration_provider.webhook != null, false) &&
-          try(length(config.orchestration_provider.webhook.matcherConfig.labelMatchers) > 0, false)
+          try(config.orchestration_provider.webhook != null, false)
         )
       ])
-      error_message = "Each experimental v2 runner lane requires a webhook matcher."
+      error_message = "Each experimental v2 runner lane requires a webhook provider."
     }
 
     precondition {
