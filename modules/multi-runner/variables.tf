@@ -650,18 +650,26 @@ variable "multi_runner_config" {
         pool_config: "The configuration for updating the pool. The `pool_size` to adjust to by the events triggered by the `schedule_expression`. For example you can configure a cron expression for week days to adjust the pool to 10 and another expression for the weekend to adjust the pool to 1. Use `schedule_expression_timezone` to override the schedule time zone (defaults to UTC)."
         iam_overrides: "Allows to (optionally) override the instance profile and runner role created by the module. Set `override_instance_profile` to true and provide the `instance_profile_name` to use an existing instance profile. Set `override_runner_role` to true and provide the `runner_role_arn` to use an existing role for the runner instances."
       }
-      v2:
-        tags: "Tags applied to resources created for this runner configuration."
-        runner: "Runner settings such as the operating system, architecture, labels, hooks, runner group, name prefix, and IAM role configuration."
-        lambda: "Lambda settings such as runtime, architecture, networking, tags, and execution-role options for this runner configuration."
-        orchestration_provider: "Webhook, queue, and scale-up/scale-down orchestration settings. Configure `webhook.matcherConfig.labelMatchers` to route jobs to this runner configuration."
-        ssm: "SSM parameter paths, tags, and housekeeper settings for runner configuration storage."
-        observability: "Logging, tracing, and metric settings for the resources in this runner configuration."
-        compute_provider: "Compute settings for the runner provider. The AWS EC2 configuration includes AMI, instance types, networking, storage, capacity, user data, and instance profile options."
-        orchestration_provider.webhook.matcherConfig: "Label matching and dynamic-label policy used to route workflow jobs to this runner configuration."
-        orchestration_provider.webhook.runner: "Runner lifecycle settings including boot time, ephemeral mode, JIT configuration, and maximum runner count."
-        orchestration_provider.webhook.queue: "Build queue delay, retention, visibility timeout, redrive, and tags."
-        compute_provider.aws.ec2: "AWS EC2 runner settings, including AMI selection, instance types, capacity strategy, VPC and subnet placement, storage, user data, and runner access."
+      # V2 contract
+      tags: "Tags applied to resources created for this runner configuration."
+      runner: "Runner settings such as the operating system, architecture, labels, hooks, runner group, name prefix, and IAM role configuration."
+      lambda: "Lambda settings such as runtime, architecture, networking, tags, and execution-role options for this runner configuration."
+      # Webhook, queue, and scale-up/scale-down orchestration settings.
+      orchestration_provider: {
+        webhook: {
+          matcherConfig: "Label matching and dynamic-label policy used to route workflow jobs to this runner configuration."
+          runner: "Runner lifecycle settings including boot time, ephemeral mode, JIT configuration, and maximum runner count."
+          queue: "Build queue delay, retention, visibility timeout, redrive, and tags."
+        }
+      }
+      ssm: "SSM parameter paths, tags, and housekeeper settings for runner configuration storage."
+      observability: "Logging, tracing, and metric settings for the resources in this runner configuration."
+      # Compute settings for the runner provider.
+      compute_provider: {
+        aws: {
+          ec2: "AWS EC2 runner settings, including AMI selection, instance types, capacity strategy, VPC and subnet placement, storage, user data, and runner access."
+        }
+      }
       matcherConfig: {
         labelMatchers: "The list of list of labels supported by the runner configuration. `[[self-hosted, linux, x64, example]]`"
         exactMatch: "DEPRECATED: Use `bidirectionalLabelMatch` instead. If set to true all labels in the workflow job must match the GitHub labels (os, architecture and `self-hosted`). When false if __any__ workflow label matches it will trigger the webhook. Note: this only checks that workflow labels are a subset of runner labels, not the reverse."
