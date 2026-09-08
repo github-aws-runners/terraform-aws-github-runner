@@ -53,6 +53,7 @@ jobs:
           - default
           - ephemeral
           - multi-runner
+          - multi-runner-v2
           - termination-watcher
         terraform:
           - "1.4.0"
