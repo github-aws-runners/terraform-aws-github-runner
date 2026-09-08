@@ -414,6 +414,16 @@ run "v2_entry_without_matcher_config_is_authoritative" {
   variables {
     experimental_features = ["multi-runner-v2"]
 
+    global_config_compute_provider = {
+      aws = {
+        ec2 = {
+          runner_binaries = {
+            enabled = false
+          }
+        }
+      }
+    }
+
     multi_runner_config = {
       no_matcher = {
         runner = {
