@@ -199,7 +199,7 @@ create_multi_runner_v2_override() {
   override_file="$example_root/zz_ministack_override.tf"
   printf '%s\n' \
     'module "runners" {' \
-    '  experimental_global_config_compute_provider = {' \
+    '  global_config_compute_provider = {' \
     '    aws = {' \
     '      ec2 = {' \
     '        vpc_id      = module.base.vpc.vpc_id' \
@@ -211,7 +211,7 @@ create_multi_runner_v2_override() {
     '      }' \
     '    }' \
     '  }' \
-    '  experimental_multi_runner_config = {' \
+    '  multi_runner_config = {' \
     '    linux-arm64 = {' \
     '      runner = {' \
     '        architecture = "arm64"' \
