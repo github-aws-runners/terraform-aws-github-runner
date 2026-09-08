@@ -63,6 +63,8 @@ variables {
   aws_partition = "aws"
   prefix        = "scale-set-test"
 
+  experimental_features = ["multi-runner-v2"]
+
   global_config = {
     runner = {
       os           = "linux"
