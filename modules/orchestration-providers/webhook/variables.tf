@@ -215,6 +215,48 @@ variable "ssm" {
   })
 }
 
+variable "storage_provider" {
+  description = "Opaque storage-provider environment and IAM capabilities for webhook control-plane functions."
+  type = object({
+    type = string
+    scale_up = object({
+      environment_variables = map(string)
+      iam_policy_json       = optional(string, null)
+    })
+    scale_down = object({
+      environment_variables = map(string)
+      iam_policy_json       = optional(string, null)
+    })
+    pool = object({
+      environment_variables = map(string)
+      iam_policy_json       = optional(string, null)
+    })
+    job_retry = object({
+      environment_variables = map(string)
+      iam_policy_json       = optional(string, null)
+    })
+  })
+  default = {
+    type = "aws_ssm"
+    scale_up = {
+      environment_variables = {}
+      iam_policy_json       = null
+    }
+    scale_down = {
+      environment_variables = {}
+      iam_policy_json       = null
+    }
+    pool = {
+      environment_variables = {}
+      iam_policy_json       = null
+    }
+    job_retry = {
+      environment_variables = {}
+      iam_policy_json       = null
+    }
+  }
+}
+
 variable "observability" {
   description = "Common logging, tracing, and metrics configuration consumed by webhook controls."
   type = object({

@@ -7,32 +7,35 @@ locals {
   )
 
   common_environment_variables = {
-    DISABLE_RUNNER_AUTOUPDATE                 = var.config.runner.disable_runner_autoupdate
-    ENABLE_EPHEMERAL_RUNNERS                  = var.config.runner.ephemeral
-    ENABLE_JIT_CONFIG                         = var.config.runner.enable_jit_config
-    ENVIRONMENT                               = var.config.prefix
-    GHES_URL                                  = var.config.ghes.url
-    USER_AGENT                                = var.config.user_agent
-    LOG_LEVEL                                 = upper(var.config.lambda.log_level)
-    NODE_TLS_REJECT_UNAUTHORIZED              = var.config.ghes.url != null && !var.config.ghes.ssl_verify ? 0 : 1
+    DISABLE_RUNNER_AUTOUPDATE                = var.config.runner.disable_runner_autoupdate
+    ENABLE_EPHEMERAL_RUNNERS                 = var.config.runner.ephemeral
+    ENABLE_JIT_CONFIG                        = var.config.runner.enable_jit_config
+    ENVIRONMENT                              = var.config.prefix
+    GHES_URL                                 = var.config.ghes.url
+    USER_AGENT                               = var.config.user_agent
+    LOG_LEVEL                                = upper(var.config.lambda.log_level)
+    NODE_TLS_REJECT_UNAUTHORIZED             = var.config.ghes.url != null && !var.config.ghes.ssl_verify ? 0 : 1
+    POWERTOOLS_LOGGER_LOG_EVENT              = var.config.lambda.log_level == "debug" ? "true" : "false"
+    RUNNER_LABELS                            = lower(join(",", var.config.runner.labels))
+    RUNNER_GROUP_NAME                        = var.config.runner.group_name
+    RUNNER_NAME_PREFIX                       = var.config.runner.name_prefix
+    RUNNER_OWNER                             = var.config.runner.pool_owner
+    RUNNER_BOOT_TIME_IN_MINUTES              = var.config.runner.boot_time_in_minutes
+    RUNNERS_MAXIMUM_COUNT                    = var.config.runners_maximum_count
+    POWERTOOLS_SERVICE_NAME                  = "${var.config.prefix}-pool"
+    POWERTOOLS_TRACE_ENABLED                 = var.tracing_config.mode != null ? true : false
+    POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.tracing_config.capture_http_requests
+    POWERTOOLS_TRACER_CAPTURE_ERROR          = var.tracing_config.capture_error
+    INCLUDE_BUSY_RUNNERS                     = var.config.include_busy_runners
+  }
+
+  ssm_environment_variables = {
     PARAMETER_GITHUB_APP_ID_NAME              = join(":", [for p in var.config.github_app_parameters.id : p.name])
     PARAMETER_GITHUB_APP_KEY_BASE64_NAME      = join(":", [for p in var.config.github_app_parameters.key_base64 : p.name])
     PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME = join(":", [for p in var.config.github_app_parameters.installation_id : p != null ? p.name : ""])
-    POWERTOOLS_LOGGER_LOG_EVENT               = var.config.lambda.log_level == "debug" ? "true" : "false"
-    RUNNER_LABELS                             = lower(join(",", var.config.runner.labels))
-    RUNNER_GROUP_NAME                         = var.config.runner.group_name
-    RUNNER_NAME_PREFIX                        = var.config.runner.name_prefix
-    RUNNER_OWNER                              = var.config.runner.pool_owner
-    RUNNER_BOOT_TIME_IN_MINUTES               = var.config.runner.boot_time_in_minutes
-    RUNNERS_MAXIMUM_COUNT                     = var.config.runners_maximum_count
     SSM_TOKEN_PATH                            = var.config.ssm_token_path
     SSM_CONFIG_PATH                           = var.config.ssm_config_path
-    POWERTOOLS_SERVICE_NAME                   = "${var.config.prefix}-pool"
-    POWERTOOLS_TRACE_ENABLED                  = var.tracing_config.mode != null ? true : false
-    POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS  = var.tracing_config.capture_http_requests
-    POWERTOOLS_TRACER_CAPTURE_ERROR           = var.tracing_config.capture_error
     SSM_PARAMETER_STORE_TAGS                  = var.config.lambda.parameter_store_tags
-    INCLUDE_BUSY_RUNNERS                      = var.config.include_busy_runners
   }
 }
 
@@ -54,7 +57,12 @@ resource "aws_lambda_function" "pool" {
   tags                           = merge(var.config.tags, var.config.lambda_tags)
 
   environment {
-    variables = merge(var.runner_provider.environment_variables, local.common_environment_variables)
+    variables = merge(
+      var.runner_provider.environment_variables,
+      local.common_environment_variables,
+      var.storage_provider.type == "aws_ssm" ? local.ssm_environment_variables : {},
+      var.storage_provider.environment_variables,
+    )
   }
 
   dynamic "vpc_config" {
@@ -96,10 +104,11 @@ resource "aws_iam_role_policy" "pool" {
 }
 
 data "aws_iam_policy_document" "pool" {
-  source_policy_documents = [
+  source_policy_documents = compact([
     data.aws_iam_policy_document.pool_common.json,
     var.runner_provider.iam_policy_json,
-  ]
+    var.storage_provider.iam_policy_json,
+  ])
 }
 
 resource "aws_iam_role_policy" "pool_logging" {

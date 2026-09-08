@@ -159,6 +159,38 @@ echo "Retrieved ghr:environment tag - ($environment)"
 echo "Retrieved ghr:ssm_config_path tag - ($ssm_config_path)"
 echo "Retrieved ghr:runner_name_prefix tag - ($runner_name_prefix)"
 
+%{ if storage_provider_type == "aws_dynamodb" }
+dynamodb_config_table_name=$(printf '%s' "${dynamodb_config_table_name_base64}" | openssl base64 -d -A)
+dynamodb_scope=$(printf '%s' "${dynamodb_scope_base64}" | openssl base64 -d -A)
+ec2_instance_arn_prefix=$(printf '%s' "${ec2_instance_arn_prefix_base64}" | openssl base64 -d -A)
+
+echo "Retrieving runner bootstrap configuration from DynamoDB"
+runner_config_key=$(jq -cn --arg scope "$dynamodb_scope" '{scope:{S:$scope},id:{S:"runner-config"}}')
+runner_config_record=$(aws dynamodb get-item \
+  --table-name "$dynamodb_config_table_name" \
+  --key "$runner_config_key" \
+  --consistent-read \
+  --projection-expression "#value" \
+  --expression-attribute-names '{"#value":"value"}' \
+  --region "$region")
+runner_config=$(printf '%s' "$runner_config_record" | jq -er '.Item.value.S | fromjson')
+unset runner_config_record
+
+run_as=$(printf '%s' "$runner_config" | jq -r '.run_as')
+agent_mode=$(printf '%s' "$runner_config" | jq -r '.agent_mode')
+disable_default_labels=$(printf '%s' "$runner_config" | jq -r '.disable_default_labels')
+enable_jit_config=$(printf '%s' "$runner_config" | jq -r '.enable_jit_config')
+enable_cloudwatch_agent="${enable_cloudwatch_agent}"
+dynamodb_runner_state_table_name=$(printf '%s' "$runner_config" | jq -er '.runner_config_storage.table_name')
+dynamodb_access_scope_type=$(printf '%s' "$runner_config" | jq -er '.runner_config_storage.access_scope')
+dynamodb_config_id=$(printf '%s' "$runner_config" | jq -er '.runner_config_storage.id')
+if [[ "$dynamodb_access_scope_type" != "compute-resource" ]]; then
+  echo "Unsupported runner configuration access scope"
+  exit 1
+fi
+dynamodb_access_scope="$${ec2_instance_arn_prefix}$instance_id"
+unset runner_config
+%{ else }
 parameters=$(aws ssm get-parameters-by-path --path "$ssm_config_path" --region "$region" --query "Parameters[*].{Name:Name,Value:Value}")
 echo "Retrieved parameters from AWS SSM ($parameters)"
 
@@ -179,6 +211,7 @@ echo "Retrieved /$ssm_config_path/enable_jit_config parameter - ($enable_jit_con
 
 token_path=$(echo "$parameters" | jq --arg ssm_config_path "$ssm_config_path" -r '.[] | select(.Name == "'$ssm_config_path'/token_path") | .Value')
 echo "Retrieved /$ssm_config_path/token_path parameter - ($token_path)"
+%{ endif }
 
 if [[ "$xray_trace_id" != "" ]]; then
   # run xray service
@@ -199,6 +232,36 @@ fi
 
 ## Configure the runner
 
+%{ if storage_provider_type == "aws_dynamodb" }
+echo "Retrieving one-time runner configuration from DynamoDB"
+runner_state_key=$(jq -cn --arg scope "$dynamodb_access_scope" --arg id "$dynamodb_config_id" '{scope:{S:$scope},id:{S:$id}}')
+config=""
+retrycount=0
+while [[ -z "$config" ]]; do
+  now_epoch=$(date +%s)
+  expression_values=$(jq -cn --arg now "$now_epoch" '{":now":{N:$now}}')
+  if config_record=$(aws dynamodb delete-item \
+    --table-name "$dynamodb_runner_state_table_name" \
+    --key "$runner_state_key" \
+    --condition-expression "attribute_exists(#expires_at) AND #expires_at > :now" \
+    --expression-attribute-names '{"#expires_at":"expires_at"}' \
+    --expression-attribute-values "$expression_values" \
+    --return-values ALL_OLD \
+    --region "$region" 2>/dev/null); then
+    config=$(printf '%s' "$config_record" | jq -er '.Attributes.value.S')
+    unset config_record
+    break
+  fi
+
+  retrycount=$((retrycount + 1))
+  if [[ $retrycount -gt 40 ]]; then
+    echo "Runner configuration was unavailable or expired"
+    exit 1
+  fi
+  echo "Waiting for runner configuration to become available in DynamoDB"
+  sleep 1
+done
+%{ else }
 echo "Get GH Runner config from AWS SSM"
 config=$(aws ssm get-parameter --name "$token_path"/"$instance_id" --with-decryption --region "$region" | jq -r ".Parameter | .Value")
 while [[ -z "$config" ]]; do
@@ -209,6 +272,7 @@ done
 
 echo "Delete GH Runner token from AWS SSM"
 aws ssm delete-parameter --name "$token_path"/"$instance_id" --region "$region"
+%{ endif }
 
 if [ -z "$run_as" ]; then
   echo "No user specified, using default ec2-user account"

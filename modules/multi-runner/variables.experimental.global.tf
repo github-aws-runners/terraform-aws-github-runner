@@ -70,3 +70,37 @@ variable "global_config" {
   })
   default = {}
 }
+
+variable "global_config_storage_provider" {
+  description = "Global runner-configuration storage provider selection. Omit the DynamoDB block to retain the existing SSM backend."
+  type = object({
+    aws = optional(object({
+      dynamodb = optional(object({
+        config = optional(object({
+          kms_key_arn                    = optional(string, null)
+          point_in_time_recovery_enabled = optional(bool, true)
+          deletion_protection_enabled    = optional(bool, false)
+          tags                           = optional(map(string), {})
+        }), {})
+        runner_state = optional(object({
+          kms_key_arn                    = optional(string, null)
+          point_in_time_recovery_enabled = optional(bool, false)
+          deletion_protection_enabled    = optional(bool, false)
+          runner_config_ttl_seconds      = optional(number, 86400)
+          runner_state_ttl_seconds       = optional(number, 604800)
+          tags                           = optional(map(string), {})
+        }), {})
+      }), null)
+      ssm = optional(object({}), null)
+    }), {})
+  })
+  default = {}
+
+  validation {
+    condition = (
+      (try(var.global_config_storage_provider.aws.dynamodb, null) != null ? 1 : 0) +
+      (try(var.global_config_storage_provider.aws.ssm, null) != null ? 1 : 0)
+    ) <= 1
+    error_message = "global_config_storage_provider must select at most one provider: aws.dynamodb or aws.ssm."
+  }
+}

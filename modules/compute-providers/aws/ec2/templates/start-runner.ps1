@@ -77,6 +77,43 @@ Write-Host  "Retrieved ghr:runner_name_prefix tag - ($runner_name_prefix)"
 $ssm_config_path=$tags.Tags.where( {$_.Key -eq 'ghr:ssm_config_path'}).value
 Write-Host  "Retrieved ghr:ssm_config_path tag - ($ssm_config_path)"
 
+%{ if storage_provider_type == "aws_dynamodb" }
+$DynamoDbConfigTableName = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String("${dynamodb_config_table_name_base64}"))
+$DynamoDbScope = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String("${dynamodb_scope_base64}"))
+$Ec2InstanceArnPrefix = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String("${ec2_instance_arn_prefix_base64}"))
+
+Write-Host "Retrieving runner bootstrap configuration from DynamoDB"
+$RunnerConfigKey = @{
+    scope = @{ S = $DynamoDbScope }
+    id = @{ S = "runner-config" }
+} | ConvertTo-Json -Compress
+$RunnerConfigRecord = aws dynamodb get-item `
+    --table-name $DynamoDbConfigTableName `
+    --key $RunnerConfigKey `
+    --consistent-read `
+    --projection-expression "#value" `
+    --expression-attribute-names '{"#value":"value"}' `
+    --region $Region | ConvertFrom-Json
+if ($LASTEXITCODE -ne 0 -or -not $RunnerConfigRecord.Item.value.S) {
+    throw "Runner bootstrap configuration is unavailable"
+}
+$RunnerConfig = $RunnerConfigRecord.Item.value.S | ConvertFrom-Json
+$RunnerConfigRecord = $null
+
+$run_as = $RunnerConfig.run_as
+$agent_mode = $RunnerConfig.agent_mode
+$disable_default_labels = $RunnerConfig.disable_default_labels.ToString().ToLowerInvariant()
+$enable_jit_config = $RunnerConfig.enable_jit_config.ToString().ToLowerInvariant()
+$enable_cloudwatch_agent = "${enable_cloudwatch_agent}"
+$DynamoDbRunnerStateTableName = $RunnerConfig.runner_config_storage.table_name
+$DynamoDbAccessScopeType = $RunnerConfig.runner_config_storage.access_scope
+$DynamoDbConfigId = $RunnerConfig.runner_config_storage.id
+if ($DynamoDbAccessScopeType -ne "compute-resource") {
+    throw "Unsupported runner configuration access scope"
+}
+$DynamoDbAccessScope = "$Ec2InstanceArnPrefix$InstanceId"
+$RunnerConfig = $null
+%{ else }
 $parameters=$(aws ssm get-parameters-by-path --path "$ssm_config_path" --region "$Region" --query "Parameters[*].{Name:Name,Value:Value}") | ConvertFrom-Json
 Write-Host  "Retrieved parameters from AWS SSM"
 
@@ -97,6 +134,7 @@ Write-Host  "Retrieved $ssm_config_path/enable_jit_config parameter - ($enable_j
 
 $token_path=$parameters.where( {$_.Name -eq "$ssm_config_path/token_path"}).value
 Write-Host  "Retrieved $ssm_config_path/token_path parameter - ($token_path)"
+%{ endif }
 
 
 if ($enable_cloudwatch_agent -eq "true")
@@ -107,6 +145,40 @@ if ($enable_cloudwatch_agent -eq "true")
 
 ## Configure the runner
 
+%{ if storage_provider_type == "aws_dynamodb" }
+Write-Host "Retrieving one-time runner configuration from DynamoDB"
+$RunnerStateKey = @{
+    scope = @{ S = $DynamoDbAccessScope }
+    id = @{ S = $DynamoDbConfigId }
+} | ConvertTo-Json -Compress
+$config = $null
+$i = 0
+do {
+    $NowEpoch = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds().ToString()
+    $ExpressionValues = @{ ":now" = @{ N = $NowEpoch } } | ConvertTo-Json -Compress
+    $ConfigRecordRaw = aws dynamodb delete-item `
+        --table-name $DynamoDbRunnerStateTableName `
+        --key $RunnerStateKey `
+        --condition-expression "attribute_exists(#expires_at) AND #expires_at > :now" `
+        --expression-attribute-names '{"#expires_at":"expires_at"}' `
+        --expression-attribute-values $ExpressionValues `
+        --return-values ALL_OLD `
+        --region $Region 2>$null
+    if ($LASTEXITCODE -eq 0) {
+        $config = ($ConfigRecordRaw | ConvertFrom-Json).Attributes.value.S
+        $ConfigRecordRaw = $null
+        break
+    }
+
+    Write-Host "Waiting for runner configuration to become available in DynamoDB ($i/40)"
+    Start-Sleep 1
+    $i++
+} while (($null -eq $config) -and ($i -lt 40))
+
+if ($null -eq $config) {
+    throw "Runner configuration was unavailable or expired"
+}
+%{ else }
 Write-Host "Get GH Runner config from AWS SSM"
 $config = $null
 $i = 0
@@ -119,6 +191,7 @@ do {
 
 Write-Host "Delete GH Runner token from AWS SSM"
 aws ssm delete-parameter --name "$token_path/$InstanceId" --region $Region
+%{ endif }
 
 # Create or update user
 if (-not($run_as)) {

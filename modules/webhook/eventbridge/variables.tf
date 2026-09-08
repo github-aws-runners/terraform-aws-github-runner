@@ -48,6 +48,27 @@ variable "config" {
       arn     = string
       version = string
     }))
+    storage_provider = optional(object({
+      type = optional(string, "aws_ssm")
+      webhook = object({
+        environment_variables = map(string)
+        iam_policy_json       = optional(string, null)
+      })
+      dispatcher = object({
+        environment_variables = map(string)
+        iam_policy_json       = optional(string, null)
+      })
+      }), {
+      type = "aws_ssm"
+      webhook = {
+        environment_variables = {}
+        iam_policy_json       = null
+      }
+      dispatcher = {
+        environment_variables = {}
+        iam_policy_json       = null
+      }
+    })
     accept_events = optional(list(string), null)
   })
 }
