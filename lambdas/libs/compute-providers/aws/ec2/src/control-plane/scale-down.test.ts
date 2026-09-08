@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { RunnerInfo, RunnerType } from '../../../../core';
-import { createEc2ScaleDownCapability } from './scale-down';
+import { IDLE_DETECTED_TAG, createEc2ScaleDownCapability } from './scale-down';
 import type { Ec2RunnerResourceOperations } from '../runners';
 
 const mockListRunners = vi.fn<Ec2RunnerResourceOperations['list']>();
@@ -59,6 +59,19 @@ describe('Scale down runners', () => {
 
         expect(mockTagRunner).toHaveBeenCalledWith(runner.id, [{ Key: 'ghr:orphan', Value: 'true' }]);
         expect(mockUntagRunner).toHaveBeenCalledWith(runner.id, [{ Key: 'ghr:orphan', Value: 'true' }]);
+      });
+
+      it('Should persist and clear the idle-detection marker as an instance tag.', async () => {
+        mockTagRunner.mockResolvedValue();
+        mockUntagRunner.mockResolvedValue();
+        const detectedAt = '2026-08-05T10:05:00.000Z';
+
+        await capability.markIdle?.(runner.id, detectedAt);
+        await capability.unmarkIdle?.(runner.id);
+
+        expect(mockTagRunner).toHaveBeenCalledWith(runner.id, [{ Key: IDLE_DETECTED_TAG, Value: detectedAt }]);
+        expect(mockUntagRunner).toHaveBeenCalledWith(runner.id, [{ Key: IDLE_DETECTED_TAG }]);
+        expect(mockTerminateRunner).not.toHaveBeenCalled();
       });
 
       it(`Should respect booting runner.`, async () => {

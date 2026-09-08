@@ -55,6 +55,7 @@ module "runners" {
   runner_run_as                        = each.value.runner.run_as
   runners_maximum_count                = each.value.orchestration_provider.webhook.runner.maximum_count
   idle_config                          = each.value.orchestration_provider.webhook.lambda.scale.down.idle_config
+  scale_down_idle_confirmation_seconds = each.value.orchestration_provider.webhook.lambda.scale.down.idle_confirmation_seconds
   enable_ssm_on_runners                = each.value.compute_provider.aws.ec2.ssm_enabled
   egress_rules                         = each.value.compute_provider.aws.ec2.egress_rules
   runner_additional_security_group_ids = each.value.compute_provider.aws.ec2.additional_security_group_ids

@@ -102,6 +102,7 @@ locals {
             schedule_expression             = "cron(*/5 * * * ? *)"
             minimum_running_time_in_minutes = null
             idle_config                     = []
+            idle_confirmation_seconds       = 0
             tags                            = {}
           }
         }
@@ -390,6 +391,7 @@ locals {
                 schedule_expression             = v.runner_config.scale_down_schedule_expression
                 minimum_running_time_in_minutes = v.runner_config.minimum_running_time_in_minutes
                 idle_config                     = v.runner_config.idle_config
+                idle_confirmation_seconds       = v.runner_config.scale_down_idle_confirmation_seconds
                 tags                            = {}
               }
             }

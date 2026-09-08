@@ -38,6 +38,8 @@ const mockComputeProvider = {
   bootTimeExceeded: vi.fn(),
   markOrphan: vi.fn(),
   unmarkOrphan: vi.fn(),
+  markIdle: vi.fn(),
+  unmarkIdle: vi.fn(),
   terminate: vi.fn(),
 } satisfies Omit<ScaleDownComputeProvider, 'type'>;
 
@@ -49,6 +51,8 @@ const mockListRunners = vi.mocked(mockComputeProvider.list);
 const mockBootTimeExceeded = vi.mocked(mockComputeProvider.bootTimeExceeded);
 const mockMarkOrphan = vi.mocked(mockComputeProvider.markOrphan);
 const mockUnmarkOrphan = vi.mocked(mockComputeProvider.unmarkOrphan);
+const mockMarkIdle = vi.mocked(mockComputeProvider.markIdle);
+const mockUnmarkIdle = vi.mocked(mockComputeProvider.unmarkIdle);
 const mockTerminateRunners = vi.mocked(mockComputeProvider.terminate);
 
 const cleanEnv = process.env;
@@ -689,6 +693,111 @@ describe('Scale down runners', () => {
           }
         });
       });
+    });
+  });
+
+  describe('Scale down with the idle confirmation window', () => {
+    const CONFIRMATION_SECONDS = 300;
+
+    beforeEach(() => {
+      process.env.SCALE_DOWN_IDLE_CONFIRMATION_SECONDS = CONFIRMATION_SECONDS.toString();
+    });
+
+    it('starts the window instead of terminating on the first not-busy reading', async () => {
+      const runners = [createRunnerTestData('idle-1', 'Org', MINIMUM_TIME_RUNNING_IN_MINUTES + 1, true, false, false)];
+      mockGitHubRunners(runners);
+      mockProviderRunners(runners);
+
+      await scaleDown();
+
+      expect(mockMarkIdle).toHaveBeenCalledWith(runners[0].id, expect.any(String));
+      expect(mockTerminateRunners).not.toHaveBeenCalled();
+    });
+
+    it('defers termination while the window has not elapsed', async () => {
+      const runners = [createRunnerTestData('idle-1', 'Org', MINIMUM_TIME_RUNNING_IN_MINUTES + 1, true, false, false)];
+      runners[0].idleDetectedAt = new Date(Date.now() - (CONFIRMATION_SECONDS - 240) * 1000).toISOString();
+      mockGitHubRunners(runners);
+      mockProviderRunners(runners);
+
+      await scaleDown();
+
+      expect(mockMarkIdle).not.toHaveBeenCalled();
+      expect(mockTerminateRunners).not.toHaveBeenCalled();
+    });
+
+    it('terminates once not-busy readings span the window', async () => {
+      const runners = [createRunnerTestData('idle-1', 'Org', MINIMUM_TIME_RUNNING_IN_MINUTES + 1, true, false, true)];
+      runners[0].idleDetectedAt = new Date(Date.now() - (CONFIRMATION_SECONDS + 60) * 1000).toISOString();
+      mockGitHubRunners(runners);
+      mockProviderRunners(runners);
+
+      await scaleDown();
+
+      expect(mockTerminateRunners).toHaveBeenCalledWith(runners[0].id);
+    });
+
+    it('clears the window when a runner reads busy again', async () => {
+      // A busy reading is the signal that the earlier not-busy reading was stale; the window
+      // must restart from scratch rather than keep counting from the first observation.
+      const runners = [createRunnerTestData('idle-1', 'Org', MINIMUM_TIME_RUNNING_IN_MINUTES + 1, true, false, false)];
+      runners[0].idleDetectedAt = new Date(Date.now() - (CONFIRMATION_SECONDS + 60) * 1000).toISOString();
+      mockGitHubRunners(runners);
+      mockProviderRunners(runners);
+      mockOctokit.actions.getSelfHostedRunnerForOrg.mockImplementation(() => ({ data: { busy: true } }));
+      mockOctokit.actions.getSelfHostedRunnerForRepo.mockImplementation(() => ({ data: { busy: true } }));
+
+      await scaleDown();
+
+      expect(mockUnmarkIdle).toHaveBeenCalledWith(runners[0].id);
+      expect(mockMarkIdle).not.toHaveBeenCalled();
+      expect(mockTerminateRunners).not.toHaveBeenCalled();
+    });
+
+    it('clears the window for runners kept idle by the idle config', async () => {
+      // A kept-idle runner is never evaluated for removal, so a marker left on it would go stale
+      // and allow immediate termination once the idle count drops. The marker must be cleared.
+      process.env.SCALE_DOWN_CONFIG = JSON.stringify([
+        { idleCount: 1, cron: '* * * * * *', timeZone: 'Europe/Amsterdam' },
+      ]);
+      const runners = [createRunnerTestData('idle-1', 'Org', MINIMUM_TIME_RUNNING_IN_MINUTES + 1, true, false, false)];
+      runners[0].idleDetectedAt = new Date(Date.now() - (CONFIRMATION_SECONDS + 60) * 1000).toISOString();
+      mockGitHubRunners(runners);
+      mockProviderRunners(runners);
+
+      await scaleDown();
+
+      expect(mockUnmarkIdle).toHaveBeenCalledWith(runners[0].id);
+      expect(mockTerminateRunners).not.toHaveBeenCalled();
+    });
+
+    it('terminates on a single reading when the window is disabled (0)', async () => {
+      process.env.SCALE_DOWN_IDLE_CONFIRMATION_SECONDS = '0';
+      const runners = [createRunnerTestData('idle-1', 'Org', MINIMUM_TIME_RUNNING_IN_MINUTES + 1, true, false, true)];
+      mockGitHubRunners(runners);
+      mockProviderRunners(runners);
+
+      await scaleDown();
+
+      expect(mockMarkIdle).not.toHaveBeenCalled();
+      expect(mockTerminateRunners).toHaveBeenCalledWith(runners[0].id);
+    });
+
+    it('terminates on a single reading when the provider cannot persist idle state', async () => {
+      // A provider that implements neither markIdle nor unmarkIdle must keep the previous
+      // single-reading behaviour rather than deferring forever.
+      const withoutIdleSupport = Object.fromEntries(
+        Object.entries(mockComputeProvider).filter(([key]) => key !== 'markIdle' && key !== 'unmarkIdle'),
+      );
+      mockedResolveCapability.mockReturnValue(() => withoutIdleSupport as unknown as typeof mockComputeProvider);
+      const runners = [createRunnerTestData('idle-1', 'Org', MINIMUM_TIME_RUNNING_IN_MINUTES + 1, true, false, true)];
+      mockGitHubRunners(runners);
+      mockProviderRunners(runners);
+
+      await scaleDown();
+
+      expect(mockMarkIdle).not.toHaveBeenCalled();
+      expect(mockTerminateRunners).toHaveBeenCalledWith(runners[0].id);
     });
   });
 });
