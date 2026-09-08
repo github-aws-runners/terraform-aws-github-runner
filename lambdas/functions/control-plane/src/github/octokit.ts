@@ -68,7 +68,7 @@ export async function getInstallationId(
   appIndex?: number,
 ): Promise<number> {
   const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl, appIndex);
-  const githubClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
+  const githubClient = await createOctokitClient(ghAuth.token, ghesApiUrl, appIndex);
   return resolveInstallationId(githubClient, enableOrgLevel, payload, appIndex);
 }
 
@@ -88,13 +88,13 @@ export async function getOctokit(
   // Select one app for this entire auth flow
   const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl);
   const appIdx = ghAuth.appIndex;
-  const githubAppClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
+  const githubAppClient = await createOctokitClient(ghAuth.token, ghesApiUrl, appIdx);
 
   const installationId = await resolveInstallationId(githubAppClient, enableOrgLevel, payload, appIdx);
 
   try {
     const installationAuth = await createGithubInstallationAuth(installationId, ghesApiUrl, appIdx);
-    return await createOctokitClient(installationAuth.token, ghesApiUrl);
+    return await createOctokitClient(installationAuth.token, ghesApiUrl, appIdx);
   } catch (error) {
     // The installation id can be stale when it was reused from the webhook payload or from the
     // pre-configured per-app value while the app was uninstalled and reinstalled. Re-resolve the
@@ -117,6 +117,6 @@ export async function getOctokit(
     });
 
     const installationAuth = await createGithubInstallationAuth(resolvedInstallationId, ghesApiUrl, appIdx);
-    return await createOctokitClient(installationAuth.token, ghesApiUrl);
+    return await createOctokitClient(installationAuth.token, ghesApiUrl, appIdx);
   }
 }
