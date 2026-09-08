@@ -309,7 +309,6 @@ async function createJitConfig(
         runnerLabels,
       });
 
-      // Store the JIT config through the selected storage provider.
       logger.debug('Runner JIT config for ephemeral runner generated.', {
         instance: runnerId,
       });
