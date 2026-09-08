@@ -37,8 +37,13 @@ export function createStorageProviders(environment: Environment = process.env): 
 }
 
 export function createCommonStorage(environment: Environment = process.env): CommonStorage {
+  const store = createAwsSsmGitHubAppCredentialsStore(environment);
+  let credentials: ReturnType<typeof store.get> | undefined;
+
   return {
-    githubAppCredentials: createAwsSsmGitHubAppCredentialsStore(environment),
+    githubAppCredentials: {
+      get: () => (credentials ??= store.get()),
+    },
   };
 }
 
