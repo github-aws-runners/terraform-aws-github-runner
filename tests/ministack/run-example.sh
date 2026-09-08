@@ -14,14 +14,14 @@ example="${2:-}"
 tfvars_file="${3:-${MINISTACK_TFVARS_FILE:-}}"
 
 case "$example" in
-  base | prebuilt | default | ephemeral | multi-runner | multi-runner-v2)
+  base | prebuilt | default | ephemeral | multi-runner | multi-runner-v2 | microvm-foundation)
     use_tfvars=true
     ;;
   termination-watcher)
     use_tfvars=false
     ;;
   *)
-  echo "Supported examples for the runner are: base, prebuilt, default, ephemeral, multi-runner, multi-runner-v2, termination-watcher" >&2
+  echo "Supported examples for the runner are: base, prebuilt, default, ephemeral, multi-runner, multi-runner-v2, microvm-foundation, termination-watcher" >&2
   exit 64
   ;;
 esac
@@ -29,7 +29,7 @@ esac
 case "$action" in
   init | plan | apply | destroy) ;;
   *)
-    echo "Usage: $0 {init|plan|apply|destroy} {base|prebuilt|default|ephemeral|multi-runner|multi-runner-v2|termination-watcher} [TFVARS_FILE]" >&2
+    echo "Usage: $0 {init|plan|apply|destroy} {base|prebuilt|default|ephemeral|multi-runner|multi-runner-v2|microvm-foundation|termination-watcher} [TFVARS_FILE]" >&2
     exit 64
     ;;
 esac
