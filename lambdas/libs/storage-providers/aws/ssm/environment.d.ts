@@ -9,6 +9,7 @@ declare global {
       PARAMETER_GITHUB_APP_ID_NAME?: string;
       PARAMETER_GITHUB_APP_KEY_BASE64_NAME?: string;
       PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME?: string;
+      PARAMETER_GITHUB_APPS_MANIFEST_NAME?: string;
     }
   }
 }
