@@ -2,7 +2,7 @@ variable "github_app" {
   description = <<EOF
   GitHub app parameters for the stable v1 interface, see your github app.
   Omit this value when using the experimental v2 interface and provide the
-  app through `experimental_global_config_github` instead.
+  app through `global_config_github` instead.
   You can optionally create the SSM parameters yourself and provide the ARN and name here, through the `*_ssm` attributes.
   If you chose to provide the configuration values directly here,
   please ensure the key is the base64-encoded `.pem` file (the output of `base64 app.private-key.pem`, not the content of `private-key.pem`).
