@@ -20,7 +20,7 @@ module "runners" {
   prefix     = local.environment
   aws_region = local.aws_region
 
-  experimental_global_config = {
+  global_config = {
     tags = {
       Example = local.environment
       Project = "ProjectX"
@@ -32,7 +32,7 @@ module "runners" {
     }
   }
 
-  experimental_global_config_github = {
+  global_config_github = {
     app = {
       key_base64     = var.github_app.key_base64
       id             = var.github_app.id
@@ -40,11 +40,11 @@ module "runners" {
     }
   }
 
-  experimental_global_config_lambda = {
+  global_config_lambda = {
     architecture = "arm64"
   }
 
-  experimental_global_config_orchestration_provider = {
+  global_config_orchestration_provider = {
     webhook = {
       eventbridge = {
         enabled       = true
@@ -53,7 +53,7 @@ module "runners" {
     }
   }
 
-  experimental_global_config_compute_provider = {
+  global_config_compute_provider = {
     aws = {
       ec2 = {
         vpc_id      = module.base.vpc.vpc_id
@@ -66,7 +66,7 @@ module "runners" {
     }
   }
 
-  experimental_multi_runner_config = {
+  multi_runner_config = {
     linux-arm64 = {
       runner = {
         architecture = "arm64"
