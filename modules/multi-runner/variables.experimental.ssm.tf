@@ -1,6 +1,30 @@
 # Global SSM configuration.
 variable "global_config_ssm" {
-  description = "Global SSM configuration."
+  description = <<-EOT
+    Global SSM configuration shared by all runner lanes.
+
+    global_config_ssm = {
+      paths.root: "Root path for SSM parameters."
+      paths.app: "Path segment for application parameters."
+      paths.webhook: "Path segment for webhook parameters."
+      paths.tokens: "Path segment for runner token parameters."
+      paths.config: "Path segment for runner configuration parameters."
+      kms_key_id: "KMS key ID used to encrypt SSM parameters."
+      tags: "Tags applied to SSM resources."
+      parameters.tags: "Tags applied to runner configuration parameters."
+      housekeeper.schedule_expression: "Schedule for the SSM parameter housekeeper."
+      housekeeper.state: "EventBridge rule state for the SSM parameter housekeeper."
+      housekeeper.tags: "Tags applied to the SSM housekeeper resources."
+      housekeeper.lambda.artifact.zip: "Local ZIP artifact used for the SSM housekeeper Lambda."
+      housekeeper.lambda.artifact.s3.key: "S3 object key for the SSM housekeeper Lambda artifact."
+      housekeeper.lambda.artifact.s3.object_version: "Optional S3 object version for the SSM housekeeper artifact."
+      housekeeper.lambda.memory_size: "Memory allocated to the SSM housekeeper Lambda."
+      housekeeper.lambda.timeout: "Timeout in seconds for the SSM housekeeper Lambda."
+      housekeeper.config.tokenPath: "Parameter path containing runner tokens to clean up."
+      housekeeper.config.minimumDaysOld: "Minimum age in days before an old token is eligible for cleanup."
+      housekeeper.config.dryRun: "Whether the SSM housekeeper reports cleanup without deleting parameters."
+    }
+  EOT
   type = object({
     paths = optional(object({
       root    = optional(string, null)
