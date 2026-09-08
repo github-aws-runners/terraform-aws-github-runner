@@ -641,30 +641,3 @@ run "global_external_runner_role_suppresses_inherited_iam_overrides" {
     error_message = "A global external runner role must suppress inherited managed policies and trust-policy additions."
   }
 }
-
-run "v2_map_requires_acknowledgement" {
-  command = plan
-
-  variables {
-    multi_runner_config = {
-      lane = {
-        orchestration_provider = {
-          webhook = {
-            matcherConfig = {
-              labelMatchers = [["lane"]]
-            }
-          }
-        }
-        compute_provider = {
-          aws = {
-            ec2 = {
-              instance_types = ["m5.large"]
-            }
-          }
-        }
-      }
-    }
-  }
-
-  expect_failures = [resource.random_string.random]
-}

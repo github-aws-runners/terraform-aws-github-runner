@@ -43,11 +43,4 @@ resource "random_string" "random" {
   length  = 24
   special = false
   upper   = false
-
-  lifecycle {
-    precondition {
-      condition     = length(local.v2_multi_runner_config) == 0 || contains(var.experimental_features, "multi-runner-v2")
-      error_message = "The v2 multi-runner configuration requires experimental_features to include \"multi-runner-v2\"."
-    }
-  }
 }
