@@ -159,6 +159,7 @@ variable "multi_runner_config" {
       runner_hook_job_completed                                      = optional(string, "")
       runner_ec2_tags                                                = optional(map(string), {})
       runner_iam_role_managed_policy_arns                            = optional(list(string), [])
+      runner_iam_role_additional_trust_policy_statements             = optional(any, [])
       vpc_id                                                         = optional(string, null)
       subnet_ids                                                     = optional(list(string), null)
       idle_config = optional(list(object({
@@ -302,6 +303,7 @@ variable "multi_runner_config" {
         runner_hook_job_completed: "Script to be ran in the runner environment at the end of every job"
         runner_ec2_tags: "Map of tags that will be added to the launch template instance tag specifications."
         runner_iam_role_managed_policy_arns: "Attach AWS or customer-managed IAM policies (by ARN) to the runner IAM role"
+        runner_iam_role_additional_trust_policy_statements: "Additional statements appended to the trust policy (assume role policy) of the runner IAM role. Statements are in the IAM policy statement format."
         vpc_id: "The VPC for security groups of the action runners. If not set uses the value of `var.vpc_id`."
         subnet_ids: "List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`. If not set, uses the value of `var.subnet_ids`."
         idle_config: "List of time period that can be defined as cron expression to keep a minimum amount of runners active instead of scaling down to 0. By defining this list you can ensure that in time periods that match the cron expression within 5 seconds a runner is kept idle."
