@@ -10,7 +10,7 @@ locals {
               v.runner.os,
               v.runner.architecture,
             ]),
-            v.orchestration_provider.webhook == null ? [] : flatten(v.orchestration_provider.webhook.matcherConfig.labelMatchers),
+            try(flatten(v.orchestration_provider.webhook.matcherConfig.labelMatchers), []),
             compact(v.runner.extra_labels),
           ))
         })

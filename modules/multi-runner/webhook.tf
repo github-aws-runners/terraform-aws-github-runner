@@ -1,7 +1,7 @@
 locals {
   webhook_runner_config = {
     for k, v in local.effective_config.multi_runner_config : k => v
-    if v.orchestration_provider.webhook != null
+    if try(v.orchestration_provider.webhook.matcherConfig, null) != null
   }
 
   runner_matcher_config = {

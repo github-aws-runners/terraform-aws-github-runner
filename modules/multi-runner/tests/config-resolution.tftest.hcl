@@ -84,7 +84,7 @@ variables {
   webhook_lambda_s3_key = "webhook.zip"
   syncer_lambda_s3_key  = "runner-binaries-syncer.zip"
 
-  experimental_global_config_github = {
+  global_config_github = {
     app = {
       key_base64     = "experimental-app-key"
       id             = "experimental-app-id"
@@ -92,7 +92,7 @@ variables {
     }
   }
 
-  experimental_global_config_lambda = {
+  global_config_lambda = {
     artifact = {
       s3 = {
         bucket = "test-lambda-artifacts"
@@ -100,7 +100,7 @@ variables {
     }
   }
 
-  experimental_global_config_orchestration_provider = {
+  global_config_orchestration_provider = {
     webhook = {
       lambda = {
         artifact = {
@@ -119,7 +119,7 @@ variables {
     }
   }
 
-  experimental_global_config_ssm = {
+  global_config_ssm = {
     housekeeper = {
       lambda = {
         artifact = {
@@ -131,7 +131,7 @@ variables {
     }
   }
 
-  experimental_global_config_compute_provider = {
+  global_config_compute_provider = {
     aws = {
       ec2 = {
         runner_binaries = {
