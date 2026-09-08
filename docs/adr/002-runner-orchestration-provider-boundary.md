@@ -229,36 +229,6 @@ not below `modules/runner-config`. This keeps the common composition module
 small and prevents provider-owned resources from becoming part of the common
 contract.
 
-### `runner-config` is the provider-neutral composition boundary
-
-`modules/runner-config` is an internal composition module selected by
-`multi-runner`; it is not a standalone public entry point. It receives one
-resolved runner configuration and owns the common runner identity, IAM role,
-runner bootstrap parameters, SSM housekeeper composition, and the capability
-connections between the selected providers.
-
-`runner-config` dispatches exactly one typed orchestration provider and one
-typed compute provider. Provider selection is made from the plan-known typed
-wrappers, not from a string discriminator or runtime fallback. The selected
-provider receives the resolved common runner settings and returns only the
-provider-specific resources, environment variables, IAM fragments, and
-outputs required by the orchestration provider.
-
-Webhook queues, Lambda functions, schedules, and retry behavior remain owned
-by the webhook orchestration provider. EC2 instances, Lambda MicroVM capacity,
-image publication, and provider-specific bootstrap behavior remain owned by
-their compute providers. `runner-config` connects these capabilities but does
-not absorb either provider's implementation.
-
-For Lambda MicroVM runners, the image is an immutable runtime artifact. The
-runner configuration and its sensitive, short-lived bootstrap value are
-published through the runner-config SSM contract and retrieved when the
-MicroVM starts. Tenant-specific runner configuration, registration tokens, and
-JIT payloads must not be baked into the image or its Terraform configuration.
-The image therefore supplies the runner and lifecycle-hook runtime, while the
-selected compute provider supplies the lane-specific SSM path and execution
-permissions.
-
 ```mermaid
 flowchart TD
   Multi["multi-runner: translate and resolve"] --> Config["runner-config: compose one runner config"]
