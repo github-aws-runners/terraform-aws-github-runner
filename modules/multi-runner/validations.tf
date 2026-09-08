@@ -69,14 +69,13 @@ resource "terraform_data" "validate_v2" {
       condition = alltrue([
         for config in local.resolved_config.multi_runner_config : (
           try(config.orchestration_provider.webhook != null, false) &&
-          try(length(config.orchestration_provider.webhook.matcherConfig.labelMatchers) > 0, false) &&
           try(config.compute_provider.aws.ec2 != null, false) &&
           try(length(config.compute_provider.aws.ec2.instance_types) > 0, false) &&
           try(config.compute_provider.aws.ec2.vpc_id != null, false) &&
           try(length(config.compute_provider.aws.ec2.subnet_ids) > 0, false)
         )
       ])
-      error_message = "Each experimental v2 runner lane requires a webhook matcher, EC2 instance_types, vpc_id, and at least one subnet."
+      error_message = "Each experimental v2 runner lane requires a webhook provider, EC2 instance_types, vpc_id, and at least one subnet."
     }
   }
 }
