@@ -1,0 +1,12 @@
+{
+    "agent": {
+        "metrics_collection_interval": 5
+    },
+    "logs": {
+        "logs_collected": {
+            "files": {
+                "collect_list": ${logfiles}
+            }
+        }
+    }
+}

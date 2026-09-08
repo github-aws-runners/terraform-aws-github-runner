@@ -277,6 +277,19 @@ entries are present, `experimental_features = ["multi-runner-v2"]` is required;
 the v2 path combines native v2 entries with translated v1 entries from the
 same map.
 
+The experimental AWS EC2 provider intentionally remains separate from the
+stable `modules/runners` implementation. It owns its own Terraform resource
+definitions and copies of the runner bootstrap templates so the v2 provider
+boundary can evolve without changing the stable module's public contract,
+resource graph, state addresses, or deployed behavior. The template bodies are
+equivalent at introduction; eight of the ten files are byte-identical, while
+`cloudwatch_config.json` and `user-data.ps1` differ only by a final newline.
+
+This isolation temporarily duplicates Terraform and template code. Equivalent
+fixes must be evaluated for both implementations, and review should explicitly
+check for unintended drift. Consolidation is deferred until stable v1 is
+deprecated and a migration can be designed and verified independently.
+
 The canonical v2 output groups orchestration resources under
 `orchestration_provider.webhook` and compute resources under the selected
 namespace and provider, currently `provider.aws.ec2`. Compatibility aliases
@@ -333,6 +346,9 @@ It does not permit both controllers to own the same runner configuration.
 - Global webhook defaults and per-runner webhook selection have similarly named
   blocks with different purposes.
 - Adapter objects and capability contracts require maintenance.
+- Keeping the stable and experimental EC2 implementations isolated temporarily
+  duplicates Terraform and bootstrap templates, increasing review and
+  maintenance effort until v1 is deprecated.
 - A stateful provider will still require separate runtime, deployment,
   observability, and failure-recovery design.
 
@@ -361,6 +377,16 @@ the common module would blur ownership and make a future provider appear to
 support components it does not use.
 
 **Decision**: Keep those leaves under the webhook provider root.
+
+### Reuse or refactor the stable runners module now
+
+Reusing `modules/runners` or extracting shared implementation code now would
+reduce duplication, but it would couple the experimental provider refactor to
+the stable module's compatibility and Terraform-state contract.
+
+**Decision**: Keep the v2 EC2 provider isolated and accept temporary
+duplication. Consolidate only after stable v1 deprecation and a separately
+reviewed migration.
 
 ### Add the scale-set schema and ECS service now
 
