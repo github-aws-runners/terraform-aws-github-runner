@@ -43,7 +43,7 @@ locals {
 }
 
 resource "aws_ssm_parameter" "runner_matcher_config" {
-  count = local.total_chunks
+  count = var.storage_provider.type == "aws_ssm" ? local.total_chunks : 0
 
   name  = "${var.ssm_paths.root}/${var.ssm_paths.webhook}/runner-matcher-config${local.total_chunks > 1 ? "-${count.index}" : ""}"
   type  = "String"
@@ -76,7 +76,7 @@ module "direct" {
     lambda_apigateway_access_log_settings = var.webhook_lambda_apigateway_access_log_settings,
     repository_white_list                 = var.repository_white_list,
     queue_selection_strategy              = var.queue_selection_strategy,
-    kms_key_arn                           = var.kms_key_arn,
+    kms_key_arn                           = var.storage_provider.type == "aws_ssm" ? var.kms_key_arn : null,
     log_level                             = var.log_level,
     lambda_runtime                        = var.lambda_runtime,
     aws_partition                         = var.aws_partition,
@@ -92,6 +92,9 @@ module "direct" {
         version = p.version
       }
     ]
+    storage_provider = merge(var.storage_provider.direct, {
+      type = var.storage_provider.type
+    })
   }
 }
 
@@ -119,7 +122,7 @@ module "eventbridge" {
     lambda_apigateway_access_log_settings = var.webhook_lambda_apigateway_access_log_settings,
     repository_white_list                 = var.repository_white_list,
     queue_selection_strategy              = var.queue_selection_strategy,
-    kms_key_arn                           = var.kms_key_arn,
+    kms_key_arn                           = var.storage_provider.type == "aws_ssm" ? var.kms_key_arn : null,
     log_level                             = var.log_level,
     lambda_runtime                        = var.lambda_runtime,
     aws_partition                         = var.aws_partition,
@@ -135,6 +138,9 @@ module "eventbridge" {
         version = p.version
       }
     ]
+    storage_provider = merge(var.storage_provider.eventbridge, {
+      type = var.storage_provider.type
+    })
     accept_events = var.eventbridge.accept_events
   }
 

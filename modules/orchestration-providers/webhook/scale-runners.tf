@@ -53,6 +53,12 @@ module "scale_runners" {
     }
   }
 
+  storage_provider = {
+    type       = local.resolved_config.storage_provider.type
+    scale_up   = local.resolved_config.storage_provider.scale_up
+    scale_down = local.resolved_config.storage_provider.scale_down
+  }
+
   runner_provider = {
     type       = var.runner_provider.type
     scale_up   = var.runner_provider.scale_up

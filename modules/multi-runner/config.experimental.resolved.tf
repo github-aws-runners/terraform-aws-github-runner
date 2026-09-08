@@ -24,6 +24,7 @@ locals {
     runner                 = var.global_config.runner
     github                 = var.global_config_github
     lambda                 = var.global_config_lambda
+    storage_provider       = var.global_config_storage_provider
     orchestration_provider = var.global_config_orchestration_provider
     ssm                    = var.global_config_ssm
     observability          = var.global_config_observability
@@ -37,6 +38,7 @@ locals {
     runner                 = local.stable_to_v2_runner
     github                 = local.stable_to_v2_github
     lambda                 = local.stable_to_v2_lambda
+    storage_provider       = local.stable_to_v2_storage_provider
     orchestration_provider = local.stable_to_v2_orchestration_provider
     ssm                    = local.stable_to_v2_ssm
     observability          = local.stable_to_v2_observability

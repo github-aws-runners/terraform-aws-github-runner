@@ -59,6 +59,13 @@ locals {
     }
   }
 
+  stable_to_v2_storage_provider = {
+    aws = {
+      dynamodb = null
+      ssm      = {}
+    }
+  }
+
   stable_to_v2_orchestration_provider = {
     webhook = {
       queue_selection_strategy = var.queue_selection_strategy

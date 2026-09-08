@@ -45,4 +45,9 @@ module "job_retry" {
       event_source_mapping = local.job_retry_queue_tags
     }
   }
+
+  storage_provider = merge(
+    { type = local.resolved_config.storage_provider.type },
+    local.resolved_config.storage_provider.job_retry,
+  )
 }
