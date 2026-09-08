@@ -72,6 +72,8 @@ jobs:
           - ephemeral
           - multi-runner
           - multi-runner-v2
+          - microvm-foundation
+          - microvm
           - migration-test
           - termination-watcher
     services:
