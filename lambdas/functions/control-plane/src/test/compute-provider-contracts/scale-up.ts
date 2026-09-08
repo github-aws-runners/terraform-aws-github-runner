@@ -43,7 +43,7 @@ export function defineScaleUpContractTests<TType extends string>({
 
         resolveCapability.mockReturnValue(() => provider);
         vi.mocked(provider.resolveLabelsForRunners).mockResolvedValue({ runnerLabels: [], state });
-        vi.mocked(provider.getCurrentRunners).mockResolvedValue(0);
+        vi.mocked(provider.getCurrentRunners).mockResolvedValue([]);
         vi.mocked(provider.createRunners).mockResolvedValue(createResult);
       });
 
@@ -81,7 +81,7 @@ export function defineScaleUpContractTests<TType extends string>({
 
       it('does not create runners when the compute provider has reached maximum capacity', async () => {
         process.env.RUNNERS_MAXIMUM_COUNT = '1';
-        vi.mocked(provider.getCurrentRunners).mockResolvedValue(1);
+        vi.mocked(provider.getCurrentRunners).mockResolvedValue(['runner-1']);
 
         await scaleUp(createPayloads());
 

@@ -1,7 +1,11 @@
 export const runnerConfigStorageProvider = {
   awsSsm: 'aws_ssm',
+  awsDynamodb: 'aws_dynamodb',
 } as const;
-export const runnerConfigStorageProviders = [runnerConfigStorageProvider.awsSsm] as const;
+export const runnerConfigStorageProviders = [
+  runnerConfigStorageProvider.awsSsm,
+  runnerConfigStorageProvider.awsDynamodb,
+] as const;
 
 export type RunnerConfigStorageProvider = (typeof runnerConfigStorageProviders)[number];
 

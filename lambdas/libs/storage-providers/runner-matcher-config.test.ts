@@ -1,13 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createAwsDynamoDbRunnerMatcherConfigStore } from './aws/dynamodb/runner-matcher-config-store';
 import { createAwsSsmRunnerMatcherConfigStore } from './aws/ssm/runner-matcher-config-store';
 import type { RunnerMatcherConfigStore } from './core';
 import { getRunnerMatcherConfigStore, resetRunnerMatcherConfigStore } from './runner-matcher-config';
 
+vi.mock('./aws/dynamodb/runner-matcher-config-store', () => ({
+  createAwsDynamoDbRunnerMatcherConfigStore: vi.fn(),
+}));
 vi.mock('./aws/ssm/runner-matcher-config-store', () => ({
   createAwsSsmRunnerMatcherConfigStore: vi.fn(),
 }));
 
+const createAwsDynamoDbRunnerMatcherConfigStoreMock = vi.mocked(createAwsDynamoDbRunnerMatcherConfigStore);
 const createAwsSsmRunnerMatcherConfigStoreMock = vi.mocked(createAwsSsmRunnerMatcherConfigStore);
 const cleanEnv = process.env;
 
@@ -25,6 +30,7 @@ describe('runner matcher config store selection', () => {
 
     expect(getRunnerMatcherConfigStore()).toBe(store);
     expect(createAwsSsmRunnerMatcherConfigStoreMock).toHaveBeenCalledOnce();
+    expect(createAwsDynamoDbRunnerMatcherConfigStoreMock).not.toHaveBeenCalled();
   });
 
   it.each(['aws_ssm', ' AWS_SSM '])('uses aws_ssm for explicit selector input %j', (provider) => {
@@ -33,6 +39,16 @@ describe('runner matcher config store selection', () => {
 
     expect(getRunnerMatcherConfigStore()).toBe(store);
     expect(createAwsSsmRunnerMatcherConfigStoreMock).toHaveBeenCalledOnce();
+    expect(createAwsDynamoDbRunnerMatcherConfigStoreMock).not.toHaveBeenCalled();
+  });
+
+  it.each(['aws_dynamodb', ' AWS_DYNAMODB '])('uses aws_dynamodb for explicit selector input %j', (provider) => {
+    process.env.RUNNER_CONFIG_STORAGE_PROVIDER = provider;
+    const store = stubDynamoDbStore();
+
+    expect(getRunnerMatcherConfigStore()).toBe(store);
+    expect(createAwsDynamoDbRunnerMatcherConfigStoreMock).toHaveBeenCalledOnce();
+    expect(createAwsSsmRunnerMatcherConfigStoreMock).not.toHaveBeenCalled();
   });
 
   it('rejects an unsupported provider on first use', () => {
@@ -40,6 +56,7 @@ describe('runner matcher config store selection', () => {
 
     expect(() => getRunnerMatcherConfigStore()).toThrow("Unsupported runner config storage provider 'not-registered'");
     expect(createAwsSsmRunnerMatcherConfigStoreMock).not.toHaveBeenCalled();
+    expect(createAwsDynamoDbRunnerMatcherConfigStoreMock).not.toHaveBeenCalled();
   });
 
   it('selects lazily and caches the created store', () => {
@@ -79,5 +96,11 @@ function setProvider(provider: string | undefined): void {
 function stubStore(): RunnerMatcherConfigStore {
   const store = { get: vi.fn() } satisfies RunnerMatcherConfigStore;
   createAwsSsmRunnerMatcherConfigStoreMock.mockReturnValue(store);
+  return store;
+}
+
+function stubDynamoDbStore(): RunnerMatcherConfigStore {
+  const store = { get: vi.fn() } satisfies RunnerMatcherConfigStore;
+  createAwsDynamoDbRunnerMatcherConfigStoreMock.mockReturnValue(store);
   return store;
 }

@@ -1,34 +1,34 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createAwsDynamoDbGitHubWebhookSecretStore } from './aws/dynamodb/github-webhook-secret-store';
-import { createAwsSsmGitHubWebhookSecretStore } from './aws/ssm/github-webhook-secret-store';
-import type { GitHubWebhookSecretStore } from './core';
-import { getGitHubWebhookSecretStore, resetGitHubWebhookSecretStore } from './github-webhook-secret';
+import { createAwsDynamoDbGitHubAppCredentialsStore } from './aws/dynamodb/github-app-credentials-store';
+import { createAwsSsmGitHubAppCredentialsStore } from './aws/ssm/github-app-credentials-store';
+import type { GitHubAppCredentialsStore } from './core';
+import { getGitHubAppCredentialsStore, resetGitHubAppCredentialsStore } from './github-app-credentials';
 
-vi.mock('./aws/dynamodb/github-webhook-secret-store', () => ({
-  createAwsDynamoDbGitHubWebhookSecretStore: vi.fn(),
+vi.mock('./aws/dynamodb/github-app-credentials-store', () => ({
+  createAwsDynamoDbGitHubAppCredentialsStore: vi.fn(),
 }));
-vi.mock('./aws/ssm/github-webhook-secret-store', () => ({
-  createAwsSsmGitHubWebhookSecretStore: vi.fn(),
+vi.mock('./aws/ssm/github-app-credentials-store', () => ({
+  createAwsSsmGitHubAppCredentialsStore: vi.fn(),
 }));
 
-const createAwsDynamoDbStoreMock = vi.mocked(createAwsDynamoDbGitHubWebhookSecretStore);
-const createAwsSsmStoreMock = vi.mocked(createAwsSsmGitHubWebhookSecretStore);
+const createAwsDynamoDbStoreMock = vi.mocked(createAwsDynamoDbGitHubAppCredentialsStore);
+const createAwsSsmStoreMock = vi.mocked(createAwsSsmGitHubAppCredentialsStore);
 const cleanEnv = process.env;
 
-describe('GitHub webhook secret store selection', () => {
+describe('GitHub App credentials store selection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env = { ...cleanEnv };
     delete process.env.RUNNER_CONFIG_STORAGE_PROVIDER;
-    resetGitHubWebhookSecretStore();
+    resetGitHubAppCredentialsStore();
   });
 
   it.each([undefined, '', '   ', 'aws_ssm', ' AWS_SSM '])('uses aws_ssm for selector input %j', (provider) => {
     setProvider(provider);
     const store = stubSsmStore();
 
-    expect(getGitHubWebhookSecretStore()).toBe(store);
+    expect(getGitHubAppCredentialsStore()).toBe(store);
     expect(createAwsSsmStoreMock).toHaveBeenCalledOnce();
     expect(createAwsDynamoDbStoreMock).not.toHaveBeenCalled();
   });
@@ -37,7 +37,7 @@ describe('GitHub webhook secret store selection', () => {
     setProvider(provider);
     const store = stubDynamoDbStore();
 
-    expect(getGitHubWebhookSecretStore()).toBe(store);
+    expect(getGitHubAppCredentialsStore()).toBe(store);
     expect(createAwsDynamoDbStoreMock).toHaveBeenCalledOnce();
     expect(createAwsSsmStoreMock).not.toHaveBeenCalled();
   });
@@ -45,7 +45,7 @@ describe('GitHub webhook secret store selection', () => {
   it('rejects an unsupported provider before creating a store', () => {
     setProvider('not-registered');
 
-    expect(() => getGitHubWebhookSecretStore()).toThrow("Unsupported runner config storage provider 'not-registered'");
+    expect(() => getGitHubAppCredentialsStore()).toThrow("Unsupported runner config storage provider 'not-registered'");
     expect(createAwsSsmStoreMock).not.toHaveBeenCalled();
     expect(createAwsDynamoDbStoreMock).not.toHaveBeenCalled();
   });
@@ -54,9 +54,9 @@ describe('GitHub webhook secret store selection', () => {
     const store = stubSsmStore();
 
     expect(createAwsSsmStoreMock).not.toHaveBeenCalled();
-    const first = getGitHubWebhookSecretStore();
+    const first = getGitHubAppCredentialsStore();
     setProvider('not-registered');
-    const second = getGitHubWebhookSecretStore();
+    const second = getGitHubAppCredentialsStore();
 
     expect(first).toBe(store);
     expect(second).toBe(store);
@@ -65,13 +65,13 @@ describe('GitHub webhook secret store selection', () => {
 
   it('selects again after the test reset', () => {
     const firstStore = stubSsmStore();
-    expect(getGitHubWebhookSecretStore()).toBe(firstStore);
+    expect(getGitHubAppCredentialsStore()).toBe(firstStore);
 
-    const secondStore = { get: vi.fn() } satisfies GitHubWebhookSecretStore;
+    const secondStore = { get: vi.fn() } satisfies GitHubAppCredentialsStore;
     createAwsSsmStoreMock.mockReturnValue(secondStore);
-    resetGitHubWebhookSecretStore();
+    resetGitHubAppCredentialsStore();
 
-    expect(getGitHubWebhookSecretStore()).toBe(secondStore);
+    expect(getGitHubAppCredentialsStore()).toBe(secondStore);
     expect(createAwsSsmStoreMock).toHaveBeenCalledTimes(2);
   });
 });
@@ -84,14 +84,14 @@ function setProvider(provider: string | undefined): void {
   }
 }
 
-function stubSsmStore(): GitHubWebhookSecretStore {
-  const store = { get: vi.fn() } satisfies GitHubWebhookSecretStore;
+function stubSsmStore(): GitHubAppCredentialsStore {
+  const store = { get: vi.fn() } satisfies GitHubAppCredentialsStore;
   createAwsSsmStoreMock.mockReturnValue(store);
   return store;
 }
 
-function stubDynamoDbStore(): GitHubWebhookSecretStore {
-  const store = { get: vi.fn() } satisfies GitHubWebhookSecretStore;
+function stubDynamoDbStore(): GitHubAppCredentialsStore {
+  const store = { get: vi.fn() } satisfies GitHubAppCredentialsStore;
   createAwsDynamoDbStoreMock.mockReturnValue(store);
   return store;
 }

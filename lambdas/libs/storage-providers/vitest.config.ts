@@ -15,6 +15,7 @@ export default mergeConfig(defaultConfig, {
         'provider.ts',
         'github-webhook-secret.ts',
         'runner-matcher-config.ts',
+        'runner-state.ts',
         'core/**/*.ts',
         'aws/**/*.ts',
       ],
