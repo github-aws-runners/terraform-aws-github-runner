@@ -22,9 +22,9 @@ locals {
     webhook_secret = coalesce(var.github_app.webhook_secret_ssm, module.ssm.parameters.github_app_webhook_secret)
   }
 
-  runner_extra_labels = { for k, v in var.multi_runner_config : k => sort(setunion(flatten(v.matcherConfig.labelMatchers), compact(v.runner_config.runner_extra_labels))) }
+  runner_extra_labels = { for k, v in local.legacy_multi_runner_config : k => sort(setunion(flatten(v.matcherConfig.labelMatchers), compact(v.runner_config.runner_extra_labels))) }
 
-  runner_config = { for k, v in var.multi_runner_config : k => merge(
+  runner_config = { for k, v in local.legacy_multi_runner_config : k => merge(
     {
       id  = aws_sqs_queue.queued_builds[k].id
       arn = aws_sqs_queue.queued_builds[k].arn
