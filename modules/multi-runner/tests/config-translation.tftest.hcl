@@ -532,6 +532,8 @@ run "v2_entry_without_matcher_config_is_authoritative" {
         compute_provider = {
           aws = {
             ec2 = {
+              vpc_id         = "vpc-no-matcher"
+              subnet_ids     = ["subnet-no-matcher"]
               instance_types = ["m5.large"]
             }
           }
