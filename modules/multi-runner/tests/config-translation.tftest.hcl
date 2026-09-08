@@ -527,7 +527,17 @@ run "v2_entry_without_matcher_config_is_authoritative" {
           architecture = "x64"
         }
         orchestration_provider = {
-          webhook = {}
+          scale_set = {
+            github = {
+              config_url = "https://github.com/example"
+              installation_id_ssm = {
+                name = "/tests/scale-set/installation-id"
+                arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/tests/scale-set/installation-id"
+              }
+            }
+            name = "no-matcher-scale-set"
+            id   = 42
+          }
         }
         compute_provider = {
           aws = {
@@ -547,6 +557,7 @@ run "v2_entry_without_matcher_config_is_authoritative" {
       local.use_v2_config
       && toset(keys(local.normalized_config.multi_runner_config)) == toset(["no_matcher"])
       && try(local.normalized_config.multi_runner_config["no_matcher"].orchestration_provider.webhook.matcherConfig, null) == null
+      && local.normalized_config.multi_runner_config["no_matcher"].orchestration_provider.scale_set.name == "no-matcher-scale-set"
     )
     error_message = "A v2 runner entry must be recognized without requiring matcher configuration."
   }
