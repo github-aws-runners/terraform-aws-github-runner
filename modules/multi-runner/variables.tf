@@ -665,14 +665,14 @@ variable "multi_runner_config" {
   validation {
     condition = alltrue([
       for config in var.multi_runner_config :
-      (try(config.runner_config.runner_os, null) != null) != (try(config.orchestration_provider.webhook.matcherConfig.labelMatchers, null) != null)
+      (try(config.runner_config, null) != null) != (try(config.orchestration_provider.webhook.matcherConfig.labelMatchers, null) != null)
     ])
     error_message = "Each multi_runner_config entry must use exactly one supported shape: the v1 runner_config/matcherConfig shape or the v2 orchestration_provider/compute_provider shape."
   }
 
   validation {
     condition = (
-      length([for config in var.multi_runner_config : config if try(config.runner_config.runner_os, null) != null]) == 0
+      length([for config in var.multi_runner_config : config if try(config.runner_config, null) != null]) == 0
       || length([for config in var.multi_runner_config : config if try(config.orchestration_provider.webhook.matcherConfig.labelMatchers, null) != null]) == 0
     )
     error_message = "Use one multi_runner_config shape per module invocation: provide either v1 entries or v2 entries, not both in the same map."

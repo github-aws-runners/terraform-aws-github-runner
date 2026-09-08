@@ -8,7 +8,7 @@ locals {
   # translated legacy lanes with native v2 lanes.
   legacy_multi_runner_config = {
     for k, v in var.multi_runner_config : k => v
-    if try(v.runner_config.runner_os, null) != null
+    if try(v.runner_config, null) != null
   }
 
   v2_multi_runner_config = {
