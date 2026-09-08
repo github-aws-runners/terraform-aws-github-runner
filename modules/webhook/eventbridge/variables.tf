@@ -48,7 +48,6 @@ variable "config" {
       arn     = string
       version = string
     }))
-    accept_events                       = optional(list(string), null)
-    webhook_xray_github_latency_enabled = optional(bool, false)
+    accept_events = optional(list(string), null)
   })
 }
