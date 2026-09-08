@@ -15,9 +15,12 @@
       }
     },
     {
-      "plugin": "@nx/vite/plugin",
+      "plugin": "@nx/vite/plugin"
+    },
+    {
+      "plugin": "@nx/vitest",
       "options": {
-        "targetName": "test"
+        "testTargetName": "test"
       }
     }
   ],
