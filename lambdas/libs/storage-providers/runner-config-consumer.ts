@@ -1,6 +1,7 @@
 import { createAwsSsmRunnerConfigConsumer, type AwsSsmRunnerConfigApi } from './aws/ssm/runner-config-consumer';
 import type { RunnerConfigConsumer } from './core';
-import { canonicalSsmTokenPath, type RunnerConfigPollingOptions } from './runner-config-consumer-common';
+import { canonicalSsmTokenPath, type RunnerConfigPollingOptions } from './aws/ssm/runner-config-consumer-common';
+import { runnerConfigStorageProvider } from './provider';
 
 export type { RunnerConfigConsumeOptions, RunnerConfigConsumer } from './core';
 export type { AwsSsmRunnerConfigApi } from './aws/ssm/runner-config-consumer';
@@ -13,7 +14,7 @@ export interface RunnerConfigConsumerConfig extends RunnerConfigPollingOptions {
 }
 
 export interface RunnerConfigStorageContext {
-  RUNNER_CONFIG_STORAGE_PROVIDER: 'aws_ssm';
+  RUNNER_CONFIG_STORAGE_PROVIDER: typeof runnerConfigStorageProvider.awsSsm;
   SSM_TOKEN_PATH: string;
 }
 
@@ -42,17 +43,17 @@ export function createRunnerConfigConsumer(
 export const createRunnerConfigConsumerFromEnvironment = createRunnerConfigConsumer;
 
 export function parseRunnerConfigStorageContext(value: unknown): RunnerConfigStorageContext {
-  if (!isPlainObject(value) || value.RUNNER_CONFIG_STORAGE_PROVIDER !== 'aws_ssm') {
+  if (!isPlainObject(value) || value.RUNNER_CONFIG_STORAGE_PROVIDER !== runnerConfigStorageProvider.awsSsm) {
     throw new Error('runner configuration storage context is invalid');
   }
   if (
     !hasExactKeys(value, ['RUNNER_CONFIG_STORAGE_PROVIDER', 'SSM_TOKEN_PATH']) ||
     typeof value.SSM_TOKEN_PATH !== 'string'
   ) {
-    throw new Error('aws_ssm runner configuration storage context is invalid');
+    throw new Error(`${runnerConfigStorageProvider.awsSsm} runner configuration storage context is invalid`);
   }
   return Object.freeze({
-    RUNNER_CONFIG_STORAGE_PROVIDER: 'aws_ssm',
+    RUNNER_CONFIG_STORAGE_PROVIDER: runnerConfigStorageProvider.awsSsm,
     SSM_TOKEN_PATH: canonicalSsmTokenPath(value.SSM_TOKEN_PATH),
   });
 }
@@ -61,7 +62,7 @@ export function loadRunnerConfigStorageContextFromEnvironment(
   environment: Environment = process.env,
 ): RunnerConfigStorageContext {
   return parseRunnerConfigStorageContext({
-    RUNNER_CONFIG_STORAGE_PROVIDER: 'aws_ssm',
+    RUNNER_CONFIG_STORAGE_PROVIDER: runnerConfigStorageProvider.awsSsm,
     SSM_TOKEN_PATH: environment.SSM_TOKEN_PATH,
   });
 }

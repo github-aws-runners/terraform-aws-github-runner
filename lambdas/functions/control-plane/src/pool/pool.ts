@@ -1,6 +1,7 @@
 import { Octokit } from '@octokit/rest';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import { resolveComputeProviderType } from '@aws-github-runner/compute-providers/provider-types';
+import { createStorageProviders, type StorageProviders } from '@aws-github-runner/storage-providers';
 import yn from 'yn';
 
 import {
@@ -10,7 +11,7 @@ import {
   getStoredInstallationId,
 } from '../github/auth';
 import { controlPlaneProviderRegistry } from '../control-plane-providers';
-import { getGitHubEnterpriseApiUrl, validateSsmParameterStoreTags } from '../scale-runners/github-runner';
+import { getGitHubEnterpriseApiUrl } from '../scale-runners/github-runner';
 import type { RunnerStatus } from './pool-provider';
 
 const logger = createChildLogger('pool');
@@ -21,6 +22,7 @@ export interface PoolEvent {
 }
 
 export async function adjust(event: PoolEvent): Promise<void> {
+  const storage = createStorageProviders();
   const computeProviderType = resolveComputeProviderType(event.type);
   const computeProvider = {
     ...controlPlaneProviderRegistry.capability(computeProviderType, 'pool')(),
@@ -31,15 +33,10 @@ export async function adjust(event: PoolEvent): Promise<void> {
   const runnerGroup = process.env.RUNNER_GROUP_NAME || '';
   const runnerNamePrefix = process.env.RUNNER_NAME_PREFIX || '';
   const environment = process.env.ENVIRONMENT;
-  const ssmConfigPath = process.env.SSM_CONFIG_PATH || '';
   const ephemeral = yn(process.env.ENABLE_EPHEMERAL_RUNNERS, { default: false });
   const enableJitConfig = yn(process.env.ENABLE_JIT_CONFIG, { default: ephemeral });
   const disableAutoUpdate = yn(process.env.DISABLE_RUNNER_AUTOUPDATE, { default: false });
   const runnerOwner = process.env.RUNNER_OWNER;
-  const ssmParameterStoreTags: { Key: string; Value: string }[] =
-    process.env.SSM_PARAMETER_STORE_TAGS && process.env.SSM_PARAMETER_STORE_TAGS.trim() !== ''
-      ? validateSsmParameterStoreTags(process.env.SSM_PARAMETER_STORE_TAGS)
-      : [];
   // -1 disables the maximum check, matching the scale-up lambda's semantics. Defaults to unlimited
   // when unset so the pool keeps its previous behavior on stacks that do not provide the variable.
   const maximumRunners = parseInt(process.env.RUNNERS_MAXIMUM_COUNT || '-1');
@@ -49,11 +46,11 @@ export async function adjust(event: PoolEvent): Promise<void> {
 
   // Select one GitHub App for this entire invocation so every API call draws
   // from the same rate-limit bucket.
-  const ghAppAuth = await createGithubAppAuth(undefined, ghesApiUrl);
+  const ghAppAuth = await createGithubAppAuth(undefined, ghesApiUrl, undefined, storage.githubAppCredentials);
   const appIdx = ghAppAuth.appIndex;
 
-  const installationId = await getInstallationId(ghAppAuth.token, ghesApiUrl, runnerOwner, appIdx);
-  const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl, appIdx);
+  const installationId = await getInstallationId(ghAppAuth.token, ghesApiUrl, runnerOwner, appIdx, storage);
+  const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl, appIdx, storage.githubAppCredentials);
   const githubInstallationClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
 
   // Get statuses of runners registered in GitHub
@@ -102,20 +99,25 @@ export async function adjust(event: PoolEvent): Promise<void> {
         runnerNamePrefix,
         runnerType: 'Org',
         disableAutoUpdate: disableAutoUpdate,
-        ssmConfigPath,
-        ssmParameterStoreTags,
       },
       numberOfRunners: topUp,
       githubInstallationClient,
+      storage,
     });
   } else {
     logger.info(`Pool will not be topped up. Found ${numberOfRunnersInPool} managed idle runners.`);
   }
 }
 
-async function getInstallationId(appToken: string, ghesApiUrl: string, org: string, appIndex: number): Promise<number> {
+async function getInstallationId(
+  appToken: string,
+  ghesApiUrl: string,
+  org: string,
+  appIndex: number,
+  storage?: StorageProviders,
+): Promise<number> {
   // Use the pre-configured installation ID when available (avoids an API call).
-  const storedId = await getStoredInstallationId(appIndex);
+  const storedId = await getStoredInstallationId(appIndex, storage?.githubAppCredentials);
   if (storedId !== undefined) return storedId;
 
   const githubClient = await createOctokitClient(appToken, ghesApiUrl);

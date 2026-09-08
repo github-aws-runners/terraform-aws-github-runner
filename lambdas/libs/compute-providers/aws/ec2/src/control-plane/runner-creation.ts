@@ -7,6 +7,7 @@ import type {
   RunnerSource,
   StartRunnerConfigOptions,
 } from '../../../../core';
+import type { RunnerConfigStorage } from '@aws-github-runner/storage-providers';
 import { Octokit } from '@octokit/rest';
 import type { Tag } from '@aws-sdk/client-ec2';
 import yn from 'yn';
@@ -69,6 +70,7 @@ export async function createRunners(
   ghClient: Octokit,
   createStartRunnerConfig: CreateStartRunnerConfig,
   source: RunnerSource,
+  storage?: RunnerConfigStorage,
 ): Promise<CreateRunnerResult> {
   let result: CreateRunnerResult;
   try {
@@ -97,7 +99,7 @@ export async function createRunners(
         githubRunnerConfig,
         result.instances,
         ghClient,
-        createEc2StartRunnerConfigOptions(ec2Operations),
+        createEc2StartRunnerConfigOptions(ec2Operations, storage),
       );
     } catch (error) {
       logger.error('Unexpected error while registering GitHub runners.', {
@@ -146,8 +148,13 @@ async function terminateFailedInstances(
   }
 }
 
-function createEc2StartRunnerConfigOptions(ec2Operations: Ec2RunnerResourceOperations): StartRunnerConfigOptions {
+function createEc2StartRunnerConfigOptions(
+  ec2Operations: Ec2RunnerResourceOperations,
+  storage?: RunnerConfigStorage,
+): StartRunnerConfigOptions {
   return {
+    runnerConfigStore: storage?.runnerConfig,
+    runnerGroupCacheStore: storage?.runnerGroupCache,
     getRunnerConfigMetadata: (instanceId) => [{ key: 'InstanceId', value: instanceId }],
     onJitConfigCreated: async (instanceId, metadata) => await tagEc2RunnerMetadata(ec2Operations, instanceId, metadata),
   };

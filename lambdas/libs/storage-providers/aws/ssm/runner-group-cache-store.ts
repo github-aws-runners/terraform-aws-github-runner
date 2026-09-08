@@ -4,12 +4,20 @@ import type { RunnerGroupCacheRecord, RunnerGroupCacheStore } from '../../core';
 import type {} from './environment';
 import { loadSsmParameterStoreTagsFromEnvironment } from './parameter-store-tags';
 
-interface AwsSsmRunnerGroupCacheStoreConfig {
+export interface AwsSsmRunnerGroupCacheStoreConfig {
   configPath: string;
-  parameterStoreTags: { Key: string; Value: string }[];
+  parameterStoreTags: ReadonlyArray<Readonly<{ Key: string; Value: string }>>;
 }
 
-export function createAwsSsmRunnerGroupCacheStore(): RunnerGroupCacheStore {
+export function createAwsSsmRunnerGroupCacheStore(config?: AwsSsmRunnerGroupCacheStoreConfig): RunnerGroupCacheStore {
+  if (config) {
+    return new AwsSsmRunnerGroupCacheStore(
+      Object.freeze({
+        ...config,
+        parameterStoreTags: Object.freeze(config.parameterStoreTags.map((tag) => Object.freeze({ ...tag }))),
+      }),
+    );
+  }
   const configPath = process.env.SSM_CONFIG_PATH;
   if (!configPath || configPath.trim() === '') {
     throw new Error('Environment variable SSM_CONFIG_PATH is not set');
@@ -42,7 +50,7 @@ class AwsSsmRunnerGroupCacheStore implements RunnerGroupCacheStore {
 
   async create(record: RunnerGroupCacheRecord): Promise<void> {
     await putParameter(this.parameterName(record.runnerGroupName), record.runnerGroupId.toString(), false, {
-      tags: this.config.parameterStoreTags,
+      tags: [...this.config.parameterStoreTags],
     });
   }
 

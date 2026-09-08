@@ -37,6 +37,18 @@ export interface RunnerConfigConsumer {
   consume(runnerId: string, options: RunnerConfigConsumeOptions): Promise<string>;
 }
 
+export interface RunnerConfigStorage {
+  runnerConfig: RunnerConfigStore;
+  runnerGroupCache: RunnerGroupCacheStore;
+  consumer: RunnerConfigConsumer;
+}
+
+export interface CommonStorage {
+  githubAppCredentials: GitHubAppCredentialsStore;
+}
+
+export type StorageProviders = RunnerConfigStorage & CommonStorage;
+
 export interface RunnerGroupCacheRecord {
   runnerGroupName: string;
   runnerGroupId: number;
