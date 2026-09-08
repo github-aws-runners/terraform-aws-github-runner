@@ -1,7 +1,8 @@
 # MiniStack example tests
 
 The MiniStack workflow runs the `base`, `prebuilt`, `default`, `ephemeral`,
-`multi-runner`, `multi-runner-v2`, `microvm-foundation`, and `termination-watcher` examples directly
+`multi-runner`, `multi-runner-v2`, `microvm-foundation`, `microvm`, and
+`termination-watcher` examples directly
 with Terraform 1.4.0 and the latest Terraform release.
 The examples with input variables get their inputs from their own tfvars files
 in this directory. The `termination-watcher` example has no input variables
@@ -11,7 +12,10 @@ connectors because MiniStack does not provide the regional Lambda Network
 Connector API. No override files or setup module are checked in. The helper
 creates and removes a temporary AMI override for `default` and
 `ephemeral`, temporary SSM parameters for `multi-runner`, and temporary AMI
-fixtures for `multi-runner-v2`.
+fixtures plus an override for `multi-runner-v2`.
+The `microvm` lane seeds test-only GitHub App SSM parameters and Lambda ZIP
+objects in a temporary S3 bucket, and uses synthetic MicroVM image and network
+connector ARNs. It does not create a real MicroVM image or network connector.
 
 Start MiniStack, set the AWS endpoint and test credentials, then run:
 
@@ -29,6 +33,8 @@ tests/ministack/run-example.sh apply multi-runner
 tests/ministack/run-example.sh apply multi-runner-v2
 # or
 tests/ministack/run-example.sh apply microvm-foundation
+# or
+tests/ministack/run-example.sh apply microvm
 # or
 tests/ministack/run-example.sh apply termination-watcher
 ```

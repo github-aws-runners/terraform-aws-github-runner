@@ -15,14 +15,14 @@ tfvars_file="${3:-${MINISTACK_TFVARS_FILE:-}}"
 microvm_foundation_default_tfvars=false
 
 case "$example" in
-  base | prebuilt | default | ephemeral | multi-runner | multi-runner-v2 | microvm-foundation)
+  base | prebuilt | default | ephemeral | multi-runner | multi-runner-v2 | microvm-foundation | microvm)
     use_tfvars=true
     ;;
   termination-watcher)
     use_tfvars=false
     ;;
   *)
-  echo "Supported examples for the runner are: base, prebuilt, default, ephemeral, multi-runner, multi-runner-v2, microvm-foundation, termination-watcher" >&2
+  echo "Supported examples for the runner are: base, prebuilt, default, ephemeral, multi-runner, multi-runner-v2, microvm-foundation, microvm, termination-watcher" >&2
   exit 64
   ;;
 esac
@@ -30,7 +30,7 @@ esac
 case "$action" in
   init | plan | apply | destroy) ;;
   *)
-    echo "Usage: $0 {init|plan|apply|destroy} {base|prebuilt|default|ephemeral|multi-runner|multi-runner-v2|microvm-foundation|termination-watcher} [TFVARS_FILE]" >&2
+    echo "Usage: $0 {init|plan|apply|destroy} {base|prebuilt|default|ephemeral|multi-runner|multi-runner-v2|microvm-foundation|microvm|termination-watcher} [TFVARS_FILE]" >&2
     exit 64
     ;;
 esac
@@ -64,6 +64,7 @@ lambda_fixture_dir=""
 lambda_created_paths=""
 ami_created_ids=""
 ssm_created_names=""
+s3_created_buckets=""
 override_created_paths=""
 tfvars_created_paths=""
 lambda_zip_paths="
@@ -85,6 +86,12 @@ cleanup() {
 
   for name in $ssm_created_names; do
     ministack_aws ssm delete-parameter --name "$name" >/dev/null 2>&1 || true
+  done
+
+  for bucket in $s3_created_buckets; do
+    ministack_aws s3api delete-object --bucket "$bucket" --key runners.zip >/dev/null 2>&1 || true
+    ministack_aws s3api delete-object --bucket "$bucket" --key webhook.zip >/dev/null 2>&1 || true
+    ministack_aws s3api delete-bucket --bucket "$bucket" >/dev/null 2>&1 || true
   done
 
   for image_id in $ami_created_ids; do
@@ -202,6 +209,25 @@ $fixture_tfvars"
   tfvars_file="$fixture_tfvars"
 }
 
+create_s3_fixture() {
+  bucket="$1"
+  key="$2"
+  file="$3"
+
+  if ! ministack_aws s3api head-bucket --bucket "$bucket" >/dev/null 2>&1; then
+    ministack_aws s3api create-bucket \
+      --bucket "$bucket" \
+      --create-bucket-configuration LocationConstraint="$AWS_DEFAULT_REGION" >/dev/null
+    s3_created_buckets="$s3_created_buckets
+$bucket"
+  fi
+
+  ministack_aws s3api put-object \
+    --bucket "$bucket" \
+    --key "$key" \
+    --body "$file" >/dev/null
+}
+
 create_ami_override() {
   override_file="$example_root/zz_ministack_ami_override.tf"
   printf '%s\n' \
@@ -305,6 +331,25 @@ $lambda_zip"
       create_ami_fixture "ministack-v2-linux-arm64" arm64 >/dev/null
       create_ami_fixture "ministack-v2-linux-x64" x86_64 >/dev/null
       create_ami_fixture "ministack-v2-windows-x64" x86_64 >/dev/null
+      ;;
+    microvm)
+      create_ssm_fixture \
+        "/ministack/microvm/github-app-key" \
+        "test-only"
+      create_ssm_fixture \
+        "/ministack/microvm/github-app-id" \
+        "123456"
+      create_ssm_fixture \
+        "/ministack/microvm/webhook-secret" \
+        "test-only"
+      create_s3_fixture \
+        "github-actions-runner-microvm-ministack" \
+        "runners.zip" \
+        "$lambda_fixture_dir/ministack-lambda.zip"
+      create_s3_fixture \
+        "github-actions-runner-microvm-ministack" \
+        "webhook.zip" \
+        "$lambda_fixture_dir/ministack-lambda.zip"
       ;;
   esac
 }

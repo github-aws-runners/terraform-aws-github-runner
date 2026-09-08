@@ -71,6 +71,7 @@ jobs:
           - multi-runner
           - multi-runner-v2
           - microvm-foundation
+          - microvm
           - termination-watcher
     services:
       ministack:

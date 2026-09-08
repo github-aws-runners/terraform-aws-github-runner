@@ -18,20 +18,14 @@ module "runners" {
   subnet_ids = module.base.vpc.private_subnets
   prefix     = local.environment
 
-  # Required for backwards-compatible module input validation; the non-empty
-  # experimental map selects the MicroVM configuration below.
-  multi_runner_config = {}
-
   # Keep GitHub App credentials in pre-created SSM parameters. This example
   # therefore does not place the private key or webhook secret in Terraform
   # configuration or state.
-  github_app = var.github_app
-
-  experimental_global_config_github = {
+  global_config_github = {
     app = var.github_app
   }
 
-  experimental_global_config_lambda = {
+  global_config_lambda = {
     artifact = {
       s3 = {
         bucket = var.lambda_artifact_bucket
@@ -39,7 +33,7 @@ module "runners" {
     }
   }
 
-  experimental_global_config_orchestration_provider = {
+  global_config_orchestration_provider = {
     webhook = {
       runner = {
         ephemeral            = true
@@ -67,13 +61,13 @@ module "runners" {
     }
   }
 
-  experimental_global_config_ssm = {
+  global_config_ssm = {
     paths = {
       root = "/github-action-runners/${local.environment}"
     }
   }
 
-  experimental_global_config_compute_provider = {
+  global_config_compute_provider = {
     aws = {
       microvm = {
         image_arn                  = var.microvm_image_arn
@@ -84,7 +78,7 @@ module "runners" {
     }
   }
 
-  experimental_multi_runner_config = {
+  multi_runner_config = {
     microvm = {
       runner = {
         os           = "linux"
