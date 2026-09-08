@@ -13,7 +13,7 @@ locals {
 
   v2_multi_runner_config = {
     for k, v in var.multi_runner_config : k => v
-    if try(v.orchestration_provider.webhook.matcherConfig.labelMatchers, null) != null
+    if try(v.runner_config, null) == null
   }
 
   # Reassemble the split experimental inputs into the canonical shape consumed

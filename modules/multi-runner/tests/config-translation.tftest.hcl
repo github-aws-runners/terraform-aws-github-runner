@@ -408,6 +408,39 @@ run "non_empty_v2_map_is_authoritative" {
 
 }
 
+run "v2_entry_without_matcher_config_is_authoritative" {
+  command = plan
+
+  variables {
+    experimental_features = ["multi-runner-v2"]
+
+    multi_runner_config = {
+      no_matcher = {
+        runner = {
+          os           = "linux"
+          architecture = "x64"
+        }
+        compute_provider = {
+          aws = {
+            ec2 = {
+              instance_types = ["m5.large"]
+            }
+          }
+        }
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      local.use_v2_config
+      && toset(keys(local.normalized_config.multi_runner_config)) == toset(["no_matcher"])
+      && try(local.normalized_config.multi_runner_config["no_matcher"].orchestration_provider.webhook.matcherConfig, null) == null
+    )
+    error_message = "A v2 runner entry must be recognized without requiring matcher configuration."
+  }
+}
+
 run "lane_values_override_experimental_globals" {
   command = plan
 
