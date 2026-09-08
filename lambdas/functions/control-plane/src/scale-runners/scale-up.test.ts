@@ -52,7 +52,7 @@ interface TestRunnerLookupInput {
 }
 
 const createRunner = vi.fn<(input: TestRunnerCreationInput) => Promise<CreateRunnerResult>>();
-const listRunners = vi.fn<(input: TestRunnerLookupInput) => Promise<unknown[]>>();
+const listRunners = vi.fn<(input: TestRunnerLookupInput) => Promise<{ id: string }[]>>();
 const mockCreateRunner = vi.mocked(createRunner);
 const mockListRunners = vi.mocked(listRunners);
 const mockSSMClient = mockClient(SSMClient);
@@ -207,7 +207,7 @@ beforeEach(() => {
         runnerType: input.runnerType,
         runnerOwner: input.runnerOwner,
       })
-    ).length;
+    ).map(({ id }) => id);
   });
   mockCreateRunners.mockImplementation(createTestProviderRunners);
 

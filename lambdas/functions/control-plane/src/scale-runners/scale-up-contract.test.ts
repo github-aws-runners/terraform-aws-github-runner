@@ -15,6 +15,15 @@ vi.mock('../github/auth', () => ({
   createOctokitClient: vi.fn(),
 }));
 
+vi.mock('@aws-github-runner/storage-providers', () => ({
+  createStorageProviders: vi.fn().mockReturnValue({
+    githubAppCredentials: { get: vi.fn() },
+  }),
+  getRunnerConfigStore: vi.fn(),
+  getRunnerGroupCacheStore: vi.fn(),
+  getRunnerStateStore: vi.fn().mockReturnValue(undefined),
+}));
+
 vi.mock('./github-runner', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./github-runner')>()),
   getGitHubEnterpriseApiUrl: vi.fn(),

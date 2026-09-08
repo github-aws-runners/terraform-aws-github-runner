@@ -1,11 +1,23 @@
-import { getParameter, getParameters } from '@aws-github-runner/aws-ssm-util';
+import {
+  getGitHubWebhookSecretStore,
+  getRunnerMatcherConfigStore,
+  type GitHubWebhookSecretStore,
+  type RunnerMatcherConfigStore,
+} from '@aws-github-runner/storage-providers';
 import { ConfigWebhook, ConfigWebhookEventBridge, ConfigDispatcher } from './ConfigLoader';
 
 import { logger } from '@aws-github-runner/aws-powertools-util';
 import { RunnerMatcherConfig } from './sqs';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-vi.mock('@aws-github-runner/aws-ssm-util');
+vi.mock('@aws-github-runner/storage-providers');
+
+const githubWebhookSecretStore = {
+  get: vi.fn(),
+} satisfies GitHubWebhookSecretStore;
+const runnerMatcherConfigStore = {
+  get: vi.fn(),
+} satisfies RunnerMatcherConfigStore;
 
 describe('ConfigLoader Tests', () => {
   beforeEach(() => {
@@ -14,6 +26,8 @@ describe('ConfigLoader Tests', () => {
     ConfigWebhookEventBridge.reset();
     ConfigDispatcher.reset();
     logger.setLogLevel('DEBUG');
+    vi.mocked(getGitHubWebhookSecretStore).mockReturnValue(githubWebhookSecretStore);
+    vi.mocked(getRunnerMatcherConfigStore).mockReturnValue(runnerMatcherConfigStore);
 
     // clear process.env
     for (const key of Object.keys(process.env)) {
@@ -24,8 +38,6 @@ describe('ConfigLoader Tests', () => {
   describe('Check base object', () => {
     function setupConfiguration(): void {
       process.env.EVENT_BUS_NAME = 'event-bus';
-      process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH = '/path/to/matcher/config';
-      process.env.PARAMETER_GITHUB_APP_WEBHOOK_SECRET = '/path/to/webhook/secret';
       const matcherConfig = [
         {
           id: '1',
@@ -36,15 +48,8 @@ describe('ConfigLoader Tests', () => {
           },
         },
       ];
-      vi.mocked(getParameter).mockImplementation(async (paramPath: string) => {
-        if (paramPath === '/path/to/matcher/config') {
-          return JSON.stringify(matcherConfig);
-        }
-        if (paramPath === '/path/to/webhook/secret') {
-          return 'secret';
-        }
-        return '';
-      });
+      runnerMatcherConfigStore.get.mockResolvedValue(JSON.stringify(matcherConfig));
+      githubWebhookSecretStore.get.mockResolvedValue('secret');
     }
 
     it('should return the same instance of ConfigWebhook (singleton)', async () => {
@@ -53,7 +58,8 @@ describe('ConfigLoader Tests', () => {
       const config2 = await ConfigWebhook.load();
 
       expect(config1).toBe(config2);
-      expect(getParameter).toHaveBeenCalledTimes(2);
+      expect(githubWebhookSecretStore.get).toHaveBeenCalledOnce();
+      expect(runnerMatcherConfigStore.get).toHaveBeenCalledOnce();
     });
 
     it('should return the same instance of ConfigWebhookEventBridge (singleton)', async () => {
@@ -62,7 +68,8 @@ describe('ConfigLoader Tests', () => {
       const config2 = await ConfigWebhookEventBridge.load();
 
       expect(config1).toBe(config2);
-      expect(getParameter).toHaveBeenCalledTimes(1);
+      expect(githubWebhookSecretStore.get).toHaveBeenCalledOnce();
+      expect(runnerMatcherConfigStore.get).not.toHaveBeenCalled();
     });
 
     it('should return the same instance of ConfigDispatcher (singleton)', async () => {
@@ -71,7 +78,8 @@ describe('ConfigLoader Tests', () => {
       const config2 = await ConfigDispatcher.load();
 
       expect(config1).toBe(config2);
-      expect(getParameter).toHaveBeenCalledTimes(1);
+      expect(githubWebhookSecretStore.get).not.toHaveBeenCalled();
+      expect(runnerMatcherConfigStore.get).toHaveBeenCalledOnce();
     });
 
     it('should filter secrets from being logged', async () => {
@@ -94,8 +102,6 @@ describe('ConfigLoader Tests', () => {
   describe('ConfigWebhook', () => {
     it('should load config successfully', async () => {
       process.env.REPOSITORY_ALLOW_LIST = '["repo1", "repo2"]';
-      process.env.PARAMETER_GITHUB_APP_WEBHOOK_SECRET = '/path/to/webhook/secret';
-      process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH = '/path/to/matcher/config';
       const matcherConfig = [
         {
           id: '1',
@@ -106,15 +112,8 @@ describe('ConfigLoader Tests', () => {
           },
         },
       ];
-      vi.mocked(getParameter).mockImplementation(async (paramPath: string) => {
-        if (paramPath === '/path/to/matcher/config') {
-          return JSON.stringify(matcherConfig);
-        }
-        if (paramPath === '/path/to/webhook/secret') {
-          return 'secret';
-        }
-        return '';
-      });
+      runnerMatcherConfigStore.get.mockResolvedValue(JSON.stringify(matcherConfig));
+      githubWebhookSecretStore.get.mockResolvedValue('secret');
 
       const config: ConfigWebhook = await ConfigWebhook.load();
 
@@ -124,8 +123,6 @@ describe('ConfigLoader Tests', () => {
     });
 
     it('should load config successfully', async () => {
-      process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH = '/path/to/matcher/config';
-      process.env.PARAMETER_GITHUB_APP_WEBHOOK_SECRET = '/path/to/webhook/secret';
       const matcherConfig = [
         {
           id: '1',
@@ -136,15 +133,8 @@ describe('ConfigLoader Tests', () => {
           },
         },
       ];
-      vi.mocked(getParameter).mockImplementation(async (paramPath: string) => {
-        if (paramPath === '/path/to/matcher/config') {
-          return JSON.stringify(matcherConfig);
-        }
-        if (paramPath === '/path/to/webhook/secret') {
-          return 'secret';
-        }
-        return '';
-      });
+      runnerMatcherConfigStore.get.mockResolvedValue(JSON.stringify(matcherConfig));
+      githubWebhookSecretStore.get.mockResolvedValue('secret');
 
       const config: ConfigWebhook = await ConfigWebhook.load();
 
@@ -155,46 +145,25 @@ describe('ConfigLoader Tests', () => {
     });
 
     it('should throw error if config loading fails', async () => {
-      process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH = '/path/to/matcher/config';
-
-      vi.mocked(getParameter).mockImplementation(async (paramPath: string) => {
-        if (paramPath === '/path/to/matcher/config') {
-          throw new Error('Failed to load matcher config');
-        }
-        return '';
-      });
+      runnerMatcherConfigStore.get.mockRejectedValue(
+        new Error(
+          'Failed to load parameter for matcherConfig from path /path/to/matcher/config: Failed to load matcher config',
+        ),
+      );
+      githubWebhookSecretStore.get.mockResolvedValue('');
 
       await expect(ConfigWebhook.load()).rejects.toThrow(
         'Failed to load config: Failed to load parameter for matcherConfig from path /path/to/matcher/config: Failed to load matcher config',
       );
     });
 
-    it('should load config successfully from multiple paths', async () => {
-      process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH = '/path/to/matcher/config-1:/path/to/matcher/config-2';
-      process.env.PARAMETER_GITHUB_APP_WEBHOOK_SECRET = '/path/to/webhook/secret';
-
-      const partialMatcher1 =
-        '[{"id":"1","arn":"arn:aws:sqs:queue1","matcherConfig":{"labelMatchers":[["a"]],"exactMatch":true}}';
-      const partialMatcher2 =
-        ',{"id":"2","arn":"arn:aws:sqs:queue2","matcherConfig":{"labelMatchers":[["b"]],"exactMatch":true}}]';
-
+    it('should load combined matcher config returned by the store', async () => {
       const combinedMatcherConfig = [
         { id: '1', arn: 'arn:aws:sqs:queue1', matcherConfig: { labelMatchers: [['a']], exactMatch: true } },
         { id: '2', arn: 'arn:aws:sqs:queue2', matcherConfig: { labelMatchers: [['b']], exactMatch: true } },
       ];
-
-      // Mock getParameters for batch fetching multiple paths
-      vi.mocked(getParameters).mockResolvedValue(
-        new Map([
-          ['/path/to/matcher/config-1', partialMatcher1],
-          ['/path/to/matcher/config-2', partialMatcher2],
-        ]),
-      );
-
-      vi.mocked(getParameter).mockImplementation(async (paramPath: string) => {
-        if (paramPath === '/path/to/webhook/secret') return 'secret';
-        return '';
-      });
+      runnerMatcherConfigStore.get.mockResolvedValue(JSON.stringify(combinedMatcherConfig));
+      githubWebhookSecretStore.get.mockResolvedValue('secret');
 
       const config: ConfigWebhook = await ConfigWebhook.load();
 
@@ -202,27 +171,13 @@ describe('ConfigLoader Tests', () => {
       expect(config.webhookSecret).toBe('secret');
     });
 
-    it('should throw error if config loading fails from multiple paths', async () => {
-      process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH = '/path/to/matcher/config-1:/path/to/matcher/config-2';
-      process.env.PARAMETER_GITHUB_APP_WEBHOOK_SECRET = '/path/to/webhook/secret';
-
-      const partialMatcher1 =
-        '[{"id":"1","arn":"arn:aws:sqs:queue1","matcherConfig":{"labelMatchers":[["a"]],"exactMatch":true}}';
-      const partialMatcher2 =
-        ',{"id":"2","arn":"arn:aws:sqs:queue2","matcherConfig":{"labelMatchers":[["b"]],"exactMatch":true}}';
-
-      // Mock getParameters for batch fetching - returns incomplete JSON that will fail to parse
-      vi.mocked(getParameters).mockResolvedValue(
-        new Map([
-          ['/path/to/matcher/config-1', partialMatcher1],
-          ['/path/to/matcher/config-2', partialMatcher2],
-        ]),
+    it('should propagate an error from the matcher config store', async () => {
+      runnerMatcherConfigStore.get.mockRejectedValue(
+        new Error(
+          "Failed to load/parse combined matcher config: Expected ',' or ']' after array element in JSON at position 196",
+        ),
       );
-
-      vi.mocked(getParameter).mockImplementation(async (paramPath: string) => {
-        if (paramPath === '/path/to/webhook/secret') return 'secret';
-        return '';
-      });
+      githubWebhookSecretStore.get.mockResolvedValue('secret');
 
       await expect(ConfigWebhook.load()).rejects.toThrow(
         "Failed to load config: Failed to load/parse combined matcher config: Expected ',' or ']' after array element in JSON at position 196",
@@ -234,37 +189,40 @@ describe('ConfigLoader Tests', () => {
     it('should load config successfully', async () => {
       process.env.ACCEPT_EVENTS = '["push", "pull_request"]';
       process.env.EVENT_BUS_NAME = 'event-bus';
-      process.env.PARAMETER_GITHUB_APP_WEBHOOK_SECRET = '/path/to/webhook/secret';
-
-      vi.mocked(getParameter).mockImplementation(async (paramPath: string) => {
-        if (paramPath === '/path/to/webhook/secret') {
-          return 'secret';
-        }
-        return '';
-      });
+      githubWebhookSecretStore.get.mockResolvedValue('secret');
 
       const config: ConfigWebhookEventBridge = await ConfigWebhookEventBridge.load();
 
       expect(config.allowedEvents).toEqual(['push', 'pull_request']);
       expect(config.eventBusName).toBe('event-bus');
       expect(config.webhookSecret).toBe('secret');
+      expect(runnerMatcherConfigStore.get).not.toHaveBeenCalled();
     });
 
     it('should throw error if config loading fails', async () => {
-      vi.mocked(getParameter).mockImplementation(async (paramPath: string) => {
-        throw new Error(`Parameter ${paramPath} not found`);
+      githubWebhookSecretStore.get.mockRejectedValue(new Error('Webhook secret store is unavailable'));
+
+      await expect(ConfigWebhookEventBridge.load()).rejects.toThrow(
+        'Failed to load config: Environment variable for eventBusName is not set and no default value provided., Webhook secret store is unavailable',
+      );
+    });
+
+    it('should report an error selecting the webhook secret store', async () => {
+      process.env.EVENT_BUS_NAME = 'event-bus';
+      vi.mocked(getGitHubWebhookSecretStore).mockImplementationOnce(() => {
+        throw new Error("Unsupported runner config storage provider 'not-registered'");
       });
 
       await expect(ConfigWebhookEventBridge.load()).rejects.toThrow(
-        'Failed to load config: Environment variable for eventBusName is not set and no default value provided., Failed to load parameter for webhookSecret from path undefined: Parameter undefined not found',
+        "Failed to load config: Unsupported runner config storage provider 'not-registered'",
       );
+      expect(githubWebhookSecretStore.get).not.toHaveBeenCalled();
     });
   });
 
   describe('ConfigDispatcher', () => {
     it('should load config successfully', async () => {
       process.env.REPOSITORY_ALLOW_LIST = '["repo1", "repo2"]';
-      process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH = '/path/to/matcher/config';
 
       const matcherConfig: RunnerMatcherConfig[] = [
         {
@@ -276,12 +234,7 @@ describe('ConfigLoader Tests', () => {
           },
         },
       ];
-      vi.mocked(getParameter).mockImplementation(async (paramPath: string) => {
-        if (paramPath === '/path/to/matcher/config') {
-          return JSON.stringify(matcherConfig);
-        }
-        return '';
-      });
+      runnerMatcherConfigStore.get.mockResolvedValue(JSON.stringify(matcherConfig));
 
       const config: ConfigDispatcher = await ConfigDispatcher.load();
 
@@ -289,27 +242,14 @@ describe('ConfigLoader Tests', () => {
       expect(config.matcherConfig).toEqual(matcherConfig);
     });
 
-    it('should load config successfully from multiple paths with repo allow list', async () => {
+    it('should load combined matcher config returned by the store with repo allow list', async () => {
       process.env.REPOSITORY_ALLOW_LIST = '["repo1", "repo2"]';
-      process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH = '/path/to/matcher/config-1:/path/to/matcher/config-2';
-
-      const partial1 =
-        '[{"id":"1","arn":"arn:aws:sqs:queue1","matcherConfig":{"labelMatchers":[["x"]],"exactMatch":true}}';
-      const partial2 =
-        ',{"id":"2","arn":"arn:aws:sqs:queue2","matcherConfig":{"labelMatchers":[["y"]],"exactMatch":true}}]';
 
       const combined: RunnerMatcherConfig[] = [
         { id: '1', arn: 'arn:aws:sqs:queue1', matcherConfig: { labelMatchers: [['x']], exactMatch: true } },
         { id: '2', arn: 'arn:aws:sqs:queue2', matcherConfig: { labelMatchers: [['y']], exactMatch: true } },
       ];
-
-      // Mock getParameters for batch fetching multiple paths
-      vi.mocked(getParameters).mockResolvedValue(
-        new Map([
-          ['/path/to/matcher/config-1', partial1],
-          ['/path/to/matcher/config-2', partial2],
-        ]),
-      );
+      runnerMatcherConfigStore.get.mockResolvedValue(JSON.stringify(combined));
 
       const config: ConfigDispatcher = await ConfigDispatcher.load();
 
@@ -318,18 +258,15 @@ describe('ConfigLoader Tests', () => {
     });
 
     it('should throw error if config loading fails', async () => {
-      vi.mocked(getParameter).mockImplementation(async (paramPath: string) => {
-        throw new Error(`Parameter ${paramPath} not found`);
-      });
+      runnerMatcherConfigStore.get.mockRejectedValue(new Error('Matcher config store is unavailable'));
 
       await expect(ConfigDispatcher.load()).rejects.toThrow(
-        'Failed to load config: Failed to load parameter for matcherConfig from path undefined: Parameter undefined not found',
+        'Failed to load config: Matcher config store is unavailable',
       );
     });
 
     it('should rely on default when optionals are not set.', async () => {
       process.env.ACCEPT_EVENTS = 'null';
-      process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH = '/path/to/matcher/config';
       const matcherConfig: RunnerMatcherConfig[] = [
         {
           arn: 'arn:aws:sqs:eu-central-1:123456:npalm-default-queued-builds',
@@ -340,12 +277,7 @@ describe('ConfigLoader Tests', () => {
           },
         },
       ];
-      vi.mocked(getParameter).mockImplementation(async (paramPath: string) => {
-        if (paramPath === '/path/to/matcher/config') {
-          return JSON.stringify(matcherConfig);
-        }
-        return '';
-      });
+      runnerMatcherConfigStore.get.mockResolvedValue(JSON.stringify(matcherConfig));
 
       const config: ConfigDispatcher = await ConfigDispatcher.load();
 
@@ -355,14 +287,7 @@ describe('ConfigLoader Tests', () => {
 
     it('should throw an error if runner matcher config is empty.', async () => {
       process.env.REPOSITORY_ALLOW_LIST = '["repo1", "repo2"]';
-      process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH = '/path/to/matcher/config';
-
-      vi.mocked(getParameter).mockImplementation(async (paramPath: string) => {
-        if (paramPath === '/path/to/matcher/config') {
-          return JSON.stringify('');
-        }
-        return '';
-      });
+      runnerMatcherConfigStore.get.mockResolvedValue(JSON.stringify(''));
 
       await expect(ConfigDispatcher.load()).rejects.toThrow('Failed to load config: Matcher config is empty');
     });
