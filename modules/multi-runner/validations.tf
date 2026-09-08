@@ -52,17 +52,17 @@ resource "terraform_data" "validate_v2" {
     precondition {
       condition = (
         (
-          try(var.experimental_global_config_github.app.key_base64, null) != null ||
-          try(var.experimental_global_config_github.app.key_base64_ssm, null) != null
+          try(var.global_config_github.app.key_base64, null) != null ||
+          try(var.global_config_github.app.key_base64_ssm, null) != null
           ) && (
-          try(var.experimental_global_config_github.app.id, null) != null ||
-          try(var.experimental_global_config_github.app.id_ssm, null) != null
+          try(var.global_config_github.app.id, null) != null ||
+          try(var.global_config_github.app.id_ssm, null) != null
           ) && (
-          try(var.experimental_global_config_github.app.webhook_secret, null) != null ||
-          try(var.experimental_global_config_github.app.webhook_secret_ssm, null) != null
+          try(var.global_config_github.app.webhook_secret, null) != null ||
+          try(var.global_config_github.app.webhook_secret_ssm, null) != null
         )
       )
-      error_message = "Experimental v2 configuration requires a complete GitHub App under experimental_global_config_github.app."
+      error_message = "Experimental v2 configuration requires a complete GitHub App under global_config_github.app."
     }
 
     precondition {

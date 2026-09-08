@@ -401,7 +401,7 @@ run "v2_inputs_do_not_require_legacy_arguments" {
   command = plan
 
   variables {
-    experimental_global_config_compute_provider = {
+    global_config_compute_provider = {
       aws = {
         ec2 = {
           vpc_id     = "vpc-v2"
@@ -412,7 +412,7 @@ run "v2_inputs_do_not_require_legacy_arguments" {
         }
       }
     }
-    experimental_multi_runner_config = {
+    multi_runner_config = {
       lane = {
         orchestration_provider = {
           webhook = {
