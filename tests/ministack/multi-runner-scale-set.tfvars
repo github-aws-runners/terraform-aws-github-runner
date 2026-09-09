@@ -1,4 +1,4 @@
-environment = "ministack-multi-runner-scale-set"
+environment = "ministack-scale-set"
 aws_region  = "eu-west-1"
 
 github_app = {
