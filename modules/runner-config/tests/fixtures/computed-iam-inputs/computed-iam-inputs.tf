@@ -70,7 +70,6 @@ module "external_iam" {
         name = "/github-runner/app-id"
         arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id"
       }]
-      installation_id = [null]
     }
   }
 
@@ -168,7 +167,6 @@ module "generated_policy" {
         name = "/github-runner/app-id"
         arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id"
       }]
-      installation_id = [null]
     }
   }
 
