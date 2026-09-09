@@ -31,6 +31,21 @@
   },
   {
     "httpRequest": {
+      "method": "GET",
+      "path": "/api/v3/orgs/test-owner/installation"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": ["application/json"],
+        "X-RateLimit-Limit": ["5000"],
+        "X-RateLimit-Remaining": ["4999"]
+      },
+      "body": "{\"id\":123}"
+    }
+  },
+  {
+    "httpRequest": {
       "method": "POST",
       "path": "/api/v3/orgs/test-owner/actions/runners/registration-token"
     },

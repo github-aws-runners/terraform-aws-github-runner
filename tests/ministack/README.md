@@ -45,10 +45,14 @@ confirm the expected GitHub API calls. It also checks the webhook, dispatcher,
 and scale-up Lambda log groups for the smoke job ID, then confirms that the
 MiniStack EC2 API reports an active runner instance created by scale-up.
 
-The test then invokes the pool Lambda with a pool size of one and verifies that
-it creates a second EC2 runner. For both the scale-up and pool runners, it
-invokes the scale-down Lambda and verifies the GitHub runner DELETE request,
-the subsequent GitHub API `404`, the scale-down log entry, and EC2 termination.
+The test then invokes the pool Lambda with a pool size of one and verifies every
+expected GitHub API route for pool reconciliation, including the installation,
+token, runner-list, and registration-token calls, before confirming that it
+creates a second EC2 runner. For both the scale-up and pool runners, it invokes
+the scale-down Lambda and verifies every expected GitHub API route, including
+installation resolution, token creation, runner listing, runner-state lookup,
+and runner deletion. It then verifies the GitHub runner `404`, checks the
+scale-down log entry as supplementary evidence, and verifies EC2 termination.
 The pool schedule is configured for a far-future date because the test invokes
 the Lambda directly.
 

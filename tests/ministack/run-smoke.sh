@@ -173,9 +173,10 @@ printf '%s\n' \
   '  [ ] Dispatcher delivered the job through SQS (scale-up log contains 123456)' \
   '  [ ] Scale-up called each expected GitHub API route in MockServer' \
   '  [ ] MiniStack EC2 API reports an instance created by scale-up' \
-  '  [ ] Scale-down removed the scale-up runner from GitHub and terminated its EC2 instance' \
-  '  [ ] Pool Lambda created a runner' \
-  '  [ ] Scale-down removed the pool runner from GitHub and terminated its EC2 instance'
+  '  [ ] Scale-down called every expected GitHub API route, removed the scale-up runner, and terminated its EC2 instance' \
+  '  [ ] Pool called every expected GitHub API route in MockServer' \
+  '  [ ] Pool Lambda created a runner instance' \
+  '  [ ] Scale-down called every expected GitHub API route, removed the pool runner, and terminated its EC2 instance'
 
 webhook_endpoint=$(terraform -chdir="$example_root" output -raw webhook_endpoint)
 endpoint_host_port=${AWS_ENDPOINT_URL#*://}
@@ -264,6 +265,38 @@ wait_for_mock_route() {
     sleep 2
   done
   printf '  [PASS] %s (MockServer verified %s %s)\n' "$description" "$method" "$route"
+}
+
+clear_mock_request_log() {
+  if ! curl -fsS --max-time 5 -X PUT \
+    "${mock_service_url}/mockserver/clear?type=log" >/dev/null 2>&1; then
+    echo "Failed to clear MockServer request history before the next lifecycle phase." >&2
+    exit 1
+  fi
+}
+
+assert_scale_down_github_routes() {
+  wait_for_mock_route GET "/api/v3/orgs/test-owner/installation" \
+    "Scale-down resolved the GitHub App installation"
+  wait_for_mock_route POST "/api/v3/app/installations/123/access_tokens" \
+    "Scale-down requested a GitHub App installation token"
+  wait_for_mock_route GET "/api/v3/orgs/test-owner/actions/runners" \
+    "Scale-down listed organization runners"
+  wait_for_mock_route GET "/api/v3/orgs/test-owner/actions/runners/${1}" \
+    "Scale-down checked the runner busy state"
+  wait_for_mock_route DELETE "/api/v3/orgs/test-owner/actions/runners/${1}" \
+    "Scale-down deleted the runner from GitHub"
+}
+
+assert_pool_github_routes() {
+  wait_for_mock_route GET "/api/v3/orgs/test-owner/installation" \
+    "Pool resolved the GitHub App installation"
+  wait_for_mock_route POST "/api/v3/app/installations/123/access_tokens" \
+    "Pool requested a GitHub App installation token"
+  wait_for_mock_route GET "/api/v3/orgs/test-owner/actions/runners" \
+    "Pool listed organization runners"
+  wait_for_mock_route POST "/api/v3/orgs/test-owner/actions/runners/registration-token" \
+    "Pool requested a GitHub runner registration token"
 }
 
 wait_for_mock_route POST "/api/v3/app/installations/123/access_tokens" \
@@ -511,10 +544,10 @@ invoke_lambda() {
 
 scale_up_runner_id=987654321
 configure_mock_runner_state "$scale_up_instance_id" "$scale_up_runner_id"
+clear_mock_request_log
 invoke_lambda "ministack-default-scale-down" '{}' \
   "Scale-down Lambda invoked for the scale-up runner"
-wait_for_mock_route DELETE "/api/v3/orgs/test-owner/actions/runners/${scale_up_runner_id}" \
-  "Scale-down deleted the scale-up runner from GitHub"
+assert_scale_down_github_routes "$scale_up_runner_id"
 configure_mock_runner_removed "$scale_up_runner_id"
 assert_mock_runner_removed "$scale_up_runner_id"
 wait_for_ec2_termination "$scale_up_instance_id" "the scale-up instance"
@@ -522,8 +555,10 @@ wait_for_optional_log_event "/aws/lambda/ministack-default-scale-down" "$scale_u
   "Scale-down log recorded termination of the scale-up EC2 runner"
 
 configure_empty_mock_runner_list
+clear_mock_request_log
 invoke_lambda "ministack-default-pool" '{"poolSize":1,"type":"ec2"}' \
   "Pool Lambda invoked to maintain one runner"
+assert_pool_github_routes
 wait_for_log_event "/aws/lambda/ministack-default-pool" "topped up with 1 runners" \
   "Pool Lambda requested one runner"
 wait_for_ec2_instance "pool-lambda" "a pool instance"
@@ -531,10 +566,10 @@ pool_instance_id="$found_instance_id"
 
 pool_runner_id=987654322
 configure_mock_runner_state "$pool_instance_id" "$pool_runner_id"
+clear_mock_request_log
 invoke_lambda "ministack-default-scale-down" '{}' \
   "Scale-down Lambda invoked for the pool runner"
-wait_for_mock_route DELETE "/api/v3/orgs/test-owner/actions/runners/${pool_runner_id}" \
-  "Scale-down deleted the pool runner from GitHub"
+assert_scale_down_github_routes "$pool_runner_id"
 configure_mock_runner_removed "$pool_runner_id"
 assert_mock_runner_removed "$pool_runner_id"
 wait_for_ec2_termination "$pool_instance_id" "the pool instance"
