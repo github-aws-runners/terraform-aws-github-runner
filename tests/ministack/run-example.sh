@@ -380,12 +380,120 @@ create_multi_runner_scale_set_override() {
     '        runner_binaries = {' \
     '          enabled = false' \
     '        }' \
-    '        ami = {' \
-    '          filter = {' \
-    '            name  = ["ministack-scale-set-linux-x64"]' \
-    '            state = ["available"]' \
+    '      }' \
+    '    }' \
+    '  }' \
+    '  multi_runner_config = {' \
+    '    linux-arm64 = {' \
+    '      runner = {' \
+    '        architecture = "arm64"' \
+    '        name_prefix  = "amazon-arm64-"' \
+    '        extra_labels = ["amazon"]' \
+    '      }' \
+    '      orchestration_provider = {' \
+    '        webhook = {' \
+    '          runner = { maximum_count = 1 }' \
+    '          matcherConfig = {' \
+    '            exactMatch    = true' \
+    '            labelMatchers = [["self-hosted", "linux", "arm64", "amazon"]]' \
     '          }' \
-    '          owners = ["self"]' \
+    '        }' \
+    '      }' \
+    '      compute_provider = {' \
+    '        aws = {' \
+    '          ec2 = {' \
+    '            instance_types = ["t4g.large", "c6g.large"]' \
+    '            ami = {' \
+    '              filter = { name = ["ministack-scale-set-linux-arm64"], state = ["available"] }' \
+    '              owners = ["self"]' \
+    '            }' \
+    '          }' \
+    '        }' \
+    '      }' \
+    '    }' \
+    '    linux-x64 = {' \
+    '      runner = {' \
+    '        name_prefix  = "amazon-x64-"' \
+    '        extra_labels = ["amazon"]' \
+    '      }' \
+    '      orchestration_provider = {' \
+    '        webhook = {' \
+    '          runner = { ephemeral = true, maximum_count = 1 }' \
+    '          matcherConfig = {' \
+    '            labelMatchers = [["self-hosted", "linux", "x64", "amazon"]]' \
+    '            exactMatch    = false' \
+    '            priority      = 1' \
+    '          }' \
+    '          queue     = { delay_webhook_event = 0 }' \
+    '          job_retry = { enabled = true }' \
+    '        }' \
+    '      }' \
+    '      compute_provider = {' \
+    '        aws = {' \
+    '          ec2 = {' \
+    '            instance_types = ["m5a.large", "m5ad.large"]' \
+    '            ami = {' \
+    '              filter = { name = ["ministack-scale-set-linux-x64"], state = ["available"] }' \
+    '              owners = ["self"]' \
+    '            }' \
+    '          }' \
+    '        }' \
+    '      }' \
+    '    }' \
+    '    linux-scale-set = {' \
+    '      runner = {' \
+    '        name_prefix  = "scale-set-"' \
+    '        extra_labels = ["scale-set"]' \
+    '      }' \
+    '      orchestration_provider = {' \
+    '        scale_set = {' \
+    '          github = {' \
+    '            config_url          = var.scale_set.config_url' \
+    '            installation_id_ssm = var.scale_set.installation_id_ssm' \
+    '          }' \
+    '          name            = var.scale_set.name' \
+    '          id              = var.scale_set.id' \
+    '          runner_group_id = var.scale_set.runner_group_id' \
+    '          min_runners     = 0' \
+    '          max_runners     = 10' \
+    '          work_folder     = "_work/scale-set"' \
+    '        }' \
+    '      }' \
+    '      compute_provider = {' \
+    '        aws = {' \
+    '          ec2 = {' \
+    '            instance_types = ["m5.large"]' \
+    '            ami = {' \
+    '              filter = { name = ["ministack-scale-set-linux-x64"], state = ["available"] }' \
+    '              owners = ["self"]' \
+    '            }' \
+    '          }' \
+    '        }' \
+    '      }' \
+    '    }' \
+    '    windows-x64 = {' \
+    '      runner = {' \
+    '        os          = "windows"' \
+    '        name_prefix = "windows-x64-"' \
+    '      }' \
+    '      orchestration_provider = {' \
+    '        webhook = {' \
+    '          runner = { boot_time_in_minutes = 20, maximum_count = 1 }' \
+    '          matcherConfig = {' \
+    '            exactMatch    = true' \
+    '            labelMatchers = [["self-hosted", "windows", "x64", "servercore-2022"]]' \
+    '          }' \
+    '        }' \
+    '      }' \
+    '      compute_provider = {' \
+    '        aws = {' \
+    '          ec2 = {' \
+    '            instance_types = ["m5.large", "c5.large"]' \
+    '            ami = {' \
+    '              filter = { name = ["ministack-scale-set-windows-x64"], state = ["available"] }' \
+    '              owners = ["self"]' \
+    '            }' \
+    '          }' \
     '        }' \
     '      }' \
     '    }' \
