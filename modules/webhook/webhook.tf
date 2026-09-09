@@ -92,7 +92,6 @@ module "direct" {
         version = p.version
       }
     ]
-    webhook_xray_github_latency_enabled = var.webhook_xray_github_latency_enabled
   }
 }
 
@@ -136,8 +135,7 @@ module "eventbridge" {
         version = p.version
       }
     ]
-    accept_events                       = var.eventbridge.accept_events
-    webhook_xray_github_latency_enabled = var.webhook_xray_github_latency_enabled
+    accept_events = var.eventbridge.accept_events
   }
 
 }
