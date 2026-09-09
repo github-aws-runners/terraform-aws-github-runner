@@ -55,7 +55,9 @@ sh tests/ministack/run-smoke.sh
 
 The smoke script generates a temporary RSA key and Terraform variables file,
 starts the MockServer container on a temporary port, and removes all temporary
-state during cleanup. MiniStack must be able to reach `host.docker.internal`;
+state during cleanup. In CI, MockServer runs as a workflow service and the
+expectations are loaded after checkout. MiniStack must be able to reach
+`host.docker.internal`;
 override the hostname with `MINISTACK_GITHUB_MOCK_HOST` when using a different
 container runtime. When MiniStack is exposed on a non-default local port, use a
 host address reachable from its container for `AWS_ENDPOINT_URL`, for example

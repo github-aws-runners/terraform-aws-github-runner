@@ -67,6 +67,10 @@ jobs:
         env:
           MINISTACK_ACCOUNT_ID: "000000000000"
           MINISTACK_REGION: eu-west-1
+      mockserver:
+        image: mockserver/mockserver:7.6.0@sha256:80b3b1a26f3553d0c81a3f3896b5b7274c17b2a2e52f0fd2b28e246bc9efa290
+        ports:
+          - 1080:1080
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
@@ -153,4 +157,8 @@ jobs:
           yarn workspace @aws-github-runner/control-plane dist
 
       - name: Run integration smoke test
+        env:
+          MINISTACK_GITHUB_MOCK_HOST: host.docker.internal
+          MINISTACK_GITHUB_MOCK_PORT: "1080"
+          MINISTACK_GITHUB_MOCK_URL: http://127.0.0.1:1080
         run: sh tests/ministack/run-smoke.sh
