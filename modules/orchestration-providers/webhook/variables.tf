@@ -169,6 +169,7 @@ variable "github" {
   description = "Common GitHub API client and GitHub App Parameter Store references."
   type = object({
     app_parameters = object({
+<<<<<<< HEAD
       key_base64 = map(string)
       id         = map(string)
       additional_apps_manifest = optional(object({
@@ -176,6 +177,11 @@ variable "github" {
         arn  = string
       }), null)
       additional_app_parameter_arns = optional(list(string), [])
+=======
+      key_base64      = list(map(string))
+      id              = list(map(string))
+      installation_id = optional(list(object({ name = string, arn = string })), [null])
+>>>>>>> d2904ed6 (fix(runner-config): allow missing installation IDs)
     })
     enterprise_server = object({
       url        = optional(string, null)
