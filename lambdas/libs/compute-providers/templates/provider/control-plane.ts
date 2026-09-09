@@ -67,9 +67,8 @@ export function createTemplateScaleDownCapability(): Omit<ScaleDownComputeProvid
     },
     markOrphan: async (id) => notImplemented(`scaleDown.markOrphan(${id})`),
     unmarkOrphan: async (id) => notImplemented(`scaleDown.unmarkOrphan(${id})`),
-    // Optional. Implement BOTH to opt into the scale-down idle-confirmation window
-    // (SCALE_DOWN_IDLE_CONFIRMATION_SECONDS); omit both if the provider has nowhere to
-    // persist per-runner state, and scale-down keeps its single-reading behaviour.
+    // Persist and clear the idle-detection marker used by the scale-down idle-confirmation
+    // window (SCALE_DOWN_IDLE_CONFIRMATION_SECONDS). Only called when the window is enabled.
     markIdle: async (id, at) => notImplemented(`scaleDown.markIdle(${id}, ${at})`),
     unmarkIdle: async (id) => notImplemented(`scaleDown.unmarkIdle(${id})`),
     terminate: async (id) => notImplemented(`scaleDown.terminate(${id})`),

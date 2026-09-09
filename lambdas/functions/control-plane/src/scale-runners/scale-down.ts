@@ -182,12 +182,9 @@ function idleConfirmationSeconds(): number {
 // sufficient evidence that a runner is idle. When SCALE_DOWN_IDLE_CONFIRMATION_SECONDS > 0,
 // require busy=false readings spanning at least that window before terminating; any
 // busy=true reading in between resets the window (see clearIdleDetection).
-//
-// Providers that cannot persist per-runner state do not implement markIdle/unmarkIdle;
-// for those the window is skipped entirely and behaviour is unchanged.
 async function idleConfirmed(runner: RunnerInfo, computeProvider: ScaleDownComputeProvider): Promise<boolean> {
   const confirmationSeconds = idleConfirmationSeconds();
-  if (confirmationSeconds === 0 || !computeProvider.markIdle) {
+  if (confirmationSeconds === 0) {
     return true;
   }
   const idleDetectedAt = runner.idleDetectedAt;
@@ -216,7 +213,7 @@ async function idleConfirmed(runner: RunnerInfo, computeProvider: ScaleDownCompu
 }
 
 async function clearIdleDetection(runner: RunnerInfo, computeProvider: ScaleDownComputeProvider): Promise<void> {
-  if (idleConfirmationSeconds() === 0 || !computeProvider.unmarkIdle) {
+  if (idleConfirmationSeconds() === 0) {
     return;
   }
   if (runner.idleDetectedAt) {

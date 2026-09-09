@@ -782,23 +782,6 @@ describe('Scale down runners', () => {
       expect(mockMarkIdle).not.toHaveBeenCalled();
       expect(mockTerminateRunners).toHaveBeenCalledWith(runners[0].id);
     });
-
-    it('terminates on a single reading when the provider cannot persist idle state', async () => {
-      // A provider that implements neither markIdle nor unmarkIdle must keep the previous
-      // single-reading behaviour rather than deferring forever.
-      const withoutIdleSupport = Object.fromEntries(
-        Object.entries(mockComputeProvider).filter(([key]) => key !== 'markIdle' && key !== 'unmarkIdle'),
-      );
-      mockedResolveCapability.mockReturnValue(() => withoutIdleSupport as unknown as typeof mockComputeProvider);
-      const runners = [createRunnerTestData('idle-1', 'Org', MINIMUM_TIME_RUNNING_IN_MINUTES + 1, true, false, true)];
-      mockGitHubRunners(runners);
-      mockProviderRunners(runners);
-
-      await scaleDown();
-
-      expect(mockMarkIdle).not.toHaveBeenCalled();
-      expect(mockTerminateRunners).toHaveBeenCalledWith(runners[0].id);
-    });
   });
 });
 

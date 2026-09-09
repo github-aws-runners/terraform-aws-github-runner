@@ -66,8 +66,8 @@ describe('Scale down runners', () => {
         mockUntagRunner.mockResolvedValue();
         const detectedAt = '2026-08-05T10:05:00.000Z';
 
-        await capability.markIdle?.(runner.id, detectedAt);
-        await capability.unmarkIdle?.(runner.id);
+        await capability.markIdle(runner.id, detectedAt);
+        await capability.unmarkIdle(runner.id);
 
         expect(mockTagRunner).toHaveBeenCalledWith(runner.id, [{ Key: IDLE_DETECTED_TAG, Value: detectedAt }]);
         expect(mockUntagRunner).toHaveBeenCalledWith(runner.id, [{ Key: IDLE_DETECTED_TAG }]);
