@@ -1340,6 +1340,7 @@ interface ExpectedFleetRequestValues {
 function expectedCreateFleetRequest(expectedValues: ExpectedFleetRequestValues): CreateFleetCommandInput {
   const tags = [
     { Key: 'ghr:Application', Value: 'github-action-runner' },
+    { Key: 'ghr:environment', Value: ENVIRONMENT },
     {
       Key: 'ghr:created_by',
       Value: expectedValues.source,
@@ -1518,6 +1519,7 @@ describe('create runner with useDedicatedHost', () => {
           ResourceType: 'instance',
           Tags: [
             { Key: 'ghr:Application', Value: 'github-action-runner' },
+            { Key: 'ghr:environment', Value: ENVIRONMENT },
             { Key: 'ghr:created_by', Value: 'scale-up-lambda' },
             { Key: 'ghr:Type', Value: 'Org' },
             { Key: 'ghr:Owner', Value: REPO_NAME },
@@ -1527,6 +1529,7 @@ describe('create runner with useDedicatedHost', () => {
           ResourceType: 'volume',
           Tags: [
             { Key: 'ghr:Application', Value: 'github-action-runner' },
+            { Key: 'ghr:environment', Value: ENVIRONMENT },
             { Key: 'ghr:created_by', Value: 'scale-up-lambda' },
             { Key: 'ghr:Type', Value: 'Org' },
             { Key: 'ghr:Owner', Value: REPO_NAME },
@@ -1566,6 +1569,7 @@ describe('create runner with useDedicatedHost', () => {
           ResourceType: 'instance',
           Tags: [
             { Key: 'ghr:Application', Value: 'github-action-runner' },
+            { Key: 'ghr:environment', Value: ENVIRONMENT },
             { Key: 'ghr:created_by', Value: 'scale-up-lambda' },
             { Key: 'ghr:Type', Value: 'Org' },
             { Key: 'ghr:Owner', Value: REPO_NAME },

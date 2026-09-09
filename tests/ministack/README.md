@@ -48,10 +48,14 @@ MiniStack EC2 API reports an active runner instance created by scale-up.
 The test then invokes the pool Lambda with a pool size of one and verifies every
 expected GitHub API route for pool reconciliation, including the installation,
 token, runner-list, and registration-token calls, before confirming that it
-creates a second EC2 runner. For both the scale-up and pool runners, it invokes
-the scale-down Lambda and verifies every expected GitHub API route, including
-installation resolution, token creation, runner listing, runner-state lookup,
-and runner deletion. It then verifies the GitHub runner `404`, checks the
+creates a second EC2 runner. Installation lookup is mocked for configurations
+that do not provide a stored installation ID, but is conditional and is not a
+required assertion. The test also verifies the `ghr:Application`,
+`ghr:environment`, `ghr:created_by`, `ghr:Type`, and `ghr:Owner` tags used to
+discover managed instances. For both the scale-up and pool runners, it invokes the
+scale-down Lambda and verifies every required GitHub API route, including token
+creation, runner listing, runner-state lookup, and runner deletion. It then
+verifies the GitHub runner `404`, checks the
 scale-down log entry as supplementary evidence, and verifies EC2 termination.
 The pool schedule is configured for a far-future date because the test invokes
 the Lambda directly.

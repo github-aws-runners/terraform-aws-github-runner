@@ -173,10 +173,12 @@ printf '%s\n' \
   '  [ ] Dispatcher delivered the job through SQS (scale-up log contains 123456)' \
   '  [ ] Scale-up called each expected GitHub API route in MockServer' \
   '  [ ] MiniStack EC2 API reports an instance created by scale-up' \
+  '  [ ] Scale-up EC2 instance has the expected runner discovery tags' \
   '  [ ] Scale-down Lambda log proves each direct invocation started' \
   '  [ ] Scale-down called every expected GitHub API route, removed the scale-up runner, and terminated its EC2 instance' \
   '  [ ] Pool called every expected GitHub API route in MockServer' \
   '  [ ] Pool Lambda created a runner instance' \
+  '  [ ] Pool EC2 instance has the expected runner discovery tags' \
   '  [ ] Scale-down called every expected GitHub API route, removed the pool runner, and terminated its EC2 instance'
 
 webhook_endpoint=$(terraform -chdir="$example_root" output -raw webhook_endpoint)
@@ -277,8 +279,6 @@ clear_mock_request_log() {
 }
 
 assert_scale_down_github_routes() {
-  wait_for_mock_route GET "/api/v3/orgs/test-owner/installation" \
-    "Scale-down resolved the GitHub App installation"
   wait_for_mock_route POST "/api/v3/app/installations/123/access_tokens" \
     "Scale-down requested a GitHub App installation token"
   wait_for_mock_route GET "/api/v3/orgs/test-owner/actions/runners" \
@@ -290,8 +290,6 @@ assert_scale_down_github_routes() {
 }
 
 assert_pool_github_routes() {
-  wait_for_mock_route GET "/api/v3/orgs/test-owner/installation" \
-    "Pool resolved the GitHub App installation"
   wait_for_mock_route POST "/api/v3/app/installations/123/access_tokens" \
     "Pool requested a GitHub App installation token"
   wait_for_mock_route GET "/api/v3/orgs/test-owner/actions/runners" \
@@ -341,6 +339,35 @@ wait_for_ec2_instance() {
 
 wait_for_ec2_instance "scale-up-lambda" "a scale-up instance"
 scale_up_instance_id="$found_instance_id"
+
+assert_ec2_tag() {
+  instance_id="$1"
+  key="$2"
+  expected_value="$3"
+  description="$4"
+  actual_value=$(aws --endpoint-url "$AWS_ENDPOINT_URL" ec2 describe-instances \
+    --instance-ids "$instance_id" \
+    --query "Reservations[].Instances[].Tags[?Key=='${key}'].Value | [0]" \
+    --output text 2>/dev/null || true)
+  if [ "$actual_value" != "$expected_value" ]; then
+    echo "Expected $description tag $key=$expected_value on $instance_id, got $actual_value." >&2
+    exit 1
+  fi
+}
+
+assert_ec2_runner_tags() {
+  instance_id="$1"
+  source="$2"
+  description="$3"
+  assert_ec2_tag "$instance_id" "ghr:Application" "github-action-runner" "$description"
+  assert_ec2_tag "$instance_id" "ghr:environment" "ministack-default" "$description"
+  assert_ec2_tag "$instance_id" "ghr:created_by" "$source" "$description"
+  assert_ec2_tag "$instance_id" "ghr:Type" "Org" "$description"
+  assert_ec2_tag "$instance_id" "ghr:Owner" "test-owner" "$description"
+  printf '  [PASS] MiniStack EC2 API reports correct runner tags on %s\n' "$instance_id"
+}
+
+assert_ec2_runner_tags "$scale_up_instance_id" "scale-up-lambda" "the scale-up runner"
 
 configure_mock_runner_state() {
   instance_id="$1"
@@ -566,6 +593,7 @@ wait_for_log_event "/aws/lambda/ministack-default-pool" "topped up with 1 runner
   "Pool Lambda requested one runner"
 wait_for_ec2_instance "pool-lambda" "a pool instance"
 pool_instance_id="$found_instance_id"
+assert_ec2_runner_tags "$pool_instance_id" "pool-lambda" "the pool runner"
 
 pool_runner_id=987654322
 configure_mock_runner_state "$pool_instance_id" "$pool_runner_id"
