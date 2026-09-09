@@ -44,7 +44,7 @@ require_command() {
   fi
 }
 
-for command in aws curl openssl python3 rg terraform; do
+for command in aws curl openssl python3 terraform; do
   require_command "$command"
 done
 if [ -z "$mock_service_url" ]; then
@@ -190,7 +190,7 @@ wait_for_log_event() {
   marker="$2"
   attempts=60
   while ! aws --endpoint-url "$AWS_ENDPOINT_URL" logs filter-log-events \
-    --log-group-name "$log_group" --limit 50 --output text 2>/dev/null | rg -Fq "$marker"; do
+    --log-group-name "$log_group" --limit 50 --output text 2>/dev/null | grep -Fq "$marker"; do
     attempts=$((attempts - 1))
     if [ "$attempts" -le 0 ]; then
       echo "Timed out waiting for MiniStack log marker '$marker' in $log_group." >&2
