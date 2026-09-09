@@ -7,19 +7,18 @@ locals {
   primary_app_key_base64 = coalesce(var.github_app.key_base64_ssm, module.ssm.parameters.github_app_key_base64)
 
   github_app_parameters = {
-    id = concat(
-      [local.primary_app_id],
-      [for p in module.ssm.additional_app_parameters : p.id]
-    )
-    key_base64 = concat(
-      [local.primary_app_key_base64],
-      [for p in module.ssm.additional_app_parameters : p.key_base64]
-    )
-    installation_id = concat(
-      [null],
-      [for p in module.ssm.additional_app_parameters : p.installation_id]
-    )
+    id             = local.primary_app_id
+    key_base64     = local.primary_app_key_base64
     webhook_secret = coalesce(var.github_app.webhook_secret_ssm, module.ssm.parameters.github_app_webhook_secret)
+    # Additional apps flow to the lambdas through the manifest parameter so
+    # the lambda environment size stays constant regardless of app count.
+    additional_apps_manifest = module.ssm.additional_apps_manifest
+    additional_app_parameter_arns = flatten([
+      for p in module.ssm.additional_app_parameters : concat(
+        [p.id.arn, p.key_base64.arn],
+        p.installation_id != null ? [p.installation_id.arn] : []
+      )
+    ])
   }
 
   default_runner_labels = distinct(concat(["self-hosted", var.runner_os, var.runner_architecture]))
@@ -406,8 +405,8 @@ locals {
     metrics                      = var.metrics
     enable_runner_deregistration = var.instance_termination_watcher.enable_runner_deregistration
     github_app_parameters = var.instance_termination_watcher.enable_runner_deregistration ? {
-      id         = local.github_app_parameters.id[0]
-      key_base64 = local.github_app_parameters.key_base64[0]
+      id         = local.github_app_parameters.id
+      key_base64 = local.github_app_parameters.key_base64
     } : null
     ghes_url = var.ghes_url
   }

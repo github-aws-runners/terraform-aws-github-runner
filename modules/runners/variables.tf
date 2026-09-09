@@ -229,20 +229,24 @@ variable "github_app_parameters" {
   description = <<-EOF
     Parameter Store for GitHub App Parameters.
 
-    Supports multiple GitHub Apps for random API rate limit distribution.
-    Each list element corresponds to one GitHub App and is a map containing
-    `name` and `arn` keys referencing SSM parameters. The first element is the
-    primary app (the one whose webhook secret is used for incoming webhook
-    validation). All apps must be installed on the same repositories/organizations.
-
-    The control-plane lambdas (scale-up, scale-down, pool, job-retry) randomly
-    select an app from the list for each GitHub API call, distributing rate
-    limit consumption across all configured apps.
+    Supports multiple GitHub Apps for API rate limit distribution. `id` and
+    `key_base64` reference the primary app (the one whose webhook secret is
+    used for incoming webhook validation). Additional apps are delivered to
+    the lambdas via `additional_apps_manifest`, an SSM parameter whose value
+    lists the per-app credential parameter names, keeping the lambda
+    environment size constant regardless of app count.
+    `additional_app_parameter_arns` carries the ARNs of every additional app
+    credential parameter for the lambda IAM policies. All apps must be
+    installed on the same repositories/organizations as the primary app.
   EOF
   type = object({
-    key_base64      = list(map(string))
-    id              = list(map(string))
-    installation_id = list(object({ name = string, arn = string }))
+    key_base64 = map(string)
+    id         = map(string)
+    additional_apps_manifest = optional(object({
+      name = string
+      arn  = string
+    }), null)
+    additional_app_parameter_arns = optional(list(string), [])
   })
 }
 

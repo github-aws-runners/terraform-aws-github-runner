@@ -41,7 +41,7 @@ async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
   // Use the pre-configured installation ID when available (avoids an API call).
   let installationId = await getStoredInstallationId(appIdx);
   if (installationId === undefined) {
-    const githubClientPre = await createOctokitClient(ghAuthPre.token, ghesApiUrl);
+    const githubClientPre = await createOctokitClient(ghAuthPre.token, ghesApiUrl, appIdx);
     installationId =
       runner.type === 'Org'
         ? (
@@ -57,7 +57,7 @@ async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
           ).data.id;
   }
   const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl, appIdx);
-  const octokit = await createOctokitClient(ghAuth.token, ghesApiUrl);
+  const octokit = await createOctokitClient(ghAuth.token, ghesApiUrl, appIdx);
   githubCache.clients.set(key, octokit);
 
   return octokit;

@@ -1,4 +1,5 @@
 locals {
+  scale_down_lambda_name = "${var.prefix}-scale-down"
   # Windows Runners can take their sweet time to do anything
   # For an AWS vended AMI with an x86 Mac instance or an Apple silicon Mac instance,
   # the launch time can range from approximately 6 minutes to 20 minutes. 
@@ -14,7 +15,7 @@ resource "aws_lambda_function" "scale_down" {
   s3_object_version = var.runners_lambda_s3_object_version != null ? var.runners_lambda_s3_object_version : null
   filename          = var.lambda_s3_bucket == null ? local.lambda_zip : null
   source_code_hash  = var.lambda_s3_bucket == null ? filebase64sha256(local.lambda_zip) : null
-  function_name     = "${var.prefix}-scale-down"
+  function_name     = local.scale_down_lambda_name
   role              = aws_iam_role.scale_down.arn
   handler           = "index.scaleDownHandler"
   runtime           = var.lambda_runtime
@@ -22,28 +23,29 @@ resource "aws_lambda_function" "scale_down" {
   tags              = merge(local.tags, var.lambda_tags)
   memory_size       = var.lambda_scale_down_memory_size
   architectures     = [var.lambda_architecture]
+  depends_on        = [aws_cloudwatch_log_group.scale_down]
 
   environment {
     variables = {
-      ENVIRONMENT                               = var.prefix
-      ENABLE_METRIC_GITHUB_APP_RATE_LIMIT       = var.metrics.enable && var.metrics.metric.enable_github_app_rate_limit
-      GHES_URL                                  = var.ghes_url
-      USER_AGENT                                = var.user_agent
-      LOG_LEVEL                                 = upper(var.log_level)
-      MINIMUM_RUNNING_TIME_IN_MINUTES           = coalesce(var.minimum_running_time_in_minutes, local.min_runtime_defaults[var.runner_os])
-      NODE_TLS_REJECT_UNAUTHORIZED              = var.ghes_url != null && !var.ghes_ssl_verify ? 0 : 1
-      PARAMETER_GITHUB_APP_ID_NAME              = join(":", [for p in var.github_app_parameters.id : p.name])
-      PARAMETER_GITHUB_APP_KEY_BASE64_NAME      = join(":", [for p in var.github_app_parameters.key_base64 : p.name])
-      PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME = join(":", [for p in var.github_app_parameters.installation_id : p != null ? p.name : ""])
-      POWERTOOLS_LOGGER_LOG_EVENT               = var.log_level == "debug" ? "true" : "false"
-      RUNNER_BOOT_TIME_IN_MINUTES               = var.runner_boot_time_in_minutes
-      SCALE_DOWN_CONFIG                         = jsonencode(var.idle_config)
-      POWERTOOLS_SERVICE_NAME                   = "${var.prefix}-scale-down"
-      POWERTOOLS_METRICS_NAMESPACE              = var.metrics.namespace
-      POWERTOOLS_TRACE_ENABLED                  = var.tracing_config.mode != null ? true : false
-      POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS  = var.tracing_config.capture_http_requests
-      POWERTOOLS_TRACER_CAPTURE_ERROR           = var.tracing_config.capture_error
-      COMPUTE_PROVIDER_TYPE                     = "ec2"
+      ENVIRONMENT                              = var.prefix
+      ENABLE_METRIC_GITHUB_APP_RATE_LIMIT      = var.metrics.enable && var.metrics.metric.enable_github_app_rate_limit
+      GHES_URL                                 = var.ghes_url
+      USER_AGENT                               = var.user_agent
+      LOG_LEVEL                                = upper(var.log_level)
+      MINIMUM_RUNNING_TIME_IN_MINUTES          = coalesce(var.minimum_running_time_in_minutes, local.min_runtime_defaults[var.runner_os])
+      NODE_TLS_REJECT_UNAUTHORIZED             = var.ghes_url != null && !var.ghes_ssl_verify ? 0 : 1
+      PARAMETER_GITHUB_APP_ID_NAME             = var.github_app_parameters.id.name
+      PARAMETER_GITHUB_APP_KEY_BASE64_NAME     = var.github_app_parameters.key_base64.name
+      PARAMETER_GITHUB_APPS_MANIFEST_NAME      = var.github_app_parameters.additional_apps_manifest != null ? var.github_app_parameters.additional_apps_manifest.name : ""
+      POWERTOOLS_LOGGER_LOG_EVENT              = var.log_level == "debug" ? "true" : "false"
+      RUNNER_BOOT_TIME_IN_MINUTES              = var.runner_boot_time_in_minutes
+      SCALE_DOWN_CONFIG                        = jsonencode(var.idle_config)
+      POWERTOOLS_SERVICE_NAME                  = "${var.prefix}-scale-down"
+      POWERTOOLS_METRICS_NAMESPACE             = var.metrics.namespace
+      POWERTOOLS_TRACE_ENABLED                 = var.tracing_config.mode != null ? true : false
+      POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.tracing_config.capture_http_requests
+      POWERTOOLS_TRACER_CAPTURE_ERROR          = var.tracing_config.capture_error
+      COMPUTE_PROVIDER_TYPE                    = "ec2"
     }
   }
 
@@ -64,7 +66,7 @@ resource "aws_lambda_function" "scale_down" {
 }
 
 resource "aws_cloudwatch_log_group" "scale_down" {
-  name              = "/aws/lambda/${aws_lambda_function.scale_down.function_name}"
+  name              = "/aws/lambda/${local.scale_down_lambda_name}"
   retention_in_days = var.logging_retention_in_days
   kms_key_id        = var.logging_kms_key_id
   log_group_class   = var.log_class
@@ -104,9 +106,9 @@ resource "aws_iam_role_policy" "scale_down" {
   policy = templatefile("${path.module}/policies/lambda-scale-down.json", {
     environment = var.prefix
     github_app_parameter_arns = jsonencode(concat(
-      [for p in var.github_app_parameters.id : p.arn],
-      [for p in var.github_app_parameters.key_base64 : p.arn],
-      [for p in var.github_app_parameters.installation_id : p.arn if p != null],
+      [var.github_app_parameters.id.arn, var.github_app_parameters.key_base64.arn],
+      var.github_app_parameters.additional_app_parameter_arns,
+      var.github_app_parameters.additional_apps_manifest != null ? [var.github_app_parameters.additional_apps_manifest.arn] : [],
     ))
     kms_key_arn = local.kms_key_arn
   })

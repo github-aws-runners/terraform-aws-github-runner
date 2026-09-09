@@ -16,7 +16,7 @@ function notImplemented(operation: string): never {
   throw new Error(`Template compute provider must implement ${operation}`);
 }
 
-export function createTemplatePoolProvider(
+export function createTemplatePoolCapability(
   createStartRunnerConfig: CreateStartRunnerConfig,
 ): Omit<PoolComputeProvider, 'type'> {
   return {
@@ -31,7 +31,7 @@ export function createTemplatePoolProvider(
   };
 }
 
-export function createTemplateScaleUpProvider(
+export function createTemplateScaleUpCapability(
   createStartRunnerConfig: CreateStartRunnerConfig,
 ): Omit<ScaleUpComputeProvider, 'type'> {
   return {
@@ -54,7 +54,7 @@ export function createTemplateScaleUpProvider(
   };
 }
 
-export function createTemplateScaleDownProvider(): Omit<ScaleDownComputeProvider, 'type'> {
+export function createTemplateScaleDownCapability(): Omit<ScaleDownComputeProvider, 'type'> {
   return {
     list: async (environment, orphan) => {
       void environment;
@@ -77,9 +77,9 @@ export function createTemplateControlPlanePlugin(
   return {
     type: 'template',
     capabilities: {
-      pool: () => createTemplatePoolProvider(createStartRunnerConfig),
-      scaleUp: () => createTemplateScaleUpProvider(createStartRunnerConfig),
-      scaleDown: createTemplateScaleDownProvider,
+      pool: () => createTemplatePoolCapability(createStartRunnerConfig),
+      scaleUp: () => createTemplateScaleUpCapability(createStartRunnerConfig),
+      scaleDown: createTemplateScaleDownCapability,
     },
   };
 }

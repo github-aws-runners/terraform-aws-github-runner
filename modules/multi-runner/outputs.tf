@@ -39,35 +39,25 @@ output "webhook" {
     lambda_role      = module.webhook.role
     endpoint         = "${module.webhook.gateway.api_endpoint}/${module.webhook.endpoint_relative_path}"
     webhook          = module.webhook.webhook
-    dispatcher       = var.eventbridge.enable ? module.webhook.dispatcher : null
-    eventbridge      = var.eventbridge.enable ? module.webhook.eventbridge : null
+    dispatcher       = local.effective_config.orchestration_provider.webhook.eventbridge.enabled ? module.webhook.dispatcher : null
+    eventbridge      = local.effective_config.orchestration_provider.webhook.eventbridge.enabled ? module.webhook.eventbridge : null
   }
 }
 
 output "ssm_parameters" {
-  value = merge(
-    {
-      id             = { name = local.github_app_parameters.id[0].name, arn = local.github_app_parameters.id[0].arn }
-      key_base64     = { name = local.github_app_parameters.key_base64[0].name, arn = local.github_app_parameters.key_base64[0].arn }
-      webhook_secret = { name = local.github_app_parameters.webhook_secret.name, arn = local.github_app_parameters.webhook_secret.arn }
-    },
-    { for idx, v in local.github_app_parameters.id : "github_app_id_${idx}" => {
-      name = v.name
-      arn  = v.arn
-    } },
-    { for idx, v in local.github_app_parameters.key_base64 : "github_app_key_base64_${idx}" => {
-      name = v.name
-      arn  = v.arn
-    } },
-    { "github_app_webhook_secret" = {
-      name = local.github_app_parameters.webhook_secret.name
-      arn  = local.github_app_parameters.webhook_secret.arn
-    } },
-  )
+  value = {
+    id             = { name = local.github_app_parameters.id.name, arn = local.github_app_parameters.id.arn }
+    key_base64     = { name = local.github_app_parameters.key_base64.name, arn = local.github_app_parameters.key_base64.arn }
+    webhook_secret = { name = local.github_app_parameters.webhook_secret.name, arn = local.github_app_parameters.webhook_secret.arn }
+    additional_apps_manifest = local.github_app_parameters.additional_apps_manifest != null ? {
+      name = local.github_app_parameters.additional_apps_manifest.name
+      arn  = local.github_app_parameters.additional_apps_manifest.arn
+    } : null
+  }
 }
 
 output "instance_termination_watcher" {
-  value = var.instance_termination_watcher.enable && var.instance_termination_watcher.features.enable_spot_termination_notification_watcher ? {
+  value = try(local.effective_config.compute_provider.aws.ec2.instance_termination_watcher.enabled, false) && local.effective_config.compute_provider.aws.ec2.instance_termination_watcher.features.spot_termination_notification_watcher.enabled ? {
     lambda           = module.instance_termination_watcher[0].spot_termination_notification.lambda
     lambda_log_group = module.instance_termination_watcher[0].spot_termination_notification.lambda_log_group
     lambda_role      = module.instance_termination_watcher[0].spot_termination_notification.lambda_role
@@ -75,7 +65,7 @@ output "instance_termination_watcher" {
 }
 
 output "instance_termination_handler" {
-  value = var.instance_termination_watcher.enable && var.instance_termination_watcher.features.enable_spot_termination_handler ? {
+  value = try(local.effective_config.compute_provider.aws.ec2.instance_termination_watcher.enabled, false) && local.effective_config.compute_provider.aws.ec2.instance_termination_watcher.features.spot_termination_handler.enabled ? {
     lambda           = module.instance_termination_watcher[0].spot_termination_handler.lambda
     lambda_log_group = module.instance_termination_watcher[0].spot_termination_handler.lambda_log_group
     lambda_role      = module.instance_termination_watcher[0].spot_termination_handler.lambda_role

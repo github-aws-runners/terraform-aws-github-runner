@@ -33,6 +33,6 @@ it('exposes every configured provider through both capability registries', () =>
       unmarkOrphan: expect.any(Function),
       terminate: expect.any(Function),
     });
-    expect(webhookProviderRegistry.capability(type, 'dynamicLabels').selectQueue).toEqual(expect.any(Function));
+    expect(webhookProviderRegistry.capability(type, 'dynamicLabels').getViolations).toEqual(expect.any(Function));
   }
 });

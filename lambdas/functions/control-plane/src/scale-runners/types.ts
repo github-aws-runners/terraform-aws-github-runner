@@ -3,7 +3,7 @@ export type {
   CreateRunnerResult,
   CreateScaleUpRunnersInput,
   CurrentRunnersInput,
-  LambdaRunnerSource,
+  RunnerSource,
   RunnerLabelResolution,
   RunnerInfo,
   RunnerType,

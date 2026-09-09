@@ -1,67 +1,11 @@
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
-import type {
-  CreateStartRunnerConfig,
-  CreatePoolRunnersInput,
-  ListPoolRunnersInput,
-  PoolComputeProvider,
-  RunnerInfo,
-  RunnerStatus,
-} from '../../../../core';
-import { createRunners, loadEc2ProviderConfig } from './runner-config';
-import { bootTimeExceeded, listEC2Runners } from './runners';
+import type { CreateStartRunnerConfig, PoolComputeProvider, RunnerInfo, RunnerStatus } from '../../../../core';
+import { bootTimeExceeded, type Ec2RunnerResourceOperations } from '../runners';
+import { createRunners, loadEc2ProviderConfig } from './runner-creation';
 
 const logger = createChildLogger('pool');
 
-async function listEc2PoolRunners({
-  environment,
-  runnerOwner,
-  runnerType,
-}: ListPoolRunnersInput): Promise<RunnerInfo[]> {
-  return await listEC2Runners({
-    environment,
-    runnerOwner,
-    runnerType,
-    statuses: ['running'],
-  });
-}
-
-async function createEc2PoolRunners(
-  { githubRunnerConfig, numberOfRunners, githubInstallationClient }: CreatePoolRunnersInput,
-  createStartRunnerConfig: CreateStartRunnerConfig,
-): Promise<string[]> {
-  const config = loadEc2ProviderConfig();
-
-  const { instances } = await createRunners(
-    githubRunnerConfig,
-    {
-      ec2instanceCriteria: config.ec2instanceCriteria,
-      environment: config.environment,
-      launchTemplateName: config.launchTemplateName,
-      subnets: config.subnets,
-      amiIdSsmParameterName: config.amiIdSsmParameterName,
-      tracingEnabled: config.tracingEnabled,
-      onDemandFailoverOnError: config.onDemandFailoverOnError,
-      scaleErrors: config.scaleErrors,
-    },
-    numberOfRunners,
-    githubInstallationClient,
-    createStartRunnerConfig,
-    'pool-lambda',
-  );
-  return instances;
-}
-
-export function createEc2PoolProvider(
-  createStartRunnerConfig: CreateStartRunnerConfig,
-): Omit<PoolComputeProvider<RunnerInfo>, 'type'> {
-  return {
-    listRunners: listEc2PoolRunners,
-    countAvailableRunners: calculateEc2PoolSize,
-    createRunners: (input) => createEc2PoolRunners(input, createStartRunnerConfig),
-  };
-}
-
-export function calculateEc2PoolSize(
+function countAvailableEc2PoolRunners(
   ec2runners: RunnerInfo[],
   runnerStatus: Map<string, RunnerStatus>,
   includeBusyRunners = false,
@@ -85,4 +29,44 @@ export function calculateEc2PoolSize(
     }
   }
   return numberOfRunnersInPool;
+}
+
+export function createEc2PoolCapability(
+  ec2Operations: Ec2RunnerResourceOperations,
+  createStartRunnerConfig: CreateStartRunnerConfig,
+): Omit<PoolComputeProvider<RunnerInfo>, 'type'> {
+  return {
+    listRunners: ({ environment, runnerOwner, runnerType }) =>
+      ec2Operations.list({
+        environment,
+        runnerOwner,
+        runnerType,
+        statuses: ['running'],
+      }),
+    countAvailableRunners: countAvailableEc2PoolRunners,
+    createRunners: async ({ githubRunnerConfig, numberOfRunners, githubInstallationClient, storage }) => {
+      const config = loadEc2ProviderConfig();
+
+      const { instances } = await createRunners(
+        ec2Operations,
+        githubRunnerConfig,
+        {
+          ec2instanceCriteria: config.ec2instanceCriteria,
+          environment: config.environment,
+          launchTemplateName: config.launchTemplateName,
+          subnets: config.subnets,
+          amiIdSsmParameterName: config.amiIdSsmParameterName,
+          tracingEnabled: config.tracingEnabled,
+          onDemandFailoverOnError: config.onDemandFailoverOnError,
+          scaleErrors: config.scaleErrors,
+        },
+        numberOfRunners,
+        githubInstallationClient,
+        createStartRunnerConfig,
+        'pool-lambda',
+        storage,
+      );
+      return instances;
+    },
+  };
 }

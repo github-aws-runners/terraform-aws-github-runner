@@ -16,6 +16,8 @@ import type {
   CreateScaleUpRunnersInput,
   ScaleUpComputeProvider,
 } from './types';
+import { InvalidRunnerLabelsError } from '@aws-github-runner/compute-providers/core';
+import { defaultComputeProvider } from '@aws-github-runner/compute-providers/provider-types';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Octokit } from '@octokit/rest';
@@ -57,12 +59,11 @@ const mockSSMClient = mockClient(SSMClient);
 const mockSSMgetParameter = vi.mocked(getParameter);
 const mockPublishRetryMessage = vi.mocked(publishRetryMessage);
 const testProviderState = { provider: 'test' };
-const mockComputeProvider: ScaleUpComputeProvider = {
-  type: 'ec2',
+const mockComputeProvider = {
   resolveLabelsForRunners: vi.fn(),
   getCurrentRunners: vi.fn(),
   createRunners: vi.fn(),
-};
+} satisfies Omit<ScaleUpComputeProvider, 'type'>;
 const mockResolveLabelsForRunners = vi.mocked(mockComputeProvider.resolveLabelsForRunners);
 const mockGetCurrentRunners = vi.mocked(mockComputeProvider.getCurrentRunners);
 const mockCreateRunners = vi.mocked(mockComputeProvider.createRunners);
@@ -141,12 +142,15 @@ let expectedRunnerParams = { ...EXPECTED_RUNNER_PARAMS };
 function setDefaults() {
   process.env = { ...cleanEnv };
   process.env.PARAMETER_GITHUB_APP_ID_NAME = 'github-app-id';
+  process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME = 'github-app-key';
   process.env.GITHUB_APP_KEY_BASE64 = 'TEST_CERTIFICATE_DATA';
   process.env.GITHUB_APP_ID = '1337';
   process.env.GITHUB_APP_CLIENT_ID = 'TEST_CLIENT_ID';
   process.env.GITHUB_APP_CLIENT_SECRET = 'TEST_CLIENT_SECRET';
   process.env.RUNNERS_MAXIMUM_COUNT = '3';
   process.env.ENVIRONMENT = EXPECTED_RUNNER_PARAMS.environment;
+  process.env.SSM_TOKEN_PATH = '/github-action-runners/default/runners/config';
+  process.env.SSM_CONFIG_PATH = '/github-action-runners/default/runners/config';
 }
 
 async function createTestProviderRunners(input: CreateScaleUpRunnersInput<unknown>): Promise<CreateRunnerResult> {
@@ -168,7 +172,7 @@ async function createTestProviderRunners(input: CreateScaleUpRunnersInput<unknow
       result.instances,
       input.githubInstallationClient,
       {
-        getSsmParameterTags: (runnerId) => [{ Key: 'RunnerId', Value: runnerId }],
+        getRunnerConfigMetadata: (runnerId) => [{ key: 'RunnerId', value: runnerId }],
       },
     );
   } catch {
@@ -329,7 +333,9 @@ describe('scaleUp with GHES', () => {
     it('returns a retryable failure if runner group lookup fails for ephemeral runners', async () => {
       process.env.RUNNER_GROUP_NAME = 'test-runner-group';
       mockSSMgetParameter.mockImplementation(async () => {
-        throw new Error('ParameterNotFound');
+        const error = new Error('ParameterNotFound');
+        error.name = 'ParameterNotFound';
+        throw error;
       });
 
       await expect(scaleUpModule.scaleUp(TEST_DATA)).resolves.toEqual(['foobar']);
@@ -347,7 +353,9 @@ describe('scaleUp with GHES', () => {
 
     it('create SSM parameter for runner group id if it does not exist', async () => {
       mockSSMgetParameter.mockImplementation(async () => {
-        throw new Error('ParameterNotFound');
+        const error = new Error('ParameterNotFound');
+        error.name = 'ParameterNotFound';
+        throw error;
       });
       await scaleUpModule.scaleUp(TEST_DATA);
       expect(mockOctokit.paginate).toHaveBeenCalledTimes(1);
@@ -738,6 +746,41 @@ describe('scaleUp with GHES', () => {
       }
     });
 
+    it('discards an invalid label group and continues processing valid groups', async () => {
+      const invalidMessage = {
+        ...TEST_DATA_SINGLE,
+        labels: ['self-hosted', 'ghr-provider-size:invalid'],
+        messageId: 'invalid-message',
+      };
+      const validMessage = {
+        ...TEST_DATA_SINGLE,
+        labels: ['self-hosted', 'ghr-provider-size:large'],
+        messageId: 'valid-message',
+      };
+      mockResolveLabelsForRunners.mockImplementation(async (labels) => {
+        if (labels.includes('ghr-provider-size:invalid')) {
+          throw new InvalidRunnerLabelsError('Invalid runner labels');
+        }
+        return {
+          runnerLabels: labels.filter((label) => label.startsWith('ghr-')),
+          state: testProviderState,
+        };
+      });
+
+      await expect(scaleUpModule.scaleUp([invalidMessage, validMessage])).resolves.toEqual([]);
+
+      expect(mockCreateRunners).toHaveBeenCalledTimes(1);
+      expect(mockCreateRunners).toHaveBeenCalledWith(
+        expect.objectContaining({
+          githubRunnerConfig: expect.objectContaining({
+            runnerLabels: 'base-label,ghr-provider-size:large',
+          }),
+        }),
+      );
+      expect(mockPublishRetryMessage).toHaveBeenCalledTimes(1);
+      expect(mockPublishRetryMessage).toHaveBeenCalledWith(validMessage);
+    });
+
     it('preserves base RUNNER_LABELS for each group without mutation', async () => {
       process.env.RUNNER_LABELS = 'ubuntu-2404,x64';
 
@@ -928,7 +971,7 @@ describe('scaleUp with GHES', () => {
       expect(rejectedMessages).toHaveLength(3); // All 3 messages should be rejected
     });
 
-    it('Should handle partial EC2 instance creation failures', async () => {
+    it('handles partial runner creation failures', async () => {
       mockCreateRunner.mockImplementation(async () => createRunnerResult(['i-12345'], 2)); // Only creates 1 instead of requested 3
 
       const messages = createTestMessages(3);
@@ -938,7 +981,7 @@ describe('scaleUp with GHES', () => {
       expect(rejectedMessages).toEqual(['message-0', 'message-1']);
     });
 
-    it('Should reject only retryable partial EC2 instance creation failures', async () => {
+    it('rejects only retryable partial runner creation failures', async () => {
       mockCreateRunner.mockResolvedValue(createRunnerResult(['i-12345'], 1, 1));
 
       const messages = createTestMessages(3);
@@ -947,7 +990,7 @@ describe('scaleUp with GHES', () => {
       expect(rejectedMessages).toEqual(['message-0']);
     });
 
-    it('does not retry partial EC2 instance creation failures that are not retryable', async () => {
+    it('non-retryable partial runner creation failures are not retried', async () => {
       mockCreateRunner.mockImplementation(async () => createRunnerResult(['i-12345'], 0, 2));
 
       const rejectedMessages = await scaleUpModule.scaleUp(createTestMessages(3));
@@ -1026,8 +1069,18 @@ describe('scaleUp with GHES', () => {
       await scaleUpModule.scaleUp(messages);
 
       expect(mockCreateClient).toHaveBeenCalledTimes(3); // 1 app client, 2 repo installation clients
-      expect(mockedInstallationAuth).toHaveBeenCalledWith(100, 'https://github.enterprise.something/api/v3', 0);
-      expect(mockedInstallationAuth).toHaveBeenCalledWith(200, 'https://github.enterprise.something/api/v3', 0);
+      expect(mockedInstallationAuth).toHaveBeenCalledWith(
+        100,
+        'https://github.enterprise.something/api/v3',
+        0,
+        expect.anything(),
+      );
+      expect(mockedInstallationAuth).toHaveBeenCalledWith(
+        200,
+        'https://github.enterprise.something/api/v3',
+        0,
+        expect.anything(),
+      );
     });
 
     it('Should reuse GitHub clients for same installation', async () => {
@@ -1379,7 +1432,7 @@ describe('scaleUp with public GH', () => {
       expect(rejectedMessages).toHaveLength(3); // All 3 messages should be rejected
     });
 
-    it('Should handle partial EC2 instance creation failures', async () => {
+    it('handles partial runner creation failures', async () => {
       mockCreateRunner.mockImplementation(async () => createRunnerResult(['i-12345'], 2)); // Only creates 1 instead of requested 3
 
       const messages = createTestMessages(3);
@@ -1460,8 +1513,8 @@ describe('scaleUp with public GH', () => {
       await scaleUpModule.scaleUp(messages);
 
       expect(mockCreateClient).toHaveBeenCalledTimes(3); // 1 app client, 2 repo installation clients
-      expect(mockedInstallationAuth).toHaveBeenCalledWith(100, '', 0);
-      expect(mockedInstallationAuth).toHaveBeenCalledWith(200, '', 0);
+      expect(mockedInstallationAuth).toHaveBeenCalledWith(100, '', 0, expect.anything());
+      expect(mockedInstallationAuth).toHaveBeenCalledWith(200, '', 0, expect.anything());
     });
 
     it('Should reuse GitHub clients for same installation', async () => {
@@ -1584,7 +1637,9 @@ describe('scaleUp with Github Data Residency', () => {
 
     it('create SSM parameter for runner group id if it does not exist', async () => {
       mockSSMgetParameter.mockImplementation(async () => {
-        throw new Error('ParameterNotFound');
+        const error = new Error('ParameterNotFound');
+        error.name = 'ParameterNotFound';
+        throw error;
       });
       await scaleUpModule.scaleUp(TEST_DATA);
       expect(mockOctokit.paginate).toHaveBeenCalledTimes(1);
@@ -1857,7 +1912,7 @@ describe('scaleUp with Github Data Residency', () => {
       expect(rejectedMessages).toHaveLength(4); // 5 requested - 1 created = 4 rejected
     });
 
-    it('Should handle partial EC2 instance creation failures', async () => {
+    it('handles partial runner creation failures', async () => {
       mockCreateRunner.mockImplementation(async () => createRunnerResult(['i-12345'], 2)); // Only creates 1 instead of requested 3
 
       const messages = createTestMessages(3);
@@ -1936,8 +1991,8 @@ describe('scaleUp with Github Data Residency', () => {
       await scaleUpModule.scaleUp(messages);
 
       expect(mockCreateClient).toHaveBeenCalledTimes(3); // 1 app client, 2 repo installation clients
-      expect(mockedInstallationAuth).toHaveBeenCalledWith(100, '', 0);
-      expect(mockedInstallationAuth).toHaveBeenCalledWith(200, '', 0);
+      expect(mockedInstallationAuth).toHaveBeenCalledWith(100, '', 0, expect.anything());
+      expect(mockedInstallationAuth).toHaveBeenCalledWith(200, '', 0, expect.anything());
     });
 
     it('Should reuse GitHub clients for same installation', async () => {
@@ -2148,18 +2203,20 @@ describe('Retry mechanism tests', () => {
 });
 
 describe('compute provider selection', () => {
-  it('defaults scale-up to EC2 when no compute provider is configured', async () => {
+  it('uses the default compute provider when none is configured', async () => {
     delete process.env.COMPUTE_PROVIDER_TYPE;
 
     await scaleUpModule.scaleUp(TEST_DATA);
 
-    expect(mockedResolveCapability).toHaveBeenCalledWith('ec2', 'scaleUp');
+    expect(mockedResolveCapability).toHaveBeenCalledWith(defaultComputeProvider, 'scaleUp');
   });
 
   it('rejects unsupported scale-up provider types', async () => {
-    process.env.COMPUTE_PROVIDER_TYPE = 'microvm';
+    process.env.COMPUTE_PROVIDER_TYPE = 'unsupported-provider';
 
-    await expect(scaleUpModule.scaleUp(TEST_DATA)).rejects.toThrow("Unsupported compute provider type 'microvm'");
+    await expect(scaleUpModule.scaleUp(TEST_DATA)).rejects.toThrow(
+      "Unsupported compute provider type 'unsupported-provider'",
+    );
     expect(mockedAppAuth).not.toHaveBeenCalled();
   });
 });
@@ -2198,6 +2255,7 @@ describe('Multi-app round-robin', () => {
       expect.any(Number),
       expect.any(String),
       1, // appIndex must match the one from createGithubAppAuth
+      expect.anything(),
     );
   });
 
@@ -2223,6 +2281,7 @@ describe('Multi-app round-robin', () => {
       TEST_DATA_SINGLE.installationId, // from mockOctokit.apps.getOrgInstallation mock
       expect.any(String),
       1,
+      expect.anything(),
     );
   });
 
@@ -2240,7 +2299,7 @@ describe('Multi-app round-robin', () => {
 
     // Should use 999 from webhook directly — no API lookup
     expect(mockOctokit.apps.getOrgInstallation).not.toHaveBeenCalled();
-    expect(mockedInstallationAuth).toHaveBeenCalledWith(999, expect.any(String), 0);
+    expect(mockedInstallationAuth).toHaveBeenCalledWith(999, expect.any(String), 0, expect.anything());
   });
 
   it('primary app (appIndex 0) reuses webhook installationId even in multi-app deployment', async () => {
@@ -2259,7 +2318,7 @@ describe('Multi-app round-robin', () => {
 
     // Primary app must NOT do an API lookup — reuses webhook installationId
     expect(mockOctokit.apps.getOrgInstallation).not.toHaveBeenCalled();
-    expect(mockedInstallationAuth).toHaveBeenCalledWith(999, expect.any(String), 0);
+    expect(mockedInstallationAuth).toHaveBeenCalledWith(999, expect.any(String), 0, expect.anything());
   });
 
   it('stored installationId takes precedence over webhook payload for additional app', async () => {
@@ -2278,7 +2337,7 @@ describe('Multi-app round-robin', () => {
 
     // Stored id (77) wins — no API lookup needed
     expect(mockOctokit.apps.getOrgInstallation).not.toHaveBeenCalled();
-    expect(mockedInstallationAuth).toHaveBeenCalledWith(77, expect.any(String), 1);
+    expect(mockedInstallationAuth).toHaveBeenCalledWith(77, expect.any(String), 1, expect.anything());
   });
 });
 
@@ -2336,12 +2395,15 @@ function defaultOctokitMockImpl() {
 
 function defaultSSMGetParameterMockImpl() {
   mockSSMgetParameter.mockImplementation(async (name: string) => {
-    if (name === `${process.env.SSM_CONFIG_PATH}/runner-group/${process.env.RUNNER_GROUP_NAME}`) {
+    const runnerGroupName = process.env.RUNNER_GROUP_NAME || 'Default';
+    if (name === `${process.env.SSM_CONFIG_PATH}/runner-group/${runnerGroupName}`) {
       return '1';
     } else if (name === `${process.env.PARAMETER_GITHUB_APP_ID_NAME}`) {
       return `${process.env.GITHUB_APP_ID}`;
     } else {
-      throw new Error(`ParameterNotFound: ${name}`);
+      const error = new Error(`ParameterNotFound: ${name}`);
+      error.name = 'ParameterNotFound';
+      throw error;
     }
   });
 }
