@@ -14,7 +14,9 @@ The example creates three lanes from one deployment:
 The v2 interface keeps provider-owned settings inside the selected provider
 configuration. For example, VPC and subnet settings are under
 `global_config_compute_provider.aws.ec2`, while the per-lane
-instance types and AMI filter are under each lane's compute provider block.
+instance types and AMI configuration are under each lane's compute provider
+block. The optional `ami` variable can provide per-lane AMI filters and owners,
+which is useful for test environments with locally registered images.
 
 Configure the GitHub App variables before applying:
 
@@ -61,6 +63,7 @@ variable source in real deployments rather than committed to configuration.
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
+| <a name="input_ami"></a> [ami](#input\_ami) | Optional AMI configuration keyed by runner lane. | <pre>map(object({<br/>    filter = optional(map(list(string)), { state = ["available"] })<br/>    owners = optional(list(string), ["amazon"])<br/>    id_ssm_parameter = optional(object({<br/>      arn = string<br/>    }), null)<br/>    kms_key = optional(object({<br/>      arn = string<br/>    }), null)<br/>  }))</pre> | `{}` | no |
 | <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS region to deploy to. | `string` | `"eu-west-1"` | no |
 | <a name="input_environment"></a> [environment](#input\_environment) | Environment name, used as prefix. | `string` | `null` | no |
 | <a name="input_github_app"></a> [github\_app](#input\_github\_app) | GitHub App ID and base64-encoded private key. | <pre>object({<br/>    id         = string<br/>    key_base64 = string<br/>  })</pre> | n/a | yes |
