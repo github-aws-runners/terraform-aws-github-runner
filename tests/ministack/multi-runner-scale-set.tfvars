@@ -6,6 +6,39 @@ github_app = {
   key_base64 = "ministack-invalid-key"
 }
 
+runner_binaries_enabled = false
+
+ami = {
+  "linux-arm64" = {
+    filter = {
+      name  = ["ministack-scale-set-linux-arm64"]
+      state = ["available"]
+    }
+    owners = ["self"]
+  }
+  "linux-x64" = {
+    filter = {
+      name  = ["ministack-scale-set-linux-x64"]
+      state = ["available"]
+    }
+    owners = ["self"]
+  }
+  "linux-scale-set" = {
+    filter = {
+      name  = ["ministack-scale-set-linux-x64"]
+      state = ["available"]
+    }
+    owners = ["self"]
+  }
+  "windows-x64" = {
+    filter = {
+      name  = ["ministack-scale-set-windows-x64"]
+      state = ["available"]
+    }
+    owners = ["self"]
+  }
+}
+
 scale_set = {
   config_url = "https://github.com/example"
   installation_id_ssm = {

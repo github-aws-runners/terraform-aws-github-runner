@@ -71,7 +71,7 @@ module "runners" {
         subnet_ids  = module.base.vpc.private_subnets
         ssm_enabled = true
         runner_binaries = {
-          enabled = true
+          enabled = var.runner_binaries_enabled
         }
       }
     }
@@ -99,6 +99,7 @@ module "runners" {
         aws = {
           ec2 = {
             instance_types = ["t4g.large", "c6g.large"]
+            ami            = lookup(var.ami, "linux-arm64", null)
           }
         }
       }
@@ -132,6 +133,7 @@ module "runners" {
         aws = {
           ec2 = {
             instance_types = ["m5a.large", "m5ad.large"]
+            ami            = lookup(var.ami, "linux-x64", null)
           }
         }
       }
@@ -160,6 +162,7 @@ module "runners" {
         aws = {
           ec2 = {
             instance_types = ["m5.large"]
+            ami            = lookup(var.ami, "linux-scale-set", null)
           }
         }
       }
@@ -186,12 +189,7 @@ module "runners" {
         aws = {
           ec2 = {
             instance_types = ["m5.large", "c5.large"]
-            ami = {
-              filter = {
-                name  = ["Windows_Server-2022-English-Full-ECS_Optimized-*"]
-                state = ["available"]
-              }
-            }
+            ami            = lookup(var.ami, "windows-x64", null)
           }
         }
       }
