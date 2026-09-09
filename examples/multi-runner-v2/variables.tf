@@ -22,6 +22,13 @@ variable "aws_region" {
   default = "eu-west-1"
 }
 
+variable "runner_binaries_enabled" {
+  description = "Whether runner binary synchronization is enabled."
+
+  type    = bool
+  default = true
+}
+
 variable "ami" {
   description = "Optional AMI configuration keyed by runner lane."
 
