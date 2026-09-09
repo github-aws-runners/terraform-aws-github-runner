@@ -54,8 +54,10 @@ token, runner-list, and registration-token calls, before confirming that it
 creates a second EC2 runner. Installation lookup is mocked for configurations
 that do not provide a stored installation ID, but is conditional and is not a
 required assertion. The test also verifies the `ghr:Application`,
-`ghr:environment`, `ghr:created_by`, `ghr:Type`, and `ghr:Owner` tags used to
-discover managed instances. For both the scale-up and pool runners, it invokes the
+`ghr:created_by`, `ghr:Type`, and `ghr:Owner` tags used to discover managed
+instances. MiniStack does not currently propagate the Terraform launch-template
+`ghr:environment` tag to instances, so that tag is not asserted by this smoke
+test. For both the scale-up and pool runners, it invokes the
 scale-down Lambda and verifies every required GitHub API route, including token
 creation, runner listing, runner-state lookup, and runner deletion. It then
 verifies the GitHub runner `404`, checks the

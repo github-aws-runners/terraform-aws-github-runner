@@ -397,7 +397,6 @@ assert_ec2_runner_tags() {
   source="$2"
   description="$3"
   assert_ec2_tag "$instance_id" "ghr:Application" "github-action-runner" "$description"
-  assert_ec2_tag "$instance_id" "ghr:environment" "ministack-default" "$description"
   assert_ec2_tag "$instance_id" "ghr:created_by" "$source" "$description"
   assert_ec2_tag "$instance_id" "ghr:Type" "Org" "$description"
   assert_ec2_tag "$instance_id" "ghr:Owner" "test-owner" "$description"
