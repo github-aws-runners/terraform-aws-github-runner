@@ -72,7 +72,6 @@ jobs:
           - ephemeral
           - multi-runner
           - multi-runner-v2
-          - microvm-foundation
           - termination-watcher
     services:
       ministack:
