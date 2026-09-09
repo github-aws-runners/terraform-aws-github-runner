@@ -67,6 +67,7 @@ variable source in real deployments rather than committed to configuration.
 | <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS region to deploy to. | `string` | `"eu-west-1"` | no |
 | <a name="input_environment"></a> [environment](#input\_environment) | Environment name, used as prefix. | `string` | `null` | no |
 | <a name="input_github_app"></a> [github\_app](#input\_github\_app) | GitHub App ID and base64-encoded private key. | <pre>object({<br/>    id         = string<br/>    key_base64 = string<br/>  })</pre> | n/a | yes |
+| <a name="input_runner_binaries_enabled"></a> [runner\_binaries\_enabled](#input\_runner\_binaries\_enabled) | Whether runner binary synchronization is enabled. | `bool` | `true` | no |
 
 ## Outputs
 
