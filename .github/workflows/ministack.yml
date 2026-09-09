@@ -154,7 +154,7 @@ jobs:
 
       - name: Start MockServer
         id: mockserver
-        uses: mock-server/mockserver-monorepo/.github/actions/setup-mockserver@92b0dc51d940e42bbeae6cda0d1e82a45058e48c # master
+        uses: mock-server/setup-mockserver@24612c2ccef1f83d587f331ed77cc5cef441e0b1 # v1.0.0
         with:
           version: '7.6.0@sha256:80b3b1a26f3553d0c81a3f3896b5b7274c17b2a2e52f0fd2b28e246bc9efa290'
           port: '1080'
