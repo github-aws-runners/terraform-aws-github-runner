@@ -107,7 +107,7 @@ jobs:
         run: tests/ministack/run-example.sh destroy "$EXAMPLE"
 
   integration_smoke:
-    name: Run webhook-to-scale-up smoke test against MiniStack
+    name: Run webhook and pool lifecycle smoke test against MiniStack
     runs-on: ubuntu-latest
     timeout-minutes: 30
     services:
@@ -160,7 +160,7 @@ jobs:
           port: '1080'
           startup-timeout: '60'
 
-      - name: Run integration smoke test
+      - name: Run webhook and pool lifecycle smoke test
         env:
           MINISTACK_GITHUB_MOCK_HOST: host.docker.internal
           MINISTACK_GITHUB_MOCK_PORT: "1080"
