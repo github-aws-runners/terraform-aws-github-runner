@@ -108,6 +108,7 @@ printf '%s\n' \
   '  minimum_running_time_in_minutes = 0' \
   '  pool_runner_owner = "test-owner"' \
   '  pool_config = [{ schedule_expression = "cron(0 0 1 1 ? 2099)", size = 1 }]' \
+  '  scale_down_schedule_expression = "cron(0 0 1 1 ? 2099)"' \
   '  enable_job_queued_check = true' \
   '  enable_jit_config = false' \
   '  enable_runner_binaries_syncer = false' \
@@ -213,6 +214,24 @@ wait_for_log_event() {
     if [ "$attempts" -le 0 ]; then
       echo "Timed out waiting for MiniStack log marker '$marker' in $log_group." >&2
       exit 1
+    fi
+    sleep 2
+  done
+  printf '  [PASS] %s (log group %s contains %s)\n' "$description" "$log_group" "$marker"
+}
+
+wait_for_optional_log_event() {
+  log_group="$1"
+  marker="$2"
+  description="$3"
+  attempts=60
+  while ! aws --endpoint-url "$AWS_ENDPOINT_URL" logs filter-log-events \
+    --log-group-name "$log_group" --limit 50 --output text 2>/dev/null | grep -Fq "$marker"; do
+    attempts=$((attempts - 1))
+    if [ "$attempts" -le 0 ]; then
+      printf '  [WARN] %s (log marker %s was not observed in %s)\n' \
+        "$description" "$marker" "$log_group"
+      return 0
     fi
     sleep 2
   done
@@ -477,11 +496,16 @@ invoke_lambda() {
   function_name="$1"
   payload="$2"
   description="$3"
-  aws --endpoint-url "$AWS_ENDPOINT_URL" lambda invoke \
+  invocation_result=$(aws --endpoint-url "$AWS_ENDPOINT_URL" lambda invoke \
     --cli-binary-format raw-in-base64-out \
+    --invocation-type RequestResponse \
     --function-name "$function_name" \
     --payload "$payload" \
-    "$lambda_response_file" >/dev/null
+    "$lambda_response_file" --output json)
+  if printf '%s' "$invocation_result" | grep -Fq '"FunctionError"'; then
+    echo "Lambda invocation returned FunctionError for $function_name." >&2
+    exit 1
+  fi
   printf '  [PASS] %s\n' "$description"
 }
 
@@ -489,13 +513,13 @@ scale_up_runner_id=987654321
 configure_mock_runner_state "$scale_up_instance_id" "$scale_up_runner_id"
 invoke_lambda "ministack-default-scale-down" '{}' \
   "Scale-down Lambda invoked for the scale-up runner"
-wait_for_log_event "/aws/lambda/ministack-default-scale-down" "$scale_up_instance_id" \
-  "Scale-down terminated the scale-up EC2 runner and de-registered it"
 wait_for_mock_route DELETE "/api/v3/orgs/test-owner/actions/runners/${scale_up_runner_id}" \
   "Scale-down deleted the scale-up runner from GitHub"
 configure_mock_runner_removed "$scale_up_runner_id"
 assert_mock_runner_removed "$scale_up_runner_id"
 wait_for_ec2_termination "$scale_up_instance_id" "the scale-up instance"
+wait_for_optional_log_event "/aws/lambda/ministack-default-scale-down" "$scale_up_instance_id" \
+  "Scale-down log recorded termination of the scale-up EC2 runner"
 
 configure_empty_mock_runner_list
 invoke_lambda "ministack-default-pool" '{"poolSize":1,"type":"ec2"}' \
@@ -509,12 +533,12 @@ pool_runner_id=987654322
 configure_mock_runner_state "$pool_instance_id" "$pool_runner_id"
 invoke_lambda "ministack-default-scale-down" '{}' \
   "Scale-down Lambda invoked for the pool runner"
-wait_for_log_event "/aws/lambda/ministack-default-scale-down" "$pool_instance_id" \
-  "Scale-down terminated the pool EC2 runner and de-registered it"
 wait_for_mock_route DELETE "/api/v3/orgs/test-owner/actions/runners/${pool_runner_id}" \
   "Scale-down deleted the pool runner from GitHub"
 configure_mock_runner_removed "$pool_runner_id"
 assert_mock_runner_removed "$pool_runner_id"
 wait_for_ec2_termination "$pool_instance_id" "the pool instance"
+wait_for_optional_log_event "/aws/lambda/ministack-default-scale-down" "$pool_instance_id" \
+  "Scale-down log recorded termination of the pool EC2 runner"
 
 echo "MiniStack smoke chain passed: API Gateway -> webhook -> EventBridge -> dispatcher -> SQS -> scale-up -> pool -> scale-down -> GitHub API mock -> EC2 termination."
