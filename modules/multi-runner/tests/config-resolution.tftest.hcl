@@ -63,8 +63,6 @@ variables {
   prefix        = "test"
   aws_partition = "aws"
 
-  experimental_features = ["multi-runner-v2"]
-
   global_config_github = {
     app = {
       key_base64     = "experimental-app-key"
@@ -214,6 +212,8 @@ run "v2_inputs_resolve_lane_over_global" {
   command = plan
 
   variables {
+    experimental_features = ["multi-runner-v2"]
+
     tags = {
       source = "v1-must-not-leak"
     }
