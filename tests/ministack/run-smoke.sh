@@ -14,6 +14,7 @@ source_root=$(CDPATH='' cd -- "$script_dir/../.." && pwd)
 example_root="$source_root/examples/default"
 mock_expectations="$script_dir/github-api-expectations.json"
 fixture="$script_dir/workflow_job_event.json"
+dynamic_fixture=$(mktemp "${TMPDIR:-/tmp}/terraform-aws-github-runner-dynamic-workflow-job.XXXXXX")
 mock_host="${MINISTACK_GITHUB_MOCK_HOST:-host.docker.internal}"
 mock_port="${MINISTACK_GITHUB_MOCK_PORT:-}"
 mock_service_url="${MINISTACK_GITHUB_MOCK_URL:-}"
@@ -34,7 +35,7 @@ cleanup() {
   if [ -n "$mock_container" ]; then
     docker rm -f "$mock_container" >/dev/null 2>&1
   fi
-  rm -f "$override_file" "$tfvars_file" "$app_key_file" "$response_file" "$lambda_response_file"
+  rm -f "$override_file" "$tfvars_file" "$app_key_file" "$response_file" "$lambda_response_file" "$dynamic_fixture"
 }
 trap cleanup EXIT INT TERM
 
@@ -105,6 +106,8 @@ printf '%s\n' \
   '  }' \
   '  delay_webhook_event = 0' \
   '  runners_maximum_count = 1' \
+  '  instance_types = ["m7a.large"]' \
+  '  enable_dynamic_labels = true' \
   '  minimum_running_time_in_minutes = 0' \
   '  pool_runner_owner = "test-owner"' \
   '  pool_config = [{ schedule_expression = "cron(0 0 1 1 ? 2099)", size = 1 }]' \
@@ -162,6 +165,27 @@ for expectation in expectations:
 PY
 fi
 
+python3 - "$fixture" "$dynamic_fixture" <<'PY'
+import json
+import sys
+
+source, destination = sys.argv[1:]
+with open(source, encoding="utf-8") as source_file:
+    event = json.load(source_file)
+
+job = event["workflow_job"]
+job["id"] = 123457
+job["run_id"] = 654322
+job["run_url"] = job["run_url"].replace("654321", "654322")
+job["url"] = job["url"].replace("123456", "123457")
+job["html_url"] = job["html_url"].replace("123456", "123457")
+job["name"] = "ministack-smoke-dynamic"
+job["labels"].append("ghr-ec2-instance-type:m5.large")
+
+with open(destination, "w", encoding="utf-8") as destination_file:
+    json.dump(event, destination_file)
+PY
+
 terraform_initialized=true
 "$source_root/tests/ministack/run-example.sh" apply default "$tfvars_file"
 
@@ -171,8 +195,10 @@ printf '%s\n' \
   '  [ ] Webhook Lambda log contains workflow job 123456' \
   '  [ ] EventBridge invoked the dispatcher Lambda (dispatcher log contains 123456)' \
   '  [ ] Dispatcher delivered the job through SQS (scale-up log contains 123456)' \
-  '  [ ] Scale-up called each expected GitHub API route in MockServer' \
-  '  [ ] MiniStack EC2 API reports an instance created by scale-up' \
+  '  [ ] Scale-up without a dynamic label called each expected GitHub API route in MockServer' \
+  '  [ ] MiniStack EC2 API reports a standard scale-up instance with default EC2 configuration' \
+  '  [ ] Scale-up with ghr-ec2-instance-type:m5.large called each expected GitHub API route in MockServer' \
+  '  [ ] Dynamic label selected EC2 instance type m5.large' \
   '  [ ] Scale-up EC2 instance has the expected runner discovery tags' \
   '  [ ] Scale-down Lambda log proves each direct invocation started' \
   '  [ ] Scale-down called every expected GitHub API route, removed the scale-up runner, and terminated its EC2 instance' \
@@ -188,24 +214,30 @@ api_host_port=${webhook_endpoint#*://}
 api_host_port=${api_host_port%%/*}
 api_host=${api_host_port%:*}
 webhook_secret=$(terraform -chdir="$example_root" output -raw webhook_secret)
-signature=$(openssl dgst -sha256 -hmac "$webhook_secret" "$fixture" | awk '{print $NF}')
 
-status_code=$(curl -sS --max-time 15 -o "$response_file" -w '%{http_code}' \
-  --connect-to "${api_host}:4566:127.0.0.1:${endpoint_port}" \
-  -X POST "$webhook_endpoint" \
-  -H 'Content-Type: application/json' \
-  -H 'X-GitHub-Event: workflow_job' \
-  -H 'X-GitHub-Delivery: ministack-smoke-123456' \
-  -H 'X-GitHub-Hook-Installation-Target-ID: 123' \
-  -H "X-Hub-Signature-256: sha256=${signature}" \
-  --data-binary "@$fixture")
+send_webhook() {
+  fixture_file="$1"
+  delivery_id="$2"
+  signature=$(openssl dgst -sha256 -hmac "$webhook_secret" "$fixture_file" | awk '{print $NF}')
+  status_code=$(curl -sS --max-time 15 -o "$response_file" -w '%{http_code}' \
+    --connect-to "${api_host}:4566:127.0.0.1:${endpoint_port}" \
+    -X POST "$webhook_endpoint" \
+    -H 'Content-Type: application/json' \
+    -H 'X-GitHub-Event: workflow_job' \
+    -H "X-GitHub-Delivery: ${delivery_id}" \
+    -H 'X-GitHub-Hook-Installation-Target-ID: 123' \
+    -H "X-Hub-Signature-256: sha256=${signature}" \
+    --data-binary "@${fixture_file}")
 
-if [ "$status_code" != 201 ]; then
-  echo "Webhook smoke request failed with HTTP $status_code." >&2
-  sed -n '1,80p' "$response_file" >&2
-  exit 1
-fi
-echo "  [PASS] API Gateway accepted the signed workflow_job webhook (HTTP 201)"
+  if [ "$status_code" != 201 ]; then
+    echo "Webhook smoke request failed with HTTP $status_code." >&2
+    sed -n '1,80p' "$response_file" >&2
+    exit 1
+  fi
+  echo "  [PASS] API Gateway accepted the signed workflow_job webhook ${delivery_id} (HTTP 201)"
+}
+
+send_webhook "$fixture" "ministack-smoke-123456"
 
 wait_for_log_event() {
   log_group="$1"
@@ -298,12 +330,17 @@ assert_pool_github_routes() {
     "Pool requested a GitHub runner registration token"
 }
 
-wait_for_mock_route POST "/api/v3/app/installations/123/access_tokens" \
-  "Scale-up requested a GitHub App installation token"
-wait_for_mock_route GET "/api/v3/repos/test-owner/test-repo/actions/jobs/123456" \
-  "Scale-up checked the queued GitHub job"
-wait_for_mock_route POST "/api/v3/orgs/test-owner/actions/runners/registration-token" \
-  "Scale-up requested a GitHub runner registration token"
+assert_scale_up_github_routes() {
+  job_id="$1"
+  wait_for_mock_route POST "/api/v3/app/installations/123/access_tokens" \
+    "Scale-up requested a GitHub App installation token for job ${job_id}"
+  wait_for_mock_route GET "/api/v3/repos/test-owner/test-repo/actions/jobs/${job_id}" \
+    "Scale-up checked the queued GitHub job ${job_id}"
+  wait_for_mock_route POST "/api/v3/orgs/test-owner/actions/runners/registration-token" \
+    "Scale-up requested a GitHub runner registration token for job ${job_id}"
+}
+
+assert_scale_up_github_routes 123456
 
 wait_for_ec2_instance() {
   source="$1"
@@ -368,6 +405,35 @@ assert_ec2_runner_tags() {
 }
 
 assert_ec2_runner_tags "$scale_up_instance_id" "scale-up-lambda" "the scale-up runner"
+
+assert_ec2_default_instance_type() {
+  instance_id="$1"
+  actual_type=$(aws --endpoint-url "$AWS_ENDPOINT_URL" ec2 describe-instances \
+    --instance-ids "$instance_id" \
+    --query 'Reservations[0].Instances[0].InstanceType' \
+    --output text 2>/dev/null || true)
+  if [ "$actual_type" != "m7a.large" ]; then
+    echo "Expected standard scale-up to use the configured default m7a.large, got $actual_type." >&2
+    exit 1
+  fi
+  printf '  [PASS] Standard scale-up used the configured default EC2 instance type: %s\n' "$actual_type"
+}
+
+assert_ec2_instance_type() {
+  instance_id="$1"
+  expected_type="$2"
+  actual_type=$(aws --endpoint-url "$AWS_ENDPOINT_URL" ec2 describe-instances \
+    --instance-ids "$instance_id" \
+    --query 'Reservations[0].Instances[0].InstanceType' \
+    --output text 2>/dev/null || true)
+  if [ "$actual_type" != "$expected_type" ]; then
+    echo "Expected $instance_id to use EC2 instance type $expected_type, got $actual_type." >&2
+    exit 1
+  fi
+  printf '  [PASS] EC2 dynamic label selected instance type %s on %s\n' "$expected_type" "$instance_id"
+}
+
+assert_ec2_default_instance_type "$scale_up_instance_id"
 
 configure_mock_runner_state() {
   instance_id="$1"
@@ -583,7 +649,37 @@ assert_mock_runner_removed "$scale_up_runner_id"
 wait_for_ec2_termination "$scale_up_instance_id" "the scale-up instance"
 wait_for_optional_log_event "/aws/lambda/ministack-default-scale-down" "$scale_up_instance_id" \
   "Scale-down log recorded termination of the scale-up EC2 runner"
-echo "MiniStack smoke chain 1 passed: API Gateway -> webhook -> EventBridge -> dispatcher -> SQS -> scale-up -> GitHub API mock -> EC2 termination."
+
+clear_mock_request_log
+send_webhook "$dynamic_fixture" "ministack-smoke-123457"
+wait_for_log_event "/aws/lambda/ministack-default-webhook" "123457" \
+  "Webhook Lambda received dynamic-label workflow job 123457"
+wait_for_log_event "/aws/lambda/ministack-default-dispatch-to-runner" "123457" \
+  "EventBridge invoked the dispatcher for dynamic-label workflow job 123457"
+wait_for_log_event "/aws/lambda/ministack-default-scale-up" "123457" \
+  "Dispatcher delivered dynamic-label workflow job 123457 through SQS to scale-up"
+assert_scale_up_github_routes 123457
+wait_for_ec2_instance "scale-up-lambda" "a dynamic-label scale-up instance"
+dynamic_scale_up_instance_id="$found_instance_id"
+assert_ec2_runner_tags "$dynamic_scale_up_instance_id" "scale-up-lambda" \
+  "the dynamic-label scale-up runner"
+assert_ec2_instance_type "$dynamic_scale_up_instance_id" "m5.large"
+
+dynamic_scale_up_runner_id=987654323
+configure_mock_runner_state "$dynamic_scale_up_instance_id" "$dynamic_scale_up_runner_id"
+clear_mock_request_log
+invoke_lambda "ministack-default-scale-down" '{"smokeMarker":"ministack-dynamic-scale-up-scale-down"}' \
+  "Scale-down Lambda invoked for the dynamic-label scale-up runner"
+wait_for_log_event "/aws/lambda/ministack-default-scale-down" "ministack-dynamic-scale-up-scale-down" \
+  "Scale-down Lambda started processing the dynamic-label scale-up runner"
+assert_scale_down_github_routes "$dynamic_scale_up_runner_id"
+configure_mock_runner_removed "$dynamic_scale_up_runner_id"
+assert_mock_runner_removed "$dynamic_scale_up_runner_id"
+wait_for_ec2_termination "$dynamic_scale_up_instance_id" "the dynamic-label scale-up instance"
+wait_for_optional_log_event "/aws/lambda/ministack-default-scale-down" "$dynamic_scale_up_instance_id" \
+  "Scale-down log recorded termination of the dynamic-label scale-up EC2 runner"
+
+echo "MiniStack smoke chain 1 passed: API Gateway -> webhook -> EventBridge -> dispatcher -> SQS -> scale-up without and with EC2 dynamic label -> GitHub API mock -> EC2 termination."
 
 configure_empty_mock_runner_list
 clear_mock_request_log
