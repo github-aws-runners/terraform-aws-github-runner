@@ -33,3 +33,30 @@ MiniStack's AWS-compatible EC2 API, then removes only the resources it created
 during cleanup. MiniStack v1.5.7 provides the EC2 image behavior needed by the
 `default`, `ephemeral`, and `multi-runner` examples, so they are included in
 the same lifecycle matrix.
+
+## Webhook-to-scale-up smoke test
+
+The smoke test sends a signed `workflow_job` webhook through the API Gateway
+endpoint and verifies the asynchronous path through EventBridge, the
+dispatcher Lambda, SQS, and the scale-up Lambda. The scale-up Lambda calls a
+pinned `mockserver/mockserver` container initialized from
+`github-api-expectations.json`; the test uses MockServer's verification API to
+confirm the expected GitHub API calls. It also checks the webhook, dispatcher,
+and scale-up Lambda log groups for the smoke job ID.
+
+Build the two real Lambda distributions, start MiniStack, and run:
+
+```sh
+(cd lambdas && yarn install --frozen-lockfile)
+(cd lambdas && yarn workspace @aws-github-runner/webhook dist)
+(cd lambdas && yarn workspace @aws-github-runner/control-plane dist)
+sh tests/ministack/run-smoke.sh
+```
+
+The smoke script generates a temporary RSA key and Terraform variables file,
+starts the MockServer container on a temporary port, and removes all temporary
+state during cleanup. MiniStack must be able to reach `host.docker.internal`;
+override the hostname with `MINISTACK_GITHUB_MOCK_HOST` when using a different
+container runtime. When MiniStack is exposed on a non-default local port, use a
+host address reachable from its container for `AWS_ENDPOINT_URL`, for example
+`AWS_ENDPOINT_URL=http://<host-ip>:14568`, instead of `127.0.0.1`.
