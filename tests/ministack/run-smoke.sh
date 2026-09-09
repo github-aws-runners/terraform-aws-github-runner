@@ -583,6 +583,7 @@ assert_mock_runner_removed "$scale_up_runner_id"
 wait_for_ec2_termination "$scale_up_instance_id" "the scale-up instance"
 wait_for_optional_log_event "/aws/lambda/ministack-default-scale-down" "$scale_up_instance_id" \
   "Scale-down log recorded termination of the scale-up EC2 runner"
+echo "MiniStack smoke chain 1 passed: API Gateway -> webhook -> EventBridge -> dispatcher -> SQS -> scale-up -> GitHub API mock -> EC2 termination."
 
 configure_empty_mock_runner_list
 clear_mock_request_log
@@ -609,4 +610,5 @@ wait_for_ec2_termination "$pool_instance_id" "the pool instance"
 wait_for_optional_log_event "/aws/lambda/ministack-default-scale-down" "$pool_instance_id" \
   "Scale-down log recorded termination of the pool EC2 runner"
 
-echo "MiniStack smoke chain passed: API Gateway -> webhook -> EventBridge -> dispatcher -> SQS -> scale-up -> pool -> scale-down -> GitHub API mock -> EC2 termination."
+echo "MiniStack smoke chain 2 passed: pool -> GitHub API mock -> EC2 runner creation -> scale-down -> GitHub API mock -> EC2 termination."
+echo "MiniStack smoke tests passed: both lifecycle chains completed."

@@ -36,16 +36,18 @@ the same lifecycle matrix.
 
 ## Webhook and runner lifecycle smoke test
 
-The smoke test sends a signed `workflow_job` webhook through the API Gateway
-endpoint and verifies the asynchronous path through EventBridge, the
-dispatcher Lambda, SQS, and the scale-up Lambda. The scale-up Lambda calls a
-pinned `mockserver/mockserver` container initialized from
+The smoke test covers two independent lifecycle chains. The webhook chain
+sends a signed `workflow_job` webhook through the API Gateway endpoint and
+verifies the asynchronous path through EventBridge, the dispatcher Lambda, SQS,
+and the scale-up Lambda. The scale-up Lambda calls a pinned
+`mockserver/mockserver` container initialized from
 `github-api-expectations.json`; the test uses MockServer's verification API to
 confirm the expected GitHub API calls. It also checks the webhook, dispatcher,
 and scale-up Lambda log groups for the smoke job ID, then confirms that the
-MiniStack EC2 API reports an active runner instance created by scale-up.
+MiniStack EC2 API reports an active runner instance created by scale-up before
+the runner is removed and its EC2 instance is terminated.
 
-The test then invokes the pool Lambda with a pool size of one and verifies every
+The second, pool chain then invokes the pool Lambda with a pool size of one and verifies every
 expected GitHub API route for pool reconciliation, including the installation,
 token, runner-list, and registration-token calls, before confirming that it
 creates a second EC2 runner. Installation lookup is mocked for configurations
