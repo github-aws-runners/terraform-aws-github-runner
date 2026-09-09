@@ -42,7 +42,8 @@ dispatcher Lambda, SQS, and the scale-up Lambda. The scale-up Lambda calls a
 pinned `mockserver/mockserver` container initialized from
 `github-api-expectations.json`; the test uses MockServer's verification API to
 confirm the expected GitHub API calls. It also checks the webhook, dispatcher,
-and scale-up Lambda log groups for the smoke job ID.
+and scale-up Lambda log groups for the smoke job ID, then confirms that the
+MiniStack EC2 API reports an active runner instance created by scale-up.
 
 Build the two real Lambda distributions, start MiniStack, and run:
 
@@ -55,8 +56,9 @@ sh tests/ministack/run-smoke.sh
 
 The smoke script generates a temporary RSA key and Terraform variables file,
 starts the MockServer container on a temporary port, and removes all temporary
-state during cleanup. In CI, MockServer runs as a workflow service and the
-expectations are loaded after checkout. MiniStack must be able to reach
+state during cleanup. In CI, the pinned MockServer setup action starts the
+server and waits for readiness; the expectations are loaded after checkout.
+MiniStack must be able to reach
 `host.docker.internal`;
 override the hostname with `MINISTACK_GITHUB_MOCK_HOST` when using a different
 container runtime. When MiniStack is exposed on a non-default local port, use a

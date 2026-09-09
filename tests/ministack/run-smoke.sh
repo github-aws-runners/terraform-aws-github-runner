@@ -227,4 +227,36 @@ wait_for_mock_route POST "/api/v3/app/installations/123/access_tokens"
 wait_for_mock_route GET "/api/v3/repos/test-owner/test-repo/actions/jobs/123456"
 wait_for_mock_route POST "/api/v3/orgs/test-owner/actions/runners/registration-token"
 
-echo "MiniStack smoke chain passed: API Gateway -> webhook -> EventBridge -> dispatcher -> SQS -> scale-up -> GitHub API mock."
+wait_for_ec2_instance() {
+  attempts=60
+  while :; do
+    instance_ids=$(aws --endpoint-url "$AWS_ENDPOINT_URL" ec2 describe-instances \
+      --filters \
+        "Name=instance-state-name,Values=running,pending" \
+        "Name=tag:ghr:Application,Values=github-action-runner" \
+        "Name=tag:ghr:created_by,Values=scale-up-lambda" \
+      --query 'Reservations[].Instances[].InstanceId' \
+      --output text 2>/dev/null || true)
+    if [ -n "$instance_ids" ] && [ "$instance_ids" != "None" ]; then
+      echo "MiniStack EC2 API reports scale-up instance(s): $instance_ids"
+      return
+    fi
+
+    attempts=$((attempts - 1))
+    if [ "$attempts" -le 0 ]; then
+      echo "Timed out waiting for a scale-up instance in the MiniStack EC2 API." >&2
+      aws --endpoint-url "$AWS_ENDPOINT_URL" ec2 describe-instances \
+        --filters \
+          "Name=instance-state-name,Values=running,pending" \
+          "Name=tag:ghr:Application,Values=github-action-runner" \
+          "Name=tag:ghr:created_by,Values=scale-up-lambda" \
+        --output json >&2 || true
+      exit 1
+    fi
+    sleep 2
+  done
+}
+
+wait_for_ec2_instance
+
+echo "MiniStack smoke chain passed: API Gateway -> webhook -> EventBridge -> dispatcher -> SQS -> scale-up -> GitHub API mock -> EC2 instance."
