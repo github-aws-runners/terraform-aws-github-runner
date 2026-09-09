@@ -173,6 +173,7 @@ printf '%s\n' \
   '  [ ] Dispatcher delivered the job through SQS (scale-up log contains 123456)' \
   '  [ ] Scale-up called each expected GitHub API route in MockServer' \
   '  [ ] MiniStack EC2 API reports an instance created by scale-up' \
+  '  [ ] Scale-down Lambda log proves each direct invocation started' \
   '  [ ] Scale-down called every expected GitHub API route, removed the scale-up runner, and terminated its EC2 instance' \
   '  [ ] Pool called every expected GitHub API route in MockServer' \
   '  [ ] Pool Lambda created a runner instance' \
@@ -539,14 +540,16 @@ invoke_lambda() {
     echo "Lambda invocation returned FunctionError for $function_name." >&2
     exit 1
   fi
-  printf '  [PASS] %s\n' "$description"
+  printf '  [PASS] %s (Lambda API accepted the request)\n' "$description"
 }
 
 scale_up_runner_id=987654321
 configure_mock_runner_state "$scale_up_instance_id" "$scale_up_runner_id"
 clear_mock_request_log
-invoke_lambda "ministack-default-scale-down" '{}' \
+invoke_lambda "ministack-default-scale-down" '{"smokeMarker":"ministack-scale-up-scale-down"}' \
   "Scale-down Lambda invoked for the scale-up runner"
+wait_for_log_event "/aws/lambda/ministack-default-scale-down" "ministack-scale-up-scale-down" \
+  "Scale-down Lambda started processing the scale-up runner"
 assert_scale_down_github_routes "$scale_up_runner_id"
 configure_mock_runner_removed "$scale_up_runner_id"
 assert_mock_runner_removed "$scale_up_runner_id"
@@ -567,8 +570,10 @@ pool_instance_id="$found_instance_id"
 pool_runner_id=987654322
 configure_mock_runner_state "$pool_instance_id" "$pool_runner_id"
 clear_mock_request_log
-invoke_lambda "ministack-default-scale-down" '{}' \
+invoke_lambda "ministack-default-scale-down" '{"smokeMarker":"ministack-pool-scale-down"}' \
   "Scale-down Lambda invoked for the pool runner"
+wait_for_log_event "/aws/lambda/ministack-default-scale-down" "ministack-pool-scale-down" \
+  "Scale-down Lambda started processing the pool runner"
 assert_scale_down_github_routes "$pool_runner_id"
 configure_mock_runner_removed "$pool_runner_id"
 assert_mock_runner_removed "$pool_runner_id"
