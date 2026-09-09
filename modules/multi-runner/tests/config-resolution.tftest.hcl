@@ -63,6 +63,8 @@ variables {
   prefix        = "test"
   aws_partition = "aws"
 
+  experimental_features = ["multi-runner-v2"]
+
   global_config_github = {
     app = {
       key_base64     = "experimental-app-key"
