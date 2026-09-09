@@ -555,6 +555,7 @@ $lambda_zip"
         "ami-0abcdef1234567890"
       ;;
     multi-runner-v2)
+      create_multi_runner_v2_override
       create_ami_fixture "ministack-v2-linux-arm64" arm64 >/dev/null
       create_ami_fixture "ministack-v2-linux-x64" x86_64 >/dev/null
       create_ami_fixture "ministack-v2-windows-x64" x86_64 >/dev/null
