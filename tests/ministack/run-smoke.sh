@@ -160,6 +160,15 @@ fi
 terraform_initialized=true
 "$source_root/tests/ministack/run-example.sh" apply default "$tfvars_file"
 
+printf '%s\n' \
+  'MiniStack smoke chain evidence checklist:' \
+  '  [ ] API Gateway accepted the signed workflow_job webhook (HTTP 201)' \
+  '  [ ] Webhook Lambda log contains workflow job 123456' \
+  '  [ ] EventBridge invoked the dispatcher Lambda (dispatcher log contains 123456)' \
+  '  [ ] Dispatcher delivered the job through SQS (scale-up log contains 123456)' \
+  '  [ ] Scale-up called each expected GitHub API route in MockServer' \
+  '  [ ] MiniStack EC2 API reports an instance created by scale-up'
+
 webhook_endpoint=$(terraform -chdir="$example_root" output -raw webhook_endpoint)
 endpoint_host_port=${AWS_ENDPOINT_URL#*://}
 endpoint_port=${endpoint_host_port##*:}
@@ -184,10 +193,12 @@ if [ "$status_code" != 201 ]; then
   sed -n '1,80p' "$response_file" >&2
   exit 1
 fi
+echo "  [PASS] API Gateway accepted the signed workflow_job webhook (HTTP 201)"
 
 wait_for_log_event() {
   log_group="$1"
   marker="$2"
+  description="$3"
   attempts=60
   while ! aws --endpoint-url "$AWS_ENDPOINT_URL" logs filter-log-events \
     --log-group-name "$log_group" --limit 50 --output text 2>/dev/null | grep -Fq "$marker"; do
@@ -198,15 +209,20 @@ wait_for_log_event() {
     fi
     sleep 2
   done
+  printf '  [PASS] %s (log group %s contains %s)\n' "$description" "$log_group" "$marker"
 }
 
-wait_for_log_event "/aws/lambda/ministack-default-webhook" "123456"
-wait_for_log_event "/aws/lambda/ministack-default-dispatch-to-runner" "123456"
-wait_for_log_event "/aws/lambda/ministack-default-scale-up" "123456"
+wait_for_log_event "/aws/lambda/ministack-default-webhook" "123456" \
+  "Webhook Lambda received workflow job 123456"
+wait_for_log_event "/aws/lambda/ministack-default-dispatch-to-runner" "123456" \
+  "EventBridge invoked the dispatcher Lambda"
+wait_for_log_event "/aws/lambda/ministack-default-scale-up" "123456" \
+  "Dispatcher delivered workflow job 123456 through SQS to scale-up"
 
 wait_for_mock_route() {
   method="$1"
   route="$2"
+  description="$3"
   verification_body=$(printf '{"httpRequest":{"method":"%s","path":"%s"},"times":{"atLeast":1}}' "$method" "$route")
   attempts=60
   while ! curl -fsS --max-time 5 -X PUT "${mock_service_url}/mockserver/verify" \
@@ -221,11 +237,15 @@ wait_for_mock_route() {
     fi
     sleep 2
   done
+  printf '  [PASS] %s (MockServer verified %s %s)\n' "$description" "$method" "$route"
 }
 
-wait_for_mock_route POST "/api/v3/app/installations/123/access_tokens"
-wait_for_mock_route GET "/api/v3/repos/test-owner/test-repo/actions/jobs/123456"
-wait_for_mock_route POST "/api/v3/orgs/test-owner/actions/runners/registration-token"
+wait_for_mock_route POST "/api/v3/app/installations/123/access_tokens" \
+  "Scale-up requested a GitHub App installation token"
+wait_for_mock_route GET "/api/v3/repos/test-owner/test-repo/actions/jobs/123456" \
+  "Scale-up checked the queued GitHub job"
+wait_for_mock_route POST "/api/v3/orgs/test-owner/actions/runners/registration-token" \
+  "Scale-up requested a GitHub runner registration token"
 
 wait_for_ec2_instance() {
   attempts=60
@@ -238,7 +258,7 @@ wait_for_ec2_instance() {
       --query 'Reservations[].Instances[].InstanceId' \
       --output text 2>/dev/null || true)
     if [ -n "$instance_ids" ] && [ "$instance_ids" != "None" ]; then
-      echo "MiniStack EC2 API reports scale-up instance(s): $instance_ids"
+      echo "  [PASS] MiniStack EC2 API reports scale-up instance(s): $instance_ids"
       return
     fi
 
