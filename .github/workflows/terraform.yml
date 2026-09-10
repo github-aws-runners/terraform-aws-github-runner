@@ -101,7 +101,7 @@ jobs:
           tflint -c ${GITHUB_WORKSPACE}/.tflint.hcl --var-file ${GITHUB_WORKSPACE}/.github/lint/tflint.tfvars
 
   verify_modules:
-    name: Verify modules (${{ matrix.iac }} ${{ matrix.version }})
+    name: Verify module ${{ matrix.module }} (${{ matrix.iac }} ${{ matrix.version }})
     strategy:
       fail-fast: false
       matrix:
@@ -194,7 +194,7 @@ jobs:
           tflint -f compact -c ${GITHUB_WORKSPACE}/.tflint.hcl --var-file ${GITHUB_WORKSPACE}/.github/lint/tflint.tfvars --chdir "modules/${MODULE_NAME}"
 
   verify_examples:
-    name: Verify examples (${{ matrix.iac }} ${{ matrix.version }})
+    name: Verify example ${{ matrix.example }} (${{ matrix.iac }} ${{ matrix.version }})
     strategy:
       fail-fast: false
       matrix:
