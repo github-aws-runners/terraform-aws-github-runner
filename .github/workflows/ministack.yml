@@ -50,11 +50,11 @@ jobs:
           - name: terraform-1.5.6
             version: "1.5.6"
             binary: terraform
-            lockfile: .terraform.lock.hcl.terraform
+            lockfile: .terraform.lock.hcl
           - name: terraform-latest
             version: latest
             binary: terraform
-            lockfile: .terraform.lock.hcl.terraform
+            lockfile: .terraform.lock.hcl
           - name: tofu-1.11
             version: "1.11"
             binary: tofu

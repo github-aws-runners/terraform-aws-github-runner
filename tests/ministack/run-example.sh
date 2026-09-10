@@ -47,16 +47,19 @@ script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 source_root=$(CDPATH='' cd -- "$script_dir/../.." && pwd)
 example_root="$source_root/examples/$example"
 lockfile="$example_root/.terraform.lock.hcl"
-expected_lockfile=".terraform.lock.hcl.$iac_binary"
+expected_lockfile=".terraform.lock.hcl"
+if [ "$iac_binary" = tofu ]; then
+  expected_lockfile="$expected_lockfile.tofu"
+fi
 lockfile_name="${IAC_LOCK_FILE:-$expected_lockfile}"
 if [ "$lockfile_name" != "$expected_lockfile" ]; then
   echo "Lock file does not match IaC binary: $lockfile_name (expected $expected_lockfile)" >&2
   exit 64
 fi
 case "$lockfile_name" in
-  .terraform.lock.hcl.terraform | .terraform.lock.hcl.tofu) ;;
+  .terraform.lock.hcl | .terraform.lock.hcl.tofu) ;;
   *)
-    echo "Supported IaC lock files are: .terraform.lock.hcl.terraform, .terraform.lock.hcl.tofu" >&2
+    echo "Supported IaC lock files are: .terraform.lock.hcl, .terraform.lock.hcl.tofu" >&2
     exit 64
     ;;
 esac
@@ -125,6 +128,10 @@ select_lockfile() {
   if [ ! -f "$tool_lockfile" ]; then
     echo "IaC lock file not found: $tool_lockfile" >&2
     exit 66
+  fi
+
+  if [ "$tool_lockfile" = "$lockfile" ]; then
+    return
   fi
 
   lockfile_backup=$(mktemp "${TMPDIR:-/tmp}/terraform-aws-github-runner-lock.XXXXXX")

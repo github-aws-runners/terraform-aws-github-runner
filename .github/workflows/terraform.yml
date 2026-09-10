@@ -25,11 +25,11 @@ jobs:
           - name: terraform-1.5.6
             version: "1.5.6"
             command: terraform
-            lockfile: .terraform.lock.hcl.terraform
+            lockfile: .terraform.lock.hcl
           - name: terraform-latest
             version: latest
             command: terraform
-            lockfile: .terraform.lock.hcl.terraform
+            lockfile: .terraform.lock.hcl
           - name: tofu-1.11
             version: "1.11"
             command: tofu
@@ -113,11 +113,11 @@ jobs:
           - name: terraform-1.5.6
             version: "1.5.6"
             command: terraform
-            lockfile: .terraform.lock.hcl.terraform
+            lockfile: .terraform.lock.hcl
           - name: terraform-latest
             version: latest
             command: terraform
-            lockfile: .terraform.lock.hcl.terraform
+            lockfile: .terraform.lock.hcl
           - name: tofu-1.11
             version: "1.11"
             command: tofu
@@ -209,11 +209,11 @@ jobs:
           - name: terraform-1.5.6
             version: "1.5.6"
             command: terraform
-            lockfile: .terraform.lock.hcl.terraform
+            lockfile: .terraform.lock.hcl
           - name: terraform-latest
             version: latest
             command: terraform
-            lockfile: .terraform.lock.hcl.terraform
+            lockfile: .terraform.lock.hcl
           - name: tofu-1.11
             version: "1.11"
             command: tofu
@@ -261,6 +261,7 @@ jobs:
           tofu_wrapper: false
 
       - name: Select ${{ matrix.iac.name }} lockfile
+        if: matrix.iac.command == 'tofu'
         env:
           IAC_LOCK_FILE: ${{ matrix.iac.lockfile }}
         run: cp "$IAC_LOCK_FILE" .terraform.lock.hcl
