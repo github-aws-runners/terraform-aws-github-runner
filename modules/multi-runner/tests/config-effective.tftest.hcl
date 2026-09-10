@@ -136,6 +136,32 @@ run "v2_effective_config_contains_derived_values" {
         id             = "experimental-app-id"
         webhook_secret = "experimental-webhook-secret"
       }
+      additional_apps = [
+        {
+          key_base64_ssm = {
+            arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/tests/github-app/additional-0/key"
+            name = "/tests/github-app/additional-0/key"
+          }
+          id_ssm = {
+            arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/tests/github-app/additional-0/id"
+            name = "/tests/github-app/additional-0/id"
+          }
+          installation_id_ssm = {
+            arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/tests/github-app/additional-0/installation-id"
+            name = "/tests/github-app/additional-0/installation-id"
+          }
+        },
+        {
+          key_base64_ssm = {
+            arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/tests/github-app/additional-1/key"
+            name = "/tests/github-app/additional-1/key"
+          }
+          id_ssm = {
+            arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/tests/github-app/additional-1/id"
+            name = "/tests/github-app/additional-1/id"
+          }
+        },
+      ]
     }
 
     global_config_lambda = {
@@ -248,5 +274,14 @@ run "v2_effective_config_contains_derived_values" {
       && toset(keys(local.resolved_runner_binary_targets_by_key)) == toset(["linux_x64"])
     )
     error_message = "The effective v2 configuration must contain global values, derived labels, and the resolved runner-binary target map."
+  }
+
+  assert {
+    condition = (
+      module.runner_configs["lane"].scale_up.lambda.environment[0].variables["PARAMETER_GITHUB_APP_ID_NAME"] == "/github-action-runners/github-actions/app/github_app_id:/tests/github-app/additional-0/id:/tests/github-app/additional-1/id"
+      && module.runner_configs["lane"].scale_up.lambda.environment[0].variables["PARAMETER_GITHUB_APP_KEY_BASE64_NAME"] == "/github-action-runners/github-actions/app/github_app_key_base64:/tests/github-app/additional-0/key:/tests/github-app/additional-1/key"
+      && module.runner_configs["lane"].scale_up.lambda.environment[0].variables["PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME"] == ":/tests/github-app/additional-0/installation-id:"
+    )
+    error_message = "The v2 runner-config adapter must preserve primary and additional GitHub App parameter ordering."
   }
 }

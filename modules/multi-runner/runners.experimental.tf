@@ -16,9 +16,18 @@ module "runner_configs" {
   runner = each.value.runner
   github = merge(each.value.github, {
     app_parameters = {
-      key_base64      = [local.github_app_parameters.key_base64]
-      id              = [local.github_app_parameters.id]
-      installation_id = [null]
+      id = concat(
+        [local.primary_app_id],
+        [for app in module.ssm.additional_app_parameters : app.id],
+      )
+      key_base64 = concat(
+        [local.primary_app_key_base64],
+        [for app in module.ssm.additional_app_parameters : app.key_base64],
+      )
+      installation_id = concat(
+        [null],
+        [for app in module.ssm.additional_app_parameters : app.installation_id],
+      )
     }
   })
   lambda = each.value.lambda
