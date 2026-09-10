@@ -73,59 +73,26 @@ variable "runner" {
 
 variable "github" {
   description = <<-EOT
-    Global GitHub API and runner-registration configuration.
+    GitHub API and runner-registration configuration.
 
-    - `app`: Primary GitHub App credentials, supplied inline or through SSM.
-    - `additional_apps`: Additional GitHub Apps used to distribute GitHub API requests.
+    - `app_parameters.key_base64`: Ordered Parameter Store references for GitHub App private keys.
+    - `app_parameters.id`: Ordered Parameter Store references for GitHub App IDs.
+    - `app_parameters.installation_id`: Ordered optional Parameter Store references for GitHub App installation IDs.
     - `enterprise_server.url`: Optional GitHub Enterprise Server base URL. Null selects GitHub.com.
     - `enterprise_server.ssl_verify`: Enables TLS certificate verification for GitHub Enterprise Server requests.
-    - `user_agent`: User-Agent value added to GitHub API requests.
+    - `user_agent`: Optional User-Agent value added to GitHub API requests.
   EOT
   type = object({
-    app = optional(object({
-      key_base64 = optional(string)
-      key_base64_ssm = optional(object({
-        arn  = string
-        name = string
-      }))
-      id = optional(string)
-      id_ssm = optional(object({
-        arn  = string
-        name = string
-      }))
-      webhook_secret = optional(string)
-      webhook_secret_ssm = optional(object({
-        arn  = string
-        name = string
-      }))
-    }), null)
-    additional_apps = optional(list(object({
-      key_base64          = optional(string)
-      key_base64_ssm      = optional(object({ arn = string, name = string }))
-      id                  = optional(string)
-      id_ssm              = optional(object({ arn = string, name = string }))
-      installation_id     = optional(string)
-      installation_id_ssm = optional(object({ arn = string, name = string }))
-    })), [])
+    app_parameters = object({
+      key_base64      = list(map(string))
+      id              = list(map(string))
+      installation_id = list(object({ name = string, arn = string }))
+    })
     enterprise_server = optional(object({
       url        = optional(string, null)
       ssl_verify = optional(bool, true)
     }), {})
-    user_agent = optional(string, "github-aws-runners")
-  })
-}
-
-variable "github_app_parameters" {
-  description = <<-EOT
-    Resolved SSM parameter references for the primary and additional GitHub Apps.
-
-    This provider-facing adapter is derived by the parent module after its SSM
-    resources are created. It is separate from the canonical `github` input.
-  EOT
-  type = object({
-    key_base64      = list(map(string))
-    id              = list(map(string))
-    installation_id = optional(list(object({ name = string, arn = string })), [null])
+    user_agent = optional(string, null)
   })
 }
 
