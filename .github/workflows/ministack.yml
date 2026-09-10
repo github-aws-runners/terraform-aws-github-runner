@@ -47,6 +47,18 @@ jobs:
       fail-fast: false
       max-parallel: 4
       matrix:
+        iac:
+          - terraform
+          - tofu
+        version:
+          - "1.4.0"
+          - "1.11"
+          - latest
+        exclude:
+          - iac: terraform
+            version: "1.11"
+          - iac: tofu
+            version: "1.4.0"
         example:
           - base
           - prebuilt
@@ -59,24 +71,15 @@ jobs:
           - iac: terraform
             version: "1.4.0"
             binary: terraform
-            tool: terraform-1.4.0
           - iac: terraform
             version: latest
             binary: terraform
-            tool: terraform-latest
           - iac: tofu
             version: "1.11"
             binary: tofu
-            tool: tofu-1.11
           - iac: tofu
             version: latest
             binary: tofu
-            tool: tofu-latest
-        tool:
-          - terraform-1.4.0
-          - terraform-latest
-          - tofu-1.11
-          - tofu-latest
     services:
       ministack:
         image: ghcr.io/ministackorg/ministack:1.5.7@sha256:37361b9ef886463d5632d5a4b2d114da4b7a5c5793f52f07dbc72579f2fd9207
