@@ -95,7 +95,9 @@ $source_root/lambdas/functions/termination-watcher/termination-watcher.zip
 "
 
 cleanup() {
-  restore_lockfile
+  if command -v restore_lockfile >/dev/null 2>&1; then
+    restore_lockfile
+  fi
 
   for override_file in $override_created_paths; do
     rm -f "$override_file"
