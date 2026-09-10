@@ -56,7 +56,7 @@ jobs:
           - multi-runner-v2
           - termination-watcher
         terraform:
-          - "1.5.6"
+          - "1.4.0"
           - latest
     services:
       ministack:
