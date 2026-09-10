@@ -62,14 +62,33 @@ module "external_iam" {
 
   github = {
     app_parameters = {
-      key_base64 = [{
-        name = "/github-runner/key-base64"
-        arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64"
-      }]
-      id = [{
-        name = "/github-runner/app-id"
-        arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id"
-      }]
+      key_base64 = [
+        {
+          name = "/github-runner/key-base64"
+          arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64"
+        },
+        {
+          name = "/github-runner/additional-app-key-base64"
+          arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/additional-app-key-base64"
+        },
+      ]
+      id = [
+        {
+          name = "/github-runner/app-id"
+          arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id"
+        },
+        {
+          name = "/github-runner/additional-app-id"
+          arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/additional-app-id"
+        },
+      ]
+      installation_id = [
+        null,
+        {
+          name = "/github-runner/additional-app-installation-id"
+          arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/additional-app-installation-id"
+        },
+      ]
     }
   }
 
@@ -167,6 +186,7 @@ module "generated_policy" {
         name = "/github-runner/app-id"
         arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id"
       }]
+      installation_id = [null]
     }
   }
 
@@ -209,4 +229,8 @@ output "external_role_runner_count" {
 
 output "generated_policy_role_runner_count" {
   value = module.generated_policy.runner.role == null ? 0 : 1
+}
+
+output "external_installation_id_parameter_names" {
+  value = module.external_iam.orchestration_provider.webhook.job_retry.lambda.function.environment[0].variables["PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME"]
 }
