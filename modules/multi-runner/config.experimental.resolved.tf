@@ -230,6 +230,10 @@ locals {
                     v.orchestration_provider.webhook.lambda.scale.down.idle_config,
                     local.normalized_config.orchestration_provider.webhook.lambda.scale.down.idle_config,
                   )
+                  idle_confirmation_seconds = coalesce(
+                    v.orchestration_provider.webhook.lambda.scale.down.idle_confirmation_seconds,
+                    local.normalized_config.orchestration_provider.webhook.lambda.scale.down.idle_confirmation_seconds,
+                  )
                   tags = merge(local.normalized_config.orchestration_provider.webhook.lambda.scale.down.tags, v.orchestration_provider.webhook.lambda.scale.down.tags)
                 })
               })

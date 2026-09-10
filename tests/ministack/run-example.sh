@@ -6,7 +6,7 @@ export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-000000000000}"
 export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-test-only}"
 export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-eu-west-1}"
 export AWS_REGION="${AWS_REGION:-eu-west-1}"
-export AWS_ENDPOINT_URL="${AWS_ENDPOINT_URL:-http://127.0.0.1:4566}"
+export AWS_ENDPOINT_URL="${AWS_ENDPOINT_URL:-http://localhost:4566}"
 export AWS_EC2_METADATA_DISABLED="${AWS_EC2_METADATA_DISABLED:-true}"
 
 action="${1:-}"
@@ -14,14 +14,14 @@ example="${2:-}"
 tfvars_file="${3:-${MINISTACK_TFVARS_FILE:-}}"
 
 case "$example" in
-  base | prebuilt | default | ephemeral | multi-runner)
+  base | prebuilt | default | ephemeral | multi-runner | multi-runner-v2)
     use_tfvars=true
     ;;
   termination-watcher)
     use_tfvars=false
     ;;
   *)
-  echo "Supported examples for the runner are: base, prebuilt, default, ephemeral, multi-runner, termination-watcher" >&2
+  echo "Supported examples for the runner are: base, prebuilt, default, ephemeral, multi-runner, multi-runner-v2, termination-watcher" >&2
   exit 64
   ;;
 esac
@@ -29,7 +29,7 @@ esac
 case "$action" in
   init | plan | apply | destroy) ;;
   *)
-    echo "Usage: $0 {init|plan|apply|destroy} {base|prebuilt|default|ephemeral|multi-runner|termination-watcher} [TFVARS_FILE]" >&2
+    echo "Usage: $0 {init|plan|apply|destroy} {base|prebuilt|default|ephemeral|multi-runner|multi-runner-v2|termination-watcher} [TFVARS_FILE]" >&2
     exit 64
     ;;
 esac
@@ -244,6 +244,11 @@ $lambda_zip"
       create_ssm_fixture \
         "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-arm64" \
         "ami-0abcdef1234567890"
+      ;;
+    multi-runner-v2)
+      create_ami_fixture "ministack-v2-linux-arm64" arm64 >/dev/null
+      create_ami_fixture "ministack-v2-linux-x64" x86_64 >/dev/null
+      create_ami_fixture "ministack-v2-windows-x64" x86_64 >/dev/null
       ;;
   esac
 }

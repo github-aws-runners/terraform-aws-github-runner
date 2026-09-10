@@ -1,6 +1,8 @@
 variable "github_app" {
   description = <<EOF
-  GitHub app parameters, see your github app.
+  GitHub app parameters for the stable v1 interface, see your github app.
+  Omit this value when using the experimental v2 interface and provide the
+  app through `global_config_github` instead.
   You can optionally create the SSM parameters yourself and provide the ARN and name here, through the `*_ssm` attributes.
   If you chose to provide the configuration values directly here,
   please ensure the key is the base64-encoded `.pem` file (the output of `base64 app.private-key.pem`, not the content of `private-key.pem`).
@@ -23,16 +25,7 @@ variable "github_app" {
       name = string
     }))
   })
-
-  validation {
-    condition     = (var.github_app.key_base64 != null || var.github_app.key_base64_ssm != null) && (var.github_app.id != null || var.github_app.id_ssm != null) && (var.github_app.webhook_secret != null || var.github_app.webhook_secret_ssm != null)
-    error_message = <<EOF
-     You must set all of the following parameters, choosing one option from each pair:
-      - `key_base64` or `key_base64_ssm`
-      - `id` or `id_ssm`
-      - `webhook_secret` or `webhook_secret_ssm`
-    EOF
-  }
+  default = {}
 }
 
 
@@ -58,14 +51,6 @@ variable "additional_github_apps" {
     installation_id_ssm = optional(object({ arn = string, name = string }))
   }))
   default = []
-  validation {
-    condition = alltrue([
-      for app in var.additional_github_apps :
-      (app.key_base64 != null || app.key_base64_ssm != null) &&
-      (app.id != null || app.id_ssm != null)
-    ])
-    error_message = "Each additional GitHub app must provide either key_base64 or key_base64_ssm, and either id or id_ssm."
-  }
 }
 
 variable "prefix" {
@@ -153,6 +138,7 @@ variable "multi_runner_config" {
       pool_runner_owner                                              = optional(string, null)
       runner_as_root                                                 = optional(bool, false)
       runner_boot_time_in_minutes                                    = optional(number, 5)
+      scale_down_idle_confirmation_seconds                           = optional(number, 0)
       runner_disable_default_labels                                  = optional(bool, false)
       runner_extra_labels                                            = optional(list(string), [])
       runner_group_name                                              = optional(string, "Default")
@@ -362,6 +348,7 @@ variable "multi_runner_config" {
               timeout                         = optional(number, null)
               schedule_expression             = optional(string, null)
               minimum_running_time_in_minutes = optional(number, null)
+              idle_confirmation_seconds       = optional(number, null)
               idle_config = optional(list(object({
                 cron             = string
                 timeZone         = string
@@ -585,6 +572,7 @@ variable "multi_runner_config" {
       }), {})
     }), {})
   }))
+  default     = {}
   description = <<EOT
     Accepts either the stable v1 runner configuration shape or the provider-boundary v2 shape. Entries with `runner_config` use the v1 shape; entries without `runner_config` use the v2 shape. A v2 entry does not need matcher configuration. A v2 entry must be acknowledged with `experimental_features = ["multi-runner-v2"]`; the v2 shape is experimental and may change before graduation.
 
@@ -618,6 +606,7 @@ variable "multi_runner_config" {
         runner_additional_security_group_ids: "List of additional security groups IDs to apply to the runner. If added outside the multi_runner_config block, the additional security group(s) will be applied to all runner configs. If added inside the multi_runner_config, the additional security group(s) will be applied to the individual runner."
         runner_as_root: "Run the action runner under the root user. Variable `runner_run_as` will be ignored."
         runner_boot_time_in_minutes: "The minimum time for an EC2 runner to boot and register as a runner."
+        scale_down_idle_confirmation_seconds: "Number of seconds a runner must consistently report not-busy before scale-down terminates it. GitHub's busy flag can be stale, so a single not-busy reading is not sufficient evidence a runner is idle. 0 keeps the previous single-reading behaviour."
         runner_disable_default_labels: "Disable default labels for the runners (os, architecture and `self-hosted`). If enabled, the runner will only have the extra labels provided in `runner_extra_labels`. In case you on own start script is used, this configuration parameter needs to be parsed via SSM."
         runner_extra_labels: "Extra (custom) labels for the runners (GitHub). Separate each label by a comma. Labels checks on the webhook can be enforced by setting `multi_runner_config.matcherConfig.exactMatch`. GitHub read-only labels should not be provided."
         runner_group_name: "Name of the runner group."
@@ -761,11 +750,6 @@ variable "log_class" {
   description = "The log class of the CloudWatch log groups. Valid values are `STANDARD` or `INFREQUENT_ACCESS`."
   type        = string
   default     = "STANDARD"
-
-  validation {
-    condition     = contains(["STANDARD", "INFREQUENT_ACCESS"], var.log_class)
-    error_message = "`log_class` must be either `STANDARD` or `INFREQUENT_ACCESS`."
-  }
 }
 
 variable "lambda_s3_bucket" {
@@ -805,28 +789,12 @@ variable "queue_selection_strategy" {
   description = "Strategy used to pick a queue when multiple runner configurations match a job equally well. `first` keeps the historical deterministic behaviour (the first matching queue by priority). `random` spreads jobs across the matching queues to avoid concentrating load on a single one. `all` scales up one runner per matching queue and lets the first to become available take the job (favouring speed over cost; this multiplies instance launches and runner registrations per job)."
   type        = string
   default     = "first"
-  validation {
-    condition     = contains(["first", "random", "all"], var.queue_selection_strategy)
-    error_message = "`queue_selection_strategy` value not valid. Valid values are 'first', 'random', 'all'."
-  }
 }
 
 variable "log_level" {
   description = "Logging level for lambda logging. Valid values are  'silly', 'trace', 'debug', 'info', 'warn', 'error', 'fatal'."
   type        = string
   default     = "info"
-  validation {
-    condition = anytrue([
-      var.log_level == "silly",
-      var.log_level == "trace",
-      var.log_level == "debug",
-      var.log_level == "info",
-      var.log_level == "warn",
-      var.log_level == "error",
-      var.log_level == "fatal",
-    ])
-    error_message = "`log_level` value not valid. Valid values are 'silly', 'trace', 'debug', 'info', 'warn', 'error', 'fatal'."
-  }
 }
 
 variable "lambda_runtime" {
@@ -839,10 +807,6 @@ variable "lambda_architecture" {
   description = "AWS Lambda architecture. Lambda functions using Graviton processors ('arm64') tend to have better price/performance than 'x86_64' functions. "
   type        = string
   default     = "arm64"
-  validation {
-    condition     = contains(["arm64", "x86_64"], var.lambda_architecture)
-    error_message = "`lambda_architecture` value is not valid, valid values are: `arm64` and `x86_64`."
-  }
 }
 
 variable "syncer_lambda_s3_key" {
@@ -912,11 +876,6 @@ variable "state_event_rule_binaries_syncer" {
   type        = string
   description = "Option to disable EventBridge Lambda trigger for the binary syncer, useful to stop automatic updates of binary distribution"
   default     = "ENABLED"
-
-  validation {
-    condition     = contains(["ENABLED", "DISABLED", "ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS"], var.state_event_rule_binaries_syncer)
-    error_message = "`state_event_rule_binaries_syncer` value is not valid, valid values are: `ENABLED`, `DISABLED`, `ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS`."
-  }
 }
 
 variable "queue_encryption" {
@@ -930,10 +889,6 @@ variable "queue_encryption" {
     kms_data_key_reuse_period_seconds = null
     kms_master_key_id                 = null
     sqs_managed_sse_enabled           = true
-  }
-  validation {
-    condition     = var.queue_encryption == null || var.queue_encryption.sqs_managed_sse_enabled != null && var.queue_encryption.kms_master_key_id == null && var.queue_encryption.kms_data_key_reuse_period_seconds == null || var.queue_encryption.sqs_managed_sse_enabled == null && var.queue_encryption.kms_master_key_id != null
-    error_message = "Invalid configuration for `queue_encryption`. Valid configurations are encryption disabled, enabled via SSE. Or encryption via KMS."
   }
 }
 
@@ -949,13 +904,15 @@ variable "aws_region" {
 }
 
 variable "vpc_id" {
-  description = "The VPC for security groups of the action runners."
+  description = "The VPC for security groups of stable v1 action runners. Omit when using the experimental v2 interface."
   type        = string
+  default     = null
 }
 
 variable "subnet_ids" {
-  description = "List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`."
+  description = "List of subnets in which stable v1 action runners will be launched. Omit when using the experimental v2 interface."
   type        = list(string)
+  default     = null
 }
 
 variable "enable_managed_runner_security_group" {
@@ -1161,10 +1118,6 @@ variable "matcher_config_parameter_store_tier" {
   description = "The tier of the parameter store for the matcher configuration. Valid values are `Standard`, and `Advanced`."
   type        = string
   default     = "Standard"
-  validation {
-    condition     = contains(["Standard", "Advanced"], var.matcher_config_parameter_store_tier)
-    error_message = "`matcher_config_parameter_store_tier` value is not valid, valid values are: `Standard`, and `Advanced`."
-  }
 }
 
 variable "metrics" {
@@ -1211,16 +1164,6 @@ variable "iam_overrides" {
     instance_profile_name     = null
     override_runner_role      = false
     runner_role_arn           = null
-  }
-
-  validation {
-    condition     = !var.iam_overrides.override_instance_profile || var.iam_overrides.instance_profile_name != null
-    error_message = "instance_profile_name must be provided when override_instance_profile is true."
-  }
-
-  validation {
-    condition     = !var.iam_overrides.override_runner_role || var.iam_overrides.runner_role_arn != null
-    error_message = "runner_role_arn must be provided when override_runner_role is true."
   }
 }
 

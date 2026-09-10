@@ -21,6 +21,18 @@ output "runners_map" {
   }
 }
 
+output "runners_map_v2" {
+  value = { for runner_key, runner in module.runner_configs : runner_key => {
+    runner                 = runner.runner
+    orchestration_provider = runner.orchestration_provider
+    scale_up               = runner.scale_up
+    scale_down             = runner.scale_down
+    pool                   = runner.pool
+    provider               = runner.provider
+    }
+  }
+}
+
 output "binaries_syncer_map" {
   value = { for runner_binary_key, runner_binary in module.runner_binaries : runner_binary_key => {
     lambda           = runner_binary.lambda
