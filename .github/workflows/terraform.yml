@@ -80,13 +80,11 @@ jobs:
         with:
           path: ~/.tflint.d/plugins
           key: tflint-${{ hashFiles('.tflint.hcl') }}
-      - if: matrix.iac == 'terraform' && contains(matrix.version, '1.5.')
-        name: Setup TFLint
+      - name: Setup TFLint
         uses: terraform-linters/setup-tflint@6e1e0642c0289bd619021bf6b34e3c08ed1e005a # v6.3.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-      - if: matrix.iac == 'terraform' && contains(matrix.version, '1.5.')
-        name: Run TFLint
+      - name: Run TFLint
         run: |
           tflint --init -c ${GITHUB_WORKSPACE}/.tflint.hcl
           tflint -c ${GITHUB_WORKSPACE}/.tflint.hcl --var-file ${GITHUB_WORKSPACE}/.github/lint/tflint.tfvars
@@ -164,13 +162,11 @@ jobs:
         with:
           path: ~/.tflint.d/plugins
           key: tflint-${{ hashFiles('.tflint.hcl') }}
-      - if: matrix.iac == 'terraform' && matrix.version == '1.5.6'
-        name: Setup TFLint
+      - name: Setup TFLint
         uses: terraform-linters/setup-tflint@6e1e0642c0289bd619021bf6b34e3c08ed1e005a # v6.3.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-      - if: matrix.iac == 'terraform' && matrix.version == '1.5.6'
-        name: Run TFLint
+      - name: Run TFLint
         working-directory: ${{ github.workspace }}
         env:
           MODULE_NAME: ${{ matrix.module }}
@@ -248,13 +244,11 @@ jobs:
         with:
           path: ~/.tflint.d/plugins
           key: tflint-${{ hashFiles('.tflint.hcl') }}
-      - if: matrix.iac == 'terraform' && contains(matrix.version, '1.5.')
-        name: Setup TFLint
+      - name: Setup TFLint
         uses: terraform-linters/setup-tflint@6e1e0642c0289bd619021bf6b34e3c08ed1e005a # v6.3.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-      - if: matrix.iac == 'terraform' && contains(matrix.version, '1.5.')
-        name: Run TFLint
+      - name: Run TFLint
         working-directory: ${{ github.workspace }}
         env:
           EXAMPLE_NAME: ${{ matrix.example }}
