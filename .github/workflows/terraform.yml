@@ -19,20 +19,25 @@ jobs:
   verify_module:
     name: Verify root module (${{ matrix.iac }} ${{ matrix.version }})
     strategy:
+      fail-fast: false
       matrix:
         include:
           - iac: terraform
             version: "1.5.6"
             command: terraform
+            tool: terraform-1.5.6
           - iac: terraform
             version: latest
             command: terraform
+            tool: terraform-latest
           - iac: tofu
             version: "1.11"
             command: tofu
+            tool: tofu-1.11
           - iac: tofu
             version: latest
             command: tofu
+            tool: tofu-latest
     runs-on: ubuntu-latest
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -109,15 +114,24 @@ jobs:
           - iac: terraform
             version: "1.5.6"
             command: terraform
+            tool: terraform-1.5.6
           - iac: terraform
             version: latest
             command: terraform
+            tool: terraform-latest
           - iac: tofu
             version: "1.11"
             command: tofu
+            tool: tofu-1.11
           - iac: tofu
             version: latest
             command: tofu
+            tool: tofu-latest
+        tool:
+          - terraform-1.5.6
+          - terraform-latest
+          - tofu-1.11
+          - tofu-latest
         module:
           - ami-housekeeper
           - download-lambda
@@ -202,15 +216,24 @@ jobs:
           - iac: terraform
             version: "1.5.6"
             command: terraform
+            tool: terraform-1.5.6
           - iac: terraform
             version: latest
             command: terraform
+            tool: terraform-latest
           - iac: tofu
             version: "1.11"
             command: tofu
+            tool: tofu-1.11
           - iac: tofu
             version: latest
             command: tofu
+            tool: tofu-latest
+        tool:
+          - terraform-1.5.6
+          - terraform-latest
+          - tofu-1.11
+          - tofu-latest
         example:
           [
             "default",
