@@ -40,7 +40,7 @@ env:
 
 jobs:
   terraform_lifecycle:
-    name: Apply/destroy ${{ matrix.example }} against MiniStack (${{ matrix.iac }} ${{ matrix.version }})
+    name: Apply/destroy ${{ matrix.example }} against MiniStack (${{ matrix.iac.name }} ${{ matrix.iac.version }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -48,17 +48,22 @@ jobs:
       max-parallel: 4
       matrix:
         iac:
-          - terraform
-          - tofu
-        version:
-          - "1.4.0"
-          - "1.11"
-          - latest
-        exclude:
-          - iac: terraform
-            version: "1.11"
-          - iac: tofu
+          - name: terraform-1.4.0
             version: "1.4.0"
+            binary: terraform
+            lockfile: .terraform.lock.hcl.terraform
+          - name: terraform-latest
+            version: latest
+            binary: terraform
+            lockfile: .terraform.lock.hcl.terraform
+          - name: tofu-1.11
+            version: "1.11"
+            binary: tofu
+            lockfile: .terraform.lock.hcl.tofu
+          - name: tofu-latest
+            version: latest
+            binary: tofu
+            lockfile: .terraform.lock.hcl.tofu
         example:
           - base
           - prebuilt
@@ -67,19 +72,6 @@ jobs:
           - multi-runner
           - multi-runner-v2
           - termination-watcher
-        include:
-          - iac: terraform
-            version: "1.4.0"
-            binary: terraform
-          - iac: terraform
-            version: latest
-            binary: terraform
-          - iac: tofu
-            version: "1.11"
-            binary: tofu
-          - iac: tofu
-            version: latest
-            binary: tofu
     services:
       ministack:
         image: ghcr.io/ministackorg/ministack:1.5.7@sha256:37361b9ef886463d5632d5a4b2d114da4b7a5c5793f52f07dbc72579f2fd9207
@@ -100,17 +92,17 @@ jobs:
           persist-credentials: false
 
       - name: Setup Terraform
-        if: matrix.iac == 'terraform'
+        if: matrix.iac.binary == 'terraform'
         uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
-          terraform_version: ${{ matrix.version }}
+          terraform_version: ${{ matrix.iac.version }}
           terraform_wrapper: false
 
       - name: Setup OpenTofu
-        if: matrix.iac == 'tofu'
+        if: matrix.iac.binary == 'tofu'
         uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
         with:
-          tofu_version: ${{ matrix.version }}
+          tofu_version: ${{ matrix.iac.version }}
           tofu_wrapper: false
 
       - name: Mark repository as safe
@@ -118,22 +110,25 @@ jobs:
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - id: init
-        name: ${{ matrix.iac }} init
+        name: ${{ matrix.iac.name }} init
         env:
           EXAMPLE: ${{ matrix.example }}
-          IAC_BINARY: ${{ matrix.binary }}
+          IAC_BINARY: ${{ matrix.iac.binary }}
+          IAC_LOCK_FILE: ${{ matrix.iac.lockfile }}
         run: tests/ministack/run-example.sh init "$EXAMPLE"
 
       - id: apply
-        name: ${{ matrix.iac }} apply
+        name: ${{ matrix.iac.name }} apply
         env:
           EXAMPLE: ${{ matrix.example }}
-          IAC_BINARY: ${{ matrix.binary }}
+          IAC_BINARY: ${{ matrix.iac.binary }}
+          IAC_LOCK_FILE: ${{ matrix.iac.lockfile }}
         run: tests/ministack/run-example.sh apply "$EXAMPLE"
 
-      - name: ${{ matrix.iac }} destroy
+      - name: ${{ matrix.iac.name }} destroy
         if: always() && steps.init.outcome == 'success'
         env:
           EXAMPLE: ${{ matrix.example }}
-          IAC_BINARY: ${{ matrix.binary }}
+          IAC_BINARY: ${{ matrix.iac.binary }}
+          IAC_LOCK_FILE: ${{ matrix.iac.lockfile }}
         run: tests/ministack/run-example.sh destroy "$EXAMPLE"

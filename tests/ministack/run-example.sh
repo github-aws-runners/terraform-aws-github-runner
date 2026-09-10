@@ -46,6 +46,18 @@ esac
 script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 source_root=$(CDPATH='' cd -- "$script_dir/../.." && pwd)
 example_root="$source_root/examples/$example"
+lockfile="$example_root/.terraform.lock.hcl"
+lockfile_name="${IAC_LOCK_FILE:-.terraform.lock.hcl.$iac_binary}"
+case "$lockfile_name" in
+  .terraform.lock.hcl.terraform | .terraform.lock.hcl.tofu) ;;
+  *)
+    echo "Supported IaC lock files are: .terraform.lock.hcl.terraform, .terraform.lock.hcl.tofu" >&2
+    exit 64
+    ;;
+esac
+tool_lockfile="$example_root/$lockfile_name"
+lockfile_backup=""
+lockfile_existed=false
 
 if [ "$use_tfvars" = true ]; then
   if [ -z "$tfvars_file" ]; then
@@ -78,6 +90,8 @@ $source_root/lambdas/functions/termination-watcher/termination-watcher.zip
 "
 
 cleanup() {
+  restore_lockfile
+
   for override_file in $override_created_paths; do
     rm -f "$override_file"
   done
@@ -99,6 +113,36 @@ cleanup() {
   fi
 }
 trap cleanup EXIT INT TERM
+
+select_lockfile() {
+  if [ ! -f "$tool_lockfile" ]; then
+    echo "IaC lock file not found: $tool_lockfile" >&2
+    exit 66
+  fi
+
+  lockfile_backup=$(mktemp "${TMPDIR:-/tmp}/terraform-aws-github-runner-lock.XXXXXX")
+  if [ -f "$lockfile" ]; then
+    cp "$lockfile" "$lockfile_backup"
+    lockfile_existed=true
+  fi
+  cp "$tool_lockfile" "$lockfile"
+}
+
+restore_lockfile() {
+  if [ -z "$lockfile_backup" ]; then
+    return
+  fi
+
+  if [ "$lockfile_existed" = true ]; then
+    cp "$lockfile_backup" "$lockfile"
+  else
+    rm -f "$lockfile"
+  fi
+  rm -f "$lockfile_backup"
+  lockfile_backup=""
+}
+
+select_lockfile
 
 ministack_aws() {
   aws --endpoint-url "$AWS_ENDPOINT_URL" --region "$AWS_DEFAULT_REGION" "$@"
