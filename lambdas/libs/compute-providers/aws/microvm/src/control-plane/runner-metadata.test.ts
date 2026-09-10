@@ -11,6 +11,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   assertMatchingMicrovmRunnerTokenPath,
   assertSeparatedMicrovmMetadataPath,
+  clearMicrovmIdleDetectedAt,
   createMicrovmRunnerMetadata,
   deleteMicrovmRunnerJitConfig,
   deleteMicrovmRunnerSsmState,
@@ -19,6 +20,7 @@ import {
   microvmMetadataParameterName,
   microvmRunnerJitParameterName,
   setMicrovmGithubRunnerMetadata,
+  setMicrovmIdleDetectedAt,
   setMicrovmOrphan,
   type MicrovmRunnerMetadata,
 } from './runner-metadata';
@@ -208,6 +210,7 @@ describe('MicroVM metadata lifecycle', () => {
         [`${metadataSsmPath}/mvm-1`, JSON.stringify(active)],
         [`${metadataSsmPath}/mvm-1.github-runner-id`, 'github-42'],
         [`${metadataSsmPath}/mvm-1.orphan`, 'true'],
+        [`${metadataSsmPath}/mvm-1.idle-detected-at`, '2026-08-19T11:55:00.000Z'],
         [`${metadataSsmPath}/mvm-old`, JSON.stringify(expiredInactive)],
         [`${metadataSsmPath}/mvm-new`, JSON.stringify(unexpiredInactive)],
         [`${metadataSsmPath}/mvm-invalid`, '{not-json'],
@@ -216,7 +219,17 @@ describe('MicroVM metadata lifecycle', () => {
 
     await expect(listMicrovmRunnerMetadata(ssmPaths, states([['mvm-1', 'RUNNING']]))).resolves.toEqual({
       cleanupMicrovmIds: ['mvm-old', 'mvm-invalid'],
-      metadataById: new Map([['mvm-1', { ...active, githubRunnerId: 'github-42', orphan: true }]]),
+      metadataById: new Map([
+        [
+          'mvm-1',
+          {
+            ...active,
+            githubRunnerId: 'github-42',
+            orphan: true,
+            idleDetectedAt: '2026-08-19T11:55:00.000Z',
+          },
+        ],
+      ]),
     });
     expect(getParametersByPath).toHaveBeenCalledWith(metadataSsmPath);
     expect(deleteParameter).not.toHaveBeenCalled();
@@ -397,6 +410,18 @@ describe('MicroVM metadata lifecycle', () => {
     });
   });
 
+  it('updates and clears idle state without a shared read-modify-write record', async () => {
+    const detectedAt = '2026-08-19T11:55:00.000Z';
+
+    await setMicrovmIdleDetectedAt(metadataSsmPath, 'mvm-1', detectedAt);
+    expect(putParameter).toHaveBeenLastCalledWith(`${metadataSsmPath}/mvm-1.idle-detected-at`, detectedAt, false, {
+      overwrite: true,
+    });
+
+    await clearMicrovmIdleDetectedAt(metadataSsmPath, 'mvm-1');
+    expect(deleteParameter).toHaveBeenLastCalledWith(`${metadataSsmPath}/mvm-1.idle-detected-at`);
+  });
+
   it('marks cleanup independently and deletes JIT plus metadata while retaining the tombstone until last', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-08-19T12:00:00.000Z'));
@@ -413,6 +438,7 @@ describe('MicroVM metadata lifecycle', () => {
       `${runnerTokenSsmPath}/mvm-1`,
       `${metadataSsmPath}/mvm-1.github-runner-id`,
       `${metadataSsmPath}/mvm-1.orphan`,
+      `${metadataSsmPath}/mvm-1.idle-detected-at`,
       `${metadataSsmPath}/mvm-1.tags`,
       `${metadataSsmPath}/mvm-1`,
       `${metadataSsmPath}/mvm-1.cleanup-requested-at`,
@@ -444,6 +470,7 @@ describe('MicroVM metadata lifecycle', () => {
       `${runnerTokenSsmPath}/mvm-1`,
       `${metadataSsmPath}/mvm-1.github-runner-id`,
       `${metadataSsmPath}/mvm-1.orphan`,
+      `${metadataSsmPath}/mvm-1.idle-detected-at`,
       `${metadataSsmPath}/mvm-1.tags`,
       `${metadataSsmPath}/mvm-1`,
       `${metadataSsmPath}/mvm-1.cleanup-requested-at`,
@@ -532,7 +559,7 @@ describe('MicroVM metadata lifecycle', () => {
       cleanupMicrovmIds: ['mvm-terminal', 'mvm-recent'],
       metadataById: new Map(),
     });
-    expect(deleteParameter).toHaveBeenCalledTimes(6);
+    expect(deleteParameter).toHaveBeenCalledTimes(7);
     expect(deleteParameter).toHaveBeenCalledWith(`${runnerTokenSsmPath}/mvm-missing`);
     expect(deleteParameter).toHaveBeenCalledWith(`${metadataSsmPath}/mvm-missing`);
     expect(deleteParameter).toHaveBeenCalledWith(`${metadataSsmPath}/mvm-missing.tags`);
@@ -560,6 +587,7 @@ describe('MicroVM metadata lifecycle', () => {
       `${runnerTokenSsmPath}/mvm-invalid`,
       `${metadataSsmPath}/mvm-invalid.github-runner-id`,
       `${metadataSsmPath}/mvm-invalid.orphan`,
+      `${metadataSsmPath}/mvm-invalid.idle-detected-at`,
       `${metadataSsmPath}/mvm-invalid.tags`,
       `${metadataSsmPath}/mvm-invalid`,
       `${metadataSsmPath}/mvm-invalid.cleanup-requested-at`,
@@ -604,7 +632,7 @@ describe('MicroVM metadata lifecycle', () => {
       cleanupMicrovmIds: [],
       metadataById: new Map(),
     });
-    expect(deleteParameter).toHaveBeenCalledTimes(6);
+    expect(deleteParameter).toHaveBeenCalledTimes(7);
   });
 
   it('marks a terminal tags-only companion for two-phase cleanup instead of deleting it immediately', async () => {

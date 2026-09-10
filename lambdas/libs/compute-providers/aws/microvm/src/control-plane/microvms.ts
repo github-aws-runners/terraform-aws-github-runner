@@ -207,6 +207,7 @@ export async function listMicrovmRunners(
       githubRunnerId: metadata.githubRunnerId,
       bypassRemoval: metadata.bypassRemoval ?? false,
       state: item.state,
+      ...(metadata.idleDetectedAt === undefined ? {} : { idleDetectedAt: metadata.idleDetectedAt }),
     });
   }
 

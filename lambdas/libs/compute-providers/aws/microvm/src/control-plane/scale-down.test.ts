@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { loadMicrovmProviderConfig } from './config';
 import { listMicrovmRunners, microvmBootTimeExceeded, terminateMicrovm } from './microvms';
 import { createMicrovmScaleDownProvider } from './scale-down';
-import { setMicrovmOrphan } from './runner-metadata';
+import { clearMicrovmIdleDetectedAt, setMicrovmIdleDetectedAt, setMicrovmOrphan } from './runner-metadata';
 
 vi.mock('./config', () => ({ loadMicrovmProviderConfig: vi.fn() }));
 vi.mock('./microvms', () => ({
@@ -11,7 +11,11 @@ vi.mock('./microvms', () => ({
   microvmBootTimeExceeded: vi.fn(),
   terminateMicrovm: vi.fn(),
 }));
-vi.mock('./runner-metadata', () => ({ setMicrovmOrphan: vi.fn() }));
+vi.mock('./runner-metadata', () => ({
+  clearMicrovmIdleDetectedAt: vi.fn(),
+  setMicrovmIdleDetectedAt: vi.fn(),
+  setMicrovmOrphan: vi.fn(),
+}));
 
 const imageArn = 'arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner';
 const metadataSsmPath = '/github-action-runners/unit-test/microvm-metadata';
@@ -28,6 +32,8 @@ beforeEach(() => {
   vi.mocked(loadMicrovmProviderConfig).mockReturnValue(providerConfig);
   vi.mocked(listMicrovmRunners).mockResolvedValue([]);
   vi.mocked(microvmBootTimeExceeded).mockReturnValue(false);
+  vi.mocked(clearMicrovmIdleDetectedAt).mockResolvedValue();
+  vi.mocked(setMicrovmIdleDetectedAt).mockResolvedValue();
   vi.mocked(setMicrovmOrphan).mockResolvedValue();
   vi.mocked(terminateMicrovm).mockResolvedValue();
 });
@@ -67,6 +73,17 @@ describe('createMicrovmScaleDownProvider', () => {
     expect(setMicrovmOrphan).toHaveBeenNthCalledWith(1, metadataSsmPath, 'mvm-1', true);
     expect(setMicrovmOrphan).toHaveBeenNthCalledWith(2, metadataSsmPath, 'mvm-1', false);
     expect(terminateMicrovm).toHaveBeenCalledWith('mvm-1', providerConfig);
+  });
+
+  it('persists and clears the idle-detection timestamp in durable metadata', async () => {
+    const provider = createMicrovmScaleDownProvider();
+    const detectedAt = '2026-09-10T16:00:00.000Z';
+
+    await provider.markIdle('mvm-1', detectedAt);
+    await provider.unmarkIdle('mvm-1');
+
+    expect(setMicrovmIdleDetectedAt).toHaveBeenCalledWith(metadataSsmPath, 'mvm-1', detectedAt);
+    expect(clearMicrovmIdleDetectedAt).toHaveBeenCalledWith(metadataSsmPath, 'mvm-1');
   });
 
   it('uses the MicroVM boot-time policy', () => {
