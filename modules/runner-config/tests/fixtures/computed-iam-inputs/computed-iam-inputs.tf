@@ -60,18 +60,18 @@ module "external_iam" {
     }
   }
 
-  github = {}
-
-  github_app_parameters = {
-    key_base64 = [{
-      name = "/github-runner/key-base64"
-      arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64"
-    }]
-    id = [{
-      name = "/github-runner/app-id"
-      arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id"
-    }]
-    installation_id = [null]
+  github = {
+    app_parameters = {
+      key_base64 = [{
+        name = "/github-runner/key-base64"
+        arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64"
+      }]
+      id = [{
+        name = "/github-runner/app-id"
+        arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id"
+      }]
+      installation_id = [null]
+    }
   }
 
   orchestration_provider = {
@@ -158,18 +158,18 @@ module "generated_policy" {
     }
   }
 
-  github = {}
-
-  github_app_parameters = {
-    key_base64 = [{
-      name = "/github-runner/key-base64"
-      arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64"
-    }]
-    id = [{
-      name = "/github-runner/app-id"
-      arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id"
-    }]
-    installation_id = [null]
+  github = {
+    app_parameters = {
+      key_base64 = [{
+        name = "/github-runner/key-base64"
+        arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64"
+      }]
+      id = [{
+        name = "/github-runner/app-id"
+        arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id"
+      }]
+      installation_id = [null]
+    }
   }
 
   orchestration_provider = {
