@@ -44,7 +44,7 @@
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.9.3",
     "vite": "^7.3.5",
-    "vitest": "^4.1.0"
+    "vitest": "^4.1.11"
   },
   "packageManager": "yarn@4.16.0"
 }
