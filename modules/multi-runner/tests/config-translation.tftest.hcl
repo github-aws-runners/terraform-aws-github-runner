@@ -404,7 +404,7 @@ run "empty_v2_map_translates_stable_inputs" {
       && local.stable_to_v2.github.user_agent == var.user_agent
       && local.stable_to_v2.lambda.artifact.s3.bucket == var.lambda_s3_bucket
       && local.stable_to_v2.orchestration_provider.webhook.lambda.scale.up.event_source_mapping.batch_size == var.lambda_event_source_mapping_batch_size
-      && local.stable_to_v2.orchestration_provider.webhook.lambda.scale.down.idle_config == []
+      && length(local.stable_to_v2.orchestration_provider.webhook.lambda.scale.down.idle_config) == 0
       && local.stable_to_v2.ssm.parameters.tags.owner == var.parameter_store_tags.owner
       && local.stable_to_v2.ssm.housekeeper.lambda.memory_size == var.runners_ssm_housekeeper.lambda_memory_size
       && local.stable_to_v2.compute_provider.aws.ec2.runner_binaries.s3.encryption.sse_algorithm == "aws:kms"
