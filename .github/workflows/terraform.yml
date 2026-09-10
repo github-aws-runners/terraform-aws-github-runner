@@ -23,23 +23,17 @@ jobs:
         include:
           - iac: terraform
             version: "1.5.6"
-            image: "hashicorp/terraform:1.5.6"
             command: terraform
           - iac: terraform
             version: latest
-            image: "hashicorp/terraform:latest"
             command: terraform
           - iac: tofu
             version: "1.11"
-            image: "ghcr.io/opentofu/opentofu:1.11"
             command: tofu
           - iac: tofu
             version: latest
-            image: "ghcr.io/opentofu/opentofu:latest"
             command: tofu
     runs-on: ubuntu-latest
-    container:
-      image: ${{ matrix.image }}
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
@@ -50,6 +44,21 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      - name: Setup Terraform
+        if: matrix.iac == 'terraform'
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: ${{ matrix.version }}
+          terraform_wrapper: false
+
+      - name: Setup OpenTofu
+        if: matrix.iac == 'tofu'
+        uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version: ${{ matrix.version }}
+          tofu_wrapper: false
+
       - name: "Fake zip files" # Validate will fail if it cannot find the zip files
         run: |
           touch lambdas/functions/webhook/webhook.zip
@@ -57,33 +66,35 @@ jobs:
           touch lambdas/functions/gh-agent-syncer/runner-binaries-syncer.zip
           touch lambdas/functions/ami-housekeeper/ami-housekeeper.zip
           touch lambdas/functions/termination-watcher/termination-watcher.zip
+
       - name: ${{ matrix.iac }} init
         env:
           IAC_COMMAND: ${{ matrix.command }}
         run: $IAC_COMMAND init -get -backend=false -input=false
+
       - name: Check ${{ matrix.iac }} formatting
         env:
           IAC_COMMAND: ${{ matrix.command }}
         run: $IAC_COMMAND fmt -recursive -check=true -write=false
         continue-on-error: ${{ matrix.version == 'latest' }}
+
       - name: Validate ${{ matrix.iac }}
         env:
           IAC_COMMAND: ${{ matrix.command }}
         run: $IAC_COMMAND validate
-      - if: matrix.iac == 'terraform' && contains(matrix.version, '1.5.')
-        name: Fix for actions/cache on alpine
-        run: apk add --no-cache tar
-        continue-on-error: true
+
       - if: matrix.iac == 'terraform' && contains(matrix.version, '1.5.')
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         name: Cache TFLint plugin dir
         with:
           path: ~/.tflint.d/plugins
           key: tflint-${{ hashFiles('.tflint.hcl') }}
+
       - name: Setup TFLint
         uses: terraform-linters/setup-tflint@6e1e0642c0289bd619021bf6b34e3c08ed1e005a # v6.3.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Run TFLint
         run: |
           tflint --init -c ${GITHUB_WORKSPACE}/.tflint.hcl
@@ -97,19 +108,15 @@ jobs:
         include:
           - iac: terraform
             version: "1.5.6"
-            image: "hashicorp/terraform:1.5.6"
             command: terraform
           - iac: terraform
             version: latest
-            image: "hashicorp/terraform:latest"
             command: terraform
           - iac: tofu
             version: "1.11"
-            image: "ghcr.io/opentofu/opentofu:1.11"
             command: tofu
           - iac: tofu
             version: latest
-            image: "ghcr.io/opentofu/opentofu:latest"
             command: tofu
         module:
           [
@@ -128,8 +135,6 @@ jobs:
       run:
         working-directory: modules/${{ matrix.module }}
     runs-on: ubuntu-latest
-    container:
-      image: ${{ matrix.image }}
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
@@ -139,33 +144,49 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      - name: Setup Terraform
+        if: matrix.iac == 'terraform'
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: ${{ matrix.version }}
+          terraform_wrapper: false
+
+      - name: Setup OpenTofu
+        if: matrix.iac == 'tofu'
+        uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version: ${{ matrix.version }}
+          tofu_wrapper: false
+
       - name: ${{ matrix.iac }} init
         env:
           IAC_COMMAND: ${{ matrix.command }}
         run: $IAC_COMMAND init -get -backend=false -input=false
+
       - name: Check ${{ matrix.iac }} formatting
         env:
           IAC_COMMAND: ${{ matrix.command }}
         run: $IAC_COMMAND fmt -recursive -check=true -write=false
         continue-on-error: ${{ matrix.version == 'latest' }}
+
       - name: Validate ${{ matrix.iac }}
         env:
           IAC_COMMAND: ${{ matrix.command }}
         run: $IAC_COMMAND validate
-      - if: matrix.iac == 'terraform' && matrix.version == '1.5.6'
-        name: Fix for actions/cache on alpine
-        run: apk add --no-cache tar
-        continue-on-error: true
+
       - if: matrix.iac == 'terraform' && matrix.version == '1.5.6'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         name: Cache TFLint plugin dir
         with:
           path: ~/.tflint.d/plugins
           key: tflint-${{ hashFiles('.tflint.hcl') }}
+
       - name: Setup TFLint
         uses: terraform-linters/setup-tflint@6e1e0642c0289bd619021bf6b34e3c08ed1e005a # v6.3.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Run TFLint
         working-directory: ${{ github.workspace }}
         env:
@@ -182,19 +203,15 @@ jobs:
         include:
           - iac: terraform
             version: "1.5.6"
-            image: "hashicorp/terraform:1.5.6"
             command: terraform
           - iac: terraform
             version: latest
-            image: "hashicorp/terraform:latest"
             command: terraform
           - iac: tofu
             version: "1.11"
-            image: "ghcr.io/opentofu/opentofu:1.11"
             command: tofu
           - iac: tofu
             version: latest
-            image: "ghcr.io/opentofu/opentofu:latest"
             command: tofu
         example:
           [
@@ -210,8 +227,6 @@ jobs:
       run:
         working-directory: examples/${{ matrix.example }}
     runs-on: ubuntu-latest
-    container:
-      image: ${{ matrix.image }}
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
@@ -221,33 +236,49 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      - name: Setup Terraform
+        if: matrix.iac == 'terraform'
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: ${{ matrix.version }}
+          terraform_wrapper: false
+
+      - name: Setup OpenTofu
+        if: matrix.iac == 'tofu'
+        uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version: ${{ matrix.version }}
+          tofu_wrapper: false
+
       - name: ${{ matrix.iac }} init
         env:
           IAC_COMMAND: ${{ matrix.command }}
         run: $IAC_COMMAND init -get -backend=false -input=false
+
       - name: Check ${{ matrix.iac }} formatting
         env:
           IAC_COMMAND: ${{ matrix.command }}
         run: $IAC_COMMAND fmt -recursive -check=true -write=false
         continue-on-error: ${{ matrix.version == 'latest' }}
+
       - name: Validate ${{ matrix.iac }}
         env:
           IAC_COMMAND: ${{ matrix.command }}
         run: $IAC_COMMAND validate
-      - if: matrix.iac == 'terraform' && contains(matrix.version, '1.5.')
-        name: Fix for actions/cache on alpine
-        run: apk add --no-cache tar
-        continue-on-error: true
+
       - if: matrix.iac == 'terraform' && contains(matrix.version, '1.5.')
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         name: Cache TFLint plugin dir
         with:
           path: ~/.tflint.d/plugins
           key: tflint-${{ hashFiles('.tflint.hcl') }}
+
       - name: Setup TFLint
         uses: terraform-linters/setup-tflint@6e1e0642c0289bd619021bf6b34e3c08ed1e005a # v6.3.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Run TFLint
         working-directory: ${{ github.workspace }}
         env:
@@ -268,8 +299,6 @@ jobs:
       run:
         working-directory: ${{ matrix.module }}
     runs-on: ubuntu-latest
-    container:
-      image: hashicorp/terraform@sha256:1d10ec4073f4ddbdf34a28540a3b9250852ab500cb1c53f68c8bd17d82f474d8 # 1.14
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
@@ -279,7 +308,15 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: "1.14"
+          terraform_wrapper: false
+
       - name: terraform init
         run: terraform init -backend=false -input=false
+
       - name: terraform test
         run: terraform test -test-directory=tests
