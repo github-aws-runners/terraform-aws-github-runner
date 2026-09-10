@@ -374,6 +374,7 @@ run "empty_v2_map_translates_stable_inputs" {
       && local.normalized_config.orchestration_provider.webhook.lambda.webhook.memory_size == var.webhook_lambda_memory_size
       && local.normalized_config.orchestration_provider.webhook.lambda.pool.timeout == var.pool_lambda_timeout
       && jsonencode(local.normalized_config.orchestration_provider.webhook.queue.encryption) == jsonencode(var.queue_encryption)
+      && local.normalized_config.orchestration_provider.scale_set == null
       && local.normalized_config.ssm.paths.root == "/${var.ssm_paths.root}/${var.prefix}"
       && local.normalized_config.ssm.paths.tokens == "${var.ssm_paths.runners}/tokens"
       && local.normalized_config.ssm.kms_key_id == var.kms_key_arn
@@ -409,6 +410,7 @@ run "empty_v2_map_translates_stable_inputs" {
       && local.stable_to_v2.ssm.housekeeper.lambda.memory_size == var.runners_ssm_housekeeper.lambda_memory_size
       && local.stable_to_v2.compute_provider.aws.ec2.runner_binaries.s3.encryption.sse_algorithm == "aws:kms"
       && local.stable_to_v2.compute_provider.aws.ec2.runner_binaries.s3.encryption.kms_master_key_id == "arn:aws:kms:eu-west-1:123456789012:key/binaries"
+      && local.stable_to_v2.orchestration_provider.scale_set == null
       && local.stable_to_v2.compute_provider.aws.ec2.instance_termination_watcher.enabled == var.instance_termination_watcher.enable
     )
     error_message = "The stable-to-experimental adapter must preserve nested legacy values without relying on the selector."
