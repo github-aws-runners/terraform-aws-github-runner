@@ -15,7 +15,10 @@ module "runner_configs" {
   )
   runner = each.value.runner
   github = merge(each.value.github, {
-    app_parameters = local.github_app_parameters
+    app_parameters = {
+      key_base64 = [local.github_app_parameters.key_base64]
+      id         = [local.github_app_parameters.id]
+    }
   })
   lambda = each.value.lambda
   orchestration_provider = {
