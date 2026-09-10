@@ -616,6 +616,17 @@ wait_for_ec2_termination() {
   done
 }
 
+terminate_ec2_instance_directly() {
+  instance_id="$1"
+  description="$2"
+  if ! aws --endpoint-url "$AWS_ENDPOINT_URL" ec2 terminate-instances \
+    --instance-ids "$instance_id" >/dev/null; then
+    echo "Failed to terminate $description through the MiniStack EC2 API." >&2
+    exit 1
+  fi
+  wait_for_ec2_termination "$instance_id" "$description"
+}
+
 invoke_lambda() {
   function_name="$1"
   payload="$2"
@@ -649,6 +660,11 @@ invoke_lambda() {
 # wait_for_optional_log_event "/aws/lambda/ministack-default-scale-down" "$scale_up_instance_id" \
 #   "Scale-down log recorded termination of the scale-up EC2 runner"
 
+# Temporary cleanup workaround for MiniStack CreateFleet issue #1678. Directly
+# terminate the test-created instance so the next scale-up is not blocked by
+# runners_maximum_count or mistaken for this instance.
+terminate_ec2_instance_directly "$scale_up_instance_id" "the standard scale-up instance"
+
 clear_mock_request_log
 send_webhook "$dynamic_fixture" "ministack-smoke-123457"
 wait_for_log_event "/aws/lambda/ministack-default-webhook" "123457" \
@@ -679,6 +695,8 @@ assert_ec2_instance_type "$dynamic_scale_up_instance_id" "m5.large"
 # wait_for_optional_log_event "/aws/lambda/ministack-default-scale-down" "$dynamic_scale_up_instance_id" \
 #   "Scale-down log recorded termination of the dynamic-label scale-up EC2 runner"
 
+terminate_ec2_instance_directly "$dynamic_scale_up_instance_id" "the dynamic-label scale-up instance"
+
 echo "MiniStack smoke chain 1 passed: API Gateway -> webhook -> EventBridge -> dispatcher -> SQS -> scale-up without and with EC2 dynamic label -> GitHub API mock."
 
 configure_empty_mock_runner_list
@@ -706,6 +724,8 @@ assert_ec2_runner_tags "$pool_instance_id" "pool-lambda" "the pool runner"
 # wait_for_ec2_termination "$pool_instance_id" "the pool instance"
 # wait_for_optional_log_event "/aws/lambda/ministack-default-scale-down" "$pool_instance_id" \
 #   "Scale-down log recorded termination of the pool EC2 runner"
+
+terminate_ec2_instance_directly "$pool_instance_id" "the pool instance"
 
 echo "MiniStack smoke chain 2 passed: pool -> GitHub API mock -> EC2 runner creation."
 echo "MiniStack smoke tests passed: scale-up and pool lifecycle checks completed; scale-down checks are temporarily disabled."
