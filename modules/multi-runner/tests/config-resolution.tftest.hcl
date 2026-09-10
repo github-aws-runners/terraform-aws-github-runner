@@ -447,3 +447,38 @@ run "v2_inputs_do_not_require_legacy_arguments" {
     error_message = "The v2 interface must work without the stable v1 GitHub App, VPC, subnet, or runner configuration inputs."
   }
 }
+
+run "v2_inputs_require_experimental_feature" {
+  command = plan
+
+  variables {
+    vpc_id     = "vpc-stable"
+    subnet_ids = ["subnet-stable"]
+
+    github_app = {
+      key_base64     = "stable-app-key"
+      id             = "stable-app-id"
+      webhook_secret = "stable-webhook-secret"
+    }
+
+    lambda_s3_bucket      = "test-lambda-artifacts"
+    runners_lambda_zip    = "README.md"
+    runners_lambda_s3_key = "runners.zip"
+    webhook_lambda_s3_key = "webhook.zip"
+    syncer_lambda_s3_key  = "runner-binaries-syncer.zip"
+
+    multi_runner_config = {
+      lane = {}
+    }
+  }
+
+  assert {
+    condition = (
+      !local.use_v2_config
+      && length(local.normalized_config.multi_runner_config) == 0
+      && length(module.runner_configs) == 0
+      && length(module.runners) == 0
+    )
+    error_message = "The v2 configuration must remain disabled unless multi-runner-v2 is explicitly enabled."
+  }
+}

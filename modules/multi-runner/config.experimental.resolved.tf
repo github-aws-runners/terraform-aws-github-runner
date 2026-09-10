@@ -44,7 +44,7 @@ locals {
     multi_runner_config    = local.stable_to_v2_multi_runner_config
   }
 
-  use_v2_config = length(local.v2_multi_runner_config) > 0
+  use_v2_config = contains(var.experimental_features, "multi-runner-v2")
 
   normalized_config = local.use_v2_config ? local.v2_config : local.stable_to_v2
 }
