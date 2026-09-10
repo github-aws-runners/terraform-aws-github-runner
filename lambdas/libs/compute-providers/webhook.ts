@@ -29,7 +29,6 @@ export function createDynamicLabelQueueSelector<TProvider extends string>(depend
   ): DynamicLabelDispatchTarget | undefined => {
     for (const queue of matches) {
       const { type: provider, dynamicLabels } = dependencies.resolveProvider(queue);
-
       if (!queue.matcherConfig.enableDynamicLabels) {
         logger.warn(
           `Queue ${queue.id} matches non-dynamic labels but does not allow dynamic labels; trying next match`,

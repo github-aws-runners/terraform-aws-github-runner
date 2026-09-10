@@ -1,9 +1,10 @@
-import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
+import { createEc2ComputeProviderLogger } from '../../logger';
 import type { CreateStartRunnerConfig, RunnerLabelResolution, ScaleUpComputeProvider } from '../../../../core';
 import yn from 'yn';
 
 import type { Ec2RunnerProvisioningOperations } from '../runners';
 import type { Ec2OverrideConfig } from '../runners.d';
+import { EC2_OVERRIDE_LABEL_PREFIX } from '../constants';
 import {
   parseEc2OverrideConfig,
   shouldLoadLaunchTemplateBlockDeviceName,
@@ -12,7 +13,7 @@ import {
 import { createRunners, loadEc2ProviderConfig } from './runner-creation';
 import type { CreateEC2RunnerConfig } from './runner-creation';
 
-const logger = createChildLogger('ec2-scale-up');
+const logger = createEc2ComputeProviderLogger('ec2-scale-up');
 
 interface Ec2ScaleUpState {
   ec2OverrideConfig?: Ec2OverrideConfig;
@@ -30,9 +31,9 @@ async function resolveEc2ScaleUpRunnerLabels(
   messageLabels: string[],
 ): Promise<RunnerLabelResolution<Ec2ScaleUpState>> {
   const trimmedLabels = messageLabels.map((label) => label.trim());
-  const dynamicEC2Labels = trimmedLabels.filter((label) => label.startsWith('ghr-ec2-'));
+  const dynamicEC2Labels = trimmedLabels.filter((label) => label.startsWith(EC2_OVERRIDE_LABEL_PREFIX));
   const nonEc2DynamicLabels = trimmedLabels.filter(
-    (label) => label.startsWith('ghr-') && !label.startsWith('ghr-ec2-'),
+    (label) => label.startsWith('ghr-') && !label.startsWith(EC2_OVERRIDE_LABEL_PREFIX),
   );
   const runnerLabels = [...nonEc2DynamicLabels, ...dynamicEC2Labels];
   let ec2OverrideConfig: Ec2OverrideConfig | undefined;
