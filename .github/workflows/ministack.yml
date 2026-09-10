@@ -47,8 +47,8 @@ jobs:
       fail-fast: false
       matrix:
         iac:
-          - name: terraform-1.4.0
-            version: "1.4.0"
+          - name: terraform-1.5.6
+            version: "1.5.6"
             binary: terraform
             lockfile: .terraform.lock.hcl.terraform
           - name: terraform-latest
