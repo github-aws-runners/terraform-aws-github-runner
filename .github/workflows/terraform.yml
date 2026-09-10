@@ -119,18 +119,16 @@ jobs:
             version: latest
             command: tofu
         module:
-          [
-            "ami-housekeeper",
-            "download-lambda",
-            "lambda",
-            "multi-runner",
-            "runner-binaries-syncer",
-            "runners",
-            "setup-iam-permissions",
-            "ssm",
-            "termination-watcher",
-            "webhook",
-          ]
+          - ami-housekeeper
+          - download-lambda
+          - lambda
+          - multi-runner
+          - runner-binaries-syncer
+          - runners
+          - setup-iam-permissions
+          - ssm
+          - termination-watcher
+          - webhook
     defaults:
       run:
         working-directory: modules/${{ matrix.module }}
