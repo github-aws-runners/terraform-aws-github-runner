@@ -16,8 +16,9 @@ module "runner_configs" {
   runner = each.value.runner
   github = merge(each.value.github, {
     app_parameters = {
-      key_base64 = [local.github_app_parameters.key_base64]
-      id         = [local.github_app_parameters.id]
+      key_base64      = [local.github_app_parameters.key_base64]
+      id              = [local.github_app_parameters.id]
+      installation_id = [null]
     }
   })
   lambda = each.value.lambda
