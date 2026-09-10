@@ -54,7 +54,6 @@ jobs:
           - ephemeral
           - multi-runner
           - multi-runner-v2
-          - multi-runner-scale-set
           - termination-watcher
         terraform:
           - "1.4.0"

@@ -54,38 +54,28 @@ output "binaries_syncer_map" {
 }
 
 output "webhook" {
-  value = {
-    gateway          = module.webhook.gateway
-    lambda           = module.webhook.lambda
-    lambda_log_group = module.webhook.lambda_log_group
-    lambda_role      = module.webhook.role
-    endpoint         = "${module.webhook.gateway.api_endpoint}/${module.webhook.endpoint_relative_path}"
-    webhook          = module.webhook.webhook
-    dispatcher       = local.effective_config.orchestration_provider.webhook.eventbridge.enabled ? module.webhook.dispatcher : null
-    eventbridge      = local.effective_config.orchestration_provider.webhook.eventbridge.enabled ? module.webhook.eventbridge : null
+  value = length(module.webhook) == 0 ? null : {
+    gateway          = module.webhook[0].gateway
+    lambda           = module.webhook[0].lambda
+    lambda_log_group = module.webhook[0].lambda_log_group
+    lambda_role      = module.webhook[0].role
+    endpoint         = "${module.webhook[0].gateway.api_endpoint}/${module.webhook[0].endpoint_relative_path}"
+    webhook          = module.webhook[0].webhook
+    dispatcher       = length(module.webhook) > 0 && try(local.effective_config.orchestration_provider.webhook.eventbridge.enabled, false) ? module.webhook[0].dispatcher : null
+    eventbridge      = length(module.webhook) > 0 && try(local.effective_config.orchestration_provider.webhook.eventbridge.enabled, false) ? module.webhook[0].eventbridge : null
   }
 }
 
 output "ssm_parameters" {
-  value = merge(
-    {
-      id             = { name = local.github_app_parameters.id[0].name, arn = local.github_app_parameters.id[0].arn }
-      key_base64     = { name = local.github_app_parameters.key_base64[0].name, arn = local.github_app_parameters.key_base64[0].arn }
-      webhook_secret = { name = local.github_app_parameters.webhook_secret.name, arn = local.github_app_parameters.webhook_secret.arn }
-    },
-    { for idx, v in local.github_app_parameters.id : "github_app_id_${idx}" => {
-      name = v.name
-      arn  = v.arn
-    } },
-    { for idx, v in local.github_app_parameters.key_base64 : "github_app_key_base64_${idx}" => {
-      name = v.name
-      arn  = v.arn
-    } },
-    { "github_app_webhook_secret" = {
-      name = local.github_app_parameters.webhook_secret.name
-      arn  = local.github_app_parameters.webhook_secret.arn
-    } },
-  )
+  value = {
+    id             = { name = local.github_app_parameters.id.name, arn = local.github_app_parameters.id.arn }
+    key_base64     = { name = local.github_app_parameters.key_base64.name, arn = local.github_app_parameters.key_base64.arn }
+    webhook_secret = { name = local.github_app_parameters.webhook_secret.name, arn = local.github_app_parameters.webhook_secret.arn }
+    additional_apps_manifest = local.github_app_parameters.additional_apps_manifest != null ? {
+      name = local.github_app_parameters.additional_apps_manifest.name
+      arn  = local.github_app_parameters.additional_apps_manifest.arn
+    } : null
+  }
 }
 
 output "instance_termination_watcher" {
