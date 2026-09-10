@@ -34,7 +34,6 @@ No inputs.
 
 | Name | Description |
 |------|-------------|
-| <a name="output_external_installation_id_parameter_names"></a> [external\_installation\_id\_parameter\_names](#output\_external\_installation\_id\_parameter\_names) | n/a |
 | <a name="output_external_role_runner_count"></a> [external\_role\_runner\_count](#output\_external\_role\_runner\_count) | n/a |
 | <a name="output_generated_policy_role_runner_count"></a> [generated\_policy\_role\_runner\_count](#output\_generated\_policy\_role\_runner\_count) | n/a |
 <!-- END_TF_DOCS -->
