@@ -230,3 +230,7 @@ output "external_role_runner_count" {
 output "generated_policy_role_runner_count" {
   value = module.generated_policy.runner.role == null ? 0 : 1
 }
+
+output "external_installation_id_parameter_names" {
+  value = module.external_iam.orchestration_provider.webhook.job_retry.lambda.function.environment[0].variables["PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME"]
+}
