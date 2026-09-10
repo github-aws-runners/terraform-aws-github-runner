@@ -71,6 +71,7 @@ variable "tags" {
   default     = {}
 }
 
+# tflint-ignore: terraform_unused_declarations
 variable "experimental_features" {
   description = <<-EOT
     Explicit acknowledgement for opt-in features whose schemas may change

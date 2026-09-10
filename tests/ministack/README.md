@@ -2,7 +2,7 @@
 
 The MiniStack workflow runs the `base`, `prebuilt`, `default`, `ephemeral`,
 `multi-runner`, `multi-runner-v2`, and `termination-watcher` examples directly
-with Terraform 1.4.0 and the latest Terraform release.
+with Terraform 1.5.6 and the latest Terraform release.
 The examples with input variables get their inputs from their own tfvars files
 in this directory. The `termination-watcher` example has no input variables
 and uses the configuration checked into the example itself. No override files,
