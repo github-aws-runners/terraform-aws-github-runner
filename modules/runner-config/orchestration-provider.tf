@@ -25,9 +25,7 @@ module "orchestration_webhook" {
 
   config = var.orchestration_provider.webhook
   runner = var.runner
-  github = merge(var.github, {
-    app_parameters = var.github_app_parameters
-  })
+  github = var.github
   lambda = {
     artifact           = var.lambda.artifact
     runtime            = var.lambda.runtime
