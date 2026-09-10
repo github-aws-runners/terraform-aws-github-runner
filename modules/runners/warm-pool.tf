@@ -71,3 +71,13 @@ resource "aws_iam_role_policy" "pool_warm_pool" {
     environment        = var.prefix
   })
 }
+
+# Lets a persistent-spot runner cancel its own spot request before self-terminating (ephemeral
+# runners), so a terminated runner does not leave the request active to relaunch a replacement.
+resource "aws_iam_role_policy" "runner_spot_cancel" {
+  count = var.warm_pool_config.enabled && var.instance_target_capacity_type == "spot" && length(aws_iam_role.runner) > 0 ? 1 : 0
+
+  name   = "warm-pool-spot-cancel"
+  role   = aws_iam_role.runner[0].name
+  policy = file("${path.module}/policies/instance-spot-cancel.json")
+}

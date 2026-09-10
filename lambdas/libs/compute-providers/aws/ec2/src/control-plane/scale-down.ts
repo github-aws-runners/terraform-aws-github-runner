@@ -134,6 +134,58 @@ async function evictStaleWarmInstances(ec2Operations: Ec2RunnerResourceOperation
       logger.warn(`Failed to process warm pool eviction for owner '${owner}'`, { error: e });
     }
   }
+
+  await reconcileStalePersistentSpotRequests(ec2Operations, environment, ec2runners);
+}
+
+/**
+ * Cancels persistent spot requests that no longer back a managed runner and terminates the untagged
+ * replacements the EC2 Spot service launches to fulfil them. This is the safety net for terminations
+ * that bypass the lambda — most importantly ephemeral runners that self-terminate after their job,
+ * which would otherwise leave the persistent request active and relaunch an untagged instance.
+ */
+async function reconcileStalePersistentSpotRequests(
+  ec2Operations: Ec2RunnerResourceOperations,
+  environment: string,
+  managedRunners: RunnerInfo[],
+): Promise<void> {
+  try {
+    const requests = await ec2Operations.listActivePersistentSpotRequests(environment);
+    if (requests.length === 0) {
+      return;
+    }
+
+    const managedInstanceIds = new Set(managedRunners.map((runner) => runner.id));
+    const staleRequestIds: string[] = [];
+    const strayInstanceIds: string[] = [];
+    for (const request of requests) {
+      if (request.instanceId && managedInstanceIds.has(request.instanceId)) {
+        continue; // still backing a running or warm (stopped) managed runner
+      }
+      staleRequestIds.push(request.spotInstanceRequestId);
+      if (request.instanceId) {
+        strayInstanceIds.push(request.instanceId);
+      }
+    }
+
+    if (staleRequestIds.length === 0) {
+      return;
+    }
+
+    // Cancel first so a request cannot relaunch a replacement while we clean up.
+    await ec2Operations.cancelSpotRequests(staleRequestIds);
+    for (const instanceId of strayInstanceIds) {
+      await ec2Operations.terminate(instanceId).catch((e) => {
+        logger.warn(`Failed to terminate stray spot replacement '${instanceId}'`, { error: e });
+      });
+    }
+    logger.info(
+      `Reconciled ${staleRequestIds.length} stale persistent spot request(s); ` +
+        `terminated ${strayInstanceIds.length} stray instance(s).`,
+    );
+  } catch (e) {
+    logger.warn('Failed to reconcile stale persistent spot requests.', { error: e });
+  }
 }
 
 export function createEc2ScaleDownCapability(

@@ -26,6 +26,8 @@ const ec2Operations = {
   start: vi.fn<Ec2RunnerResourceOperations['start']>(),
   tag: vi.fn<Ec2RunnerResourceOperations['tag']>(),
   untag: vi.fn<Ec2RunnerResourceOperations['untag']>(),
+  listActivePersistentSpotRequests: vi.fn<Ec2RunnerResourceOperations['listActivePersistentSpotRequests']>(),
+  cancelSpotRequests: vi.fn<Ec2RunnerResourceOperations['cancelSpotRequests']>(),
 } satisfies Ec2RunnerResourceOperations;
 const createStartRunnerConfig = vi.fn<CreateStartRunnerConfig>();
 const capability = createEc2PoolCapability(ec2Operations, createStartRunnerConfig);

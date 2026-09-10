@@ -195,6 +195,13 @@ if ($agent_mode -eq "ephemeral") {
     }
 
     Write-Host "Terminating instance"
+    # Cancel a persistent spot request (warm pool) before self-terminating, otherwise the request
+    # stays active and the EC2 Spot service relaunches an untagged replacement instance.
+    $spotRequestId = aws ec2 describe-instances --instance-ids "$InstanceId" --region "$Region" --query "Reservations[].Instances[].SpotInstanceRequestId" --output text
+    if ($spotRequestId -and $spotRequestId -ne "None") {
+        Write-Host "Cancelling spot request $spotRequestId"
+        aws ec2 cancel-spot-instance-requests --spot-instance-request-ids "$spotRequestId" --region "$Region"
+    }
     aws ec2 terminate-instances --instance-ids "$InstanceId" --region "$Region"
 } else {
     Write-Host  "Installing the runner as a service"

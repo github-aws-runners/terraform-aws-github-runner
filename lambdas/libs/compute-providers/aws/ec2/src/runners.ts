@@ -41,6 +41,12 @@ export interface Ec2RunnerRequestContext {
   readonly signal: AbortSignal | undefined;
 }
 
+export interface Ec2SpotRequestInfo {
+  spotInstanceRequestId: string;
+  instanceId?: string;
+  state?: string;
+}
+
 export interface Ec2RunnerResourceOperations {
   list(filters?: Ec2ListRunnerFilters): Promise<RunnerInfo[]>;
   create(runnerParameters: RunnerInputParameters): Promise<Ec2RunnerCreateResult>;
@@ -49,6 +55,9 @@ export interface Ec2RunnerResourceOperations {
   start(instanceId: string): Promise<void>;
   tag(instanceId: string, tags: Tag[]): Promise<void>;
   untag(instanceId: string, tags: Tag[]): Promise<void>;
+  /** Active/open persistent spot requests tagged for the given environment. */
+  listActivePersistentSpotRequests(environment: string): Promise<Ec2SpotRequestInfo[]>;
+  cancelSpotRequests(spotInstanceRequestIds: string[]): Promise<void>;
 }
 
 export interface Ec2RunnerProvisioningOperations extends Ec2RunnerResourceOperations {
@@ -79,6 +88,9 @@ export function createEc2RunnerClient(ec2Client: EC2Client): Ec2RunnerClient {
       tag: (instanceId, tags) => runWithRequestSignal(signal, () => tagEc2Runner(ec2Client, instanceId, tags, signal)),
       untag: (instanceId, tags) =>
         runWithRequestSignal(signal, () => untagEc2Runner(ec2Client, instanceId, tags, signal)),
+      listActivePersistentSpotRequests: (environment) =>
+        runWithRequestSignal(signal, () => listActivePersistentSpotRequests(ec2Client, environment, signal)),
+      cancelSpotRequests: (ids) => runWithRequestSignal(signal, () => cancelSpotRequests(ec2Client, ids, signal)),
       getDefaultBlockDeviceNameFromLaunchTemplate: (launchTemplateName) =>
         runWithRequestSignal(signal, () =>
           getDefaultBlockDeviceNameFromLaunchTemplate(ec2Client, launchTemplateName, signal),
@@ -217,6 +229,43 @@ async function cancelSpotRequestForInstance(
   } catch (e) {
     logger.warn(`Failed to cancel spot request for '${instanceId}'; continuing with termination.`, { error: e });
   }
+}
+
+async function listActivePersistentSpotRequests(
+  ec2Client: EC2Client,
+  environment: string,
+  signal: AbortSignal | undefined,
+): Promise<Ec2SpotRequestInfo[]> {
+  const result = await ec2Client.send(
+    new DescribeSpotInstanceRequestsCommand({
+      Filters: [
+        { Name: 'tag:ghr:environment', Values: [environment] },
+        { Name: 'state', Values: ['active', 'open'] },
+      ],
+    }),
+    { abortSignal: signal },
+  );
+  return (result.SpotInstanceRequests ?? [])
+    .filter((request) => request.Type === 'persistent' && Boolean(request.SpotInstanceRequestId))
+    .map((request) => ({
+      spotInstanceRequestId: request.SpotInstanceRequestId as string,
+      instanceId: request.InstanceId,
+      state: request.State,
+    }));
+}
+
+async function cancelSpotRequests(
+  ec2Client: EC2Client,
+  spotInstanceRequestIds: string[],
+  signal: AbortSignal | undefined,
+): Promise<void> {
+  if (spotInstanceRequestIds.length === 0) {
+    return;
+  }
+  await ec2Client.send(new CancelSpotInstanceRequestsCommand({ SpotInstanceRequestIds: spotInstanceRequestIds }), {
+    abortSignal: signal,
+  });
+  logger.info(`Cancelled spot request(s): ${spotInstanceRequestIds.join(',')}`);
 }
 
 async function stopEc2Runner(ec2Client: EC2Client, instanceId: string, signal: AbortSignal | undefined): Promise<void> {
@@ -748,7 +797,11 @@ async function createPersistentSpotInstances(
     TagSpecifications: [
       { ResourceType: 'instance', Tags: tags },
       { ResourceType: 'volume', Tags: tags },
-      { ResourceType: 'spot-instances-request', Tags: tags },
+      {
+        ResourceType: 'spot-instances-request',
+        // ghr:environment lets scale-down reconcile stray persistent requests for this environment.
+        Tags: [...tags, { Key: 'ghr:environment', Value: runnerParameters.environment }],
+      },
     ],
   });
 

@@ -102,6 +102,20 @@ cleanup() {
   if [ "$agent_mode" = "ephemeral" ] || [ "$exit_code" -ne 0 ]; then
     echo "Stopping CloudWatch service"
     systemctl stop amazon-cloudwatch-agent.service || true
+    # Cancel a persistent spot request (warm pool) before self-terminating, otherwise the request
+    # stays active and the EC2 Spot service relaunches an untagged replacement instance.
+    spot_request_id=$(aws ec2 describe-instances \
+      --instance-ids "$instance_id" \
+      --region "$region" \
+      --query 'Reservations[].Instances[].SpotInstanceRequestId' \
+      --output text 2>/dev/null || true)
+    if [ -n "$spot_request_id" ] && [ "$spot_request_id" != "None" ]; then
+      echo "Cancelling spot request $spot_request_id"
+      aws ec2 cancel-spot-instance-requests \
+        --spot-instance-request-ids "$spot_request_id" \
+        --region "$region" \
+        || true
+    fi
     echo "Terminating instance"
     aws ec2 terminate-instances \
       --instance-ids "$instance_id" \

@@ -32,6 +32,8 @@ const ec2Operations: Ec2RunnerProvisioningOperations = {
   start: mockStart,
   tag: mockTag,
   untag: mockUntag,
+  listActivePersistentSpotRequests: vi.fn<Ec2RunnerProvisioningOperations['listActivePersistentSpotRequests']>(),
+  cancelSpotRequests: vi.fn<Ec2RunnerProvisioningOperations['cancelSpotRequests']>(),
   getDefaultBlockDeviceNameFromLaunchTemplate: mockGetDefaultBlockDeviceNameFromLaunchTemplate,
 };
 const capability = createEc2ScaleUpCapability(ec2Operations, mockCreateStartRunnerConfig);
