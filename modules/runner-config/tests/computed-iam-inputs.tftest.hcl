@@ -32,4 +32,5 @@ run "computed_external_values_keep_plan_shape_known" {
     condition     = output.generated_policy_role_runner_count == 1
     error_message = "A computed managed-policy ARN under a caller-known map key must keep attachment planning stable."
   }
+
 }

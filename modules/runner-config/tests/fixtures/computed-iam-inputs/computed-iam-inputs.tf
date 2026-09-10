@@ -62,15 +62,33 @@ module "external_iam" {
 
   github = {
     app_parameters = {
-      key_base64 = [{
-        name = "/github-runner/key-base64"
-        arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64"
-      }]
-      id = [{
-        name = "/github-runner/app-id"
-        arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id"
-      }]
-      installation_id = [null]
+      key_base64 = [
+        {
+          name = "/github-runner/key-base64"
+          arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64"
+        },
+        {
+          name = "/github-runner/additional-app-key-base64"
+          arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/additional-app-key-base64"
+        },
+      ]
+      id = [
+        {
+          name = "/github-runner/app-id"
+          arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id"
+        },
+        {
+          name = "/github-runner/additional-app-id"
+          arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/additional-app-id"
+        },
+      ]
+      installation_id = [
+        null,
+        {
+          name = "/github-runner/additional-app-installation-id"
+          arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/additional-app-installation-id"
+        },
+      ]
     }
   }
 
