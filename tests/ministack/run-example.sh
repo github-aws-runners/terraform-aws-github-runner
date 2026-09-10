@@ -12,6 +12,15 @@ export AWS_EC2_METADATA_DISABLED="${AWS_EC2_METADATA_DISABLED:-true}"
 action="${1:-}"
 example="${2:-}"
 tfvars_file="${3:-${MINISTACK_TFVARS_FILE:-}}"
+iac_binary="${IAC_BINARY:-terraform}"
+
+case "$iac_binary" in
+  terraform | tofu) ;;
+  *)
+    echo "Supported IaC binaries are: terraform, tofu" >&2
+    exit 64
+    ;;
+esac
 
 case "$example" in
   base | prebuilt | default | ephemeral | multi-runner | multi-runner-v2)
@@ -259,32 +268,32 @@ case "$action" in
     ;;
 esac
 
-terraform_init() {
-  terraform -chdir="$example_root" init -backend=false -input=false -lockfile=readonly
+iac_init() {
+  "$iac_binary" -chdir="$example_root" init -backend=false -input=false -lockfile=readonly
 }
 
-terraform_example() {
+iac_example() {
   if [ "$use_tfvars" = true ]; then
-    terraform -chdir="$example_root" "$@" -var-file="$tfvars_file"
+    "$iac_binary" -chdir="$example_root" "$@" -var-file="$tfvars_file"
   else
-    terraform -chdir="$example_root" "$@"
+    "$iac_binary" -chdir="$example_root" "$@"
   fi
 }
 
 case "$action" in
   init)
-    terraform_init
+    iac_init
     ;;
   plan)
-    terraform_init
-    terraform_example plan -input=false
+    iac_init
+    iac_example plan -input=false
     ;;
   apply)
-    terraform_init
-    terraform_example apply -auto-approve -input=false
+    iac_init
+    iac_example apply -auto-approve -input=false
     ;;
   destroy)
-    terraform_init
-    terraform_example destroy -auto-approve -input=false
+    iac_init
+    iac_example destroy -auto-approve -input=false
     ;;
 esac
