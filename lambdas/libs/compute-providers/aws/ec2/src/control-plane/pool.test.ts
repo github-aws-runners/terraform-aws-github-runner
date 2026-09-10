@@ -22,6 +22,8 @@ const ec2Operations = {
   list: vi.fn<Ec2RunnerResourceOperations['list']>(),
   create: vi.fn<Ec2RunnerResourceOperations['create']>(),
   terminate: vi.fn<Ec2RunnerResourceOperations['terminate']>(),
+  stop: vi.fn<Ec2RunnerResourceOperations['stop']>(),
+  start: vi.fn<Ec2RunnerResourceOperations['start']>(),
   tag: vi.fn<Ec2RunnerResourceOperations['tag']>(),
   untag: vi.fn<Ec2RunnerResourceOperations['untag']>(),
 } satisfies Ec2RunnerResourceOperations;

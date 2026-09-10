@@ -5,7 +5,9 @@
       "Effect": "Allow",
       "Action": [
         "ec2:DescribeInstances",
-        "ec2:DescribeTags"
+        "ec2:DescribeTags",
+        "ec2:DescribeSpotInstanceRequests",
+        "ec2:CancelSpotInstanceRequests"
       ],
       "Resource": [
         "*"

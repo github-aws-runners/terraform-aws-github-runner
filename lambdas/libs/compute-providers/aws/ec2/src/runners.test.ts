@@ -5,11 +5,13 @@ import {
   type CreateFleetInstance,
   type CreateFleetResult,
   CreateTagsCommand,
+  CancelSpotInstanceRequestsCommand,
   type DefaultTargetCapacityType,
   DeleteTagsCommand,
   DescribeInstancesCommand,
   type DescribeInstancesResult,
   DescribeLaunchTemplateVersionsCommand,
+  DescribeSpotInstanceRequestsCommand,
   EC2Client,
   FleetOnDemandAllocationStrategy,
   RunInstancesCommand,
@@ -272,6 +274,33 @@ describe('terminate runner', () => {
       InstanceIds: [runner.id],
     });
   });
+
+  it('cancels the associated persistent spot request before terminating', async () => {
+    mockEC2Client.reset();
+    mockEC2Client.on(DescribeSpotInstanceRequestsCommand).resolves({
+      SpotInstanceRequests: [{ SpotInstanceRequestId: 'sir-1', State: 'active' }],
+    });
+    mockEC2Client.on(CancelSpotInstanceRequestsCommand).resolves({});
+    mockEC2Client.on(TerminateInstancesCommand).resolves({});
+
+    await ec2Operations.terminate('instance-3');
+
+    expect(mockEC2Client).toHaveReceivedCommandWith(CancelSpotInstanceRequestsCommand, {
+      SpotInstanceRequestIds: ['sir-1'],
+    });
+    expect(mockEC2Client).toHaveReceivedCommandWith(TerminateInstancesCommand, { InstanceIds: ['instance-3'] });
+  });
+
+  it('terminates without cancelling when the instance has no spot request', async () => {
+    mockEC2Client.reset();
+    mockEC2Client.on(DescribeSpotInstanceRequestsCommand).resolves({ SpotInstanceRequests: [] });
+    mockEC2Client.on(TerminateInstancesCommand).resolves({});
+
+    await ec2Operations.terminate('instance-4');
+
+    expect(mockEC2Client).not.toHaveReceivedCommand(CancelSpotInstanceRequestsCommand);
+    expect(mockEC2Client).toHaveReceivedCommandWith(TerminateInstancesCommand, { InstanceIds: ['instance-4'] });
+  });
 });
 
 describe('tag runner', () => {
@@ -384,6 +413,39 @@ describe('create runner', () => {
         type: type,
       }),
     });
+  });
+
+  it('launches persistent spot instances via RunInstances when enablePersistentSpot is set for spot', async () => {
+    mockEC2Client.on(RunInstancesCommand).resolves({ Instances: [{ InstanceId: 'i-persistent' }] });
+
+    const result = await ec2Operations.create({
+      ...createRunnerConfig({ ...defaultRunnerConfig, capacityType: 'spot', maxSpotPrice: '0.5' }),
+      enablePersistentSpot: true,
+    });
+
+    expect(mockEC2Client).toHaveReceivedCommandWith(RunInstancesCommand, {
+      InstanceInitiatedShutdownBehavior: 'stop',
+      InstanceMarketOptions: {
+        MarketType: 'spot',
+        SpotOptions: {
+          SpotInstanceType: 'persistent',
+          InstanceInterruptionBehavior: 'stop',
+          MaxPrice: '0.5',
+        },
+      },
+    });
+    expect(mockEC2Client).not.toHaveReceivedCommand(CreateFleetCommand);
+    expect(result.instances).toEqual(['i-persistent']);
+  });
+
+  it('does not use persistent spot for on-demand capacity even when enablePersistentSpot is set', async () => {
+    await ec2Operations.create({
+      ...createRunnerConfig({ ...defaultRunnerConfig, capacityType: 'on-demand' }),
+      enablePersistentSpot: true,
+    });
+
+    expect(mockEC2Client).toHaveReceivedCommand(CreateFleetCommand);
+    expect(mockEC2Client).not.toHaveReceivedCommand(RunInstancesCommand);
   });
 
   it('calls create fleet of 2 instances with the correct config for org ', async () => {
@@ -1412,6 +1474,10 @@ function expectedCreateFleetRequest(expectedValues: ExpectedFleetRequestValues):
       },
       {
         ResourceType: 'volume',
+        Tags: tags,
+      },
+      {
+        ResourceType: 'spot-instances-request',
         Tags: tags,
       },
       {

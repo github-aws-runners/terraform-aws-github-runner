@@ -72,10 +72,7 @@ async function retireEc2Runner(ec2Operations: Ec2RunnerResourceOperations, runne
  * relative to the current launch template AMI. Owners are gathered from running *and* stopped instances so
  * owners with only warm instances are still evicted.
  */
-async function evictStaleWarmInstances(
-  ec2Operations: Ec2RunnerResourceOperations,
-  environment: string,
-): Promise<void> {
+async function evictStaleWarmInstances(ec2Operations: Ec2RunnerResourceOperations, environment: string): Promise<void> {
   const warmPoolConfig = getWarmPoolConfig();
   if (!warmPoolConfig.enabled) {
     return;

@@ -6,6 +6,8 @@ import {
   DeleteTagsCommand,
   DescribeInstancesCommand,
   DescribeInstancesResult,
+  CancelSpotInstanceRequestsCommand,
+  DescribeSpotInstanceRequestsCommand,
   RunInstancesCommand,
   type RunInstancesCommandInput,
   RunInstancesCommandOutput,
@@ -162,6 +164,7 @@ function getRunnerInfo(runningInstances: DescribeInstancesResult) {
             githubRunnerId: i.Tags?.find((e) => e.Key === 'ghr:github_runner_id')?.Value as string,
             bypassRemoval: i.Tags?.find((e) => e.Key === 'ghr:bypass-removal')?.Value === 'true',
             idleDetectedAt: i.Tags?.find((e) => e.Key === 'ghr:idle_detected_at')?.Value,
+            spotInstanceRequestId: i.SpotInstanceRequestId,
           });
         }
       }
@@ -175,16 +178,48 @@ async function terminateEc2Runner(
   instanceId: string,
   signal: AbortSignal | undefined,
 ): Promise<void> {
+  // Release any persistent spot request first so terminating the instance does not leave an active
+  // request that the EC2 Spot service would fulfil by launching an untagged replacement.
+  await cancelSpotRequestForInstance(ec2Client, instanceId, signal);
   logger.debug(`Runner '${instanceId}' will be terminated.`);
   await ec2Client.send(new TerminateInstancesCommand({ InstanceIds: [instanceId] }), { abortSignal: signal });
   logger.debug(`Runner ${instanceId} has been terminated.`);
 }
 
-async function stopEc2Runner(
+/**
+ * Cancels the spot instance request associated with an instance, if any. Persistent spot requests
+ * (used by the warm pool) stay active after their instance is terminated and would otherwise relaunch
+ * a replacement. Best-effort: failures are logged and swallowed so termination still proceeds.
+ */
+async function cancelSpotRequestForInstance(
   ec2Client: EC2Client,
   instanceId: string,
   signal: AbortSignal | undefined,
 ): Promise<void> {
+  try {
+    const described = await ec2Client.send(
+      new DescribeSpotInstanceRequestsCommand({ Filters: [{ Name: 'instance-id', Values: [instanceId] }] }),
+      { abortSignal: signal },
+    );
+    const requestIds = (described?.SpotInstanceRequests ?? [])
+      .filter((request) => request.State === 'active' || request.State === 'open')
+      .map((request) => request.SpotInstanceRequestId)
+      .filter((id): id is string => Boolean(id));
+
+    if (requestIds.length === 0) {
+      return;
+    }
+
+    await ec2Client.send(new CancelSpotInstanceRequestsCommand({ SpotInstanceRequestIds: requestIds }), {
+      abortSignal: signal,
+    });
+    logger.info(`Cancelled spot request(s) for '${instanceId}': ${requestIds.join(',')}`);
+  } catch (e) {
+    logger.warn(`Failed to cancel spot request for '${instanceId}'; continuing with termination.`, { error: e });
+  }
+}
+
+async function stopEc2Runner(ec2Client: EC2Client, instanceId: string, signal: AbortSignal | undefined): Promise<void> {
   logger.info(`Runner '${instanceId}' will be stopped.`);
   await ec2Client.send(new StopInstancesCommand({ InstanceIds: [instanceId] }), { abortSignal: signal });
   logger.info(`Runner '${instanceId}' has been stopped.`);
@@ -600,6 +635,12 @@ async function createInstances(
     tags.push({ Key: 'ghr:trace_id', Value: traceId! });
   }
 
+  // One-time CreateFleet spot instances cannot be stopped; the warm pool needs stoppable capacity.
+  // When enabled, launch persistent spot instances via RunInstances instead.
+  if (runnerParameters.enablePersistentSpot && runnerParameters.ec2instanceCriteria.targetCapacityType === 'spot') {
+    return await createPersistentSpotInstances(runnerParameters, amiIdOverride, ec2Client, tags, signal);
+  }
+
   const targetCapacityType = runnerParameters.ec2instanceCriteria.targetCapacityType;
   const allocationStrategy = sanitizeAllocationStrategy(
     runnerParameters.ec2instanceCriteria.instanceAllocationStrategy,
@@ -650,6 +691,10 @@ async function createInstances(
         Tags: tags,
       },
       {
+        ResourceType: 'spot-instances-request',
+        Tags: tags,
+      },
+      {
         ResourceType: 'fleet',
         Tags: tags,
       },
@@ -659,6 +704,60 @@ async function createInstances(
   logger.debug('CreateFleet request payload.', { payload: createFleetCommand.input });
   const fleet = await ec2Client.send(createFleetCommand, { abortSignal: signal });
   return fleet;
+}
+
+/**
+ * Launches stoppable persistent spot instances via RunInstances for the warm pool. Persistent spot
+ * requests keep their instance stoppable/restartable (one-time CreateFleet spot cannot be stopped),
+ * and `InstanceInterruptionBehavior`/`InstanceInitiatedShutdownBehavior` are set to `stop` so neither
+ * an interruption nor an OS shutdown terminates the instance. The result is shaped like a
+ * `CreateFleetResult` so the caller can process it uniformly.
+ */
+async function createPersistentSpotInstances(
+  runnerParameters: RunnerInputParameters,
+  amiIdOverride: string | undefined,
+  ec2Client: EC2Client,
+  tags: Tag[],
+  signal: AbortSignal | undefined,
+): Promise<CreateFleetResult> {
+  const subnet = runnerParameters.subnets[Math.floor(Math.random() * runnerParameters.subnets.length)];
+
+  const runInstancesCommand = new RunInstancesCommand({
+    LaunchTemplate: {
+      LaunchTemplateName: runnerParameters.launchTemplateName,
+      Version: '$Default',
+    },
+    ...buildRunInstancesOverrides(runnerParameters.ec2OverrideConfig, {
+      imageId: amiIdOverride,
+      instanceType: runnerParameters.ec2instanceCriteria.instanceTypes[0] as _InstanceType,
+      subnetId: subnet,
+    }),
+    MinCount: runnerParameters.numberOfRunners,
+    MaxCount: runnerParameters.numberOfRunners,
+    InstanceInitiatedShutdownBehavior: 'stop',
+    InstanceMarketOptions: {
+      MarketType: 'spot',
+      SpotOptions: {
+        SpotInstanceType: 'persistent',
+        InstanceInterruptionBehavior: 'stop',
+        ...(runnerParameters.ec2instanceCriteria.maxSpotPrice
+          ? { MaxPrice: runnerParameters.ec2instanceCriteria.maxSpotPrice }
+          : {}),
+      },
+    },
+    TagSpecifications: [
+      { ResourceType: 'instance', Tags: tags },
+      { ResourceType: 'volume', Tags: tags },
+      { ResourceType: 'spot-instances-request', Tags: tags },
+    ],
+  });
+
+  logger.debug('RunInstances (persistent spot) request payload.', { payload: runInstancesCommand.input });
+  const result = await ec2Client.send(runInstancesCommand, { abortSignal: signal });
+  const instanceIds = result.Instances?.map((i) => i.InstanceId).filter((id): id is string => Boolean(id)) ?? [];
+  logger.info(`Created ${instanceIds.length} persistent spot instance(s): ${instanceIds.join(',')}`);
+
+  return { Instances: [{ InstanceIds: instanceIds }], Errors: [] } as CreateFleetResult;
 }
 
 async function createInstancesWithRunInstances(

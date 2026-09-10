@@ -95,6 +95,12 @@ export interface RunnerInfo {
    * Set and cleared via `markIdle` / `unmarkIdle`; absent when no marker is recorded.
    */
   idleDetectedAt?: string;
+  /**
+   * The spot request that launched this instance, when it is a spot runner. Absent for on-demand
+   * runners. Used to keep spot instances out of the warm pool (stopping a spot instance leaves a
+   * persistent request that would relaunch an untagged replacement).
+   */
+  spotInstanceRequestId?: string;
 }
 
 export interface ListRunnerFilters {

@@ -31,6 +31,7 @@ export interface Ec2ProviderConfig {
   tracingEnabled?: boolean;
   onDemandFailoverOnError?: string[];
   scaleErrors: string[];
+  enablePersistentSpot?: boolean;
 }
 
 export interface CreateEC2RunnerConfig extends Ec2ProviderConfig {
@@ -59,6 +60,7 @@ export function loadEc2ProviderConfig(): Ec2ProviderConfig {
       ? (JSON.parse(process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS) as string[])
       : [],
     scaleErrors: JSON.parse(process.env.SCALE_ERRORS) as string[],
+    enablePersistentSpot: yn(process.env.ENABLE_PERSISTENT_SPOT, { default: false }),
   };
 }
 

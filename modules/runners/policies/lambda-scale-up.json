@@ -7,6 +7,8 @@
                 "ec2:DescribeInstances",
                 "ec2:DescribeLaunchTemplateVersions",
                 "ec2:DescribeTags",
+                "ec2:DescribeSpotInstanceRequests",
+                "ec2:CancelSpotInstanceRequests",
                 "ec2:RunInstances",
                 "ec2:CreateFleet",
                 "ec2:CreateTags"

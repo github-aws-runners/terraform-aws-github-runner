@@ -78,8 +78,9 @@ resource "aws_lambda_function" "scale_up" {
         maxWarmAgeHours           = var.warm_pool_config.max_warm_age_hours
         warmPoolReadyDelaySeconds = var.warm_pool_config.warm_pool_ready_delay_seconds
       })
-      WARM_POOL_TABLE_NAME = var.warm_pool_config.enabled ? aws_dynamodb_table.warm_pool[0].name : ""
-      POOL_STRATEGY        = var.pool_strategy
+      WARM_POOL_TABLE_NAME   = var.warm_pool_config.enabled ? aws_dynamodb_table.warm_pool[0].name : ""
+      POOL_STRATEGY          = var.pool_strategy
+      ENABLE_PERSISTENT_SPOT = var.warm_pool_config.enabled && var.instance_target_capacity_type == "spot"
     }
   }
 

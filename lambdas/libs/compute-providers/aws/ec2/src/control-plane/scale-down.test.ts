@@ -8,11 +8,15 @@ const mockListRunners = vi.fn<Ec2RunnerResourceOperations['list']>();
 const mockCreateRunner = vi.fn<Ec2RunnerResourceOperations['create']>();
 const mockTagRunner = vi.fn<Ec2RunnerResourceOperations['tag']>();
 const mockTerminateRunner = vi.fn<Ec2RunnerResourceOperations['terminate']>();
+const mockStopRunner = vi.fn<Ec2RunnerResourceOperations['stop']>();
+const mockStartRunner = vi.fn<Ec2RunnerResourceOperations['start']>();
 const mockUntagRunner = vi.fn<Ec2RunnerResourceOperations['untag']>();
 const ec2Operations: Ec2RunnerResourceOperations = {
   list: mockListRunners,
   create: mockCreateRunner,
   terminate: mockTerminateRunner,
+  stop: mockStopRunner,
+  start: mockStartRunner,
   tag: mockTagRunner,
   untag: mockUntagRunner,
 };
