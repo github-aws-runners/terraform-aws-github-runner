@@ -1,179 +1,152 @@
-# Provider-neutral job-retry queue and Lambda resources.
-locals {
-  name = "job-retry"
-  vpc_enabled = (
-    length(var.config.lambda.vpc.subnet_ids) > 0 &&
-    length(var.config.lambda.vpc.security_group_ids) > 0
-  )
+variable "config" {
+  description = <<-EOT
+    Provider-neutral job-retry configuration assembled by runner-config.
 
-  lambda_environment_variables = {
-    ENVIRONMENT                              = var.config.prefix
-    LOG_LEVEL                                = var.config.observability.logs.level
-    PREFIX                                   = var.config.prefix
-    POWERTOOLS_LOGGER_LOG_EVENT              = var.config.observability.logs.level == "debug" ? "true" : "false"
-    POWERTOOLS_SERVICE_NAME                  = local.name
-    POWERTOOLS_TRACE_ENABLED                 = var.config.observability.tracing.mode != null
-    POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.config.observability.tracing.capture_http_requests
-    POWERTOOLS_TRACER_CAPTURE_ERROR          = var.config.observability.tracing.capture_error
-    POWERTOOLS_METRICS_NAMESPACE             = var.config.observability.metrics.namespace
-  }
+    - `prefix`: Prefix used to name job-retry resources.
+    - `aws_partition`: AWS partition used to construct the Lambda VPC managed-policy ARN.
+    - `lambda.artifact.zip`: Resolved local control-plane archive.
+    - `lambda.artifact.s3.bucket`: Optional S3 bucket containing the Lambda archive.
+    - `lambda.artifact.s3.key`: Object key of the Lambda archive.
+    - `lambda.artifact.s3.object_version`: Optional object version of the Lambda archive.
+    - `lambda.runtime`: Runtime used by the job-retry Lambda.
+    - `lambda.architecture`: Instruction-set architecture used by the job-retry Lambda.
+    - `lambda.memory_size`: Memory allocated to the job-retry Lambda.
+    - `lambda.timeout`: Lambda timeout and retry-queue visibility timeout in seconds.
+    - `lambda.reserved_concurrent_executions`: Reserved concurrency for the Lambda. Use `-1` for unreserved concurrency.
+    - `lambda.environment_variables`: Additional Lambda environment variables. Required job-retry variables override matching keys.
+    - `lambda.vpc.subnet_ids`: Subnets used for Lambda VPC configuration.
+    - `lambda.vpc.security_group_ids`: Security groups used for Lambda VPC configuration.
+    - `lambda.role.path`: IAM path used for the job-retry Lambda role.
+    - `lambda.role.permissions_boundary`: Optional permissions boundary for the Lambda role.
+    - `lambda.role.principals`: Extra principals allowed to assume the Lambda role, for example during local testing.
+    - `runner.name_prefix`: Prefix used to identify runners belonging to this runner configuration.
+    - `github.organization_runners`: Enables organization runners.
+    - `github.enterprise_server.url`: Optional GitHub Enterprise Server URL.
+    - `github.enterprise_server.ssl_verify`: Enables TLS certificate verification for GitHub Enterprise Server requests.
+    - `github.user_agent`: Optional User-Agent sent to GitHub.
+    - `github.app_parameters.key_base64`: Parameter Store reference for the primary GitHub App private key.
+    - `github.app_parameters.id`: Parameter Store reference for the primary GitHub App ID.
+    - `github.app_parameters.additional_apps_manifest`: Optional Parameter Store reference containing the additional GitHub App manifest.
+    - `github.app_parameters.additional_app_parameter_arns`: ARNs of the additional GitHub App credential parameters.
+    - `queue.build`: URL and ARN of the build queue to which retry messages are published.
+    - `queue.kms_key_id`: Optional KMS key ARN used to encrypt the build queue. This is distinct from the Parameter Store key.
+    - `queue.event_source_mapping.batch_size`: Maximum records delivered per job-retry invocation.
+    - `queue.event_source_mapping.maximum_batching_window_in_seconds`: Maximum event batching window.
+    - `queue.encryption`: Server-side encryption configuration for the retry queue.
+    - `ssm.kms_key_id`: Optional KMS key ARN used by the job-retry IAM policy. Its value may be unknown until apply.
+    - `observability.logs`: Logging level, retention, encryption, and log-class configuration.
+    - `observability.tracing`: Lambda X-Ray and tracing-helper configuration.
+    - `observability.metrics`: Metrics enablement, namespace, and job-retry metric configuration.
+    - `tags.resources`: Tags for the job-retry Lambda role and component resources.
+    - `tags.lambda`: Tags for the job-retry Lambda function.
+    - `tags.log_group`: Tags for the job-retry log group.
+    - `tags.queue`: Tags for the retry queue.
+    - `tags.event_source_mapping`: Tags for the retry-queue event-source mapping.
+  EOT
 
-  job_retry_environment_variables = {
-    ENABLE_ORGANIZATION_RUNNERS          = var.config.github.organization_runners
-    ENABLE_METRIC_JOB_RETRY              = var.config.observability.metrics.enabled && var.config.observability.metrics.metric.job_retry.enabled
-    ENABLE_METRIC_GITHUB_APP_RATE_LIMIT  = var.config.observability.metrics.enabled && var.config.observability.metrics.metric.github_app_rate_limit.enabled
-    GHES_URL                             = var.config.github.enterprise_server.url
-    NODE_TLS_REJECT_UNAUTHORIZED         = var.config.github.enterprise_server.url != null && !var.config.github.enterprise_server.ssl_verify ? 0 : 1
-    USER_AGENT                           = var.config.github.user_agent
-    JOB_QUEUE_SCALE_UP_URL               = var.config.queue.build.url
-    PARAMETER_GITHUB_APP_ID_NAME         = var.config.github.app_parameters.id.name
-    PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.config.github.app_parameters.key_base64.name
-    PARAMETER_GITHUB_APPS_MANIFEST_NAME  = var.config.github.app_parameters.additional_apps_manifest != null ? var.config.github.app_parameters.additional_apps_manifest.name : ""
-    RUNNER_NAME_PREFIX                   = var.config.runner.name_prefix
-  }
+  type = object({
+    prefix        = string
+    aws_partition = string
+    lambda = object({
+      artifact = object({
+        zip = string
+        s3 = object({
+          bucket         = optional(string, null)
+          key            = optional(string, null)
+          object_version = optional(string, null)
+        })
+      })
+      runtime                        = string
+      architecture                   = string
+      memory_size                    = number
+      timeout                        = number
+      reserved_concurrent_executions = number
+      environment_variables          = map(string)
+      vpc = object({
+        subnet_ids         = list(string)
+        security_group_ids = list(string)
+      })
+      role = object({
+        path                 = string
+        permissions_boundary = optional(string, null)
+        principals = list(object({
+          type        = string
+          identifiers = list(string)
+        }))
+      })
+    })
+    runner = object({
+      name_prefix = string
+    })
+    github = object({
+      organization_runners = bool
+      enterprise_server = object({
+        url        = optional(string, null)
+        ssl_verify = optional(bool, true)
+      })
+      user_agent = optional(string, null)
+      app_parameters = object({
+        key_base64 = map(string)
+        id         = map(string)
+        additional_apps_manifest = optional(object({
+          name = string
+          arn  = string
+        }), null)
+        additional_app_parameter_arns = optional(list(string), [])
+      })
+    })
+    queue = object({
+      build = object({
+        url = string
+        arn = string
+      })
+      kms_key_id = optional(string, null)
+      event_source_mapping = object({
+        batch_size                         = number
+        maximum_batching_window_in_seconds = number
+      })
+      encryption = object({
+        sqs_managed_sse_enabled           = bool
+        kms_master_key_id                 = optional(string, null)
+        kms_data_key_reuse_period_seconds = optional(number, null)
+      })
+    })
+    ssm = object({
+      kms_key_id = optional(string, null)
+    })
+    observability = object({
+      logs = object({
+        level             = string
+        retention_in_days = number
+        kms_key_id        = optional(string, null)
+        class             = string
+      })
+      tracing = object({
+        mode                  = optional(string, null)
+        capture_http_requests = bool
+        capture_error         = bool
+      })
+      metrics = object({
+        enabled   = bool
+        namespace = string
+        metric = object({
+          github_app_rate_limit = object({
+            enabled = bool
+          })
+          job_retry = object({
+            enabled = bool
+          })
+        })
+      })
+    })
+    tags = object({
+      resources            = map(string)
+      lambda               = map(string)
+      log_group            = map(string)
+      queue                = map(string)
+      event_source_mapping = map(string)
+    })
+  })
 
-  environment_variables = merge(
-    local.lambda_environment_variables,
-    var.config.lambda.environment_variables,
-    local.job_retry_environment_variables,
-  )
-}
-
-resource "aws_sqs_queue_policy" "job_retry_check_queue_policy" {
-  queue_url = aws_sqs_queue.job_retry_check_queue.id
-  policy    = data.aws_iam_policy_document.deny_insecure_transport.json
-}
-
-resource "aws_sqs_queue" "job_retry_check_queue" {
-  name                       = "${var.config.prefix}-job-retry"
-  visibility_timeout_seconds = var.config.lambda.timeout
-
-  sqs_managed_sse_enabled           = var.config.queue.encryption.sqs_managed_sse_enabled
-  kms_master_key_id                 = var.config.queue.encryption.kms_master_key_id
-  kms_data_key_reuse_period_seconds = var.config.queue.encryption.kms_data_key_reuse_period_seconds
-
-  tags = var.config.tags.queue
-}
-
-resource "aws_lambda_function" "job_retry" {
-  s3_bucket                      = var.config.lambda.artifact.s3.bucket
-  s3_key                         = var.config.lambda.artifact.s3.key
-  s3_object_version              = var.config.lambda.artifact.s3.object_version
-  filename                       = var.config.lambda.artifact.s3.bucket == null ? var.config.lambda.artifact.zip : null
-  source_code_hash               = var.config.lambda.artifact.s3.bucket == null ? filebase64sha256(var.config.lambda.artifact.zip) : null
-  function_name                  = "${var.config.prefix}-${local.name}"
-  role                           = aws_iam_role.job_retry.arn
-  handler                        = "index.jobRetryCheck"
-  runtime                        = var.config.lambda.runtime
-  timeout                        = var.config.lambda.timeout
-  memory_size                    = var.config.lambda.memory_size
-  reserved_concurrent_executions = var.config.lambda.reserved_concurrent_executions
-  architectures                  = [var.config.lambda.architecture]
-
-  environment {
-    variables = local.environment_variables
-  }
-
-  dynamic "vpc_config" {
-    for_each = local.vpc_enabled ? [true] : []
-
-    content {
-      security_group_ids = var.config.lambda.vpc.security_group_ids
-      subnet_ids         = var.config.lambda.vpc.subnet_ids
-    }
-  }
-
-  dynamic "tracing_config" {
-    for_each = var.config.observability.tracing.mode != null ? [true] : []
-
-    content {
-      mode = var.config.observability.tracing.mode
-    }
-  }
-
-  tags = var.config.tags.lambda
-}
-
-resource "aws_cloudwatch_log_group" "job_retry" {
-  name              = "/aws/lambda/${aws_lambda_function.job_retry.function_name}"
-  retention_in_days = var.config.observability.logs.retention_in_days
-  kms_key_id        = var.config.observability.logs.kms_key_id
-  log_group_class   = var.config.observability.logs.class
-  tags              = var.config.tags.log_group
-}
-
-resource "aws_iam_role" "job_retry" {
-  name                 = "${substr("${var.config.prefix}-${local.name}", 0, 54)}-${substr(md5("${var.config.prefix}-${local.name}"), 0, 8)}"
-  assume_role_policy   = data.aws_iam_policy_document.lambda_assume_role.json
-  path                 = var.config.lambda.role.path
-  permissions_boundary = var.config.lambda.role.permissions_boundary
-  tags                 = var.config.tags.resources
-}
-
-resource "aws_iam_role_policy" "job_retry_logging" {
-  name   = "logging-policy"
-  role   = aws_iam_role.job_retry.name
-  policy = data.aws_iam_policy_document.job_retry_logging.json
-}
-
-resource "aws_iam_role_policy_attachment" "job_retry_vpc_execution_role" {
-  count      = local.vpc_enabled ? 1 : 0
-  role       = aws_iam_role.job_retry.name
-  policy_arn = "arn:${var.config.aws_partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
-}
-
-resource "aws_iam_role_policy" "job_retry_xray" {
-  count  = var.config.observability.tracing.mode != null ? 1 : 0
-  name   = "xray-policy"
-  policy = data.aws_iam_policy_document.lambda_xray[0].json
-  role   = aws_iam_role.job_retry.name
-}
-
-resource "aws_lambda_event_source_mapping" "job_retry" {
-  event_source_arn                   = aws_sqs_queue.job_retry_check_queue.arn
-  function_name                      = aws_lambda_function.job_retry.arn
-  batch_size                         = var.config.queue.event_source_mapping.batch_size
-  maximum_batching_window_in_seconds = var.config.queue.event_source_mapping.maximum_batching_window_in_seconds
-  tags                               = var.config.tags.event_source_mapping
-}
-
-resource "aws_lambda_permission" "job_retry" {
-  statement_id  = "AllowExecutionFromSQS"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.job_retry.function_name
-  principal     = "sqs.amazonaws.com"
-  source_arn    = aws_sqs_queue.job_retry_check_queue.arn
-}
-
-resource "aws_iam_role_policy" "job_retry" {
-  name   = "job_retry-policy"
-  role   = aws_iam_role.job_retry.name
-  policy = data.aws_iam_policy_document.job_retry.json
-}
-
-data "aws_iam_policy_document" "deny_insecure_transport" {
-  statement {
-    sid = "DenyInsecureTransport"
-
-    effect = "Deny"
-
-    principals {
-      type        = "AWS"
-      identifiers = ["*"]
-    }
-
-    actions = [
-      "sqs:*"
-    ]
-
-    resources = [
-      aws_sqs_queue.job_retry_check_queue.arn
-    ]
-
-    condition {
-      test     = "Bool"
-      variable = "aws:SecureTransport"
-      values   = ["false"]
-    }
-  }
+  nullable = false
 }
