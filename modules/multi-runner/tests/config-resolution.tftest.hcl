@@ -482,3 +482,42 @@ run "v2_inputs_require_experimental_feature" {
     error_message = "The v2 configuration must remain disabled unless multi-runner-v2 is explicitly enabled."
   }
 }
+
+run "v2_inputs_reject_legacy_runner_config" {
+  command = plan
+
+  expect_failures = [terraform_data.validate_v2]
+
+  variables {
+    experimental_features = ["multi-runner-v2"]
+
+    global_config_compute_provider = {
+      aws = {
+        ec2 = {
+          vpc_id     = "vpc-v2"
+          subnet_ids = ["subnet-v2"]
+          runner_binaries = {
+            enabled = false
+          }
+        }
+      }
+    }
+
+    multi_runner_config = {
+      lane = {
+        runner_config = {
+          runner_os                     = "linux"
+          runner_architecture           = "x64"
+          instance_types                = ["m5.large"]
+          runners_maximum_count         = 1
+          enable_runner_binaries_syncer = false
+          vpc_id                        = "vpc-legacy"
+          subnet_ids                    = ["subnet-legacy"]
+        }
+        matcherConfig = {
+          labelMatchers = [["self-hosted", "linux", "x64"]]
+        }
+      }
+    }
+  }
+}
