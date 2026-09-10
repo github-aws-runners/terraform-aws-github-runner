@@ -11,14 +11,15 @@ declare namespace NodeJS {
     LOG_LEVEL: 'silly' | 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'fatal';
     LOG_TYPE: 'json' | 'pretty' | 'hidden';
     MINIMUM_RUNNING_TIME_IN_MINUTES: string;
+    SCALE_DOWN_IDLE_CONFIRMATION_SECONDS?: string;
     PARAMETER_GITHUB_APP_CLIENT_ID_NAME: string;
     PARAMETER_GITHUB_APP_CLIENT_SECRET_NAME: string;
     PARAMETER_GITHUB_APP_ID_NAME: string;
     PARAMETER_GITHUB_APP_KEY_BASE64_NAME: string;
+    PARAMETER_GITHUB_APPS_MANIFEST_NAME?: string;
     RUNNER_OWNER: string;
-    RUNNER_PROVIDER_TYPE?: string;
+    COMPUTE_PROVIDER_TYPE?: string;
     SCALE_DOWN_CONFIG: string;
-    SSM_TOKEN_PATH: string;
     SSM_CLEANUP_CONFIG: string;
     SUBNET_IDS: string;
     INSTANCE_TYPES: string;

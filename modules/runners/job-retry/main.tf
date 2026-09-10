@@ -11,6 +11,7 @@ locals {
     JOB_QUEUE_SCALE_UP_URL               = var.config.sqs_build_queue.url
     PARAMETER_GITHUB_APP_ID_NAME         = var.config.github_app_parameters.id.name
     PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.config.github_app_parameters.key_base64.name
+    PARAMETER_GITHUB_APPS_MANIFEST_NAME  = var.config.github_app_parameters.additional_apps_manifest != null ? var.config.github_app_parameters.additional_apps_manifest.name : ""
   }
 
   config = merge(var.config, {
@@ -62,11 +63,14 @@ resource "aws_iam_role_policy" "job_retry" {
   name = "job_retry-policy"
   role = module.job_retry.lambda.role.name
   policy = templatefile("${path.module}/policies/lambda.json", {
-    kms_key_arn               = var.config.kms_key_arn != null ? var.config.kms_key_arn : ""
-    sqs_build_queue_arn       = var.config.sqs_build_queue.arn
-    sqs_job_retry_queue_arn   = aws_sqs_queue.job_retry_check_queue.arn
-    github_app_id_arn         = var.config.github_app_parameters.id.arn
-    github_app_key_base64_arn = var.config.github_app_parameters.key_base64.arn
+    kms_key_arn             = var.config.kms_key_arn != null ? var.config.kms_key_arn : ""
+    sqs_build_queue_arn     = var.config.sqs_build_queue.arn
+    sqs_job_retry_queue_arn = aws_sqs_queue.job_retry_check_queue.arn
+    github_app_parameter_arns = jsonencode(concat(
+      [var.config.github_app_parameters.id.arn, var.config.github_app_parameters.key_base64.arn],
+      var.config.github_app_parameters.additional_app_parameter_arns,
+      var.config.github_app_parameters.additional_apps_manifest != null ? [var.config.github_app_parameters.additional_apps_manifest.arn] : [],
+    ))
   })
 }
 

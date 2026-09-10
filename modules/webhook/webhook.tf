@@ -2,8 +2,8 @@ locals {
   # config with combined key and order
   runner_matcher_config = {
     for k, v in var.runner_matcher_config : format("%03d-%s", v.matcherConfig.priority, k) => merge(v, {
-      key            = k
-      runnerProvider = lower(trimspace(v.runnerProvider))
+      key             = k
+      computeProvider = lower(trimspace(v.computeProvider))
     })
   }
 

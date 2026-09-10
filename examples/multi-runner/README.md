@@ -16,6 +16,10 @@ For exact match, all the labels defined in the workflow should be present in the
 
 For the list of provided runner configurations, there will be a single webhook and only a single GitHub App to receive the notifications for all types of workflow triggers.
 
+## Multiple GitHub Apps (rate limit distribution)
+
+This example also shows how to optionally configure multiple GitHub Apps via the `additional_github_apps` variable. When configured, the control-plane lambdas (scale-up, scale-down, pool, job-retry) randomly select an app for each GitHub API call, spreading the rate limit usage across all apps. Only the primary app needs a webhook URL configured in GitHub.
+
 ## Lambda distribution
 
 Per combination of OS and architecture a lambda distribution syncer will be created. For this example there will be three instances (windows X64, linux X64, linux ARM).
@@ -52,7 +56,7 @@ terraform output -raw webhook_secret
 
 | Name | Version |
 |------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.3.0 |
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.4.0 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 6.33 |
 | <a name="requirement_local"></a> [local](#requirement\_local) | ~> 2.0 |
 | <a name="requirement_random"></a> [random](#requirement\_random) | ~> 3.0 |
@@ -61,8 +65,8 @@ terraform output -raw webhook_secret
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.35.1 |
-| <a name="provider_random"></a> [random](#provider\_random) | 3.8.1 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.63.0 |
+| <a name="provider_random"></a> [random](#provider\_random) | 3.9.0 |
 
 ## Modules
 

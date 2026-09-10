@@ -46,6 +46,11 @@ variable "config" {
     github_app_parameters = object({
       key_base64 = map(string)
       id         = map(string)
+      additional_apps_manifest = optional(object({
+        name = string
+        arn  = string
+      }), null)
+      additional_app_parameter_arns = optional(list(string), [])
     })
     kms_key_arn                                                    = optional(string, null)
     lambda_event_source_mapping_batch_size                         = optional(number, 10)

@@ -67,6 +67,27 @@ variable "github_app" {
   }
 }
 
+variable "additional_github_apps" {
+  description = "Additional GitHub Apps for distributing API rate limit usage. Each must be installed on the same repos/orgs as the primary app."
+  type = list(object({
+    key_base64          = optional(string)
+    key_base64_ssm      = optional(object({ arn = string, name = string }))
+    id                  = optional(string)
+    id_ssm              = optional(object({ arn = string, name = string }))
+    installation_id     = optional(string)
+    installation_id_ssm = optional(object({ arn = string, name = string }))
+  }))
+  default = []
+  validation {
+    condition = alltrue([
+      for app in var.additional_github_apps :
+      (app.key_base64 != null || app.key_base64_ssm != null) &&
+      (app.id != null || app.id_ssm != null)
+    ])
+    error_message = "Each additional GitHub app must provide either key_base64 or key_base64_ssm, and either id or id_ssm."
+  }
+}
+
 variable "scale_down_schedule_expression" {
   description = "Scheduler expression to check every x for scale down."
   type        = string
@@ -77,6 +98,12 @@ variable "minimum_running_time_in_minutes" {
   description = "The time an ec2 action runner should be running at minimum before terminated, if not busy."
   type        = number
   default     = null
+}
+
+variable "scale_down_idle_confirmation_seconds" {
+  description = "Number of seconds a runner must consistently report not-busy before scale-down terminates it. GitHub's busy flag can be stale (it can read false for a runner that is actively executing a job), so a single not-busy reading is not sufficient evidence a runner is idle. Set to at least one scale-down schedule interval to require two consecutive not-busy evaluations; a busy reading resets the window. 0 keeps the previous single-reading behaviour."
+  type        = number
+  default     = 0
 }
 
 variable "runner_boot_time_in_minutes" {

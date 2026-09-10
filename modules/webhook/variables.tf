@@ -23,11 +23,11 @@ variable "tags" {
 }
 
 variable "runner_matcher_config" {
-  description = "SQS queue to publish accepted build events based on the runner type. `runnerProvider` defaults to `ec2`; EC2 is the only provider currently implemented. When exact match is disabled the webhook accepts the event if one of the workflow job labels is part of the matcher. The priority defines the order the matchers are applied. Optional `matcherConfig.enableDynamicLabels` and `matcherConfig.awsDynamicLabelsPolicy` are evaluated by the dispatcher to gate provider dynamic labels per runner. The policy supports `blocked_keys = [<key>]` and `restricted_keys = { <key> = { allowed = [globs], denied = [globs], max = number|string } }`; keys use the provider dynamic label suffix form, for example `instance-type` for `ghr-ec2-instance-type`."
+  description = "SQS queue to publish accepted build events based on the runner type. `computeProvider` defaults to `ec2`; EC2 is the only provider currently implemented. When exact match is disabled the webhook accepts the event if one of the workflow job labels is part of the matcher. The priority defines the order the matchers are applied. Optional `matcherConfig.enableDynamicLabels` and `matcherConfig.awsDynamicLabelsPolicy` are evaluated by the dispatcher to gate provider dynamic labels per runner. The policy supports `blocked_keys = [<key>]` and `restricted_keys = { <key> = { allowed = [globs], denied = [globs], max = number|string } }`; keys use the provider dynamic label suffix form, for example `instance-type` for `ghr-ec2-instance-type`."
   type = map(object({
-    arn            = string
-    id             = string
-    runnerProvider = optional(string, "ec2")
+    arn             = string
+    id              = string
+    computeProvider = optional(string, "ec2")
     matcherConfig = object({
       labelMatchers           = list(list(string))
       exactMatch              = bool
@@ -44,9 +44,9 @@ variable "runner_matcher_config" {
   validation {
     condition = alltrue([
       for config in values(var.runner_matcher_config) :
-      lower(trimspace(config.runnerProvider)) == "ec2"
+      lower(trimspace(config.computeProvider)) == "ec2"
     ])
-    error_message = "runnerProvider must be ec2."
+    error_message = "computeProvider must be ec2."
   }
 }
 

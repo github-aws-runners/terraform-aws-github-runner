@@ -1,5 +1,21 @@
 # Changelog
 
+## [7.11.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v7.10.2...v7.11.0) (2026-08-14)
+
+
+### Features
+
+* **github-app:** allow several github apps to be used ([#5269](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5269)) ([82cb0fd](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/82cb0fde0687471a9b7c29631883a4a94a7c91dc))
+
+## [7.10.2](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v7.10.1...v7.10.2) (2026-08-10)
+
+
+### Bug Fixes
+
+* **lambda:** bump postcss from 8.5.22 to 8.5.24 in /lambdas ([#5241](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5241)) ([17cd322](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/17cd322aa4a43db583072cce4b87f99db494b6d0))
+* **termination-watcher:** only emit SpotInterruptionWarning metric for actual spot interruption events ([#5245](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5245)) ([7480fd5](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/7480fd58d4c517e8e999a830905bbd9334dc987d))
+* wrap LOG_LEVEL env var with upper() for Powertools v2 compatibility ([#5238](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5238)) ([2394f84](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/2394f8445faeba3d37998791cf51ae9dd0ab453e))
+
 ## [7.10.1](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v7.10.0...v7.10.1) (2026-07-31)
 
 

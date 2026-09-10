@@ -1,6 +1,8 @@
 variable "github_app" {
   description = <<EOF
-  GitHub app parameters, see your github app.
+  GitHub app parameters for the stable v1 interface, see your github app.
+  Omit this value when using the experimental v2 interface and provide the
+  app through `global_config_github` instead.
   You can optionally create the SSM parameters yourself and provide the ARN and name here, through the `*_ssm` attributes.
   If you chose to provide the configuration values directly here,
   please ensure the key is the base64-encoded `.pem` file (the output of `base64 app.private-key.pem`, not the content of `private-key.pem`).
@@ -23,18 +25,33 @@ variable "github_app" {
       name = string
     }))
   })
-
-  validation {
-    condition     = (var.github_app.key_base64 != null || var.github_app.key_base64_ssm != null) && (var.github_app.id != null || var.github_app.id_ssm != null) && (var.github_app.webhook_secret != null || var.github_app.webhook_secret_ssm != null)
-    error_message = <<EOF
-     You must set all of the following parameters, choosing one option from each pair:
-      - `key_base64` or `key_base64_ssm`
-      - `id` or `id_ssm`
-      - `webhook_secret` or `webhook_secret_ssm`
-    EOF
-  }
+  default = {}
 }
 
+
+variable "additional_github_apps" {
+  description = <<-EOF
+    Additional GitHub Apps for random API rate limit distribution.
+
+    The primary app (var.github_app) is always included and is the one whose
+    webhook secret is used for incoming webhook signature validation. Only the
+    primary app needs a webhook configured in GitHub.
+
+    Additional apps listed here are used exclusively by the control-plane
+    lambdas (scale-up, scale-down, pool, job-retry) which randomly select an
+    app for each GitHub API call. Each additional app must be installed on the
+    same repositories/organizations as the primary app.
+  EOF
+  type = list(object({
+    key_base64          = optional(string)
+    key_base64_ssm      = optional(object({ arn = string, name = string }))
+    id                  = optional(string)
+    id_ssm              = optional(object({ arn = string, name = string }))
+    installation_id     = optional(string)
+    installation_id_ssm = optional(object({ arn = string, name = string }))
+  }))
+  default = []
+}
 
 variable "prefix" {
   description = "The prefix used for naming resources"
@@ -54,9 +71,26 @@ variable "tags" {
   default     = {}
 }
 
+variable "experimental_features" {
+  description = <<-EOT
+    Explicit acknowledgement for opt-in features whose schemas may change
+    while experimental. Set to ["multi-runner-v2"] when using the v2
+    provider-boundary configuration. This flag will become a deprecated no-op
+    for one release when the feature graduates.
+  EOT
+  type        = set(string)
+  default     = []
+
+  validation {
+    condition     = alltrue([for feature in var.experimental_features : feature == "multi-runner-v2"])
+    error_message = "experimental_features contains an unsupported feature. The only supported value is \"multi-runner-v2\"."
+  }
+}
+
 variable "multi_runner_config" {
   type = map(object({
-    runner_config = object({
+    # V1 contract
+    runner_config = optional(object({
       runner_os           = string
       runner_architecture = string
       runner_metadata_options = optional(map(any), {
@@ -104,6 +138,7 @@ variable "multi_runner_config" {
       pool_runner_owner                                              = optional(string, null)
       runner_as_root                                                 = optional(bool, false)
       runner_boot_time_in_minutes                                    = optional(number, 5)
+      scale_down_idle_confirmation_seconds                           = optional(number, 0)
       runner_disable_default_labels                                  = optional(bool, false)
       runner_extra_labels                                            = optional(list(string), [])
       runner_group_name                                              = optional(string, "Default")
@@ -208,15 +243,15 @@ variable "multi_runner_config" {
         override_runner_role      = false
         runner_role_arn           = null
       })
-    })
-    matcherConfig = object({
+    }), null)
+    matcherConfig = optional(object({
       labelMatchers           = list(list(string))
       exactMatch              = optional(bool, false)
       bidirectionalLabelMatch = optional(bool, false)
       priority                = optional(number, 999)
       enableDynamicLabels     = optional(bool, false)
       awsDynamicLabelsPolicy  = optional(any, null)
-    })
+    }), null)
     redrive_build_queue = optional(object({
       enabled         = bool
       maxReceiveCount = number
@@ -224,8 +259,337 @@ variable "multi_runner_config" {
       enabled         = false
       maxReceiveCount = null
     })
+
+    # V2 Contract
+    tags = optional(map(string), {})
+
+    runner = optional(object({
+      os                     = optional(string, null)
+      architecture           = optional(string, null)
+      disable_default_labels = optional(bool, null)
+      extra_labels           = optional(list(string), null)
+      group_name             = optional(string, null)
+      name_prefix            = optional(string, null)
+      run_as_root            = optional(bool, null)
+      run_as                 = optional(string, null)
+      auto_update_disabled   = optional(bool, null)
+      tags                   = optional(map(string), {})
+      hooks = optional(object({
+        job_started   = optional(string, null)
+        job_completed = optional(string, null)
+      }), {})
+      iam = optional(object({
+        role = optional(object({
+          arn = string
+        }), null)
+        managed_policy_arns          = optional(map(string), null)
+        additional_trust_policy_json = optional(string, null)
+        path                         = optional(string, null)
+        permissions_boundary         = optional(string, null)
+      }), {})
+    }), {})
+
+    lambda = optional(object({
+      runtime            = optional(string, null)
+      architecture       = optional(string, null)
+      subnet_ids         = optional(list(string), null)
+      security_group_ids = optional(list(string), null)
+      tags               = optional(map(string), {})
+      role = optional(object({
+        path                 = optional(string, null)
+        permissions_boundary = optional(string, null)
+      }), {})
+    }), {})
+
+    orchestration_provider = optional(object({
+      webhook = optional(object({
+        runner = optional(object({
+          boot_time_in_minutes = optional(number, null)
+          ephemeral            = optional(bool, null)
+          jit_config_enabled   = optional(bool, null)
+          maximum_count        = optional(number, null)
+        }), {})
+        github = optional(object({
+          organization_runners = optional(bool, false)
+        }), {})
+        matcherConfig = optional(object({
+          labelMatchers           = list(list(string))
+          exactMatch              = optional(bool, false)
+          bidirectionalLabelMatch = optional(bool, false)
+          priority                = optional(number, 999)
+          dynamic_labels_enabled  = optional(bool, false)
+          awsDynamicLabelsPolicy = optional(object({
+            blocked_keys = optional(list(string), [])
+            restricted_keys = optional(map(object({
+              allowed = optional(list(string), [])
+              denied  = optional(list(string), [])
+              max     = optional(string, null)
+            })), {})
+          }), null)
+        }), null)
+        queue = optional(object({
+          delay_webhook_event            = optional(number, null)
+          job_queue_retention_in_seconds = optional(number, null)
+          visibility_timeout_seconds     = optional(number, null)
+          redrive_build_queue = optional(object({
+            enabled         = optional(bool, null)
+            maxReceiveCount = optional(number, null)
+          }), null)
+          tags = optional(map(string), {})
+        }), {})
+        lambda = optional(object({
+          scale = optional(object({
+            up = optional(object({
+              memory_size                    = optional(number, null)
+              timeout                        = optional(number, null)
+              reserved_concurrent_executions = optional(number, null)
+              job_queued_check_enabled       = optional(bool, null)
+              event_source_mapping = optional(object({
+                batch_size                         = optional(number, null)
+                maximum_batching_window_in_seconds = optional(number, null)
+              }), {})
+              tags = optional(map(string), {})
+            }), {})
+            down = optional(object({
+              memory_size                     = optional(number, null)
+              timeout                         = optional(number, null)
+              schedule_expression             = optional(string, null)
+              minimum_running_time_in_minutes = optional(number, null)
+              idle_confirmation_seconds       = optional(number, null)
+              idle_config = optional(list(object({
+                cron             = string
+                timeZone         = string
+                idleCount        = number
+                evictionStrategy = optional(string, "oldest_first")
+              })), null)
+              tags = optional(map(string), {})
+            }), {})
+          }), {})
+          pool = optional(object({
+            memory_size                    = optional(number, null)
+            timeout                        = optional(number, null)
+            reserved_concurrent_executions = optional(number, null)
+            config = optional(list(object({
+              schedule_expression          = string
+              schedule_expression_timezone = optional(string)
+              size                         = number
+            })), null)
+            include_busy_runners = optional(bool, null)
+            runner_owner         = optional(string, null)
+            strategy             = optional(string, "hot")
+            warm_pool_config = optional(object({
+              enabled                       = optional(bool, false)
+              max_warm_instances            = optional(number, 3)
+              max_warm_age_hours            = optional(number, 168)
+              warm_pool_ready_delay_seconds = optional(number, 30)
+            }), {})
+            tags = optional(map(string), {})
+          }), {})
+        }), {})
+        job_retry = optional(object({
+          enabled          = optional(bool, false)
+          delay_in_seconds = optional(number, 300)
+          delay_backoff    = optional(number, 2)
+          max_attempts     = optional(number, 1)
+          tags             = optional(map(string), {})
+          lambda = optional(object({
+            memory_size                    = optional(number, 256)
+            reserved_concurrent_executions = optional(number, 1)
+            timeout                        = optional(number, 30)
+          }), {})
+        }), {})
+      }), null)
+    }), {})
+
+    ssm = optional(object({
+      paths = optional(object({
+        root   = optional(string, null)
+        tokens = optional(string, null)
+        config = optional(string, null)
+      }), {})
+      tags = optional(map(string), {})
+      parameters = optional(object({
+        tags = optional(map(string), {})
+      }), {})
+      housekeeper = optional(object({
+        schedule_expression = optional(string, null)
+        state               = optional(string, null)
+        tags                = optional(map(string), {})
+        lambda = optional(object({
+          artifact = optional(object({
+            zip = optional(string, null)
+            s3 = optional(object({
+              key            = string
+              object_version = optional(string, null)
+            }), null)
+          }), {})
+          memory_size = optional(number, null)
+          timeout     = optional(number, null)
+        }), {})
+        config = optional(object({
+          tokenPath      = optional(string, null)
+          minimumDaysOld = optional(number, null)
+          dryRun         = optional(bool, null)
+        }), {})
+      }), {})
+    }), {})
+
+    observability = optional(object({
+      logs = optional(object({
+        level             = optional(string, null)
+        retention_in_days = optional(number, null)
+        kms_key_id        = optional(string, null)
+        class             = optional(string, null)
+        tags              = optional(map(string), {})
+      }), {})
+      tracing = optional(object({
+        mode                  = optional(string, null)
+        capture_http_requests = optional(bool, null)
+        capture_error         = optional(bool, null)
+      }), {})
+      metrics = optional(object({
+        enabled   = optional(bool, null)
+        namespace = optional(string, null)
+        metric = optional(object({
+          github_app_rate_limit = optional(object({
+            enabled = optional(bool, null)
+          }), {})
+          job_retry = optional(object({
+            enabled = optional(bool, null)
+          }), {})
+          spot_termination_warning = optional(object({
+            enabled = optional(bool, null)
+          }), {})
+        }), {})
+      }), {})
+    }), {})
+
+    compute_provider = optional(object({
+      aws = optional(object({
+        ec2 = optional(object({
+          metadata_options = optional(object({
+            instance_metadata_tags      = optional(string, "enabled")
+            http_endpoint               = optional(string, "enabled")
+            http_tokens                 = optional(string, "required")
+            http_put_response_hop_limit = optional(number, 1)
+          }), {})
+          ami = optional(object({
+            filter = optional(map(list(string)), { state = ["available"] })
+            owners = optional(list(string), ["amazon"])
+            id_ssm_parameter = optional(object({
+              arn = string
+            }), null)
+            kms_key = optional(object({
+              arn = string
+            }), null)
+          }), null)
+          block_device_mappings = optional(list(object({
+            delete_on_termination      = optional(bool, true)
+            device_name                = optional(string, "/dev/xvda")
+            encrypted                  = optional(bool, true)
+            iops                       = optional(number)
+            kms_key_id                 = optional(string)
+            snapshot_id                = optional(string)
+            throughput                 = optional(number)
+            volume_initialization_rate = optional(number)
+            volume_size                = number
+            volume_type                = optional(string, "gp3")
+          })), [{ volume_size = 30 }])
+          create_service_linked_role_spot = optional(bool, false)
+          credit_specification            = optional(string, null)
+          ebs_optimized                   = optional(bool, false)
+          cloudwatch_agent = optional(object({
+            enabled = optional(bool, true)
+            config  = optional(string, null)
+          }), {})
+          binaries_syncer = optional(object({
+            enabled = optional(bool, null)
+          }), {})
+          detailed_monitoring_enabled = optional(bool, false)
+          ssm_enabled                 = optional(bool, false)
+          user_data = optional(object({
+            enabled               = optional(bool, true)
+            template              = optional(string, null)
+            content               = optional(string, null)
+            pre_install           = optional(string, "")
+            post_install          = optional(string, "")
+            debug_logging_enabled = optional(bool, false)
+          }), {})
+          instance_allocation_strategy   = optional(string, "lowest-price")
+          instance_max_spot_price        = optional(string, null)
+          instance_target_capacity_type  = optional(string, "spot")
+          instance_type_priorities       = optional(map(number), null)
+          instance_types                 = optional(list(string), [])
+          additional_security_group_ids  = optional(list(string), null)
+          managed_security_group_enabled = optional(bool, null)
+          egress_rules = optional(list(object({
+            cidr_blocks      = list(string)
+            ipv6_cidr_blocks = list(string)
+            prefix_list_ids  = list(string)
+            from_port        = number
+            protocol         = string
+            security_groups  = list(string)
+            self             = bool
+            to_port          = number
+            description      = string
+          })), null)
+          instance_profile_path         = optional(string, null)
+          key_name                      = optional(string, null)
+          associate_public_ipv4_address = optional(bool, null)
+          instance_profile = optional(object({
+            name = string
+          }), null)
+          on_demand_failover_for_errors = optional(list(string), [])
+          scale_errors = optional(list(string), [
+            "UnfulfillableCapacity",
+            "MaxSpotInstanceCountExceeded",
+            "TargetCapacityLimitExceededException",
+            "RequestLimitExceeded",
+            "ResourceLimitExceeded",
+            "MaxSpotInstanceCountExceeded",
+            "MaxSpotFleetRequestCountExceeded",
+            "InsufficientInstanceCapacity",
+            "InsufficientCapacityOnHost",
+          ])
+          subnet_ids = optional(list(string), null)
+          vpc_id     = optional(string, null)
+          cpu_options = optional(object({
+            core_count            = optional(number)
+            threads_per_core      = optional(number)
+            amd_sev_snp           = optional(string)
+            nested_virtualization = optional(string)
+          }), null)
+          placement = optional(object({
+            affinity                = optional(string)
+            availability_zone       = optional(string)
+            group_id                = optional(string)
+            group_name              = optional(string)
+            host_id                 = optional(string)
+            host_resource_group_arn = optional(string)
+            spread_domain           = optional(string)
+            tenancy                 = optional(string)
+            partition_number        = optional(number)
+          }), null)
+          license_specifications = optional(list(object({
+            license_configuration_arn = string
+          })), [])
+          use_dedicated_host = optional(bool, false)
+          log_files = optional(list(object({
+            log_group_name   = string
+            prefix_log_group = bool
+            file_path        = string
+            log_stream_name  = string
+            log_class        = optional(string, "STANDARD")
+          })), null)
+          tags = optional(map(string), {})
+        }), null)
+      }), {})
+    }), {})
   }))
+  default     = {}
   description = <<EOT
+    Accepts either the stable v1 runner configuration shape or the provider-boundary v2 shape. Entries with `runner_config` use the v1 shape; entries without `runner_config` use the v2 shape. A v2 entry does not need matcher configuration. A v2 entry must be acknowledged with `experimental_features = ["multi-runner-v2"]`; the v2 shape is experimental and may change before graduation.
+
     multi_runner_config = {
       runner_config: {
         runner_os: "The EC2 Operating System type to use for action runner instances (linux, osx, windows)."
@@ -256,6 +620,7 @@ variable "multi_runner_config" {
         runner_additional_security_group_ids: "List of additional security groups IDs to apply to the runner. If added outside the multi_runner_config block, the additional security group(s) will be applied to all runner configs. If added inside the multi_runner_config, the additional security group(s) will be applied to the individual runner."
         runner_as_root: "Run the action runner under the root user. Variable `runner_run_as` will be ignored."
         runner_boot_time_in_minutes: "The minimum time for an EC2 runner to boot and register as a runner."
+        scale_down_idle_confirmation_seconds: "Number of seconds a runner must consistently report not-busy before scale-down terminates it. GitHub's busy flag can be stale, so a single not-busy reading is not sufficient evidence a runner is idle. 0 keeps the previous single-reading behaviour."
         runner_disable_default_labels: "Disable default labels for the runners (os, architecture and `self-hosted`). If enabled, the runner will only have the extra labels provided in `runner_extra_labels`. In case you on own start script is used, this configuration parameter needs to be parsed via SSM."
         runner_extra_labels: "Extra (custom) labels for the runners (GitHub). Separate each label by a comma. Labels checks on the webhook can be enforced by setting `multi_runner_config.matcherConfig.exactMatch`. GitHub read-only labels should not be provided."
         runner_group_name: "Name of the runner group."
@@ -290,6 +655,26 @@ variable "multi_runner_config" {
         warm_pool_config: "Configuration for the warm pool feature. When enabled, idle runners are stopped instead of terminated for faster restart."
         iam_overrides: "Allows to (optionally) override the instance profile and runner role created by the module. Set `override_instance_profile` to true and provide the `instance_profile_name` to use an existing instance profile. Set `override_runner_role` to true and provide the `runner_role_arn` to use an existing role for the runner instances."
       }
+      # V2 contract
+      tags: "Tags applied to resources created for this runner configuration."
+      runner: "Runner settings such as the operating system, architecture, labels, hooks, runner group, name prefix, and IAM role configuration."
+      lambda: "Lambda settings such as runtime, architecture, networking, tags, and execution-role options for this runner configuration."
+      # Webhook, queue, and scale-up/scale-down orchestration settings.
+      orchestration_provider: {
+        webhook: {
+          matcherConfig: "Label matching and dynamic-label policy used to route workflow jobs to this runner configuration."
+          runner: "Runner lifecycle settings including boot time, ephemeral mode, JIT configuration, and maximum runner count."
+          queue: "Build queue delay, retention, visibility timeout, redrive, and tags."
+        }
+      }
+      ssm: "SSM parameter paths, tags, and housekeeper settings for runner configuration storage."
+      observability: "Logging, tracing, and metric settings for the resources in this runner configuration."
+      # Compute settings for the runner provider.
+      compute_provider: {
+        aws: {
+          ec2: "AWS EC2 runner settings, including AMI selection, instance types, capacity strategy, VPC and subnet placement, storage, user data, and runner access."
+        }
+      }
       matcherConfig: {
         labelMatchers: "The list of list of labels supported by the runner configuration. `[[self-hosted, linux, x64, example]]`"
         exactMatch: "DEPRECATED: Use `bidirectionalLabelMatch` instead. If set to true all labels in the workflow job must match the GitHub labels (os, architecture and `self-hosted`). When false if __any__ workflow label matches it will trigger the webhook. Note: this only checks that workflow labels are a subset of runner labels, not the reverse."
@@ -301,6 +686,14 @@ variable "multi_runner_config" {
       redrive_build_queue: "Set options to attach (optional) a dead letter queue to the build queue, the queue between the webhook and the scale up lambda. You have the following options. 1. Disable by setting `enabled` to false. 2. Enable by setting `enabled` to `true`, `maxReceiveCount` to a number of max retries."
     }
   EOT
+
+  validation {
+    condition = (
+      length([for config in var.multi_runner_config : config if can(config.runner_config.runner_os)]) == 0
+      || length([for config in var.multi_runner_config : config if !can(config.runner_config.runner_os)]) == 0
+    )
+    error_message = "Use one multi_runner_config shape per module invocation: provide either v1 entries with runner_config or v2 entries without runner_config, not both in the same map."
+  }
 }
 
 variable "scale_up_lambda_memory_size" {
@@ -373,11 +766,6 @@ variable "log_class" {
   description = "The log class of the CloudWatch log groups. Valid values are `STANDARD` or `INFREQUENT_ACCESS`."
   type        = string
   default     = "STANDARD"
-
-  validation {
-    condition     = contains(["STANDARD", "INFREQUENT_ACCESS"], var.log_class)
-    error_message = "`log_class` must be either `STANDARD` or `INFREQUENT_ACCESS`."
-  }
 }
 
 variable "lambda_s3_bucket" {
@@ -417,28 +805,12 @@ variable "queue_selection_strategy" {
   description = "Strategy used to pick a queue when multiple runner configurations match a job equally well. `first` keeps the historical deterministic behaviour (the first matching queue by priority). `random` spreads jobs across the matching queues to avoid concentrating load on a single one. `all` scales up one runner per matching queue and lets the first to become available take the job (favouring speed over cost; this multiplies instance launches and runner registrations per job)."
   type        = string
   default     = "first"
-  validation {
-    condition     = contains(["first", "random", "all"], var.queue_selection_strategy)
-    error_message = "`queue_selection_strategy` value not valid. Valid values are 'first', 'random', 'all'."
-  }
 }
 
 variable "log_level" {
   description = "Logging level for lambda logging. Valid values are  'silly', 'trace', 'debug', 'info', 'warn', 'error', 'fatal'."
   type        = string
   default     = "info"
-  validation {
-    condition = anytrue([
-      var.log_level == "silly",
-      var.log_level == "trace",
-      var.log_level == "debug",
-      var.log_level == "info",
-      var.log_level == "warn",
-      var.log_level == "error",
-      var.log_level == "fatal",
-    ])
-    error_message = "`log_level` value not valid. Valid values are 'silly', 'trace', 'debug', 'info', 'warn', 'error', 'fatal'."
-  }
 }
 
 variable "lambda_runtime" {
@@ -451,10 +823,6 @@ variable "lambda_architecture" {
   description = "AWS Lambda architecture. Lambda functions using Graviton processors ('arm64') tend to have better price/performance than 'x86_64' functions. "
   type        = string
   default     = "arm64"
-  validation {
-    condition     = contains(["arm64", "x86_64"], var.lambda_architecture)
-    error_message = "`lambda_architecture` value is not valid, valid values are: `arm64` and `x86_64`."
-  }
 }
 
 variable "syncer_lambda_s3_key" {
@@ -524,11 +892,6 @@ variable "state_event_rule_binaries_syncer" {
   type        = string
   description = "Option to disable EventBridge Lambda trigger for the binary syncer, useful to stop automatic updates of binary distribution"
   default     = "ENABLED"
-
-  validation {
-    condition     = contains(["ENABLED", "DISABLED", "ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS"], var.state_event_rule_binaries_syncer)
-    error_message = "`state_event_rule_binaries_syncer` value is not valid, valid values are: `ENABLED`, `DISABLED`, `ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS`."
-  }
 }
 
 variable "queue_encryption" {
@@ -542,10 +905,6 @@ variable "queue_encryption" {
     kms_data_key_reuse_period_seconds = null
     kms_master_key_id                 = null
     sqs_managed_sse_enabled           = true
-  }
-  validation {
-    condition     = var.queue_encryption == null || var.queue_encryption.sqs_managed_sse_enabled != null && var.queue_encryption.kms_master_key_id == null && var.queue_encryption.kms_data_key_reuse_period_seconds == null || var.queue_encryption.sqs_managed_sse_enabled == null && var.queue_encryption.kms_master_key_id != null
-    error_message = "Invalid configuration for `queue_encryption`. Valid configurations are encryption disabled, enabled via SSE. Or encryption via KMS."
   }
 }
 
@@ -561,13 +920,15 @@ variable "aws_region" {
 }
 
 variable "vpc_id" {
-  description = "The VPC for security groups of the action runners."
+  description = "The VPC for security groups of stable v1 action runners. Omit when using the experimental v2 interface."
   type        = string
+  default     = null
 }
 
 variable "subnet_ids" {
-  description = "List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`."
+  description = "List of subnets in which stable v1 action runners will be launched. Omit when using the experimental v2 interface."
   type        = list(string)
+  default     = null
 }
 
 variable "enable_managed_runner_security_group" {
@@ -773,10 +1134,6 @@ variable "matcher_config_parameter_store_tier" {
   description = "The tier of the parameter store for the matcher configuration. Valid values are `Standard`, and `Advanced`."
   type        = string
   default     = "Standard"
-  validation {
-    condition     = contains(["Standard", "Advanced"], var.matcher_config_parameter_store_tier)
-    error_message = "`matcher_config_parameter_store_tier` value is not valid, valid values are: `Standard`, and `Advanced`."
-  }
 }
 
 variable "metrics" {
@@ -823,16 +1180,6 @@ variable "iam_overrides" {
     instance_profile_name     = null
     override_runner_role      = false
     runner_role_arn           = null
-  }
-
-  validation {
-    condition     = !var.iam_overrides.override_instance_profile || var.iam_overrides.instance_profile_name != null
-    error_message = "instance_profile_name must be provided when override_instance_profile is true."
-  }
-
-  validation {
-    condition     = !var.iam_overrides.override_runner_role || var.iam_overrides.runner_role_arn != null
-    error_message = "runner_role_arn must be provided when override_runner_role is true."
   }
 }
 

@@ -9,6 +9,7 @@ use_directory_urls: true
 
 theme:
   name: material
+  variant: classic
   icon:
     logo: material/rocket-launch-outline
   palette:
@@ -57,6 +58,8 @@ nav:
   - Configuration: configuration.md
   - Getting started: getting-started.md
   - Security: security.md
+  - Architecture decisions:
+    - MiniStack for integration tests: adr/0001-use-ministack-for-terraform-integration-tests.md
   - Modules:
     - Runners (main): modules/runners.md
     - Submodules (public):
@@ -74,6 +77,7 @@ nav:
     - Overview: examples/index.md
     - Default: examples/default.md
     - Multi Runner: examples/multi-runner.md
+    - Multi Runner v2: examples/multi-runner-v2.md
     - Ephemeral: examples/ephemeral.md
     - External managed secrets: examples/external-managed-ssm-secrets.md
     - Custom AMI: examples/prebuilt.md

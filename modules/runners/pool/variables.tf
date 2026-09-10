@@ -27,6 +27,11 @@ variable "config" {
     github_app_parameters = object({
       key_base64 = map(string)
       id         = map(string)
+      additional_apps_manifest = optional(object({
+        name = string
+        arn  = string
+      }), null)
+      additional_app_parameter_arns = optional(list(string), [])
     })
     subnet_ids = list(string)
     runner = object({

@@ -8,13 +8,17 @@ locals {
   } : {}
 }
 
+locals {
+  scale_up_lambda_name = "${var.prefix}-scale-up"
+}
+
 resource "aws_lambda_function" "scale_up" {
   s3_bucket                      = var.lambda_s3_bucket != null ? var.lambda_s3_bucket : null
   s3_key                         = var.runners_lambda_s3_key != null ? var.runners_lambda_s3_key : null
   s3_object_version              = var.runners_lambda_s3_object_version != null ? var.runners_lambda_s3_object_version : null
   filename                       = var.lambda_s3_bucket == null ? local.lambda_zip : null
   source_code_hash               = var.lambda_s3_bucket == null ? filebase64sha256(local.lambda_zip) : null
-  function_name                  = "${var.prefix}-scale-up"
+  function_name                  = local.scale_up_lambda_name
   role                           = aws_iam_role.scale_up.arn
   handler                        = "index.scaleUpHandler"
   runtime                        = var.lambda_runtime
@@ -23,6 +27,7 @@ resource "aws_lambda_function" "scale_up" {
   memory_size                    = var.lambda_scale_up_memory_size
   tags                           = merge(local.tags, var.lambda_tags)
   architectures                  = [var.lambda_architecture]
+  depends_on                     = [aws_cloudwatch_log_group.scale_up]
   environment {
     variables = {
       AMI_ID_SSM_PARAMETER_NAME                = local.ami_id_ssm_parameter_name
@@ -46,6 +51,7 @@ resource "aws_lambda_function" "scale_up" {
       NODE_TLS_REJECT_UNAUTHORIZED             = var.ghes_url != null && !var.ghes_ssl_verify ? 0 : 1
       PARAMETER_GITHUB_APP_ID_NAME             = var.github_app_parameters.id.name
       PARAMETER_GITHUB_APP_KEY_BASE64_NAME     = var.github_app_parameters.key_base64.name
+      PARAMETER_GITHUB_APPS_MANIFEST_NAME      = var.github_app_parameters.additional_apps_manifest != null ? var.github_app_parameters.additional_apps_manifest.name : ""
       POWERTOOLS_LOGGER_LOG_EVENT              = var.log_level == "debug" ? "true" : "false"
       POWERTOOLS_METRICS_NAMESPACE             = var.metrics.namespace
       POWERTOOLS_TRACE_ENABLED                 = var.tracing_config.mode != null ? true : false
@@ -54,7 +60,7 @@ resource "aws_lambda_function" "scale_up" {
       RUNNER_LABELS                            = lower(join(",", var.runner_labels))
       RUNNER_GROUP_NAME                        = var.runner_group_name
       RUNNER_NAME_PREFIX                       = var.runner_name_prefix
-      RUNNER_PROVIDER_TYPE                     = "ec2"
+      COMPUTE_PROVIDER_TYPE                    = "ec2"
       RUNNERS_MAXIMUM_COUNT                    = var.runners_maximum_count
       POWERTOOLS_SERVICE_NAME                  = "${var.prefix}-scale-up"
       SSM_TOKEN_PATH                           = local.token_path
@@ -94,7 +100,7 @@ resource "aws_lambda_function" "scale_up" {
 }
 
 resource "aws_cloudwatch_log_group" "scale_up" {
-  name              = "/aws/lambda/${aws_lambda_function.scale_up.function_name}"
+  name              = "/aws/lambda/${local.scale_up_lambda_name}"
   retention_in_days = var.logging_retention_in_days
   kms_key_id        = var.logging_kms_key_id
   log_group_class   = var.log_class
@@ -130,15 +136,18 @@ resource "aws_iam_role_policy" "scale_up" {
   name = "scale-up-policy"
   role = aws_iam_role.scale_up.name
   policy = templatefile("${path.module}/policies/lambda-scale-up.json", {
-    arn_runner_instance_role  = var.iam_overrides["override_runner_role"] ? var.iam_overrides["runner_role_arn"] : aws_iam_role.runner[0].arn
-    environment               = var.prefix
-    sqs_arn                   = var.sqs_build_queue.arn
-    github_app_id_arn         = var.github_app_parameters.id.arn
-    github_app_key_base64_arn = var.github_app_parameters.key_base64.arn
-    ssm_config_path           = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm_paths.root}/${var.ssm_paths.config}"
-    kms_key_arn               = local.kms_key_arn
-    ami_kms_key_arn           = local.ami_kms_key_arn
-    ssm_ami_id_parameter_arn  = local.ami_id_ssm_module_managed ? aws_ssm_parameter.runner_ami_id[0].arn : var.ami.id_ssm_parameter_arn
+    arn_runner_instance_role = var.iam_overrides["override_runner_role"] ? var.iam_overrides["runner_role_arn"] : aws_iam_role.runner[0].arn
+    environment              = var.prefix
+    sqs_arn                  = var.sqs_build_queue.arn
+    github_app_parameter_arns = jsonencode(concat(
+      [var.github_app_parameters.id.arn, var.github_app_parameters.key_base64.arn],
+      var.github_app_parameters.additional_app_parameter_arns,
+      var.github_app_parameters.additional_apps_manifest != null ? [var.github_app_parameters.additional_apps_manifest.arn] : [],
+      ["arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm_paths.root}/${var.ssm_paths.config}/*"]
+    ))
+    kms_key_arn              = local.kms_key_arn
+    ami_kms_key_arn          = local.ami_kms_key_arn
+    ssm_ami_id_parameter_arn = local.ami_id_ssm_module_managed ? aws_ssm_parameter.runner_ami_id[0].arn : var.ami.id_ssm_parameter_arn
   })
 }
 

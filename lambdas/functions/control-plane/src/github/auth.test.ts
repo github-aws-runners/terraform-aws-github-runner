@@ -2,11 +2,20 @@ import { createAppAuth } from '@octokit/auth-app';
 import { StrategyOptions } from '@octokit/auth-app/dist-types/types';
 import { request } from '@octokit/request';
 import { RequestInterface, RequestParameters } from '@octokit/types';
-import { getParameters } from '@aws-github-runner/aws-ssm-util';
+import { getParameter, getParameters } from '@aws-github-runner/aws-ssm-util';
 import { generateKeyPairSync } from 'node:crypto';
 import * as nock from 'nock';
 
-import { createGithubAppAuth, createOctokitClient, onRateLimit, onSecondaryRateLimit } from './auth';
+import {
+  createGithubAppAuth,
+  createOctokitClient,
+  getStoredInstallationId,
+  onRateLimit,
+  onSecondaryRateLimit,
+  reportAppRateLimit,
+  reportAppSecondaryRateLimit,
+  resetAppCredentialsCache,
+} from './auth';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 type MockProxy<T> = T & {
@@ -28,10 +37,12 @@ const PARAMETER_GITHUB_APP_ID_NAME = `/actions-runner/${ENVIRONMENT}/github_app_
 const PARAMETER_GITHUB_APP_KEY_BASE64_NAME = `/actions-runner/${ENVIRONMENT}/github_app_key_base64`;
 
 const mockedGetParameters = vi.mocked(getParameters);
+const mockedGetParameter = vi.mocked(getParameter);
 
 beforeEach(() => {
   vi.resetModules();
   vi.clearAllMocks();
+  resetAppCredentialsCache();
   process.env = { ...cleanEnv };
   process.env.PARAMETER_GITHUB_APP_ID_NAME = PARAMETER_GITHUB_APP_ID_NAME;
   process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME = PARAMETER_GITHUB_APP_KEY_BASE64_NAME;
@@ -319,5 +330,207 @@ describe('Test throttling retry caps', () => {
     [2, false],
   ])('onSecondaryRateLimit retries at retryCount=%i -> %s', (retryCount, expected) => {
     expect(onSecondaryRateLimit(60, options, octokit, retryCount)).toBe(expected);
+  });
+});
+
+describe('Test getStoredInstallationId', () => {
+  const decryptedValue = 'decryptedValue';
+  const b64 = Buffer.from(decryptedValue, 'binary').toString('base64');
+
+  beforeEach(() => {
+    const mockedAuth = vi.fn();
+    mockedAuth.mockResolvedValue({ token: 'token' });
+    const mockWithHook = Object.assign(mockedAuth, { hook: vi.fn() });
+    vi.mocked(createAppAuth).mockReturnValue(mockWithHook);
+  });
+
+  it('returns stored installation ID when configured for an additional app', async () => {
+    const appIdParam = `/actions-runner/${ENVIRONMENT}/additional_github_app_0_id`;
+    const appKeyParam = `/actions-runner/${ENVIRONMENT}/additional_github_app_0_key_base64`;
+    const installationIdParam = `/actions-runner/${ENVIRONMENT}/additional_github_app_0_installation_id`;
+    process.env.PARAMETER_GITHUB_APPS_MANIFEST_NAME = `/actions-runner/${ENVIRONMENT}/additional_github_apps_manifest`;
+    mockedGetParameter.mockResolvedValueOnce(
+      JSON.stringify([
+        { idParamName: appIdParam, keyParamName: appKeyParam, installationIdParamName: installationIdParam },
+      ]),
+    );
+    mockedGetParameters.mockResolvedValueOnce(
+      new Map([
+        [PARAMETER_GITHUB_APP_ID_NAME, GITHUB_APP_ID],
+        [PARAMETER_GITHUB_APP_KEY_BASE64_NAME, b64],
+        [appIdParam, '2'],
+        [appKeyParam, b64],
+        [installationIdParam, '12345'],
+      ]),
+    );
+
+    const result = await getStoredInstallationId(1);
+    expect(result).toBe(12345);
+  });
+
+  it('returns undefined when the manifest env var is empty', async () => {
+    process.env.PARAMETER_GITHUB_APPS_MANIFEST_NAME = '';
+    mockedGetParameters.mockResolvedValueOnce(
+      new Map([
+        [PARAMETER_GITHUB_APP_ID_NAME, GITHUB_APP_ID],
+        [PARAMETER_GITHUB_APP_KEY_BASE64_NAME, b64],
+      ]),
+    );
+
+    const result = await getStoredInstallationId(0);
+    expect(result).toBeUndefined();
+  });
+
+  it('returns undefined when the manifest env var is not set', async () => {
+    delete process.env.PARAMETER_GITHUB_APPS_MANIFEST_NAME;
+    mockedGetParameters.mockResolvedValueOnce(
+      new Map([
+        [PARAMETER_GITHUB_APP_ID_NAME, GITHUB_APP_ID],
+        [PARAMETER_GITHUB_APP_KEY_BASE64_NAME, b64],
+      ]),
+    );
+
+    const result = await getStoredInstallationId(0);
+    expect(result).toBeUndefined();
+  });
+
+  it('returns undefined for out-of-bounds appIndex', async () => {
+    delete process.env.PARAMETER_GITHUB_APPS_MANIFEST_NAME;
+    mockedGetParameters.mockResolvedValueOnce(
+      new Map([
+        [PARAMETER_GITHUB_APP_ID_NAME, GITHUB_APP_ID],
+        [PARAMETER_GITHUB_APP_KEY_BASE64_NAME, b64],
+      ]),
+    );
+
+    const result = await getStoredInstallationId(99);
+    expect(result).toBeUndefined();
+  });
+
+  it('loads installation IDs for multi-app setup from the manifest', async () => {
+    const app2IdParam = `/actions-runner/${ENVIRONMENT}/additional_github_app_0_id`;
+    const app2KeyParam = `/actions-runner/${ENVIRONMENT}/additional_github_app_0_key_base64`;
+    const app2InstallParam = `/actions-runner/${ENVIRONMENT}/additional_github_app_0_installation_id`;
+
+    process.env.PARAMETER_GITHUB_APPS_MANIFEST_NAME = `/actions-runner/${ENVIRONMENT}/additional_github_apps_manifest`;
+    mockedGetParameter.mockResolvedValueOnce(
+      JSON.stringify([
+        { idParamName: app2IdParam, keyParamName: app2KeyParam, installationIdParamName: app2InstallParam },
+      ]),
+    );
+    mockedGetParameters.mockResolvedValueOnce(
+      new Map([
+        [PARAMETER_GITHUB_APP_ID_NAME, '1'],
+        [PARAMETER_GITHUB_APP_KEY_BASE64_NAME, b64],
+        [app2IdParam, '2'],
+        [app2KeyParam, b64],
+        [app2InstallParam, '67890'],
+      ]),
+    );
+
+    // Primary app (index 0) has no stored installation ID
+    const result0 = await getStoredInstallationId(0);
+    expect(result0).toBeUndefined();
+
+    // Additional app (index 1) has stored installation ID
+    const result1 = await getStoredInstallationId(1);
+    expect(result1).toBe(67890);
+  });
+});
+
+describe('Test rate-limit aware app selection', () => {
+  const decryptedValue = 'decryptedValue';
+  const b64 = Buffer.from(decryptedValue, 'binary').toString('base64');
+  const app2IdParam = `/actions-runner/${ENVIRONMENT}/additional_github_app_0_id`;
+  const app2KeyParam = `/actions-runner/${ENVIRONMENT}/additional_github_app_0_key_base64`;
+
+  beforeEach(() => {
+    const mockedAuth = vi.fn();
+    mockedAuth.mockResolvedValue({ token: 'token' });
+    const mockWithHook = Object.assign(mockedAuth, { hook: vi.fn() });
+    vi.mocked(createAppAuth).mockReturnValue(mockWithHook);
+
+    process.env.PARAMETER_GITHUB_APPS_MANIFEST_NAME = `/actions-runner/${ENVIRONMENT}/additional_github_apps_manifest`;
+    mockedGetParameter.mockResolvedValue(JSON.stringify([{ idParamName: app2IdParam, keyParamName: app2KeyParam }]));
+    mockedGetParameters.mockResolvedValue(
+      new Map([
+        [PARAMETER_GITHUB_APP_ID_NAME, GITHUB_APP_ID],
+        [PARAMETER_GITHUB_APP_KEY_BASE64_NAME, b64],
+        [app2IdParam, '2'],
+        [app2KeyParam, b64],
+      ]),
+    );
+
+    // Pin the random start offset to 0 so selection is deterministic.
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+  });
+
+  it('selects the app with the most rate limit budget remaining', async () => {
+    reportAppRateLimit(0, 100);
+    reportAppRateLimit(1, 5000);
+
+    const result = await createGithubAppAuth(undefined);
+    expect(result.appIndex).toBe(1);
+  });
+
+  it('selects from the supplied credentials store without reading SSM', async () => {
+    const credentialsStore = {
+      get: vi.fn().mockResolvedValue([
+        { appId: 10, privateKey: 'first-key' },
+        { appId: 20, privateKey: 'second-key' },
+      ]),
+    };
+    reportAppRateLimit(0, 100);
+    reportAppRateLimit(1, 5000);
+
+    const result = await createGithubAppAuth(undefined, '', undefined, credentialsStore);
+
+    expect(result.appIndex).toBe(1);
+    expect(createAppAuth).toHaveBeenCalledWith(expect.objectContaining({ appId: 20, createJwt: expect.any(Function) }));
+    expect(mockedGetParameter).not.toHaveBeenCalled();
+    expect(mockedGetParameters).not.toHaveBeenCalled();
+  });
+
+  it('assumes full budget for apps without observed state', async () => {
+    reportAppRateLimit(0, 100);
+    // App 1 has no observed state and is assumed full.
+
+    const result = await createGithubAppAuth(undefined);
+    expect(result.appIndex).toBe(1);
+  });
+
+  it('skips an app cooling down after a secondary rate limit', async () => {
+    reportAppRateLimit(0, 100);
+    reportAppRateLimit(1, 5000);
+    reportAppSecondaryRateLimit(1);
+
+    const result = await createGithubAppAuth(undefined);
+    expect(result.appIndex).toBe(0);
+  });
+
+  it('falls back to the most budget when every app is cooling down', async () => {
+    reportAppRateLimit(0, 100);
+    reportAppRateLimit(1, 5000);
+    reportAppSecondaryRateLimit(0);
+    reportAppSecondaryRateLimit(1);
+
+    const result = await createGithubAppAuth(undefined);
+    expect(result.appIndex).toBe(1);
+  });
+
+  it('short-circuits to the primary app in single-app deployments', async () => {
+    delete process.env.PARAMETER_GITHUB_APPS_MANIFEST_NAME;
+    reportAppRateLimit(0, 0);
+
+    const result = await createGithubAppAuth(undefined);
+    expect(result.appIndex).toBe(0);
+  });
+
+  it('respects an explicitly provided appIndex', async () => {
+    reportAppRateLimit(0, 5000);
+    reportAppRateLimit(1, 100);
+
+    const result = await createGithubAppAuth(undefined, '', 1);
+    expect(result.appIndex).toBe(1);
   });
 });

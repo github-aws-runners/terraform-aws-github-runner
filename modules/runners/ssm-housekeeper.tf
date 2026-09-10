@@ -1,4 +1,5 @@
 locals {
+  ssm_housekeeper_lambda_name = "${var.prefix}-ssm-housekeeper"
   ssm_housekeeper = {
     schedule_expression = var.ssm_housekeeper.schedule_expression
     state               = var.ssm_housekeeper.state
@@ -18,7 +19,7 @@ resource "aws_lambda_function" "ssm_housekeeper" {
   s3_object_version = var.runners_lambda_s3_object_version != null ? var.runners_lambda_s3_object_version : null
   filename          = var.lambda_s3_bucket == null ? local.lambda_zip : null
   source_code_hash  = var.lambda_s3_bucket == null ? filebase64sha256(local.lambda_zip) : null
-  function_name     = "${var.prefix}-ssm-housekeeper"
+  function_name     = local.ssm_housekeeper_lambda_name
   role              = aws_iam_role.ssm_housekeeper.arn
   handler           = "index.ssmHousekeeper"
   runtime           = var.lambda_runtime
@@ -26,6 +27,7 @@ resource "aws_lambda_function" "ssm_housekeeper" {
   tags              = merge(local.tags, var.lambda_tags)
   memory_size       = local.ssm_housekeeper.lambda_memory_size
   architectures     = [var.lambda_architecture]
+  depends_on        = [aws_cloudwatch_log_group.ssm_housekeeper]
 
   environment {
     variables = {
@@ -56,7 +58,7 @@ resource "aws_lambda_function" "ssm_housekeeper" {
 }
 
 resource "aws_cloudwatch_log_group" "ssm_housekeeper" {
-  name              = "/aws/lambda/${aws_lambda_function.ssm_housekeeper.function_name}"
+  name              = "/aws/lambda/${local.ssm_housekeeper_lambda_name}"
   retention_in_days = var.logging_retention_in_days
   kms_key_id        = var.logging_kms_key_id
   log_group_class   = var.log_class

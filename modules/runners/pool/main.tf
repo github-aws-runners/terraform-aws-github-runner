@@ -1,4 +1,5 @@
 locals {
+  lambda_name = "${var.config.prefix}-pool"
   pool_name_prefix = (
     length("${var.config.prefix}-pool") <= 38
     ? "${var.config.prefix}-pool"
@@ -13,7 +14,7 @@ resource "aws_lambda_function" "pool" {
   s3_object_version              = var.config.lambda.s3_object_version != null ? var.config.lambda.s3_object_version : null
   filename                       = var.config.lambda.s3_bucket == null ? var.config.lambda.zip : null
   source_code_hash               = var.config.lambda.s3_bucket == null ? filebase64sha256(var.config.lambda.zip) : null
-  function_name                  = "${var.config.prefix}-pool"
+  function_name                  = local.lambda_name
   role                           = aws_iam_role.pool.arn
   handler                        = "index.adjustPool"
   architectures                  = [var.config.lambda.architecture]
@@ -21,6 +22,7 @@ resource "aws_lambda_function" "pool" {
   timeout                        = var.config.lambda.timeout
   reserved_concurrent_executions = var.config.lambda.reserved_concurrent_executions
   memory_size                    = var.config.lambda.memory_size
+  depends_on                     = [aws_cloudwatch_log_group.pool]
   tags                           = merge(var.config.tags, var.config.lambda_tags)
 
   environment {
@@ -42,6 +44,7 @@ resource "aws_lambda_function" "pool" {
       NODE_TLS_REJECT_UNAUTHORIZED             = var.config.ghes.url != null && !var.config.ghes.ssl_verify ? 0 : 1
       PARAMETER_GITHUB_APP_ID_NAME             = var.config.github_app_parameters.id.name
       PARAMETER_GITHUB_APP_KEY_BASE64_NAME     = var.config.github_app_parameters.key_base64.name
+      PARAMETER_GITHUB_APPS_MANIFEST_NAME      = var.config.github_app_parameters.additional_apps_manifest != null ? var.config.github_app_parameters.additional_apps_manifest.name : ""
       POWERTOOLS_LOGGER_LOG_EVENT              = var.config.lambda.log_level == "debug" ? "true" : "false"
       RUNNER_BOOT_TIME_IN_MINUTES              = var.config.runner.boot_time_in_minutes
       RUNNER_LABELS                            = lower(join(",", var.config.runner.labels))
@@ -90,7 +93,7 @@ resource "aws_lambda_function" "pool" {
 }
 
 resource "aws_cloudwatch_log_group" "pool" {
-  name              = "/aws/lambda/${aws_lambda_function.pool.function_name}"
+  name              = "/aws/lambda/${local.lambda_name}"
   retention_in_days = var.config.lambda.logging_retention_in_days
   kms_key_id        = var.config.lambda.logging_kms_key_id
   log_group_class   = var.config.lambda.log_class
@@ -111,11 +114,14 @@ resource "aws_iam_role_policy" "pool" {
   policy = templatefile("${path.module}/policies/lambda-pool.json", {
     arn_ssm_parameters_path_config = var.config.arn_ssm_parameters_path_config
     arn_runner_instance_role       = var.config.runner.role.arn
-    github_app_id_arn              = var.config.github_app_parameters.id.arn
-    github_app_key_base64_arn      = var.config.github_app_parameters.key_base64.arn
-    kms_key_arn                    = var.config.kms_key_arn
-    ami_kms_key_arn                = var.config.ami_kms_key_arn
-    ssm_ami_id_parameter_arn       = var.config.ami_id_ssm_parameter_arn
+    github_app_parameter_arns = jsonencode(concat(
+      [var.config.github_app_parameters.id.arn, var.config.github_app_parameters.key_base64.arn],
+      var.config.github_app_parameters.additional_app_parameter_arns,
+      var.config.github_app_parameters.additional_apps_manifest != null ? [var.config.github_app_parameters.additional_apps_manifest.arn] : [],
+    ))
+    kms_key_arn              = var.config.kms_key_arn
+    ami_kms_key_arn          = var.config.ami_kms_key_arn
+    ssm_ami_id_parameter_arn = var.config.ami_id_ssm_parameter_arn
   })
 }
 

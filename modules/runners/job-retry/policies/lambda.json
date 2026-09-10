@@ -7,10 +7,7 @@
         "ssm:GetParameter",
         "ssm:GetParameters"
       ],
-      "Resource": [
-        "${github_app_key_base64_arn}",
-        "${github_app_id_arn}"
-      ]
+      "Resource": ${github_app_parameter_arns}
     },
     {
       "Effect": "Allow",
