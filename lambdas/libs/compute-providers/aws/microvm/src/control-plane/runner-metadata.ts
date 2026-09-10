@@ -26,11 +26,13 @@ const SSM_TAG_VALUE_PATTERN = /^[\p{L}\p{Z}\p{N}_.:/=+\-@]*$/u;
 const MICROVM_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
 const GITHUB_RUNNER_ID_SUFFIX = '.github-runner-id';
 const ORPHAN_SUFFIX = '.orphan';
+const IDLE_DETECTED_AT_SUFFIX = '.idle-detected-at';
 const CLEANUP_REQUESTED_AT_SUFFIX = '.cleanup-requested-at';
 const TAGS_SUFFIX = '.tags';
 const METADATA_COMPANION_SUFFIXES = [
   GITHUB_RUNNER_ID_SUFFIX,
   ORPHAN_SUFFIX,
+  IDLE_DETECTED_AT_SUFFIX,
   CLEANUP_REQUESTED_AT_SUFFIX,
   TAGS_SUFFIX,
 ] as const;
@@ -53,6 +55,7 @@ export interface MicrovmRunnerMetadata {
   githubRunnerId?: string;
   imageArn: string;
   imageVersion?: string;
+  idleDetectedAt?: string;
   microvmId: string;
   orphan?: boolean;
   runnerOwner: string;
@@ -248,6 +251,7 @@ function metadataParameterNames(metadataSsmPath: string, microvmId: string): str
   return [
     `${baseName}${GITHUB_RUNNER_ID_SUFFIX}`,
     `${baseName}${ORPHAN_SUFFIX}`,
+    `${baseName}${IDLE_DETECTED_AT_SUFFIX}`,
     `${baseName}${TAGS_SUFFIX}`,
     baseName,
     `${baseName}${CLEANUP_REQUESTED_AT_SUFFIX}`,
@@ -466,6 +470,7 @@ export async function listMicrovmRunnerMetadata(
       ...metadata,
       githubRunnerId: parameters.get(`${baseName}${GITHUB_RUNNER_ID_SUFFIX}`),
       orphan: parameters.get(`${baseName}${ORPHAN_SUFFIX}`) === 'true',
+      idleDetectedAt: parameters.get(`${baseName}${IDLE_DETECTED_AT_SUFFIX}`),
     });
   }
 
@@ -560,6 +565,20 @@ export async function setMicrovmOrphan(metadataSsmPath: string, microvmId: strin
   await putParameter(stateParameterName(metadataSsmPath, microvmId, ORPHAN_SUFFIX), String(orphan), false, {
     overwrite: true,
   });
+}
+
+export async function setMicrovmIdleDetectedAt(
+  metadataSsmPath: string,
+  microvmId: string,
+  idleDetectedAt: string,
+): Promise<void> {
+  await putParameter(stateParameterName(metadataSsmPath, microvmId, IDLE_DETECTED_AT_SUFFIX), idleDetectedAt, false, {
+    overwrite: true,
+  });
+}
+
+export async function clearMicrovmIdleDetectedAt(metadataSsmPath: string, microvmId: string): Promise<void> {
+  await deleteParameterIfPresent(stateParameterName(metadataSsmPath, microvmId, IDLE_DETECTED_AT_SUFFIX));
 }
 
 export async function markMicrovmCleanupPending(metadataSsmPath: string, microvmId: string): Promise<void> {

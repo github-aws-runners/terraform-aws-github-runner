@@ -207,7 +207,10 @@ describe('listMicrovmRunners', () => {
     vi.mocked(listMicrovmRunnerMetadata).mockResolvedValue({
       cleanupMicrovmIds: [],
       metadataById: new Map([
-        ['mvm-managed', metadata({ githubRunnerId: '42', bypassRemoval: true })],
+        [
+          'mvm-managed',
+          metadata({ githubRunnerId: '42', bypassRemoval: true, idleDetectedAt: '2026-09-10T16:00:00.000Z' }),
+        ],
         ['mvm-other', metadata({ microvmId: 'mvm-other', runnerOwner: 'Other' })],
       ]),
     });
@@ -231,6 +234,7 @@ describe('listMicrovmRunners', () => {
         orphan: false,
         githubRunnerId: '42',
         bypassRemoval: true,
+        idleDetectedAt: '2026-09-10T16:00:00.000Z',
         state: 'RUNNING',
       },
     ]);
