@@ -276,7 +276,6 @@ locals {
           s3 = {
             encryption = {
               enabled            = var.runner_binaries_s3_sse_configuration != null
-              bucket_key_enabled = try(var.runner_binaries_s3_sse_configuration.rule.bucket_key_enabled, null)
               bucket_key_enabled = tobool(try(var.runner_binaries_s3_sse_configuration.rule.bucket_key_enabled, null))
               sse_algorithm      = tostring(try(var.runner_binaries_s3_sse_configuration.rule.apply_server_side_encryption_by_default.sse_algorithm, "AES256"))
               kms_master_key_id  = tostring(try(var.runner_binaries_s3_sse_configuration.rule.apply_server_side_encryption_by_default.kms_master_key_id, null))

@@ -6,6 +6,8 @@ github_app = {
   key_base64 = "ministack-invalid-key"
 }
 
+runner_binaries_enabled = false
+
 ami = {
   "linux-arm64" = {
     filter = {

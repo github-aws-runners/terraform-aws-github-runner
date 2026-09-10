@@ -99,7 +99,7 @@ resource "terraform_data" "validate_contract" {
               length(parameter.name) <= 2048 &&
               can(regex("^/[A-Za-z0-9_./-]+$", parameter.name)) &&
               !endswith(parameter.name, "/") &&
-              !strcontains(parameter.name, "//") &&
+              !can(regex("//", parameter.name)) &&
               parameter.arn == format(
                 "arn:%s:ssm:%s:%s:parameter%s",
                 data.aws_partition.current.partition,
@@ -140,7 +140,7 @@ resource "terraform_data" "validate_contract" {
           (runner_config.work_folder == null ? true : (
             length(runner_config.work_folder) <= 128 &&
             !startswith(runner_config.work_folder, "/") &&
-            !strcontains(runner_config.work_folder, "\\") &&
+            !can(regex("\\\\", runner_config.work_folder)) &&
             can(regex("^[A-Za-z0-9._/-]+$", runner_config.work_folder)) &&
             alltrue([for part in split("/", runner_config.work_folder) : !contains(["", ".", ".."], part)])
           )) &&
@@ -179,7 +179,7 @@ resource "terraform_data" "validate_contract" {
               can(regex("^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$", statement_name)) &&
               length(statement.actions) > 0 &&
               length(statement.resources) > 0 &&
-              alltrue([for action in statement.actions : !strcontains(action, "*")]) &&
+              alltrue([for action in statement.actions : !can(regex("\\*", action))]) &&
               alltrue([
                 for condition in statement.conditions : (
                   length(condition.test) > 0 &&
@@ -361,7 +361,7 @@ resource "terraform_data" "validate_runtime" {
         length(var.network.subnet_ids) > 0 &&
         length(var.network.https_egress.ipv4_cidrs) + length(var.network.https_egress.ipv6_cidrs) > 0 &&
         alltrue([for cidr in var.network.https_egress.ipv4_cidrs : can(cidrnetmask(cidr))]) &&
-        alltrue([for cidr in var.network.https_egress.ipv6_cidrs : can(cidrhost(cidr, 0)) && strcontains(cidr, ":")])
+        alltrue([for cidr in var.network.https_egress.ipv6_cidrs : can(cidrhost(cidr, 0)) && can(regex(":", cidr))])
       )
       error_message = "network must select a VPC and at least one subnet, and HTTPS egress must contain valid IPv4 or IPv6 CIDRs."
     }

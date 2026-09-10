@@ -8,6 +8,21 @@ variable "github_app" {
   sensitive = true
 }
 
+variable "scale_set" {
+  description = "GitHub Actions scale-set configuration."
+
+  type = object({
+    config_url = string
+    installation_id_ssm = object({
+      arn  = string
+      name = string
+    })
+    name            = string
+    id              = number
+    runner_group_id = optional(number)
+  })
+}
+
 variable "environment" {
   description = "Environment name, used as prefix."
 

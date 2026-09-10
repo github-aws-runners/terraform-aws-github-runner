@@ -23,14 +23,14 @@ case "$iac_binary" in
 esac
 
 case "$example" in
-  base | prebuilt | default | ephemeral | multi-runner | multi-runner-v2)
+  base | prebuilt | default | ephemeral | multi-runner | multi-runner-v2 | multi-runner-scale-set)
     use_tfvars=true
     ;;
   termination-watcher)
     use_tfvars=false
     ;;
   *)
-  echo "Supported examples for the runner are: base, prebuilt, default, ephemeral, multi-runner, multi-runner-v2, termination-watcher" >&2
+  echo "Supported examples for the runner are: base, prebuilt, default, ephemeral, multi-runner, multi-runner-v2, multi-runner-scale-set, termination-watcher" >&2
   exit 64
   ;;
 esac
@@ -38,7 +38,7 @@ esac
 case "$action" in
   init | plan | apply | destroy) ;;
   *)
-    echo "Usage: $0 {init|plan|apply|destroy} {base|prebuilt|default|ephemeral|multi-runner|multi-runner-v2|termination-watcher} [TFVARS_FILE]" >&2
+    echo "Usage: $0 {init|plan|apply|destroy} {base|prebuilt|default|ephemeral|multi-runner|multi-runner-v2|multi-runner-scale-set|termination-watcher} [TFVARS_FILE]" >&2
     exit 64
     ;;
 esac
@@ -316,6 +316,14 @@ $lambda_zip"
       create_ami_fixture "ministack-v2-linux-arm64" arm64 >/dev/null
       create_ami_fixture "ministack-v2-linux-x64" x86_64 >/dev/null
       create_ami_fixture "ministack-v2-windows-x64" x86_64 >/dev/null
+      ;;
+    multi-runner-scale-set)
+      create_ami_fixture "ministack-scale-set-linux-x64" x86_64 >/dev/null
+      create_ami_fixture "ministack-scale-set-linux-arm64" arm64 >/dev/null
+      create_ami_fixture "ministack-scale-set-windows-x64" x86_64 >/dev/null
+      create_ssm_fixture \
+        "/ministack/scale-set/installation-id" \
+        "1"
       ;;
   esac
 }

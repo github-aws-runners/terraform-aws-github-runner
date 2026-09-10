@@ -20,6 +20,8 @@ module "runners" {
   prefix     = local.environment
   aws_region = local.aws_region
 
+  experimental_features = ["multi-runner-v2"]
+
   global_config = {
     tags = {
       Example = local.environment
@@ -49,6 +51,15 @@ module "runners" {
       eventbridge = {
         enabled       = true
         accept_events = ["workflow_job"]
+      }
+    }
+    scale_set = {
+      grouping = {
+        strategy = "runner_config"
+      }
+      network = {
+        vpc_id     = module.base.vpc.vpc_id
+        subnet_ids = module.base.vpc.private_subnets
       }
     }
   }
@@ -128,6 +139,35 @@ module "runners" {
       }
     }
 
+    linux-scale-set = {
+      runner = {
+        name_prefix  = "scale-set-"
+        extra_labels = ["scale-set"]
+      }
+      orchestration_provider = {
+        scale_set = {
+          github = {
+            config_url          = var.scale_set.config_url
+            installation_id_ssm = var.scale_set.installation_id_ssm
+          }
+          name            = var.scale_set.name
+          id              = var.scale_set.id
+          runner_group_id = var.scale_set.runner_group_id
+          min_runners     = 0
+          max_runners     = 10
+          work_folder     = "_work/scale-set"
+        }
+      }
+      compute_provider = {
+        aws = {
+          ec2 = {
+            instance_types = ["m5.large"]
+            ami            = lookup(var.ami, "linux-scale-set", null)
+          }
+        }
+      }
+    }
+
     windows-x64 = {
       runner = {
         os          = "windows"
@@ -149,15 +189,7 @@ module "runners" {
         aws = {
           ec2 = {
             instance_types = ["m5.large", "c5.large"]
-            ami = lookup(var.ami, "windows-x64", {
-              filter = {
-                name  = ["Windows_Server-2022-English-Full-ECS_Optimized-*"]
-                state = ["available"]
-              }
-              owners           = ["amazon"]
-              id_ssm_parameter = null
-              kms_key          = null
-            })
+            ami            = lookup(var.ami, "windows-x64", null)
           }
         }
       }
