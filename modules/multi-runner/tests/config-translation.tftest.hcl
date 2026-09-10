@@ -521,6 +521,15 @@ run "v2_entry_without_matcher_config_is_authoritative" {
       }
     }
 
+    global_config_orchestration_provider = {
+      scale_set = {
+        network = {
+          vpc_id     = "vpc-no-matcher"
+          subnet_ids = ["subnet-no-matcher"]
+        }
+      }
+    }
+
     multi_runner_config = {
       no_matcher = {
         runner = {
@@ -528,7 +537,17 @@ run "v2_entry_without_matcher_config_is_authoritative" {
           architecture = "x64"
         }
         orchestration_provider = {
-          webhook = {}
+          scale_set = {
+            github = {
+              config_url = "https://github.com/example"
+              installation_id_ssm = {
+                name = "/tests/scale-set/installation-id"
+                arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/tests/scale-set/installation-id"
+              }
+            }
+            name = "no-matcher-scale-set"
+            id   = 1
+          }
         }
         compute_provider = {
           aws = {
