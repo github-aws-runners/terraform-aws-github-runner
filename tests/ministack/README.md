@@ -57,11 +57,9 @@ required assertion. The test also verifies the `ghr:Application`,
 `ghr:created_by`, `ghr:Type`, and `ghr:Owner` tags used to discover managed
 instances. MiniStack does not currently propagate the Terraform launch-template
 `ghr:environment` tag to instances, so that tag is not asserted by this smoke
-test. For both the scale-up and pool runners, it invokes the
-scale-down Lambda and verifies every required GitHub API route, including token
-creation, runner listing, runner-state lookup, and runner deletion. It then
-verifies the GitHub runner `404`, checks the
-scale-down log entry as supplementary evidence, and verifies EC2 termination.
+test. The scale-down portions of the smoke test are temporarily commented out
+because of a MiniStack `CreateFleet` issue. The assertions remain in the script
+and should be re-enabled once that MiniStack behavior is fixed.
 The pool schedule is configured for a far-future date because the test invokes
 the Lambda directly.
 
