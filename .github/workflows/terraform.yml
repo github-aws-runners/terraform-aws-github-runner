@@ -17,7 +17,7 @@ env:
   AWS_REGION: eu-west-1
 jobs:
   verify_module:
-    name: Verify module (${{ matrix.iac }} ${{ matrix.version }})
+    name: Verify root module (${{ matrix.iac }} ${{ matrix.version }})
     strategy:
       matrix:
         include:
