@@ -169,7 +169,7 @@ variable "github" {
     app_parameters = object({
       key_base64      = list(map(string))
       id              = list(map(string))
-      installation_id = optional(list(object({ name = string, arn = string })), [null])
+      installation_id = list(object({ name = string, arn = string }))
     })
     enterprise_server = object({
       url        = optional(string, null)
