@@ -1,4 +1,4 @@
-environment = "ministack-multi-runner-v2"
+environment = "ministack-v2"
 aws_region  = "eu-west-1"
 
 github_app = {
