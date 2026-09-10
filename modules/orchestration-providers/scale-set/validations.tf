@@ -99,7 +99,7 @@ resource "terraform_data" "validate_contract" {
               length(parameter.name) <= 2048 &&
               can(regex("^/[A-Za-z0-9_./-]+$", parameter.name)) &&
               !endswith(parameter.name, "/") &&
-              !can(regex("//", parameter.name)) &&
+              !strcontains(parameter.name, "//") &&
               parameter.arn == format(
                 "arn:%s:ssm:%s:%s:parameter%s",
                 data.aws_partition.current.partition,
@@ -119,20 +119,38 @@ resource "terraform_data" "validate_contract" {
       condition = alltrue([
         for runner_config in values(var.runner_configs) : (
           can(regex("^[ -~]{1,128}$", runner_config.scale_set.name)) &&
-          runner_config.scale_set.runner.min_runners >= 0 &&
-          floor(runner_config.scale_set.runner.min_runners) == runner_config.scale_set.runner.min_runners &&
-          runner_config.scale_set.runner.max_runners >= 1 &&
-          runner_config.scale_set.runner.max_runners <= 10000 &&
-          floor(runner_config.scale_set.runner.max_runners) == runner_config.scale_set.runner.max_runners &&
-          runner_config.scale_set.runner.min_runners <= runner_config.scale_set.runner.max_runners &&
-          runner_config.scale_set.runner.boot_time_in_minutes >= 1 &&
-          runner_config.scale_set.runner.boot_time_in_minutes <= 120 &&
-          floor(runner_config.scale_set.runner.boot_time_in_minutes) == runner_config.scale_set.runner.boot_time_in_minutes &&
-          length(runner_config.github.user_agent) <= 256 &&
-          can(regex("^[ -~]+$", runner_config.github.user_agent))
+          runner_config.scale_set.id >= 1 &&
+          runner_config.scale_set.id <= 2147483647 &&
+          floor(runner_config.scale_set.id) == runner_config.scale_set.id &&
+          (runner_config.scale_set.runner_group_id == null ? true : (
+            runner_config.scale_set.runner_group_id >= 1 &&
+            runner_config.scale_set.runner_group_id <= 2147483647 &&
+            floor(runner_config.scale_set.runner_group_id) == runner_config.scale_set.runner_group_id
+          )) &&
+          runner_config.scale_set.min_runners >= 0 &&
+          floor(runner_config.scale_set.min_runners) == runner_config.scale_set.min_runners &&
+          runner_config.scale_set.max_runners >= 1 &&
+          runner_config.scale_set.max_runners <= 10000 &&
+          floor(runner_config.scale_set.max_runners) == runner_config.scale_set.max_runners &&
+          runner_config.scale_set.min_runners <= runner_config.scale_set.max_runners &&
+          runner_config.scale_set.boot_time_in_minutes >= 1 &&
+          runner_config.scale_set.boot_time_in_minutes <= 120 &&
+          floor(runner_config.scale_set.boot_time_in_minutes) == runner_config.scale_set.boot_time_in_minutes &&
+          (runner_config.scale_set.session_owner == null ? true : can(regex("^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$", runner_config.scale_set.session_owner))) &&
+          (runner_config.work_folder == null ? true : (
+            length(runner_config.work_folder) <= 128 &&
+            !startswith(runner_config.work_folder, "/") &&
+            !strcontains(runner_config.work_folder, "\\") &&
+            can(regex("^[A-Za-z0-9._/-]+$", runner_config.work_folder)) &&
+            alltrue([for part in split("/", runner_config.work_folder) : !contains(["", ".", ".."], part)])
+          )) &&
+          (runner_config.github.user_agent == null ? true : (
+            length(runner_config.github.user_agent) <= 256 &&
+            can(regex("^[ -~]+$", runner_config.github.user_agent))
+          ))
         )
       ])
-      error_message = "Scale-set names must be valid, boot_time_in_minutes must be an integer from 1 through 120, and min_runners must be between zero and max_runners (maximum 10000)."
+      error_message = "Scale-set names and IDs must be valid, boot_time_in_minutes must be an integer from 1 through 120, optional session/work-folder/user-agent values must match runtime constraints, and min_runners must be between zero and max_runners (maximum 10000)."
     }
 
     precondition {
@@ -161,7 +179,7 @@ resource "terraform_data" "validate_contract" {
               can(regex("^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$", statement_name)) &&
               length(statement.actions) > 0 &&
               length(statement.resources) > 0 &&
-              alltrue([for action in statement.actions : !can(regex("\\*", action))]) &&
+              alltrue([for action in statement.actions : !strcontains(action, "*")]) &&
               alltrue([
                 for condition in statement.conditions : (
                   length(condition.test) > 0 &&
@@ -343,7 +361,7 @@ resource "terraform_data" "validate_runtime" {
         length(var.network.subnet_ids) > 0 &&
         length(var.network.https_egress.ipv4_cidrs) + length(var.network.https_egress.ipv6_cidrs) > 0 &&
         alltrue([for cidr in var.network.https_egress.ipv4_cidrs : can(cidrnetmask(cidr))]) &&
-        alltrue([for cidr in var.network.https_egress.ipv6_cidrs : can(cidrhost(cidr, 0)) && can(regex(":", cidr))])
+        alltrue([for cidr in var.network.https_egress.ipv6_cidrs : can(cidrhost(cidr, 0)) && strcontains(cidr, ":")])
       )
       error_message = "network must select a VPC and at least one subnet, and HTTPS egress must contain valid IPv4 or IPv6 CIDRs."
     }

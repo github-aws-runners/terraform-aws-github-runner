@@ -60,7 +60,7 @@ module "runners" {
         subnet_ids  = module.base.vpc.private_subnets
         ssm_enabled = true
         runner_binaries = {
-          enabled = var.runner_binaries_enabled
+          enabled = true
         }
       }
     }
