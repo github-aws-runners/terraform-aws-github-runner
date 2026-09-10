@@ -47,7 +47,12 @@ script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 source_root=$(CDPATH='' cd -- "$script_dir/../.." && pwd)
 example_root="$source_root/examples/$example"
 lockfile="$example_root/.terraform.lock.hcl"
-lockfile_name="${IAC_LOCK_FILE:-.terraform.lock.hcl.$iac_binary}"
+expected_lockfile=".terraform.lock.hcl.$iac_binary"
+lockfile_name="${IAC_LOCK_FILE:-$expected_lockfile}"
+if [ "$lockfile_name" != "$expected_lockfile" ]; then
+  echo "Lock file does not match IaC binary: $lockfile_name (expected $expected_lockfile)" >&2
+  exit 64
+fi
 case "$lockfile_name" in
   .terraform.lock.hcl.terraform | .terraform.lock.hcl.tofu) ;;
   *)

@@ -25,15 +25,19 @@ jobs:
           - name: terraform-1.5.6
             version: "1.5.6"
             command: terraform
+            lockfile: .terraform.lock.hcl.terraform
           - name: terraform-latest
             version: latest
             command: terraform
+            lockfile: .terraform.lock.hcl.terraform
           - name: tofu-1.11
             version: "1.11"
             command: tofu
+            lockfile: .terraform.lock.hcl.tofu
           - name: tofu-latest
             version: latest
             command: tofu
+            lockfile: .terraform.lock.hcl.tofu
     runs-on: ubuntu-latest
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -110,15 +114,19 @@ jobs:
           - name: terraform-1.5.6
             version: "1.5.6"
             command: terraform
+            lockfile: .terraform.lock.hcl.terraform
           - name: terraform-latest
             version: latest
             command: terraform
+            lockfile: .terraform.lock.hcl.terraform
           - name: tofu-1.11
             version: "1.11"
             command: tofu
+            lockfile: .terraform.lock.hcl.tofu
           - name: tofu-latest
             version: latest
             command: tofu
+            lockfile: .terraform.lock.hcl.tofu
         module:
           - ami-housekeeper
           - download-lambda
@@ -203,15 +211,19 @@ jobs:
           - name: terraform-1.5.6
             version: "1.5.6"
             command: terraform
+            lockfile: .terraform.lock.hcl.terraform
           - name: terraform-latest
             version: latest
             command: terraform
+            lockfile: .terraform.lock.hcl.terraform
           - name: tofu-1.11
             version: "1.11"
             command: tofu
+            lockfile: .terraform.lock.hcl.tofu
           - name: tofu-latest
             version: latest
             command: tofu
+            lockfile: .terraform.lock.hcl.tofu
         example:
           [
             "default",
@@ -250,10 +262,15 @@ jobs:
           tofu_version: ${{ matrix.iac.version }}
           tofu_wrapper: false
 
+      - name: Select ${{ matrix.iac.name }} lockfile
+        env:
+          IAC_LOCK_FILE: ${{ matrix.iac.lockfile }}
+        run: cp "$IAC_LOCK_FILE" .terraform.lock.hcl
+
       - name: ${{ matrix.iac.name }} init
         env:
           IAC_COMMAND: ${{ matrix.iac.command }}
-        run: $IAC_COMMAND init -get -backend=false -input=false
+        run: $IAC_COMMAND init -get -backend=false -input=false -lockfile=readonly
 
       - name: Check ${{ matrix.iac.name }} formatting
         env:
