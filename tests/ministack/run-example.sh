@@ -453,7 +453,11 @@ import json
 import sys
 
 unexpected = []
-ignored_resource_types = {"aws_cloudwatch_log_group", "aws_iam_role_policy"}
+ignored_resource_types = {
+    "aws_cloudwatch_log_group",
+    "aws_iam_role_policy",
+    "aws_ssm_parameter",
+}
 ignored_tag_keys = {"Name", "ghr:ssm_config_path"}
 
 def without_ignored_attributes(value, resource_type):
@@ -484,11 +488,17 @@ for resource in json.load(sys.stdin).get("resource_changes", []):
         or resource.get("type") in ignored_resource_types
     ):
         continue
+    address = resource.get("address", "")
+    if not address.startswith("module.runners."):
+        continue
     actions = resource.get("change", {}).get("actions", [])
     if actions == ["update"]:
         change = resource["change"]
         resource_type = resource.get("type")
-        if without_ignored_attributes(change.get("before"), resource_type) == without_ignored_attributes(change.get("after"), resource_type):
+        if (
+            without_ignored_attributes(change.get("before"), resource_type)
+            == without_ignored_attributes(change.get("after"), resource_type)
+        ):
             continue
     if actions != ["no-op"]:
         address = resource.get("address", "<unknown>")
