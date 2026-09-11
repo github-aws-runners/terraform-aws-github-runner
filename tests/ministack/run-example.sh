@@ -399,18 +399,6 @@ iac_migration_example() {
   "$iac_binary" -chdir="$migration_example_root" "$@" -var-file="$migration_example_root/$phase.tfvars"
 }
 
-copy_migration_state_to_v2() {
-  migration_v1_state="$example_root/.terraform/terraform.tfstate"
-  migration_v2_state="$example_root/v2/.terraform/terraform.tfstate"
-
-  if [ ! -f "$migration_v1_state" ]; then
-    echo "v1 migration state not found: $migration_v1_state" >&2
-    exit 66
-  fi
-
-  cp -p "$migration_v1_state" "$migration_v2_state"
-}
-
 assert_migration_plan_is_empty() {
   phase="$1"
   if iac_migration_example "$phase" plan -input=false -detailed-exitcode; then
@@ -437,7 +425,6 @@ run_migration_test() {
     --apply \
     --yes
 
-  copy_migration_state_to_v2
   assert_migration_plan_is_empty v2
   iac_migration_example v2 apply -auto-approve -input=false
   assert_migration_plan_is_empty v2
