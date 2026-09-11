@@ -26,9 +26,14 @@ response_file=$(mktemp "${TMPDIR:-/tmp}/terraform-aws-github-runner-smoke-respon
 lambda_response_file=$(mktemp "${TMPDIR:-/tmp}/terraform-aws-github-runner-lambda-response.XXXXXX")
 override_file="$example_root/zz_ministack_smoke_override.tf"
 terraform_initialized=false
+discovered_instance_ids=""
 
 cleanup() {
   set +e
+  for instance_id in $discovered_instance_ids; do
+    aws --endpoint-url "$AWS_ENDPOINT_URL" ec2 terminate-instances \
+      --instance-ids "$instance_id" >/dev/null 2>&1
+  done
   if [ "$terraform_initialized" = true ]; then
     "$source_root/tests/ministack/run-example.sh" destroy default "$tfvars_file" >/dev/null 2>&1
   fi
@@ -320,6 +325,8 @@ assert_scale_down_github_routes() {
 }
 
 assert_pool_github_routes() {
+  wait_for_mock_route GET "/api/v3/orgs/test-owner/installation" \
+    "Pool looked up the GitHub App installation"
   wait_for_mock_route POST "/api/v3/app/installations/123/access_tokens" \
     "Pool requested a GitHub App installation token"
   wait_for_mock_route GET "/api/v3/orgs/test-owner/actions/runners" \
@@ -353,6 +360,10 @@ wait_for_ec2_instance() {
       --query 'Reservations[].Instances[].InstanceId | [0]' \
       --output text 2>/dev/null || true)
     if [ -n "$found_instance_id" ] && [ "$found_instance_id" != "None" ]; then
+      case " $discovered_instance_ids " in
+        *" $found_instance_id "*) ;;
+        *) discovered_instance_ids="$discovered_instance_ids $found_instance_id" ;;
+      esac
       printf '  [PASS] MiniStack EC2 API reports %s: %s\n' "$description" "$found_instance_id"
       return
     fi
@@ -599,13 +610,16 @@ wait_for_ec2_termination() {
   description="$2"
   attempts=60
   while :; do
-    state=$(aws --endpoint-url "$AWS_ENDPOINT_URL" ec2 describe-instances \
+    if state=$(aws --endpoint-url "$AWS_ENDPOINT_URL" ec2 describe-instances \
       --instance-ids "$instance_id" \
       --query 'Reservations[].Instances[].State.Name | [0]' \
-      --output text 2>/dev/null || true)
-    if [ -z "$state" ] || [ "$state" = "None" ] || [ "$state" = "terminated" ]; then
-      printf '  [PASS] MiniStack EC2 API reports %s terminated\n' "$description"
-      return
+      --output text 2>/dev/null); then
+      if [ -z "$state" ] || [ "$state" = "None" ] || [ "$state" = "terminated" ]; then
+        printf '  [PASS] MiniStack EC2 API reports %s terminated\n' "$description"
+        return
+      fi
+    else
+      state="describe-instances failed"
     fi
     attempts=$((attempts - 1))
     if [ "$attempts" -le 0 ]; then
