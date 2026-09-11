@@ -33,9 +33,10 @@ variable "config" {
     - `github.enterprise_server.url`: Optional GitHub Enterprise Server URL.
     - `github.enterprise_server.ssl_verify`: Enables TLS verification for GitHub Enterprise Server.
     - `github.user_agent`: Optional User-Agent sent to GitHub.
-    - `github.app_parameters.key_base64`: Ordered Parameter Store references for GitHub App private keys.
-    - `github.app_parameters.id`: Ordered Parameter Store references for GitHub App IDs.
-    - `github.app_parameters.installation_id`: Ordered optional Parameter Store references for GitHub App installation IDs.
+    - `github.app_parameters.key_base64`: Parameter Store reference for the primary GitHub App private key.
+    - `github.app_parameters.id`: Parameter Store reference for the primary GitHub App ID.
+    - `github.app_parameters.additional_apps_manifest`: Optional Parameter Store reference containing the additional GitHub App manifest.
+    - `github.app_parameters.additional_app_parameter_arns`: ARNs of the additional GitHub App credential parameters.
     - `queue.build.arn`: ARN of the build queue consumed by scale-up.
     - `queue.kms_key_id`: Optional KMS key ARN used to encrypt the build queue. This is distinct from the Parameter Store key.
     - `queue.event_source_mapping.batch_size`: Maximum records delivered per scale-up invocation.
@@ -55,6 +56,7 @@ variable "config" {
     - `scale_up.tags.log_group`: Tags for the scale-up log group.
     - `scale_up.tags.event_source_mapping`: Tags for the build-queue event-source mapping.
     - `scale_down`: Scale-down Lambda sizing, schedule, idle configuration, minimum runtime, and resolved resource tag maps.
+    - `scale_down.idle_confirmation_seconds`: Number of seconds a runner must consistently report not-busy before scale-down terminates it. GitHub's busy flag can be stale (it can read false for a runner that is actively executing a job), so a single not-busy reading is not sufficient evidence a runner is idle. Set to at least one scale-down schedule interval to require two consecutive not-busy evaluations; a busy reading resets the window. 0 keeps the previous single-reading behaviour.
     - `scale_down.tags.resources`: Tags for the scale-down IAM role and EventBridge rule.
     - `scale_down.tags.lambda`: Tags for the scale-down Lambda function.
     - `scale_down.tags.log_group`: Tags for the scale-down log group.
@@ -110,9 +112,13 @@ variable "config" {
       })
       user_agent = optional(string, null)
       app_parameters = object({
-        key_base64      = list(map(string))
-        id              = list(map(string))
-        installation_id = list(object({ name = string, arn = string }))
+        key_base64 = map(string)
+        id         = map(string)
+        additional_apps_manifest = optional(object({
+          name = string
+          arn  = string
+        }), null)
+        additional_app_parameter_arns = optional(list(string), [])
       })
     })
     queue = object({
@@ -172,6 +178,7 @@ variable "config" {
       timeout                         = number
       schedule_expression             = string
       minimum_running_time_in_minutes = optional(number, null)
+      idle_confirmation_seconds       = optional(number, 0)
       idle_config = list(object({
         cron             = string
         timeZone         = string

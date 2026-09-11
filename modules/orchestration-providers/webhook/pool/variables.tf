@@ -24,10 +24,11 @@ variable "config" {
     - `ghes`: GitHub Enterprise Server connection configuration.
     - `ghes.url`: GitHub Enterprise Server URL; null when using public GitHub.
     - `ghes.ssl_verify`: Whether the pool Lambda verifies the GitHub Enterprise Server TLS certificate.
-    - `github_app_parameters`: Ordered SSM parameter metadata for GitHub App credentials.
-    - `github_app_parameters.key_base64`: Ordered Parameter Store references for GitHub App private keys.
-    - `github_app_parameters.id`: Ordered Parameter Store references for GitHub App IDs.
-    - `github_app_parameters.installation_id`: Ordered optional Parameter Store references for GitHub App installation IDs.
+    - `github_app_parameters`: SSM parameter metadata for the primary and additional GitHub App credentials.
+    - `github_app_parameters.key_base64`: Parameter Store reference for the primary GitHub App private key.
+    - `github_app_parameters.id`: Parameter Store reference for the primary GitHub App ID.
+    - `github_app_parameters.additional_apps_manifest`: Optional Parameter Store reference containing the additional GitHub App manifest.
+    - `github_app_parameters.additional_app_parameter_arns`: ARNs of the additional GitHub App credential parameters.
     - `runner`: Runner registration configuration used by the pool Lambda.
     - `runner.disable_runner_autoupdate`: Whether GitHub runner automatic updates are disabled.
     - `runner.ephemeral`: Whether runners register as ephemeral runners.
@@ -84,9 +85,13 @@ variable "config" {
       ssl_verify = string
     })
     github_app_parameters = object({
-      key_base64      = list(map(string))
-      id              = list(map(string))
-      installation_id = list(object({ name = string, arn = string }))
+      key_base64 = map(string)
+      id         = map(string)
+      additional_apps_manifest = optional(object({
+        name = string
+        arn  = string
+      }), null)
+      additional_app_parameter_arns = optional(list(string), [])
     })
     runner = object({
       disable_runner_autoupdate = bool

@@ -43,9 +43,12 @@ data "aws_iam_policy_document" "pool_common" {
     ]
 
     resources = concat(
-      [for p in var.config.github_app_parameters.id : p.arn],
-      [for p in var.config.github_app_parameters.key_base64 : p.arn],
-      [for p in var.config.github_app_parameters.installation_id : p.arn if p != null],
+      [
+        var.config.github_app_parameters.id.arn,
+        var.config.github_app_parameters.key_base64.arn,
+      ],
+      var.config.github_app_parameters.additional_app_parameter_arns,
+      var.config.github_app_parameters.additional_apps_manifest != null ? [var.config.github_app_parameters.additional_apps_manifest.arn] : [],
     )
   }
 

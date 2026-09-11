@@ -22,9 +22,12 @@ data "aws_iam_policy_document" "scale_up_common" {
       "ssm:GetParameters",
     ]
     resources = concat(
-      [for p in var.config.github.app_parameters.id : p.arn],
-      [for p in var.config.github.app_parameters.key_base64 : p.arn],
-      [for p in var.config.github.app_parameters.installation_id : p.arn if p != null],
+      [
+        var.config.github.app_parameters.id.arn,
+        var.config.github.app_parameters.key_base64.arn,
+      ],
+      var.config.github.app_parameters.additional_app_parameter_arns,
+      var.config.github.app_parameters.additional_apps_manifest != null ? [var.config.github.app_parameters.additional_apps_manifest.arn] : [],
       [
         var.config.ssm.config_path_arn,
         "${var.config.ssm.config_path_arn}/*",

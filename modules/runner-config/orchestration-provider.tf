@@ -21,7 +21,7 @@ module "orchestration_webhook" {
 
   aws_partition = var.aws_partition
   prefix        = var.prefix
-  tags          = var.tags
+  tags          = local.common_tags
 
   config = var.orchestration_provider.webhook
   runner = var.runner
@@ -32,7 +32,7 @@ module "orchestration_webhook" {
     architecture       = var.lambda.architecture
     subnet_ids         = var.lambda.subnet_ids
     security_group_ids = var.lambda.security_group_ids
-    tags               = var.lambda.tags
+    tags               = local.lambda_tags
     role = {
       path                 = local.lambda_role_path
       permissions_boundary = var.lambda.role.permissions_boundary

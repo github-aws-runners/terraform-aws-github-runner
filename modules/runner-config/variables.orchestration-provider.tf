@@ -30,6 +30,7 @@ variable "orchestration_provider" {
     - `webhook.lambda.scale.down.timeout`: Scale-down Lambda timeout in seconds. The default is `60`.
     - `webhook.lambda.scale.down.schedule_expression`: EventBridge schedule expression that invokes scale-down. The default is `cron(*/5 * * * ? *)`.
     - `webhook.lambda.scale.down.minimum_running_time_in_minutes`: Optional minimum runner age before scale-down may terminate it. The default is null, which selects the operating-system default.
+    - `webhook.lambda.scale.down.idle_confirmation_seconds`: Number of seconds a runner must consistently report not-busy before scale-down terminates it. The default is `0`, which preserves the single-reading behavior.
     - `webhook.lambda.scale.down.idle_config`: Time-based desired idle-runner configurations. The default is `[]`.
     - `webhook.lambda.scale.down.idle_config[].cron`: Cron expression identifying when the idle configuration applies.
     - `webhook.lambda.scale.down.idle_config[].timeZone`: IANA time zone used to evaluate the cron expression.
@@ -99,6 +100,7 @@ variable "orchestration_provider" {
             timeout                         = optional(number, 60)
             schedule_expression             = optional(string, "cron(*/5 * * * ? *)")
             minimum_running_time_in_minutes = optional(number, null)
+            idle_confirmation_seconds       = optional(number, 0)
             idle_config = optional(list(object({
               cron             = string
               timeZone         = string

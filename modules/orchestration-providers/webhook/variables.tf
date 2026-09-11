@@ -45,6 +45,7 @@ variable "config" {
     - `lambda.scale.down.timeout`: Scale-down Lambda timeout in seconds.
     - `lambda.scale.down.schedule_expression`: EventBridge schedule expression that invokes scale-down.
     - `lambda.scale.down.minimum_running_time_in_minutes`: Optional minimum runner age before scale-down may terminate it. Null selects the operating-system default.
+    - `lambda.scale.down.idle_confirmation_seconds`: Number of seconds a runner must consistently report not-busy before scale-down terminates it. A value of `0` preserves the single-reading behavior.
     - `lambda.scale.down.idle_config`: Time-based desired idle-runner configurations.
     - `lambda.scale.down.idle_config[].cron`: Cron expression identifying when the idle configuration applies.
     - `lambda.scale.down.idle_config[].timeZone`: IANA time zone used to evaluate the cron expression.
@@ -113,6 +114,7 @@ variable "config" {
           timeout                         = number
           schedule_expression             = string
           minimum_running_time_in_minutes = optional(number, null)
+          idle_confirmation_seconds       = optional(number, 0)
           idle_config = list(object({
             cron             = string
             timeZone         = string
@@ -167,9 +169,13 @@ variable "github" {
   description = "Common GitHub API client and GitHub App Parameter Store references."
   type = object({
     app_parameters = object({
-      key_base64      = list(map(string))
-      id              = list(map(string))
-      installation_id = list(object({ name = string, arn = string }))
+      key_base64 = map(string)
+      id         = map(string)
+      additional_apps_manifest = optional(object({
+        name = string
+        arn  = string
+      }), null)
+      additional_app_parameter_arns = optional(list(string), [])
     })
     enterprise_server = object({
       url        = optional(string, null)
