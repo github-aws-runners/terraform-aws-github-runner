@@ -5,6 +5,18 @@ mock_provider "aws" {
     }
   }
 
+  mock_data "aws_partition" {
+    defaults = {
+      partition = "aws"
+    }
+  }
+
+  mock_data "aws_region" {
+    defaults = {
+      region = "eu-west-1"
+    }
+  }
+
   mock_data "aws_iam_policy_document" {
     defaults = {
       json = "{\"Version\":\"2012-10-17\",\"Statement\":[]}"
@@ -509,6 +521,27 @@ run "v2_entry_without_matcher_config_is_authoritative" {
 
   variables {
     experimental_features = ["multi-runner-v2"]
+
+    global_config_github = {
+      app = {
+        key_base64_ssm = {
+          name = "/tests/scale-set/app-key"
+          arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/tests/scale-set/app-key"
+        }
+        id_ssm = {
+          name = "/tests/scale-set/app-id"
+          arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/tests/scale-set/app-id"
+        }
+        installation_id_ssm = {
+          name = "/tests/scale-set/installation-id"
+          arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/tests/scale-set/installation-id"
+        }
+        webhook_secret_ssm = {
+          name = "/tests/scale-set/webhook-secret"
+          arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/tests/scale-set/webhook-secret"
+        }
+      }
+    }
 
     global_config_compute_provider = {
       aws = {
