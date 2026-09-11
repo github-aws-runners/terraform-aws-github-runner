@@ -13,6 +13,10 @@ variable "global_config_github" {
         id_ssm: "SSM parameter containing the GitHub App ID."
         id_ssm.arn: "ARN of the SSM parameter containing the GitHub App ID."
         id_ssm.name: "Name of the SSM parameter containing the GitHub App ID."
+        installation_id: "GitHub App installation ID for the primary scale-set installation."
+        installation_id_ssm: "SSM parameter containing the primary GitHub App installation ID."
+        installation_id_ssm.arn: "ARN of the SSM parameter containing the primary GitHub App installation ID."
+        installation_id_ssm.name: "Name of the SSM parameter containing the primary GitHub App installation ID."
         webhook_secret: "GitHub App webhook secret."
         webhook_secret_ssm: "SSM parameter containing the GitHub App webhook secret."
         webhook_secret_ssm.arn: "ARN of the SSM parameter containing the GitHub App webhook secret."
@@ -45,6 +49,11 @@ variable "global_config_github" {
       }))
       id = optional(string)
       id_ssm = optional(object({
+        arn  = string
+        name = string
+      }))
+      installation_id = optional(string)
+      installation_id_ssm = optional(object({
         arn  = string
         name = string
       }))

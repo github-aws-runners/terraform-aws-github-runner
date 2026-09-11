@@ -3,8 +3,9 @@ locals {
     "ghr:environment" = var.prefix
   })
 
-  primary_app_id         = coalesce(local.effective_config.github.app.id_ssm, module.ssm.parameters.github_app_id)
-  primary_app_key_base64 = coalesce(local.effective_config.github.app.key_base64_ssm, module.ssm.parameters.github_app_key_base64)
+  primary_app_id              = coalesce(local.effective_config.github.app.id_ssm, module.ssm.parameters.github_app_id)
+  primary_app_key_base64      = coalesce(local.effective_config.github.app.key_base64_ssm, module.ssm.parameters.github_app_key_base64)
+  primary_app_installation_id = local.effective_config.github.app.installation_id_ssm != null ? local.effective_config.github.app.installation_id_ssm : module.ssm.parameters.github_app_installation_id
 
   github_app_parameters = {
     id             = local.primary_app_id
