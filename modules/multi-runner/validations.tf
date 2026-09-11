@@ -78,11 +78,5 @@ resource "terraform_data" "validate_v2" {
       error_message = "Each experimental v2 runner lane requires a webhook provider, EC2 instance_types, vpc_id, and at least one subnet."
     }
 
-    precondition {
-      condition = !anytrue([
-        for config in local.resolved_config.multi_runner_config : try(config.orchestration_provider.scale_set != null, false)
-      ]) || try(var.global_config_github.config_url != null, false)
-      error_message = "Experimental v2 scale-set lanes require global_config_github.config_url."
-    }
   }
 }

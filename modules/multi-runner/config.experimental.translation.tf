@@ -34,7 +34,6 @@ locals {
   stable_to_v2_github = {
     app             = var.github_app
     additional_apps = var.additional_github_apps
-    config_url      = null
     enterprise_server = {
       url        = var.ghes_url
       ssl_verify = var.ghes_ssl_verify

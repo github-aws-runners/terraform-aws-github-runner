@@ -8,7 +8,6 @@ locals {
   scale_set_runner_configs = {
     for runner_name, runner_config in local.scale_set_runner_config : runner_name => {
       github = {
-        config_url        = local.effective_config.github.config_url
         enterprise_server = local.effective_config.github.enterprise_server
         app = {
           app_id = {
