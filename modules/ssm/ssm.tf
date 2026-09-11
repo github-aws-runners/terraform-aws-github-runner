@@ -16,6 +16,15 @@ resource "aws_ssm_parameter" "github_app_key_base64" {
   tags   = var.tags
 }
 
+resource "aws_ssm_parameter" "github_app_installation_id" {
+  count  = var.github_app.installation_id_ssm != null || var.github_app.installation_id == null ? 0 : 1
+  name   = "${var.path_prefix}/github_app_installation_id"
+  type   = "SecureString"
+  value  = var.github_app.installation_id
+  key_id = local.kms_key_arn
+  tags   = var.tags
+}
+
 resource "aws_ssm_parameter" "github_app_webhook_secret" {
   count  = var.github_app.webhook_secret_ssm != null ? 0 : 1
   name   = "${var.path_prefix}/github_app_webhook_secret"
