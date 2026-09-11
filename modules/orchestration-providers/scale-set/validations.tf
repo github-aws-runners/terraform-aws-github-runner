@@ -47,17 +47,44 @@ resource "terraform_data" "validate_contract" {
 
     precondition {
       condition = alltrue([
+        for runner_config in values(var.runner_configs) : contains([
+          "enterprise",
+          "organization",
+          "repository",
+        ], runner_config.github.runner_registration_level)
+      ])
+      error_message = "runner_registration_level must be enterprise, organization, or repository."
+    }
+
+    precondition {
+      condition = alltrue([
+        for runner_config in values(var.runner_configs) : (
+          runner_config.github.runner_registration_level == "enterprise"
+          ? runner_config.github.runner_owner == null
+          : runner_config.github.runner_owner != null && can(regex(
+            runner_config.github.runner_registration_level == "organization"
+            ? "^[A-Za-z0-9_.-]+$"
+            : "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$",
+            runner_config.github.runner_owner,
+          ))
+        )
+      ])
+      error_message = "runner_owner must be null for enterprise registration and must be an organization or owner/repository path for the other registration levels."
+    }
+
+    precondition {
+      condition = alltrue([
         for runner_name, runner_config in var.runner_configs : (
           can(regex("^https://[A-Za-z0-9.-]+(:[1-9][0-9]{0,4})?(/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)?)?/?$", local.github_config_urls[runner_name])) &&
           local.github_config_url_ports[runner_name] <= 65535
         )
       ])
-      error_message = "Each enterprise_server.url must be an HTTPS GitHub Enterprise Server URL without credentials, query, fragment, or whitespace."
+      error_message = "Each assembled GitHub config URL must be an HTTPS GitHub Enterprise Server URL without credentials, query, fragment, or whitespace."
     }
 
     precondition {
       condition     = length(local.scale_set_ownership_keys) == length(distinct(local.scale_set_ownership_keys))
-      error_message = "Each normalized enterprise_server.url and scale_set.name tuple must be unique across runner_configs so two controller services cannot own the same message session. URL matching ignores case, one trailing slash, and the default HTTPS port."
+      error_message = "Each normalized githubConfigUrl and scale_set.name tuple must be unique across runner_configs so two controller services cannot own the same message session. URL matching ignores case, one trailing slash, and the default HTTPS port."
     }
 
     precondition {
