@@ -3,10 +3,17 @@ locals {
   contract_runner_names   = toset(keys(var.compute_provider_contracts))
   routable_runner_names   = sort(tolist(setintersection(local.configured_runner_names, local.contract_runner_names)))
 
+  github_server_urls = {
+    for runner_name, runner_config in var.runner_configs : runner_name => trimsuffix(
+      coalesce(runner_config.github.enterprise_server.url, "https://github.com"),
+      "/",
+    )
+  }
   github_config_urls = {
-    for runner_name, runner_config in var.runner_configs : runner_name => coalesce(
-      runner_config.github.enterprise_server.url,
-      "https://github.com",
+    for runner_name, runner_config in var.runner_configs : runner_name => (
+      runner_config.github.runner_registration_level == "enterprise" || runner_config.github.runner_owner == null
+      ? local.github_server_urls[runner_name]
+      : format("%s/%s", local.github_server_urls[runner_name], runner_config.github.runner_owner)
     )
   }
   normalized_github_config_urls = {

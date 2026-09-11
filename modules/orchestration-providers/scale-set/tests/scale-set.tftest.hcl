@@ -60,7 +60,9 @@ variables {
             arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github/linux-small/installation-id"
           }
         }
-        user_agent = "scale-set-test"
+        runner_owner              = null
+        runner_registration_level = "enterprise"
+        user_agent                = "scale-set-test"
       }
       scale_set = {
         name = "linux-small"
@@ -89,7 +91,9 @@ variables {
             arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github/linux-large/installation-id"
           }
         }
-        user_agent = "scale-set-test"
+        runner_owner              = null
+        runner_registration_level = "enterprise"
+        user_agent                = "scale-set-test"
       }
       scale_set = {
         name = "linux-large"
@@ -116,7 +120,9 @@ variables {
             arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github/microvm/installation-id"
           }
         }
-        user_agent = "scale-set-test"
+        runner_owner              = null
+        runner_registration_level = "enterprise"
+        user_agent                = "scale-set-test"
       }
       scale_set = {
         name = "microvm"
@@ -512,6 +518,42 @@ run "accepts_advanced_parameter_within_eight_kib" {
   }
 }
 
+run "assembles_github_config_url_from_registration_scope_and_owner" {
+  command = apply
+
+  variables {
+    runner_configs = merge(var.runner_configs, {
+      linux-small = merge(var.runner_configs.linux-small, {
+        github = merge(var.runner_configs.linux-small.github, {
+          runner_registration_level = "organization"
+          runner_owner              = "example"
+        })
+      })
+      linux-large = merge(var.runner_configs.linux-large, {
+        github = merge(var.runner_configs.linux-large.github, {
+          runner_registration_level = "organization"
+          runner_owner              = "example"
+        })
+      })
+      microvm = merge(var.runner_configs.microvm, {
+        github = merge(var.runner_configs.microvm.github, {
+          runner_registration_level = "repository"
+          runner_owner              = "example/repository"
+        })
+      })
+    })
+  }
+
+  assert {
+    condition = (
+      jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).githubConfigUrl == "https://github.com/example" &&
+      jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-large"].value)).githubConfigUrl == "https://github.example.test/example" &&
+      jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["microvm/microvm"].value)).githubConfigUrl == "https://github.com/example/repository"
+    )
+    error_message = "The reconciler config URL must combine the GitHub server with the configured organization or repository owner."
+  }
+}
+
 run "rejects_duplicate_scale_set_ownership_across_groups" {
   command = plan
 
@@ -521,8 +563,8 @@ run "rejects_duplicate_scale_set_ownership_across_groups" {
 
   variables {
     runner_configs = merge(var.runner_configs, {
-        microvm = merge(var.runner_configs.microvm, {
-          github = merge(var.runner_configs.microvm.github, {
+      microvm = merge(var.runner_configs.microvm, {
+        github = merge(var.runner_configs.microvm.github, {
           enterprise_server = { url = "https://GITHUB.COM:443/" }
         })
         scale_set = merge(var.runner_configs.microvm.scale_set, {
@@ -544,8 +586,8 @@ run "rejects_leading_zero_default_port_spelling" {
 
   variables {
     runner_configs = merge(var.runner_configs, {
-        microvm = merge(var.runner_configs.microvm, {
-          github = merge(var.runner_configs.microvm.github, {
+      microvm = merge(var.runner_configs.microvm, {
+        github = merge(var.runner_configs.microvm.github, {
           enterprise_server = { url = "https://github.com:0443/" }
         })
         scale_set = merge(var.runner_configs.microvm.scale_set, {
@@ -567,8 +609,8 @@ run "rejects_port_above_url_maximum" {
 
   variables {
     runner_configs = merge(var.runner_configs, {
-        microvm = merge(var.runner_configs.microvm, {
-          github = merge(var.runner_configs.microvm.github, {
+      microvm = merge(var.runner_configs.microvm, {
+        github = merge(var.runner_configs.microvm.github, {
           enterprise_server = { url = "https://github.com:65536/" }
         })
       })
@@ -700,8 +742,10 @@ run "bounds_default_session_owner_for_maximum_names" {
     runner_configs = {
       (join("", [for index in range(128) : "a"])) = {
         github = {
-          enterprise_server = {}
-          user_agent = "scale-set-test"
+          enterprise_server         = {}
+          runner_owner              = null
+          runner_registration_level = "enterprise"
+          user_agent                = "scale-set-test"
           app = {
             app_id = {
               name = "/github/max/app-id"
@@ -851,6 +895,26 @@ run "rejects_invalid_boot_timeout" {
           runner = merge(var.runner_configs.linux-small.scale_set.runner, {
             boot_time_in_minutes = 0
           })
+        })
+      })
+    })
+  }
+
+  expect_failures = [terraform_data.validate_contract]
+}
+
+run "rejects_invalid_runner_registration_level" {
+  command = plan
+
+  plan_options {
+    target = [terraform_data.validate_contract]
+  }
+
+  variables {
+    runner_configs = merge(var.runner_configs, {
+      linux-small = merge(var.runner_configs.linux-small, {
+        github = merge(var.runner_configs.linux-small.github, {
+          runner_registration_level = "invalid"
         })
       })
     })
