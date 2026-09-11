@@ -130,6 +130,24 @@ export async function getWarmInstance(instanceId: string): Promise<WarmPoolEntry
   return itemToEntry(result.Item);
 }
 
+/**
+ * Reads the readiness marker an instance writes from its start script once it has registered with
+ * GitHub and reached a safe-to-stop checkpoint. Returns the ISO timestamp of the signal, or null
+ * when the instance has not signalled yet. Only projects `readyAt` so it also works on the partial
+ * marker item that exists before the instance is fully added to the warm pool.
+ */
+export async function getInstanceReadyMarker(instanceId: string): Promise<string | null> {
+  const client = getClient();
+  const result = await client.send(
+    new GetItemCommand({
+      TableName: getTableName(),
+      Key: { instanceId: { S: instanceId } },
+      ProjectionExpression: 'readyAt',
+    }),
+  );
+  return result.Item?.readyAt?.S ?? null;
+}
+
 export async function listWarmInstancesByOwner(runnerOwner: string): Promise<WarmPoolEntry[]> {
   const client = getClient();
   const result = await client.send(

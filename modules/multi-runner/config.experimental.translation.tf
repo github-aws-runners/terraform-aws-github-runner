@@ -126,12 +126,11 @@ locals {
           config                         = []
           include_busy_runners           = false
           runner_owner                   = null
-          strategy                       = "hot"
-          warm_pool_config = {
-            enabled                       = false
-            max_warm_instances            = 3
-            max_warm_age_hours            = 168
-            warm_pool_ready_delay_seconds = 30
+          warm_pool = {
+            enabled               = false
+            max_instances         = 3
+            max_age_hours         = 168
+            ready_timeout_seconds = 30
           }
           tags = {}
         }
@@ -409,8 +408,7 @@ locals {
               config                         = v.runner_config.pool_config
               include_busy_runners           = false
               runner_owner                   = v.runner_config.pool_runner_owner
-              strategy                       = try(v.runner_config.pool_strategy, "hot")
-              warm_pool_config               = try(v.runner_config.warm_pool_config, { enabled = false, max_warm_instances = 3, max_warm_age_hours = 168, warm_pool_ready_delay_seconds = 30 })
+              warm_pool                      = try(v.runner_config.warm_pool, { enabled = false, max_instances = 3, max_age_hours = 168, ready_timeout_seconds = 30 })
               tags                           = {}
             }
           }

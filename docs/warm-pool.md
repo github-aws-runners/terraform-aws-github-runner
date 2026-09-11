@@ -27,18 +27,43 @@ multi_runner_config = {
       # ... other config ...
       instance_target_capacity_type = "spot"  # or "on-demand"
 
-      warm_pool_config = {
-        enabled                       = true
-        max_warm_instances            = 3
-        max_warm_age_hours            = 168   # 7 days
-        warm_pool_ready_delay_seconds = 30
+      # Turn on the warm tier. `enabled` switches the pool + scale-down into stop-instead-of-terminate
+      # mode. This alone enables the machinery but does not create standby capacity — see below.
+      warm_pool = {
+        enabled               = true
+        max_instances         = 3
+        max_age_hours         = 168   # 7 days
+        ready_timeout_seconds = 30
       }
 
-      pool_strategy = "warm"  # or "hot"
+      # REQUIRED to actually maintain standby capacity. The pool lambda is created only when
+      # `pool_config` is set, and it is org-level only. Without these three settings no standby
+      # instances are ever created.
+      enable_organization_runners = true                 # the pool is org-level only
+      pool_runner_owner           = "my-org"             # GitHub org the warm runners register to
+      pool_config = [
+        {
+          size                = 2                          # number of WARM (stopped) instances to keep
+          schedule_expression = "cron(* * * * ? *)"        # how often the pool lambda reconciles
+        }
+      ]
     }
   }
 }
 ```
+
+!!! important "A warm *standby* pool requires `pool_config` + org-level runners"
+
+    Setting `warm_pool = { enabled = true }` is **not enough** on its own:
+
+    - `warm_pool.enabled` only enables the stop-instead-of-terminate machinery (DynamoDB table, IAM, and the scale-down warm-parking path) and switches the pool lambda into warm mode.
+    - The pool lambda itself is created **only** when `pool_config` is set, and it is **org-level only**, so it also requires `enable_organization_runners = true` and `pool_runner_owner`.
+
+    Keep everything on the same level: because the pool stores warm instances under the org owner, scale-up must also be org-level (`enable_organization_runners = true`) or it will never find/start them.
+
+    With **ephemeral** runners there is no other way to build standby capacity — the scale-down warm-parking path never fires because ephemeral runners self-terminate after their job. The pool lambda (via `pool_config`) is what pre-creates fresh standby instances.
+
+    Keep `size <= warm_pool.max_instances` to avoid the pool creating instances that scale-down immediately evicts.
 
 ## How It Works
 
@@ -54,17 +79,28 @@ multi_runner_config = {
 1. Scale-down lambda detects the runner is idle and deregistered from GitHub.
 2. Instead of terminating, it **stops** the instance.
 3. Records the instance in the DynamoDB warm pool table (with TTL for auto-expiry).
-4. If `max_warm_instances` is exceeded, oldest warm instances are terminated.
+4. If `warm_pool.max_instances` is exceeded, oldest warm instances are terminated.
 
 ### Pool Lambda (Warm Strategy)
 
-When `pool_strategy = "warm"`:
+When `warm_pool.enabled = true` (and a `pool_config` schedule is set):
 
 1. Pool lambda creates instances normally.
-2. After `warm_pool_ready_delay_seconds` (default 30s), checks if the runner picked up a job.
-3. If still idle: deregisters from GitHub, stops the instance, adds to DynamoDB.
+2. Each instance signals readiness from its start script once it has registered with GitHub and reached a safe-to-stop checkpoint (see [Readiness signal](#readiness-signal)). The pool lambda polls the DynamoDB `readyAt` marker and acts as soon as an instance signals — fast AMIs are parked in seconds, slow ones are never stopped mid-boot.
+3. When an instance signals readiness and is still idle: deregisters from GitHub, stops the instance, adds it to DynamoDB.
 4. If busy: leaves it running (tags `ghr:warm-pool-grace-hit=true` for metrics).
-5. Maintains a target count of **stopped** instances — zero idle compute cost.
+5. `warm_pool.ready_timeout_seconds` is the **maximum** time to wait for the signal. Any instance that never signals within it falls back to a plain idle check, so AMIs without the readiness signal still work.
+6. Maintains a target count of **stopped** instances — zero idle compute cost.
+
+### Readiness signal
+
+Instead of waiting a fixed delay (which is too short for heavy AMIs and wasteful for light ones), the runner tells the control plane exactly when it is safe to stop:
+
+1. After the runner registers with GitHub and is about to start listening, the start script writes a `readyAt` marker (with a short TTL) to the warm pool DynamoDB table keyed by its instance ID.
+2. The pool lambda polls that marker and parks the instance as soon as it appears and the runner is still idle.
+3. The marker TTL self-heals the record if the instance is never parked (for example if the lambda crashes mid-wait).
+
+This is on by default whenever the warm pool is enabled; there is no separate flag. The instance role is granted `dynamodb:UpdateItem` on the warm pool table for this signal. The readiness signal is currently implemented for Linux runners; other operating systems fall back to the `warm_pool.ready_timeout_seconds` timeout.
 
 ## Spot Instance Support
 
@@ -72,7 +108,7 @@ The module fully supports spot instances with the warm pool. This provides the b
 
 ### How It Works with Spot
 
-When both `warm_pool_config.enabled = true` and `instance_target_capacity_type = "spot"` are set, the module automatically:
+When both `warm_pool.enabled = true` and `instance_target_capacity_type = "spot"` are set, the module automatically:
 
 1. Uses the `RunInstances` API with **persistent spot requests** instead of the default `CreateFleet` (which creates one-time spot requests that cannot be stopped).
 2. Sets `InstanceInterruptionBehavior = "stop"` so AWS stops (rather than terminates) the instance on capacity reclaim.
@@ -113,21 +149,23 @@ For warm pool use cases, this trade-off is acceptable: the goal is fast restart 
 
 ## Configuration Reference
 
-### `warm_pool_config`
+### `warm_pool`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `enabled` | bool | `false` | Enable the warm pool feature |
-| `max_warm_instances` | number | `3` | Maximum stopped instances per runner owner |
-| `max_warm_age_hours` | number | `168` | Hours before a warm instance expires (DynamoDB TTL) |
-| `warm_pool_ready_delay_seconds` | number | `30` | Grace period before pool lambda stops a new instance |
+| `enabled` | bool | `false` | Enable the warm tier. Switches the pool lambda into warm (stop-instead-of-terminate) mode and enables scale-down warm-parking. |
+| `max_instances` | number | `3` | Maximum stopped instances per runner owner. Must be `>=` the largest `pool_config` size. |
+| `max_age_hours` | number | `168` | Hours before a warm instance expires (DynamoDB TTL) |
+| `ready_timeout_seconds` | number | `30` | Maximum seconds the pool lambda waits for an instance's readiness signal before falling back to an idle check. Instances that signal earlier are parked immediately. |
 
-### `pool_strategy`
+### Hot vs warm pool
 
-| Value | Description |
-|-------|-------------|
-| `"hot"` (default) | Pool creates running instances. If warm pool is enabled, scale-down stops them. |
-| `"warm"` | Pool creates instances then immediately stops them. Zero idle compute. Requires `warm_pool_config.enabled = true`. |
+The pool is created by `pool_config` (schedule + `size`). Its mode is derived from `warm_pool.enabled`:
+
+| `warm_pool.enabled` | Behaviour |
+|---------------------|-----------|
+| `false` (default) | **Hot pool** — the pool keeps `size` running instances; scale-down terminates idle runners. Classic behaviour. |
+| `true` | **Warm pool** — the pool keeps `size` **stopped** instances (zero idle compute); scale-down stops idle runners into the warm tier; scale-up starts a warm instance on demand. Org-level only (see [Quick Start](#quick-start)). |
 
 ### `instance_target_capacity_type`
 
@@ -181,7 +219,9 @@ aws dynamodb scan --table-name "your-prefix-warm-pool" \
 
 ### Warm instances not accumulating
 
-- Verify `warm_pool_config.enabled = true` in your runner config.
+- **No `pool_config`?** A pool lambda is only created when `pool_config` is set. Without it (and `enable_organization_runners = true` + `pool_runner_owner`) nothing proactively builds standby capacity — this is the most common cause of an empty warm pool. See the note in [Quick Start](#quick-start).
+- **Repo-level runners?** The pool is org-level only. If `enable_organization_runners = false`, scale-up looks up warm instances under `owner/repo` while the pool stores them under the org owner, so they never match. Set `enable_organization_runners = true`.
+- Verify `warm_pool.enabled = true` in your runner config.
 - Check the scale-down lambda logs for stop errors.
 - If using spot: confirm the lambda logs show "Created persistent spot instance" (not "Create fleet").
 

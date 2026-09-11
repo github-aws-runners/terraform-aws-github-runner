@@ -258,6 +258,58 @@ async function createRegistrationTokenConfig(
 }
 
 /**
+ * Removes a stale GitHub runner registration blocking re-registration under the same name.
+ * A warm-pool restart reuses the same instance ID (and therefore the same runner name); if that
+ * name's earlier registration never consumed a job (e.g. a pool-created instance parked without
+ * ever running one), GitHub keeps it around and `generateRunnerJitconfigFor*` responds 409.
+ *
+ * @returns true if a matching runner was found and removed
+ */
+async function removeStaleRunnerRegistration(
+  ghClient: Octokit,
+  githubRunnerConfig: CreateGitHubRunnerConfig,
+  runnerName: string,
+): Promise<boolean> {
+  try {
+    const runners: { id: number; name?: string }[] =
+      githubRunnerConfig.runnerType === 'Org'
+        ? await ghClient.paginate('GET /orgs/{org}/actions/runners', {
+            org: githubRunnerConfig.runnerOwner,
+            per_page: 100,
+          })
+        : await ghClient.paginate('GET /repos/{owner}/{repo}/actions/runners', {
+            owner: githubRunnerConfig.runnerOwner.split('/')[0],
+            repo: githubRunnerConfig.runnerOwner.split('/')[1],
+            per_page: 100,
+          });
+    const stale = runners.find((runner) => runner.name === runnerName);
+    if (!stale) {
+      return false;
+    }
+
+    if (githubRunnerConfig.runnerType === 'Org') {
+      await ghClient.actions.deleteSelfHostedRunnerFromOrg({
+        org: githubRunnerConfig.runnerOwner,
+        runner_id: stale.id,
+      });
+    } else {
+      await ghClient.actions.deleteSelfHostedRunnerFromRepo({
+        owner: githubRunnerConfig.runnerOwner.split('/')[0],
+        repo: githubRunnerConfig.runnerOwner.split('/')[1],
+        runner_id: stale.id,
+      });
+    }
+    logger.info(`Removed stale runner registration '${runnerName}' (id ${stale.id}) blocking re-registration.`);
+    return true;
+  } catch (error) {
+    logger.warn(`Failed to remove stale runner registration '${runnerName}'`, {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return false;
+  }
+}
+
+/**
  * Creates JIT (Just-In-Time) configuration for ephemeral runners.
  * Continues processing remaining runners even if some fail.
  *
@@ -286,21 +338,36 @@ async function createJitConfig(
         runnerLabels: runnerLabels,
       };
       logger.debug(`Runner name: ${ephemeralRunnerConfig.runnerName}`);
-      const runnerConfig =
+
+      const generateJitConfig = () =>
         githubRunnerConfig.runnerType === 'Org'
-          ? await ghClient.actions.generateRunnerJitconfigForOrg({
+          ? ghClient.actions.generateRunnerJitconfigForOrg({
               org: githubRunnerConfig.runnerOwner,
               name: ephemeralRunnerConfig.runnerName,
               runner_group_id: ephemeralRunnerConfig.runnerGroupId,
               labels: ephemeralRunnerConfig.runnerLabels,
             })
-          : await ghClient.actions.generateRunnerJitconfigForRepo({
+          : ghClient.actions.generateRunnerJitconfigForRepo({
               owner: githubRunnerConfig.runnerOwner.split('/')[0],
               repo: githubRunnerConfig.runnerOwner.split('/')[1],
               name: ephemeralRunnerConfig.runnerName,
               runner_group_id: ephemeralRunnerConfig.runnerGroupId,
               labels: ephemeralRunnerConfig.runnerLabels,
             });
+
+      let runnerConfig;
+      try {
+        runnerConfig = await generateJitConfig();
+      } catch (error) {
+        // 409: a runner with this name already exists (e.g. reused warm-pool instance ID whose
+        // prior registration never consumed a job). Remove it and retry once.
+        const status = (error as { status?: number }).status;
+        if (status === 409 && (await removeStaleRunnerRegistration(ghClient, githubRunnerConfig, ephemeralRunnerConfig.runnerName))) {
+          runnerConfig = await generateJitConfig();
+        } else {
+          throw error;
+        }
+      }
 
       metricGitHubAppRateLimit(runnerConfig.headers, githubRunnerConfig.appIndex);
 

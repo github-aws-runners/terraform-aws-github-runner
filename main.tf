@@ -294,8 +294,7 @@ module "runners" {
   pool_lambda_timeout                        = var.pool_lambda_timeout
   pool_runner_owner                          = var.pool_runner_owner
   pool_lambda_reserved_concurrent_executions = var.pool_lambda_reserved_concurrent_executions
-  pool_strategy                              = var.pool_strategy
-  warm_pool_config                           = var.warm_pool_config
+  warm_pool                                  = var.warm_pool
   pool_include_busy_runners                  = var.pool_include_busy_runners
 
   ssm_housekeeper = var.runners_ssm_housekeeper

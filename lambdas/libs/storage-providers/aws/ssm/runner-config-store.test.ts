@@ -1,13 +1,15 @@
-import { putParameter } from '@aws-github-runner/aws-ssm-util';
+import { deleteParameter, putParameter } from '@aws-github-runner/aws-ssm-util';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createAwsSsmRunnerConfigStore } from './runner-config-store';
 
 vi.mock('@aws-github-runner/aws-ssm-util', () => ({
   putParameter: vi.fn(),
+  deleteParameter: vi.fn(),
 }));
 
 const putParameterMock = vi.mocked(putParameter);
+const deleteParameterMock = vi.mocked(deleteParameter);
 const cleanEnv = process.env;
 const loggerMock = vi.hoisted(() => ({
   debug: vi.fn(),
@@ -105,6 +107,20 @@ describe('aws_ssm runner config store', () => {
       errorNames: ['ThrottlingException'],
     });
     expect(JSON.stringify(loggerMock.error.mock.calls)).not.toContain('encoded-jit-secret');
+  });
+
+  it('clears a stale parameter and retries once on ParameterAlreadyExists (warm-pool restart reusing an instance ID)', async () => {
+    const conflict = Object.assign(new Error('already exists'), { name: 'ParameterAlreadyExists' });
+    putParameterMock.mockRejectedValueOnce(conflict).mockResolvedValueOnce(undefined);
+    deleteParameterMock.mockResolvedValue(undefined);
+
+    await createAwsSsmRunnerConfigStore().create({ runnerId: 'i-warm-restart', value: 'fresh-jit-config' });
+
+    expect(deleteParameterMock).toHaveBeenCalledWith('/runner/tokens/i-warm-restart');
+    expect(putParameterMock).toHaveBeenCalledTimes(2);
+    expect(putParameterMock).toHaveBeenLastCalledWith('/runner/tokens/i-warm-restart', 'fresh-jit-config', true, {
+      tags: [],
+    });
   });
 });
 

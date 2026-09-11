@@ -64,15 +64,15 @@ resource "aws_lambda_function" "pool" {
       SCALE_ERRORS                             = jsonencode(var.config.runner.scale_errors)
       USE_DEDICATED_HOST                       = var.config.runner.use_dedicated_host
       WARM_POOL_CONFIG = jsonencode({
-        enabled                   = var.config.warm_pool_config.enabled
-        maxWarmInstances          = var.config.warm_pool_config.max_warm_instances
-        maxWarmAgeHours           = var.config.warm_pool_config.max_warm_age_hours
-        warmPoolReadyDelaySeconds = var.config.warm_pool_config.warm_pool_ready_delay_seconds
+        enabled                   = var.config.warm_pool.enabled
+        maxWarmInstances          = var.config.warm_pool.max_instances
+        maxWarmAgeHours           = var.config.warm_pool.max_age_hours
+        warmPoolReadyDelaySeconds = var.config.warm_pool.ready_timeout_seconds
       })
       WARM_POOL_TABLE_NAME    = var.config.warm_pool_table_name
-      POOL_STRATEGY           = var.config.pool_strategy
+      POOL_STRATEGY           = var.config.warm_pool.enabled ? "warm" : "hot"
       ENABLE_METRIC_WARM_POOL = var.config.enable_metric_warm_pool
-      ENABLE_PERSISTENT_SPOT  = var.config.warm_pool_config.enabled && var.config.instance_target_capacity_type == "spot"
+      ENABLE_PERSISTENT_SPOT  = var.config.warm_pool.enabled && var.config.instance_target_capacity_type == "spot"
       INCLUDE_BUSY_RUNNERS    = var.config.include_busy_runners
     }
   }

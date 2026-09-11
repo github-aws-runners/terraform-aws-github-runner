@@ -48,6 +48,20 @@
     {
       "Effect": "Allow",
       "Action": [
+        "ec2:TerminateInstances"
+      ],
+      "Resource": [
+        "*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "ec2:Vpc": "${vpc_arn}"
+        }
+      }
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
         "ssm:GetParameter",
         "ssm:GetParameters"
       ],

@@ -53,7 +53,7 @@ run "warm_pool_disabled_by_default" {
 
   assert {
     condition     = length(aws_dynamodb_table.warm_pool) == 0
-    error_message = "DynamoDB warm pool table should not be created when warm_pool_config.enabled is false (default)"
+    error_message = "DynamoDB warm pool table should not be created when warm_pool.enabled is false (default)"
   }
 
   assert {
@@ -66,17 +66,17 @@ run "warm_pool_enabled_creates_dynamodb" {
   command = plan
 
   variables {
-    warm_pool_config = {
-      enabled                       = true
-      max_warm_instances            = 5
-      max_warm_age_hours            = 168
-      warm_pool_ready_delay_seconds = 30
+    warm_pool = {
+      enabled               = true
+      max_instances         = 5
+      max_age_hours         = 168
+      ready_timeout_seconds = 30
     }
   }
 
   assert {
     condition     = length(aws_dynamodb_table.warm_pool) == 1
-    error_message = "DynamoDB warm pool table should be created when warm_pool_config.enabled = true"
+    error_message = "DynamoDB warm pool table should be created when warm_pool.enabled = true"
   }
 
   assert {
@@ -94,11 +94,11 @@ run "warm_pool_enabled_creates_iam_policies" {
   command = plan
 
   variables {
-    warm_pool_config = {
-      enabled                       = true
-      max_warm_instances            = 3
-      max_warm_age_hours            = 168
-      warm_pool_ready_delay_seconds = 30
+    warm_pool = {
+      enabled               = true
+      max_instances         = 3
+      max_age_hours         = 168
+      ready_timeout_seconds = 30
     }
   }
 
@@ -122,28 +122,26 @@ run "warm_pool_strategy_validation" {
   command = plan
 
   variables {
-    pool_strategy = "warm"
-    warm_pool_config = {
-      enabled                       = true
-      max_warm_instances            = 3
-      max_warm_age_hours            = 168
-      warm_pool_ready_delay_seconds = 30
+    warm_pool = {
+      enabled               = true
+      max_instances         = 3
+      max_age_hours         = 168
+      ready_timeout_seconds = 30
     }
   }
 
-  # The check block emits a warning but doesn't fail the plan,
-  # so we verify the resources are properly created for valid config
+  # With warm_pool.enabled the pool lambda runs the warm strategy; verify the table is created.
   assert {
     condition     = length(aws_dynamodb_table.warm_pool) == 1
     error_message = "Warm strategy with enabled config should create DynamoDB table"
   }
 }
 
-run "pool_strategy_defaults_to_hot" {
+run "warm_pool_defaults_to_disabled" {
   command = plan
 
   assert {
-    condition     = var.pool_strategy == "hot"
-    error_message = "pool_strategy should default to 'hot'"
+    condition     = var.warm_pool.enabled == false
+    error_message = "warm_pool.enabled should default to false (hot pool)"
   }
 }

@@ -25,7 +25,8 @@
             "Effect": "Allow",
             "Action": [
                 "ssm:AddTagsToResource",
-                "ssm:PutParameter"
+                "ssm:PutParameter",
+                "ssm:DeleteParameter"
             ],
             "Resource": "*"
         },

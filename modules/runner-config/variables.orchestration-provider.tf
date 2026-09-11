@@ -119,12 +119,11 @@ variable "orchestration_provider" {
           })), [])
           include_busy_runners = optional(bool, false)
           runner_owner         = optional(string, null)
-          strategy             = optional(string, "hot")
-          warm_pool_config = optional(object({
-            enabled                       = optional(bool, false)
-            max_warm_instances            = optional(number, 3)
-            max_warm_age_hours            = optional(number, 168)
-            warm_pool_ready_delay_seconds = optional(number, 30)
+          warm_pool = optional(object({
+            enabled               = optional(bool, false)
+            max_instances         = optional(number, 3)
+            max_age_hours         = optional(number, 168)
+            ready_timeout_seconds = optional(number, 30)
           }), {})
           tags = optional(map(string), {})
         }), {})

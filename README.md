@@ -66,7 +66,7 @@ Join our discord community via [this invite link](https://discord.gg/bxgXW8jJGh)
 ## Requirements
 
 | Name | Version |
-|------|---------|
+| ---- | ------- |
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.3.0 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 6.33 |
 | <a name="requirement_random"></a> [random](#requirement\_random) | ~> 3.0 |
@@ -74,14 +74,14 @@ Join our discord community via [this invite link](https://discord.gg/bxgXW8jJGh)
 ## Providers
 
 | Name | Version |
-|------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | >= 6.33 |
-| <a name="provider_random"></a> [random](#provider\_random) | ~> 3.0 |
+| ---- | ------- |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.34.0 |
+| <a name="provider_random"></a> [random](#provider\_random) | 3.8.1 |
 
 ## Modules
 
 | Name | Source | Version |
-|------|--------|---------|
+| ---- | ------ | ------- |
 | <a name="module_ami_housekeeper"></a> [ami\_housekeeper](#module\_ami\_housekeeper) | ./modules/ami-housekeeper | n/a |
 | <a name="module_instance_termination_watcher"></a> [instance\_termination\_watcher](#module\_instance\_termination\_watcher) | ./modules/termination-watcher | n/a |
 | <a name="module_runner_binaries"></a> [runner\_binaries](#module\_runner\_binaries) | ./modules/runner-binaries-syncer | n/a |
@@ -92,7 +92,7 @@ Join our discord community via [this invite link](https://discord.gg/bxgXW8jJGh)
 ## Resources
 
 | Name | Type |
-|------|------|
+| ---- | ---- |
 | [aws_sqs_queue.queued_builds](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue) | resource |
 | [aws_sqs_queue.queued_builds_dlq](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue) | resource |
 | [aws_sqs_queue_policy.build_queue_dlq_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue_policy) | resource |
@@ -103,7 +103,7 @@ Join our discord community via [this invite link](https://discord.gg/bxgXW8jJGh)
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
+| ---- | ----------- | ---- | ------- | :------: |
 | <a name="input_additional_github_apps"></a> [additional\_github\_apps](#input\_additional\_github\_apps) | Additional GitHub Apps for distributing API rate limit usage. Each must be installed on the same repos/orgs as the primary app. | <pre>list(object({<br/>    key_base64          = optional(string)<br/>    key_base64_ssm      = optional(object({ arn = string, name = string }))<br/>    id                  = optional(string)<br/>    id_ssm              = optional(object({ arn = string, name = string }))<br/>    installation_id     = optional(string)<br/>    installation_id_ssm = optional(object({ arn = string, name = string }))<br/>  }))</pre> | `[]` | no |
 | <a name="input_ami"></a> [ami](#input\_ami) | AMI configuration for the action runner instances. This object allows you to specify all AMI-related settings in one place.<br/><br/>Parameters:<br/>- `filter`: Map of lists to filter AMIs by various criteria (e.g., { name = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-*"], state = ["available"] })<br/>- `owners`: List of AMI owners to limit the search. Common values: ["amazon"], ["self"], or specific AWS account IDs<br/>- `id_ssm_parameter_arn`: ARN of an SSM parameter containing the AMI ID. If specified, this overrides both AMI filter and parameter name<br/>- `kms_key_arn`: Optional KMS key ARN if the AMI is encrypted with a customer managed key<br/><br/>Defaults to null, in which case the module falls back to individual AMI variables (deprecated). | <pre>object({<br/>    filter               = optional(map(list(string)), { state = ["available"] })<br/>    owners               = optional(list(string), ["amazon"])<br/>    id_ssm_parameter_arn = optional(string, null)<br/>    kms_key_arn          = optional(string, null)<br/>  })</pre> | `null` | no |
 | <a name="input_ami_housekeeper_cleanup_config"></a> [ami\_housekeeper\_cleanup\_config](#input\_ami\_housekeeper\_cleanup\_config) | Configuration for AMI cleanup.<br/><br/>    `amiFilters` - Filters to use when searching for AMIs to cleanup. Default filter for images owned by the account and that are available.<br/>    `dryRun` - If true, no AMIs will be deregistered. Default false.<br/>    `launchTemplateNames` - Launch template names to use when searching for AMIs to cleanup. Default no launch templates.<br/>    `maxItems` - The maximum number of AMIs that will be queried for cleanup. Default no maximum.<br/>    `minimumDaysOld` - Minimum number of days old an AMI must be to be considered for cleanup. Default 30.<br/>    `ssmParameterNames` - SSM parameter names to use when searching for AMIs to cleanup. This parameter should be set when using SSM to configure the AMI to use. Default no SSM parameters. | <pre>object({<br/>    amiFilters = optional(list(object({<br/>      Name   = string<br/>      Values = list(string)<br/>      })),<br/>      [{<br/>        Name : "state",<br/>        Values : ["available"],<br/>        },<br/>        {<br/>          Name : "image-type",<br/>          Values : ["machine"],<br/>      }]<br/>    )<br/>    dryRun              = optional(bool, false)<br/>    launchTemplateNames = optional(list(string))<br/>    maxItems            = optional(number)<br/>    minimumDaysOld      = optional(number, 30)<br/>    ssmParameterNames   = optional(list(string))<br/>  })</pre> | `{}` | no |
@@ -177,7 +177,6 @@ Join our discord community via [this invite link](https://discord.gg/bxgXW8jJGh)
 | <a name="input_pool_lambda_reserved_concurrent_executions"></a> [pool\_lambda\_reserved\_concurrent\_executions](#input\_pool\_lambda\_reserved\_concurrent\_executions) | Amount of reserved concurrent executions for the scale-up lambda function. A value of 0 disables lambda from being triggered and -1 removes any concurrency limitations. | `number` | `1` | no |
 | <a name="input_pool_lambda_timeout"></a> [pool\_lambda\_timeout](#input\_pool\_lambda\_timeout) | Time out for the pool lambda in seconds. | `number` | `60` | no |
 | <a name="input_pool_runner_owner"></a> [pool\_runner\_owner](#input\_pool\_runner\_owner) | The pool will deploy runners to the GitHub org ID, set this value to the org to which you want the runners deployed. Repo level is not supported. | `string` | `null` | no |
-| <a name="input_pool_strategy"></a> [pool\_strategy](#input\_pool\_strategy) | Strategy for maintaining idle runners: `hot` (default, traditional) or `warm` (stop instead of terminate). Requires `warm_pool_config.enabled = true` when set to `warm`. | `string` | `"hot"` | no |
 | <a name="input_prefix"></a> [prefix](#input\_prefix) | The prefix used for naming resources | `string` | `"github-actions"` | no |
 | <a name="input_queue_encryption"></a> [queue\_encryption](#input\_queue\_encryption) | Configure how data on queues managed by the modules is encrypted at REST. Options are encrypted via SSE, non encrypted and via KMS. By default encrypted via SSE is enabled. See for more details the Terraform `aws_sqs_queue` resource https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue. | <pre>object({<br/>    kms_data_key_reuse_period_seconds = number<br/>    kms_master_key_id                 = string<br/>    sqs_managed_sse_enabled           = bool<br/>  })</pre> | <pre>{<br/>  "kms_data_key_reuse_period_seconds": null,<br/>  "kms_master_key_id": null,<br/>  "sqs_managed_sse_enabled": true<br/>}</pre> | no |
 | <a name="input_queue_selection_strategy"></a> [queue\_selection\_strategy](#input\_queue\_selection\_strategy) | Strategy used to pick a queue when multiple runner configurations match a job equally well. `first` keeps the historical deterministic behaviour (the first matching queue by priority). `random` spreads jobs across the matching queues to avoid concentrating load on a single one. `all` scales up one runner per matching queue and lets the first to become available take the job (favouring speed over cost; this multiplies instance launches and runner registrations per job). | `string` | `"first"` | no |
@@ -242,7 +241,7 @@ Join our discord community via [this invite link](https://discord.gg/bxgXW8jJGh)
 | <a name="input_userdata_pre_install"></a> [userdata\_pre\_install](#input\_userdata\_pre\_install) | Script to be ran before the GitHub Actions runner is installed on the EC2 instances | `string` | `""` | no |
 | <a name="input_userdata_template"></a> [userdata\_template](#input\_userdata\_template) | Alternative user-data template file path, replacing the default template. By providing your own user\_data you have to take care of installing all required software, including the action runner. Variables userdata\_pre/post\_install are ignored. | `string` | `null` | no |
 | <a name="input_vpc_id"></a> [vpc\_id](#input\_vpc\_id) | The VPC for security groups of the action runners. | `string` | n/a | yes |
-| <a name="input_warm_pool_config"></a> [warm\_pool\_config](#input\_warm\_pool\_config) | Configuration for the warm pool feature. When enabled, idle runners are stopped instead of terminated, allowing 10-30s restart times instead of 2-5 minute cold starts. | <pre>object({<br/>    enabled                       = optional(bool, false)<br/>    max_warm_instances            = optional(number, 3)<br/>    max_warm_age_hours            = optional(number, 168)<br/>    warm_pool_ready_delay_seconds = optional(number, 30)<br/>  })</pre> | `{}` | no |
+| <a name="input_warm_pool"></a> [warm\_pool](#input\_warm\_pool) | Warm pool configuration. When enabled, idle runners are stopped (hibernated) instead of terminated,<br/>allowing 10-30s restart times instead of 2-5 minute cold starts. Scale-down stops idle runners into<br/>the warm tier, and (when a `pool_config` schedule is set) the pool lambda maintains stopped standby<br/>capacity. The proactive pool is org-level only.<br/><br/>`enabled`: Turn on the warm tier (stop-instead-of-terminate). Creates a DynamoDB table to track stopped instances.<br/>`max_instances`: Maximum number of stopped instances to keep in the warm pool per runner owner. Must be >= the largest `pool_config` size.<br/>`max_age_hours`: Maximum age in hours before a warm instance is terminated by TTL.<br/>`ready_timeout_seconds`: Maximum seconds the pool lambda waits for a new instance to signal that it is safe to stop, before falling back to an idle check. | <pre>object({<br/>    enabled               = optional(bool, false)<br/>    max_instances         = optional(number, 3)<br/>    max_age_hours         = optional(number, 168)<br/>    ready_timeout_seconds = optional(number, 30)<br/>  })</pre> | `{}` | no |
 | <a name="input_webhook_lambda_apigateway_access_log_settings"></a> [webhook\_lambda\_apigateway\_access\_log\_settings](#input\_webhook\_lambda\_apigateway\_access\_log\_settings) | Access log settings for webhook API gateway. | <pre>object({<br/>    destination_arn = string<br/>    format          = string<br/>  })</pre> | `null` | no |
 | <a name="input_webhook_lambda_memory_size"></a> [webhook\_lambda\_memory\_size](#input\_webhook\_lambda\_memory\_size) | Memory size limit in MB for webhook lambda in. | `number` | `256` | no |
 | <a name="input_webhook_lambda_s3_key"></a> [webhook\_lambda\_s3\_key](#input\_webhook\_lambda\_s3\_key) | S3 key for webhook lambda function. Required if using S3 bucket to specify lambdas. | `string` | `null` | no |
@@ -253,7 +252,7 @@ Join our discord community via [this invite link](https://discord.gg/bxgXW8jJGh)
 ## Outputs
 
 | Name | Description |
-|------|-------------|
+| ---- | ----------- |
 | <a name="output_binaries_syncer"></a> [binaries\_syncer](#output\_binaries\_syncer) | n/a |
 | <a name="output_instance_termination_handler"></a> [instance\_termination\_handler](#output\_instance\_termination\_handler) | n/a |
 | <a name="output_instance_termination_watcher"></a> [instance\_termination\_watcher](#output\_instance\_termination\_watcher) | n/a |

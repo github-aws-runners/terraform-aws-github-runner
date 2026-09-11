@@ -50,10 +50,10 @@ When the feature flag `enable_warm_pool` is enabled:
 
 1. **Instead of terminating** idle runners that exceed `idleCount`, the scale-down lambda will **stop** them and record their state in a **DynamoDB table**.
 2. Before stopping, the runner is **deregistered from GitHub** (existing behavior preserved).
-3. A new config parameter `warm_pool_config` controls:
-   - `maxWarmInstances`: Maximum number of stopped instances to retain (prevents EBS cost explosion). Default: same as pool size.
-   - `maxWarmAgeHours`: Maximum age (in hours) of a warm instance before it is terminated instead of kept. Default: 168 (7 days). Prevents stale AMIs from accumulating.
-4. If a runner exceeds `maxWarmInstances` or `maxWarmAgeHours`, it is **terminated** (existing behavior).
+3. A new config object `warm_pool` controls:
+   - `max_instances`: Maximum number of stopped instances to retain (prevents EBS cost explosion). Default: same as pool size.
+   - `max_age_hours`: Maximum age (in hours) of a warm instance before it is terminated instead of kept. Default: 168 (7 days). Prevents stale AMIs from accumulating.
+4. If a runner exceeds `max_instances` or `max_age_hours`, it is **terminated** (existing behavior).
 
 #### Scale-Up Lambda (modified)
 
@@ -67,71 +67,52 @@ When a job is queued and no hot runner is available:
    - Tag: set `ghr:started-from-warm-pool=true` for metrics.
 3. If no warm instance exists (or start fails), fall through to the existing `createRunner()` flow (cold start).
 
-#### Pool Lambda (modified, separate feature flag)
+#### Pool Lambda (modified)
 
-The pool lambda gets its own strategy setting (`pool_strategy`) independent of the scale-down warm pool behavior. This enables three distinct operational modes:
+The pool lambda's mode is derived from a single `warm_pool.enabled` flag (no separate `pool_strategy`
+setting). The pool itself is still created by `pool_config`:
 
-| `pool_strategy` | `warm_pool_config.enabled` | Behavior |
-|-----------------|---------------------------|----------|
-| `hot` (default) | `false` | Current behavior: pool creates running instances, scale-down terminates them |
-| `hot` | `true` | Pool creates running instances, scale-down stops them into warm tier |
-| `warm` | `true` | Pool maintains **stopped** instances only (no idle compute). Scale-up/webhook starts them on demand |
-| `warm` | `false` | Invalid — rejected at plan time |
+| `warm_pool.enabled` | Behavior |
+|---------------------|----------|
+| `false` (default) | **Hot pool** — pool creates running instances, scale-down terminates idle runners. Current behavior. |
+| `true` | **Warm pool** — pool maintains **stopped** instances only (no idle compute); scale-down stops idle runners into the warm tier; scale-up/webhook starts them on demand. |
 
-When `pool_strategy = "warm"`:
+When `warm_pool.enabled = true`:
 
-1. The pool lambda **creates instances and waits `warm_pool_ready_delay_seconds`** (default 30s) before stopping them. This grace period gives the instance time to boot, register with GitHub, and potentially pick up a queued job. If the runner picks up a job during this window, it is **not stopped** — it runs normally.
-2. After the grace period, if the runner is still idle (not busy), it is deregistered from GitHub, stopped, and tagged as warm. The pool target represents the number of **warm** (stopped) instances to maintain.
+1. The pool lambda **creates instances and waits for each one to signal readiness** before stopping them. Each instance writes a `readyAt` marker to the warm pool DynamoDB table from its start script once it has registered with GitHub and reached a safe-to-stop checkpoint; the pool lambda polls this marker and acts as soon as it appears. This replaces a blind fixed delay — fast AMIs are parked in seconds, and slow ones are never stopped mid-boot. If the runner picks up a job before it is parked, it is **not stopped** — it runs normally. `warm_pool.ready_timeout_seconds` (default 30s) is the **maximum** wait: instances that never signal within it fall back to a plain idle check, so custom AMIs without the readiness signal still work.
+2. If the runner is still idle (not busy), it is deregistered from GitHub, stopped, and tagged as warm. The pool target (`pool_config` size) represents the number of **warm** (stopped) instances to maintain.
 3. No permanently running idle runners exist from the pool — zero long-term compute waste.
 4. Scale-up and webhook flows start warm instances when jobs arrive (10-30s startup).
 5. The `idle_config` / `idleCount` setting becomes irrelevant for pool runners since none are kept running long-term.
 
-When `pool_strategy = "hot"` (default, backward compatible):
-
-1. Pool creates running instances as today.
-2. If `warm_pool_config.enabled = true`, scale-down stops excess idle runners into the warm tier instead of terminating.
-3. Scale-up can still use warm instances as a fast fallback before cold-launching.
+When `warm_pool.enabled = false` (default, backward compatible), the pool creates running instances as today and scale-down terminates them.
 
 ### Feature Flag
 
-- Terraform variable: `warm_pool_config.enabled` (bool, default `false`) — controls whether scale-down stops instances into a warm tier.
-- Terraform variable: `pool_strategy` (string, `"hot"` or `"warm"`, default `"hot"`) — controls whether the pool lambda maintains running or stopped instances. **Independent from `warm_pool_config`** to allow warm-only deployments with zero idle compute.
-- Both are passed as environment variables to the relevant lambdas.
-- When both are at defaults, behavior is identical to today (no breaking changes).
+- Terraform variable: `warm_pool.enabled` (bool, default `false`) — the single switch. It puts the pool lambda into warm mode **and** makes scale-down stop instances into the warm tier.
+- Derived internally: the lambdas still receive `POOL_STRATEGY` (`"warm"`/`"hot"`) and `WARM_POOL_CONFIG` environment variables, computed by Terraform from `warm_pool`.
+- When at its default, behavior is identical to today (no breaking changes for classic/hot pools).
 
 ### Configuration
 
-New Terraform variable structure (nested in existing runner config patterns):
+Consolidated Terraform variable (nested in existing runner config patterns):
 
 ```hcl
-variable "pool_strategy" {
-  description = "Strategy for the pool lambda. 'hot' keeps runners running (current behavior). 'warm' maintains stopped instances only — zero idle compute, 10-30s start on demand."
-  type        = string
-  default     = "hot"
-  validation {
-    condition     = contains(["hot", "warm"], var.pool_strategy)
-    error_message = "pool_strategy must be 'hot' or 'warm'."
-  }
-}
-
-variable "warm_pool_config" {
-  description = "Configuration for the warm pool tier. Controls how stopped instances are managed."
+variable "warm_pool" {
+  description = "Warm pool configuration. When enabled, idle runners are stopped instead of terminated (10-30s restart). The proactive pool (via pool_config) is org-level only."
   type = object({
-    enabled                    = bool
-    max_warm_instances         = number
-    max_warm_age_hours         = number
-    warm_pool_ready_delay_seconds = number
+    enabled               = optional(bool, false)
+    max_instances         = optional(number, 3)
+    max_age_hours         = optional(number, 168)
+    ready_timeout_seconds = optional(number, 30)
   })
-  default = {
-    enabled                    = false
-    max_warm_instances         = 3
-    max_warm_age_hours         = 168
-    warm_pool_ready_delay_seconds = 30
-  }
+  default = {}
 }
 ```
 
-**Validation**: `pool_strategy = "warm"` requires `warm_pool_config.enabled = true`. Terraform will error at plan time if this invariant is violated.
+**Prerequisites**: a warm *standby* pool additionally requires `pool_config` (creates the pool lambda),
+`pool_runner_owner`, and `enable_organization_runners = true` (the pool is org-level only). Keep each
+`pool_config` size `<=` `warm_pool.max_instances`.
 
 ### State Store (DynamoDB)
 
@@ -151,7 +132,7 @@ Warm pool state is managed in a **DynamoDB table** rather than EC2 instance tags
 | `az` | String | Availability zone |
 | `expiresAt` (TTL) | Number | Auto-cleanup of stale records |
 
-DynamoDB TTL auto-deletes records past `max_warm_age_hours`. The scale-down lambda also actively terminates instances during its eviction pass.
+DynamoDB TTL auto-deletes records past `warm_pool.max_age_hours`. The scale-down lambda also actively terminates instances during its eviction pass.
 
 ### Tags
 
@@ -171,7 +152,11 @@ EC2 instance tags are still used for **observability and cost allocation** (not 
 | Instance stopped into warm tier | DynamoDB record created | Query DynamoDB for current warm pool size |
 | Warm instance terminated (age/cap/AMI eviction) | DynamoDB record deleted + EC2 instance terminated | CloudWatch metric `WarmPoolEvictions` |
 
-The pool lambda sets `ghr:warm-pool-grace-hit=true` when it detects a runner became busy during the `warm_pool_ready_delay_seconds` window. This lets operators measure how often the grace window saves a stop/start cycle — a high rate of grace hits means jobs are arriving frequently and the `warm` strategy is working efficiently even without going through the stopped state.
+The pool lambda sets `ghr:warm-pool-grace-hit=true` when it detects a runner became busy before it could be parked. This lets operators measure how often a runner picks up a job before entering the warm tier — a high rate of grace hits means jobs are arriving frequently and the `warm` strategy is working efficiently even without going through the stopped state.
+
+### Readiness signal (DynamoDB `readyAt` marker)
+
+Rather than waiting a fixed `warm_pool.ready_timeout_seconds` for every instance, the runner signals when it is genuinely safe to stop. After the runner registers with GitHub and is about to start listening, its start script writes a `readyAt` marker (with a short TTL) to the warm pool table keyed by its instance ID. The pool lambda polls this marker and parks the instance as soon as it appears and the runner is still idle. This behavior is **on by default** whenever the warm pool is enabled — there is no separate opt-in flag. `warm_pool.ready_timeout_seconds` is demoted to a maximum wait / fallback for AMIs that do not emit the signal. The instance role is granted `dynamodb:UpdateItem` on the warm pool table so the start script can write the marker.
 
 ### IAM Permissions
 
@@ -199,7 +184,7 @@ The Lambda execution roles need additional permissions:
 
 ### Negative
 
-- **EBS costs accumulate**: Each warm instance retains its EBS volume. With `max_warm_instances` and `max_warm_age_hours` controls, this is bounded, but operators must be aware.
+- **EBS costs accumulate**: Each warm instance retains its EBS volume. With `warm_pool.max_instances` and `warm_pool.max_age_hours` controls, this is bounded, but operators must be aware.
 - **Stale state risk**: A stopped instance may have outdated packages, expired credentials, or stale Docker caches. The startup script must handle re-registration and basic validation.
 - **Instance type lock-in**: A stopped instance retains its instance type. If the launch template or instance type config changes, warm instances become invalid and must be terminated.
 - **Complexity**: Three-state lifecycle is more complex than the current two-state (running/terminated) model.
@@ -209,7 +194,7 @@ The Lambda execution roles need additional permissions:
 
 | Risk | Mitigation |
 |------|-----------|
-| EBS cost explosion | `max_warm_instances` hard cap + `max_warm_age_hours` TTL |
+| EBS cost explosion | `warm_pool.max_instances` hard cap + `warm_pool.max_age_hours` TTL |
 | Stale AMI on warm instance | Compare instance's AMI ID against current launch template; terminate if mismatched |
 | Spot reclamation | Warm pool is best-effort for spot — if AWS reclaims a stopped spot instance, scale-up falls through to cold launch. Future: `warm_pool_capacity_type_override` to force on-demand for pool instances |
 | Runner binary outdated | Startup script always pulls latest runner version (existing behavior with `DISABLE_RUNNER_AUTOUPDATE=false`) |
@@ -290,7 +275,7 @@ The warm pool's value proposition is strongest when runners spend significant ti
 
 3. **Reclamation while stopped**: AWS can reclaim (terminate) a stopped spot instance if it needs the capacity, though this is rare for stopped instances.
 
-4. **Implemented in this module**: When `warm_pool_config.enabled = true` and `instance_target_capacity_type = "spot"`, the module uses `RunInstances` with `InstanceMarketOptions.SpotOptions.SpotInstanceType = "persistent"` and `InstanceInterruptionBehavior = "stop"`. It also overrides `InstanceInitiatedShutdownBehavior = "stop"` (since the launch template defaults to `"terminate"`, which conflicts with the spot stop behavior). This is gated behind the `ENABLE_PERSISTENT_SPOT` environment variable, which is derived automatically by Terraform.
+4. **Implemented in this module**: When `warm_pool.enabled = true` and `instance_target_capacity_type = "spot"`, the module uses `RunInstances` with `InstanceMarketOptions.SpotOptions.SpotInstanceType = "persistent"` and `InstanceInterruptionBehavior = "stop"`. It also overrides `InstanceInitiatedShutdownBehavior = "stop"` (since the launch template defaults to `"terminate"`, which conflicts with the spot stop behavior). This is gated behind the `ENABLE_PERSISTENT_SPOT` environment variable, which is derived automatically by Terraform.
 
 ### Recommended Configuration
 
@@ -300,9 +285,9 @@ For warm pool deployments, use one of:
 
 2. **Spot for scale-up, on-demand for pool** (future `warm_pool_capacity_type_override`): Scale-up launches cheap spot instances for burst jobs; pool maintains on-demand instances that reliably stop/start. Best cost-to-reliability ratio.
 
-3. **On-demand with warm pool only** (no hot pool): Set `pool_strategy = "warm"` with on-demand instances. Pool creates instances, immediately stops them. Scale-up starts them on demand. Zero idle compute cost, 10-30s start time, fully reliable.
+3. **On-demand with warm pool only** (no hot pool): Set `warm_pool.enabled = true` with on-demand instances. Pool creates instances, immediately stops them. Scale-up starts them on demand. Zero idle compute cost, 10-30s start time, fully reliable.
 
-> **Resolved**: When `instance_target_capacity_type = "spot"` and `warm_pool_config.enabled = true`, the module automatically switches from `CreateFleet` (one-time spot) to `RunInstances` with `SpotInstanceType = "persistent"` and `InstanceInterruptionBehavior = "stop"`. This is transparent to the user — no additional configuration is needed. The Terraform variable `ENABLE_PERSISTENT_SPOT` is derived automatically.
+> **Resolved**: When `instance_target_capacity_type = "spot"` and `warm_pool.enabled = true`, the module automatically switches from `CreateFleet` (one-time spot) to `RunInstances` with `SpotInstanceType = "persistent"` and `InstanceInterruptionBehavior = "stop"`. This is transparent to the user — no additional configuration is needed. The Terraform variable `ENABLE_PERSISTENT_SPOT` is derived automatically.
 
 ## Implementation Plan
 

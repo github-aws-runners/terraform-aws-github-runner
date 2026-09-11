@@ -23,6 +23,7 @@ import {
   addToWarmPool,
   countWarmInstancesByOwner,
   emitWarmPoolMetric,
+  getInstanceReadyMarker,
   getPoolStrategy,
   getWarmInstance,
   getWarmPoolConfig,
@@ -138,6 +139,20 @@ describe('warm-pool DynamoDB client', () => {
         runnerOwner: 'Codertocat',
         expiresAt: 1700000000,
       });
+    });
+  });
+
+  describe('getInstanceReadyMarker', () => {
+    it('returns null when the instance has not signalled readiness', async () => {
+      ddbMock.on(GetItemCommand).resolves({});
+      await expect(getInstanceReadyMarker('i-404')).resolves.toBeNull();
+    });
+
+    it('returns the readyAt timestamp when the marker exists', async () => {
+      ddbMock.on(GetItemCommand).resolves({
+        Item: { instanceId: { S: 'i-1' }, readyAt: { S: '2026-01-01T00:00:00Z' } },
+      });
+      await expect(getInstanceReadyMarker('i-1')).resolves.toBe('2026-01-01T00:00:00Z');
     });
   });
 

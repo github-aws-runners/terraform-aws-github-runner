@@ -906,46 +906,33 @@ variable "use_dedicated_host" {
   default     = false
 }
 
-variable "warm_pool_config" {
+variable "warm_pool" {
   description = <<-EOF
-    Configuration for the warm pool feature. When enabled, idle runners are stopped instead of terminated,
-    allowing 10-30s restart times instead of 2-5 minute cold starts.
+    Warm pool configuration. When enabled, idle runners are stopped (hibernated) instead of terminated,
+    allowing 10-30s restart times instead of 2-5 minute cold starts. Scale-down stops idle runners into
+    the warm tier, and (when a `pool_config` schedule is set) the pool lambda maintains stopped standby
+    capacity. The proactive pool is org-level only, so it also requires `pool_runner_owner` and org-level runners.
 
-    `enabled`: Enable or disable the warm pool feature. When enabled, a DynamoDB table is created to track stopped instances.
-    `max_warm_instances`: Maximum number of stopped instances to keep in the warm pool per runner owner.
-    `max_warm_age_hours`: Maximum age in hours before a warm instance is terminated by TTL.
-    `warm_pool_ready_delay_seconds`: Grace period in seconds before a newly launched instance is eligible for warm pool (allows time to pick up jobs).
+    `enabled`: Turn on the warm tier (stop-instead-of-terminate). Creates a DynamoDB table to track stopped instances.
+    `max_instances`: Maximum number of stopped instances to keep in the warm pool per runner owner. Must be >= the largest `pool_config` size.
+    `max_age_hours`: Maximum age in hours before a warm instance is terminated by TTL.
+    `ready_timeout_seconds`: Maximum seconds the pool lambda waits for a new instance to signal (from its start script) that it has registered and is safe to stop. Instances are parked as soon as they signal; this is the upper bound / fallback for AMIs without the readiness signal.
   EOF
   type = object({
-    enabled                       = optional(bool, false)
-    max_warm_instances            = optional(number, 3)
-    max_warm_age_hours            = optional(number, 168)
-    warm_pool_ready_delay_seconds = optional(number, 30)
+    enabled               = optional(bool, false)
+    max_instances         = optional(number, 3)
+    max_age_hours         = optional(number, 168)
+    ready_timeout_seconds = optional(number, 30)
   })
   default = {}
 
   validation {
-    condition     = var.warm_pool_config.max_warm_instances >= 1
-    error_message = "max_warm_instances must be at least 1."
+    condition     = var.warm_pool.max_instances >= 1
+    error_message = "warm_pool.max_instances must be at least 1."
   }
 
   validation {
-    condition     = var.warm_pool_config.max_warm_age_hours >= 1
-    error_message = "max_warm_age_hours must be at least 1 hour."
-  }
-}
-
-variable "pool_strategy" {
-  description = <<-EOF
-    Strategy for maintaining idle runners.
-    - `hot`: (default) Traditional behavior. Pool lambda creates fresh instances on a schedule. Idle instances are terminated by scale-down.
-    - `warm`: Idle instances are stopped (hibernated) instead of terminated. Scale-up will restart warm instances before creating new ones. Requires `warm_pool_config.enabled = true`.
-  EOF
-  type        = string
-  default     = "hot"
-
-  validation {
-    condition     = contains(["hot", "warm"], var.pool_strategy)
-    error_message = "pool_strategy must be either \"hot\" or \"warm\"."
+    condition     = var.warm_pool.max_age_hours >= 1
+    error_message = "warm_pool.max_age_hours must be at least 1 hour."
   }
 }

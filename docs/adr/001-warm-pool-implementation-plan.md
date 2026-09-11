@@ -10,45 +10,34 @@ This document details the phased implementation plan for the warm pool feature d
 
 ### Tasks
 
-1. **Add `warm_pool_config` variable** to `modules/runners/variables.tf`
+1. **Add `warm_pool` variable** to `modules/runners/variables.tf`
    ```hcl
-   variable "warm_pool_config" {
-     description = "Configuration for the warm pool tier. Controls how stopped instances are managed."
+   variable "warm_pool" {
+     description = "Warm pool configuration. When enabled, idle runners are stopped instead of terminated. The proactive pool (via pool_config) is org-level only."
      type = object({
-       enabled                       = bool
-       max_warm_instances            = number
-       max_warm_age_hours            = number
-       warm_pool_ready_delay_seconds = number
+       enabled               = optional(bool, false)
+       max_instances         = optional(number, 3)
+       max_age_hours         = optional(number, 168)
+       ready_timeout_seconds = optional(number, 30)
      })
-     default = {
-       enabled                       = false
-       max_warm_instances            = 3
-       max_warm_age_hours            = 168
-       warm_pool_ready_delay_seconds = 30
-     }
+     default = {}
    }
    ```
 
-2. **Add `pool_strategy` variable** to `modules/runners/variables.tf`
+2. **Derive the pool mode from `warm_pool.enabled`** — there is no separate `pool_strategy` variable. Terraform computes the lambda env internally:
    ```hcl
-   variable "pool_strategy" {
-     description = "Strategy for the pool lambda. 'hot' keeps runners running. 'warm' maintains stopped instances only."
-     type        = string
-     default     = "hot"
-     validation {
-       condition     = contains(["hot", "warm"], var.pool_strategy)
-       error_message = "pool_strategy must be 'hot' or 'warm'."
-     }
-   }
+   POOL_STRATEGY = var.warm_pool.enabled ? "warm" : "hot"
    ```
+   This keeps the pool lambda's env contract (`POOL_STRATEGY`, `WARM_POOL_CONFIG`) unchanged while exposing a single user-facing switch.
 
-3. **Add cross-variable validation** (lifecycle precondition or `check` block):
-   - `pool_strategy = "warm"` requires `warm_pool_config.enabled = true`
+3. **Add cross-field validations** on the `multi_runner_config` object (same-variable field references, so no Terraform >= 1.9 requirement):
+   - `warm_pool.enabled` + a non-empty `pool_config` requires `enable_organization_runners = true` (the proactive pool is org-level only; otherwise repo-level scale-up can never find the org-level warm instances).
+   - Each `pool_config` size must be `<= warm_pool.max_instances` (otherwise the pool creates instances scale-down immediately evicts).
 
 4. **Create DynamoDB table** for warm pool state (`modules/runners/warm-pool.tf`):
    ```hcl
    resource "aws_dynamodb_table" "warm_pool" {
-     count        = var.warm_pool_config.enabled ? 1 : 0
+     count        = var.warm_pool.enabled ? 1 : 0
      name         = "${var.prefix}-warm-pool"
      billing_mode = "PAY_PER_REQUEST"
      hash_key     = "instanceId"
@@ -96,7 +85,7 @@ This document details the phased implementation plan for the warm pool feature d
    | `amiId` | String | AMI ID at time of stopping (for staleness check) |
    | `instanceType` | String | EC2 instance type |
    | `az` | String | Availability zone (instance can only restart in same AZ) |
-   | `expiresAt` | Number | Unix epoch for DynamoDB TTL auto-deletion (set to `stoppedAt + max_warm_age_hours`) |
+   | `expiresAt` | Number | Unix epoch for DynamoDB TTL auto-deletion (set to `stoppedAt + warm_pool.max_age_hours`) |
 
    DynamoDB TTL automatically cleans up stale records — no lambda logic needed for age-based eviction of the DB record itself. The scale-down lambda still terminates the actual EC2 instance.
 
@@ -108,16 +97,13 @@ This document details the phased implementation plan for the warm pool feature d
    - Condition on EC2 actions: `ec2:ResourceTag/ghr:Application = github-action-runner`
    - Condition on DynamoDB: resource ARN scoped to the warm pool table
 
-6. **Pass environment variables** to all three lambdas:
-   - `ENABLE_WARM_POOL` → `var.warm_pool_config.enabled`
-   - `WARM_POOL_MAX_INSTANCES` → `var.warm_pool_config.max_warm_instances`
-   - `WARM_POOL_MAX_AGE_HOURS` → `var.warm_pool_config.max_warm_age_hours`
-   - `WARM_POOL_READY_DELAY_SECONDS` → `var.warm_pool_config.warm_pool_ready_delay_seconds` (pool lambda only)
-   - `POOL_STRATEGY` → `var.pool_strategy` (pool lambda only)
+6. **Pass environment variables** to all three lambdas (all derived by Terraform from `var.warm_pool`):
+   - `WARM_POOL_CONFIG` → `jsonencode({ enabled, maxWarmInstances, maxWarmAgeHours, warmPoolReadyDelaySeconds })` built from `var.warm_pool` (`enabled`, `max_instances`, `max_age_hours`, `ready_timeout_seconds`)
+   - `POOL_STRATEGY` → `var.warm_pool.enabled ? "warm" : "hot"` (pool lambda only)
    - `WARM_POOL_TABLE_NAME` → DynamoDB table name (all three lambdas)
 
 7. **Wire through multi-runner module** (`modules/multi-runner/runners.tf`):
-   - Add `warm_pool_config` and `pool_strategy` to the `multi_runner_config` object type
+   - Add `warm_pool` to the `multi_runner_config` object type (replacing the earlier `warm_pool_config` + `pool_strategy`)
    - Pass through to the runners module
 
 ### Files Modified
@@ -422,16 +408,16 @@ The warm pool uses whatever capacity type the runner config specifies — includ
 
 ### What about the `idle_config` interaction?
 
-The `idle_config` still controls how many runners remain **running** (hot) when `pool_strategy = "hot"`. With `pool_strategy = "warm"`, the `idle_config` becomes irrelevant for pool runners since none are kept running.
+The `idle_config` still controls how many runners remain **running** (hot) when `warm_pool.enabled = false`. With `warm_pool.enabled = true`, the `idle_config` becomes irrelevant for pool runners since none are kept running.
 
 Summary of interactions:
 
-| `pool_strategy` | `idle_config.idleCount` | `warm_pool_config.max_warm_instances` | Result |
-|-----------------|------------------------|--------------------------------------|--------|
-| `hot` | 2 | 3 | 2 running idle + up to 3 stopped warm |
-| `warm` | _(ignored)_ | 5 | 0 running idle + up to 5 stopped warm |
+| `warm_pool.enabled` | `idle_config.idleCount` | `warm_pool.max_instances` | Result |
+|---------------------|------------------------|---------------------------|--------|
+| `false` | 2 | 3 | 2 running idle + up to 3 stopped warm |
+| `true` | _(ignored)_ | 5 | 0 running idle + up to 5 stopped warm |
 
-The `pool_strategy = "warm"` mode is ideal for users who:
+The `warm_pool.enabled = true` mode is ideal for users who:
 - Want zero idle compute cost
 - Accept 10-30s startup latency for the first job
 - Have expensive instance types where idle cost is significant

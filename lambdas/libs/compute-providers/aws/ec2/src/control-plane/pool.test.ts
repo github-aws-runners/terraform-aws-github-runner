@@ -163,4 +163,26 @@ describe('createEc2PoolCapability.createRunners', () => {
       undefined,
     );
   });
+
+  it('forwards enablePersistentSpot so pool spot instances are stoppable (warm pool)', async () => {
+    mockLoadProviderConfig.mockReturnValue({ ...providerConfig, enablePersistentSpot: true });
+    mockCreateRunners.mockResolvedValue({
+      instances: ['i-persistent'],
+      retryableErrorCount: 0,
+      nonRetryableErrorCount: 0,
+    });
+
+    await capability.createRunners({ githubRunnerConfig, numberOfRunners: 1, githubInstallationClient });
+
+    expect(mockCreateRunners).toHaveBeenCalledWith(
+      ec2Operations,
+      githubRunnerConfig,
+      expect.objectContaining({ enablePersistentSpot: true }),
+      1,
+      githubInstallationClient,
+      createStartRunnerConfig,
+      'pool-lambda',
+      undefined,
+    );
+  });
 });

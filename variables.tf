@@ -875,24 +875,23 @@ variable "pool_config" {
   default = []
 }
 
-variable "pool_strategy" {
-  description = "Strategy for maintaining idle runners: `hot` (default, traditional) or `warm` (stop instead of terminate). Requires `warm_pool_config.enabled = true` when set to `warm`."
-  type        = string
-  default     = "hot"
+variable "warm_pool" {
+  description = <<-EOF
+    Warm pool configuration. When enabled, idle runners are stopped (hibernated) instead of terminated,
+    allowing 10-30s restart times instead of 2-5 minute cold starts. Scale-down stops idle runners into
+    the warm tier, and (when a `pool_config` schedule is set) the pool lambda maintains stopped standby
+    capacity. The proactive pool is org-level only.
 
-  validation {
-    condition     = contains(["hot", "warm"], var.pool_strategy)
-    error_message = "pool_strategy must be either \"hot\" or \"warm\"."
-  }
-}
-
-variable "warm_pool_config" {
-  description = "Configuration for the warm pool feature. When enabled, idle runners are stopped instead of terminated, allowing 10-30s restart times instead of 2-5 minute cold starts."
+    `enabled`: Turn on the warm tier (stop-instead-of-terminate). Creates a DynamoDB table to track stopped instances.
+    `max_instances`: Maximum number of stopped instances to keep in the warm pool per runner owner. Must be >= the largest `pool_config` size.
+    `max_age_hours`: Maximum age in hours before a warm instance is terminated by TTL.
+    `ready_timeout_seconds`: Maximum seconds the pool lambda waits for a new instance to signal that it is safe to stop, before falling back to an idle check.
+  EOF
   type = object({
-    enabled                       = optional(bool, false)
-    max_warm_instances            = optional(number, 3)
-    max_warm_age_hours            = optional(number, 168)
-    warm_pool_ready_delay_seconds = optional(number, 30)
+    enabled               = optional(bool, false)
+    max_instances         = optional(number, 3)
+    max_age_hours         = optional(number, 168)
+    ready_timeout_seconds = optional(number, 30)
   })
   default = {}
 }

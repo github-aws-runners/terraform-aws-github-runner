@@ -14,8 +14,10 @@ import {
   addToWarmPool,
   countWarmInstancesByOwner,
   emitWarmPoolMetric,
+  getInstanceReadyMarker,
   getPoolStrategy,
   getWarmPoolConfig,
+  removeFromWarmPool,
   resolveCurrentAmiId,
 } from './warm-pool';
 
@@ -58,52 +60,98 @@ async function ec2AdditionalPoolCapacity({ runnerOwner }: ListPoolRunnersInput):
 }
 
 /**
- * After a grace period, stops any newly created pool runners that are still idle and moves them into
- * the warm pool, so the warm strategy holds cheap stopped capacity instead of running instances.
+ * Moves newly created pool runners into the warm pool once they are safe to stop, so the warm
+ * strategy holds cheap stopped capacity instead of running instances.
+ *
+ * Instead of waiting a fixed delay, the pool polls DynamoDB for the readiness marker each instance
+ * writes from its start script when it has registered with GitHub and reached a safe-to-stop
+ * checkpoint. As soon as an instance signals readiness (and is still idle) it is stopped, so fast
+ * AMIs are parked in seconds while slow ones are never stopped mid-boot. `maxWaitSeconds` is the
+ * upper bound: any instance that never signals within it falls back to a plain idle check, keeping
+ * custom AMIs without the readiness hook working.
  */
-async function warmPoolGracePeriod(
+export async function warmPoolGracePeriod(
   ec2Operations: Ec2RunnerResourceOperations,
   instanceIds: string[],
-  delaySeconds: number,
+  maxWaitSeconds: number,
   runnerOwner: string,
   runnerNamePrefix: string,
   environment: string,
   ghClient: Octokit,
 ): Promise<void> {
-  logger.info(`Warm strategy: waiting ${delaySeconds}s grace period for ${instanceIds.length} new instances`);
-  await new Promise((resolve) => setTimeout(resolve, delaySeconds * 1000));
-
-  const runnerStatuses = await getGitHubRegisteredRunnerStatuses(ghClient, runnerOwner, runnerNamePrefix);
+  logger.info(
+    `Warm strategy: waiting up to ${maxWaitSeconds}s for readiness signals from ${instanceIds.length} new instances`,
+  );
   const amiId = await resolveCurrentAmiId();
+  const deadline = Date.now() + maxWaitSeconds * 1000;
+  const pollIntervalMs = 5000;
+  const pending = new Set(instanceIds);
 
-  for (const instanceId of instanceIds) {
-    const status = runnerStatuses.get(instanceId);
-    if (status?.busy) {
-      // Runner picked up a job during the grace window — leave it running.
-      logger.info(`Runner '${instanceId}' picked up a job during grace period, leaving running`);
+  const park = async (instanceId: string, runnerStatuses: Map<string, RunnerStatus>): Promise<void> => {
+    if (runnerStatuses.get(instanceId)?.busy) {
+      // Runner picked up a job before it could be parked — leave it running and drop the marker.
+      logger.info(`Runner '${instanceId}' picked up a job, leaving running`);
       await ec2Operations.tag(instanceId, [{ Key: 'ghr:warm-pool-grace-hit', Value: 'true' }]).catch(() => {
         /* best-effort */
       });
+      await removeFromWarmPool(instanceId).catch(() => {
+        /* best-effort */
+      });
       emitWarmPoolMetric('WarmPoolInstanceStarted', 1, { Owner: runnerOwner });
-    } else {
-      // Runner is idle after the grace period — stop and add to the warm pool.
-      try {
-        await ec2Operations.stop(instanceId);
-        await addToWarmPool({
-          instanceId,
-          runnerOwner,
-          environment: environment || '',
-          runnerType: 'Org',
-          amiId,
-        });
-        await ec2Operations.tag(instanceId, [{ Key: 'ghr:warm-pool-member', Value: 'true' }]).catch(() => {
-          /* best-effort */
-        });
-        emitWarmPoolMetric('WarmPoolInstanceStopped', 1, { Owner: runnerOwner });
-        logger.info(`Warm strategy: stopped idle runner '${instanceId}' after grace period`);
-      } catch (e) {
-        logger.warn(`Failed to stop runner '${instanceId}' after grace period`, { error: e });
+      return;
+    }
+    try {
+      await ec2Operations.stop(instanceId);
+      // Overwrites the readiness marker with the full warm entry (stoppedAt/expiresAt/owner/...).
+      await addToWarmPool({
+        instanceId,
+        runnerOwner,
+        environment: environment || '',
+        runnerType: 'Org',
+        amiId,
+      });
+      await ec2Operations.tag(instanceId, [{ Key: 'ghr:warm-pool-member', Value: 'true' }]).catch(() => {
+        /* best-effort */
+      });
+      emitWarmPoolMetric('WarmPoolInstanceStopped', 1, { Owner: runnerOwner });
+      logger.info(`Warm strategy: stopped idle runner '${instanceId}'`);
+    } catch (e) {
+      logger.warn(`Failed to stop runner '${instanceId}'`, { error: e });
+    }
+  };
+
+  while (pending.size > 0 && Date.now() < deadline) {
+    const ready: string[] = [];
+    for (const instanceId of pending) {
+      const readyAt = await getInstanceReadyMarker(instanceId).catch(() => null);
+      if (readyAt) {
+        ready.push(instanceId);
       }
+    }
+    if (ready.length > 0) {
+      const runnerStatuses = await getGitHubRegisteredRunnerStatuses(ghClient, runnerOwner, runnerNamePrefix);
+      for (const instanceId of ready) {
+        await park(instanceId, runnerStatuses);
+        pending.delete(instanceId);
+      }
+    }
+    const remainingMs = deadline - Date.now();
+    if (pending.size === 0 || remainingMs <= 0) {
+      break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, Math.min(pollIntervalMs, remainingMs)));
+  }
+
+  // Fallback: instances that never signalled readiness are evaluated with a plain idle check so
+  // AMIs without the readiness hook still get parked when idle.
+  if (pending.size > 0) {
+    logger.info(
+      `Warm strategy: ${pending.size} instance(s) did not signal readiness within ${maxWaitSeconds}s; ` +
+        `falling back to an idle check`,
+    );
+    const runnerStatuses = await getGitHubRegisteredRunnerStatuses(ghClient, runnerOwner, runnerNamePrefix);
+    for (const instanceId of pending) {
+      await park(instanceId, runnerStatuses);
     }
   }
 }
@@ -177,6 +225,9 @@ export function createEc2PoolCapability(
             tracingEnabled: config.tracingEnabled,
             onDemandFailoverOnError: config.onDemandFailoverOnError,
             scaleErrors: config.scaleErrors,
+            // Pool-created spot instances must be persistent so the warm strategy can stop (not just
+            // terminate) them; one-time spot instances reject StopInstances with UnsupportedOperation.
+            enablePersistentSpot: config.enablePersistentSpot,
           },
           remaining,
           githubInstallationClient,

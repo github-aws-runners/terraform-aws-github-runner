@@ -51,27 +51,27 @@ yarn run dist
 ## Requirements
 
 | Name | Version |
-|------|---------|
+| ---- | ------- |
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.3.0 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 6.33 |
 
 ## Providers
 
 | Name | Version |
-|------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | >= 6.33 |
+| ---- | ------- |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.35.1 |
 
 ## Modules
 
 | Name | Source | Version |
-|------|--------|---------|
+| ---- | ------ | ------- |
 | <a name="module_job_retry"></a> [job\_retry](#module\_job\_retry) | ./job-retry | n/a |
 | <a name="module_pool"></a> [pool](#module\_pool) | ./pool | n/a |
 
 ## Resources
 
 | Name | Type |
-|------|------|
+| ---- | ---- |
 | [aws_cloudwatch_event_rule.scale_down](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_event_rule) | resource |
 | [aws_cloudwatch_event_rule.ssm_housekeeper](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_event_rule) | resource |
 | [aws_cloudwatch_event_target.scale_down](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_event_target) | resource |
@@ -96,6 +96,7 @@ yarn run dist
 | [aws_iam_role_policy.pool_warm_pool](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
 | [aws_iam_role_policy.runner_session_manager_aws_managed](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
 | [aws_iam_role_policy.runner_spot_cancel](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
+| [aws_iam_role_policy.runner_warm_pool_ready](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
 | [aws_iam_role_policy.scale_down](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
 | [aws_iam_role_policy.scale_down_logging](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
 | [aws_iam_role_policy.scale_down_warm_pool](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
@@ -141,7 +142,7 @@ yarn run dist
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
+| ---- | ----------- | ---- | ------- | :------: |
 | <a name="input_ami"></a> [ami](#input\_ami) | AMI configuration for the action runner instances. This object allows you to specify all AMI-related settings in one place.<br/><br/>Parameters:<br/>- `filter`: Map of lists to filter AMIs by various criteria (e.g., { name = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-*"], state = ["available"] })<br/>- `owners`: List of AMI owners to limit the search. Common values: ["amazon"], ["self"], or specific AWS account IDs<br/>- `id_ssm_parameter_name`: Name of an SSM parameter containing the AMI ID. If specified, this overrides the AMI filter<br/>- `id_ssm_parameter_arn`: ARN of an SSM parameter containing the AMI ID. If specified, this overrides both AMI filter and parameter name<br/>- `kms_key_arn`: Optional KMS key ARN if the AMI is encrypted with a customer managed key<br/><br/>Defaults to null, in which case the module falls back to individual AMI variables (deprecated). | <pre>object({<br/>    filter               = optional(map(list(string)), { state = ["available"] })<br/>    owners               = optional(list(string), ["amazon"])<br/>    id_ssm_parameter_arn = optional(string, null)<br/>    kms_key_arn          = optional(string, null)<br/>  })</pre> | `null` | no |
 | <a name="input_associate_public_ipv4_address"></a> [associate\_public\_ipv4\_address](#input\_associate\_public\_ipv4\_address) | Associate public IPv4 with the runner. Only tested with IPv4 | `bool` | `false` | no |
 | <a name="input_aws_partition"></a> [aws\_partition](#input\_aws\_partition) | (optional) partition for the base arn if not 'aws' | `string` | `"aws"` | no |
@@ -210,7 +211,6 @@ yarn run dist
 | <a name="input_pool_lambda_reserved_concurrent_executions"></a> [pool\_lambda\_reserved\_concurrent\_executions](#input\_pool\_lambda\_reserved\_concurrent\_executions) | Amount of reserved concurrent executions for the scale-up lambda function. A value of 0 disables lambda from being triggered and -1 removes any concurrency limitations. | `number` | `1` | no |
 | <a name="input_pool_lambda_timeout"></a> [pool\_lambda\_timeout](#input\_pool\_lambda\_timeout) | Time out for the pool lambda in seconds. | `number` | `60` | no |
 | <a name="input_pool_runner_owner"></a> [pool\_runner\_owner](#input\_pool\_runner\_owner) | The pool will deploy runners to the GitHub org ID, set this value to the org to which you want the runners deployed. Repo level is not supported. | `string` | `null` | no |
-| <a name="input_pool_strategy"></a> [pool\_strategy](#input\_pool\_strategy) | Strategy for maintaining idle runners.<br/>- `hot`: (default) Traditional behavior. Pool lambda creates fresh instances on a schedule. Idle instances are terminated by scale-down.<br/>- `warm`: Idle instances are stopped (hibernated) instead of terminated. Scale-up will restart warm instances before creating new ones. Requires `warm_pool_config.enabled = true`. | `string` | `"hot"` | no |
 | <a name="input_prefix"></a> [prefix](#input\_prefix) | The prefix used for naming resources | `string` | `"github-actions"` | no |
 | <a name="input_role_path"></a> [role\_path](#input\_role\_path) | The path that will be added to the role; if not set, the prefix will be used. | `string` | `null` | no |
 | <a name="input_role_permissions_boundary"></a> [role\_permissions\_boundary](#input\_role\_permissions\_boundary) | Permissions boundary that will be added to the created role for the lambda. | `string` | `null` | no |
@@ -250,12 +250,12 @@ yarn run dist
 | <a name="input_userdata_pre_install"></a> [userdata\_pre\_install](#input\_userdata\_pre\_install) | User-data script snippet to insert before GitHub action runner install | `string` | `""` | no |
 | <a name="input_userdata_template"></a> [userdata\_template](#input\_userdata\_template) | Alternative user-data template file path, replacing the default template. By providing your own user\_data you have to take care of installing all required software, including the action runner. Variables userdata\_pre/post\_install are ignored. | `string` | `null` | no |
 | <a name="input_vpc_id"></a> [vpc\_id](#input\_vpc\_id) | The VPC for the security groups. | `string` | n/a | yes |
-| <a name="input_warm_pool_config"></a> [warm\_pool\_config](#input\_warm\_pool\_config) | Configuration for the warm pool feature. When enabled, idle runners are stopped instead of terminated,<br/>allowing 10-30s restart times instead of 2-5 minute cold starts.<br/><br/>`enabled`: Enable or disable the warm pool feature. When enabled, a DynamoDB table is created to track stopped instances.<br/>`max_warm_instances`: Maximum number of stopped instances to keep in the warm pool per runner owner.<br/>`max_warm_age_hours`: Maximum age in hours before a warm instance is terminated by TTL.<br/>`warm_pool_ready_delay_seconds`: Grace period in seconds before a newly launched instance is eligible for warm pool (allows time to pick up jobs). | <pre>object({<br/>    enabled                       = optional(bool, false)<br/>    max_warm_instances            = optional(number, 3)<br/>    max_warm_age_hours            = optional(number, 168)<br/>    warm_pool_ready_delay_seconds = optional(number, 30)<br/>  })</pre> | `{}` | no |
+| <a name="input_warm_pool"></a> [warm\_pool](#input\_warm\_pool) | Warm pool configuration. When enabled, idle runners are stopped (hibernated) instead of terminated,<br/>allowing 10-30s restart times instead of 2-5 minute cold starts. Scale-down stops idle runners into<br/>the warm tier, and (when a `pool_config` schedule is set) the pool lambda maintains stopped standby<br/>capacity. The proactive pool is org-level only, so it also requires `pool_runner_owner` and org-level runners.<br/><br/>`enabled`: Turn on the warm tier (stop-instead-of-terminate). Creates a DynamoDB table to track stopped instances.<br/>`max_instances`: Maximum number of stopped instances to keep in the warm pool per runner owner. Must be >= the largest `pool_config` size.<br/>`max_age_hours`: Maximum age in hours before a warm instance is terminated by TTL.<br/>`ready_timeout_seconds`: Maximum seconds the pool lambda waits for a new instance to signal (from its start script) that it has registered and is safe to stop. Instances are parked as soon as they signal; this is the upper bound / fallback for AMIs without the readiness signal. | <pre>object({<br/>    enabled               = optional(bool, false)<br/>    max_instances         = optional(number, 3)<br/>    max_age_hours         = optional(number, 168)<br/>    ready_timeout_seconds = optional(number, 30)<br/>  })</pre> | `{}` | no |
 
 ## Outputs
 
 | Name | Description |
-|------|-------------|
+| ---- | ----------- |
 | <a name="output_lambda_pool"></a> [lambda\_pool](#output\_lambda\_pool) | n/a |
 | <a name="output_lambda_pool_log_group"></a> [lambda\_pool\_log\_group](#output\_lambda\_pool\_log\_group) | n/a |
 | <a name="output_lambda_scale_down"></a> [lambda\_scale\_down](#output\_lambda\_scale\_down) | n/a |

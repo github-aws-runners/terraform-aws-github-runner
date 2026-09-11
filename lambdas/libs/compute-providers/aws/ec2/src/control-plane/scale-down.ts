@@ -156,21 +156,35 @@ async function reconcileStalePersistentSpotRequests(
     }
 
     const managedInstanceIds = new Set(managedRunners.map((runner) => runner.id));
-    const staleRequestIds: string[] = [];
-    const strayInstanceIds: string[] = [];
-    for (const request of requests) {
-      if (request.instanceId && managedInstanceIds.has(request.instanceId)) {
-        continue; // still backing a running or warm (stopped) managed runner
-      }
-      staleRequestIds.push(request.spotInstanceRequestId);
-      if (request.instanceId) {
-        strayInstanceIds.push(request.instanceId);
-      }
-    }
+    const staleRequests = requests.filter(
+      (request) => !(request.instanceId && managedInstanceIds.has(request.instanceId)),
+    );
 
-    if (staleRequestIds.length === 0) {
+    if (staleRequests.length === 0) {
       return;
     }
+
+    // The `managedRunners` snapshot was taken at the top of this run. A warm-started instance can
+    // begin running (and register with GitHub) after that snapshot but before we get here, which
+    // would otherwise make it look stray. Re-list running/pending instances right before acting to
+    // close that race without needing a separate timestamp.
+    const currentlyRunningIds = new Set((await ec2Operations.list({ environment })).map((runner) => runner.id));
+    const confirmedStale = staleRequests.filter(
+      (request) => !(request.instanceId && currentlyRunningIds.has(request.instanceId)),
+    );
+    const reprievedCount = staleRequests.length - confirmedStale.length;
+    if (reprievedCount > 0) {
+      logger.info(`Reprieved ${reprievedCount} spot request(s) whose instance started running since the snapshot.`);
+    }
+
+    if (confirmedStale.length === 0) {
+      return;
+    }
+
+    const staleRequestIds = confirmedStale.map((request) => request.spotInstanceRequestId);
+    const strayInstanceIds = confirmedStale
+      .map((request) => request.instanceId)
+      .filter((id): id is string => Boolean(id));
 
     // Cancel first so a request cannot relaunch a replacement while we clean up.
     await ec2Operations.cancelSpotRequests(staleRequestIds);

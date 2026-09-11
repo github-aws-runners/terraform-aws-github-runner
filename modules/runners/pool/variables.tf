@@ -79,13 +79,12 @@ variable "config" {
     lambda_tags                          = map(string)
     user_agent                           = string
     warm_pool_table_name                 = string
-    warm_pool_config = object({
-      enabled                       = bool
-      max_warm_instances            = number
-      max_warm_age_hours            = number
-      warm_pool_ready_delay_seconds = number
+    warm_pool = object({
+      enabled               = bool
+      max_instances         = number
+      max_age_hours         = number
+      ready_timeout_seconds = number
     })
-    pool_strategy           = string
     enable_metric_warm_pool = bool
   })
 }
