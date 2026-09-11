@@ -95,7 +95,7 @@ cleanup() {
 
   if [ "$exit_code" -ne 0 ]; then
     echo "ERROR: runner-start-failed with exit code $exit_code occurred on $error_location"
-    create_xray_error_segment "$SEGMENT" "runner-start-failed with exit code $exit_code occurred on $error_location - $error_lineno"
+    create_xray_error_segment "$${SEGMENT:-}" "runner-start-failed with exit code $exit_code occurred on $error_location - $error_lineno"
   fi
   # allows to flush the cloud watch logs and traces
   sleep 10
@@ -260,7 +260,7 @@ if [[ "$enable_jit_config" == "false" || $agent_mode != "ephemeral" ]]; then
   tag_instance_with_runner_id
 fi
 
-create_xray_success_segment "$SEGMENT"
+create_xray_success_segment "$${SEGMENT:-}"
 if [[ $agent_mode = "ephemeral" ]]; then
   echo "Starting the runner in ephemeral mode"
 
