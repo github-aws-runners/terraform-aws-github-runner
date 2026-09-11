@@ -11,9 +11,10 @@ The MiniStack lifecycle test performs this sequence without editing the
 example files:
 
 1. Apply the root configuration with `v1.tfvars`.
-2. Run `scripts/migrate_multi_runner_state.py` against the resulting state.
-3. Plan and apply the `v2/` configuration with `v2.tfvars`.
-4. Assert that the v2 plan is empty.
+2. Run `scripts/migrate_multi_runner_state.py` against the resulting v1 state.
+3. Copy the migrated local state into the `v2/` test directory.
+4. Plan and apply the `v2/` configuration with `v2.tfvars`.
+5. Assert that the v2 plan is empty.
 
 Run it with:
 

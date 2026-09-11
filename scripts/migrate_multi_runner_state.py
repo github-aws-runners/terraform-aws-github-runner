@@ -25,6 +25,7 @@ from typing import Iterable
 
 MODULE_KEY_RE = re.compile(r'module\.runners(\["(?:\\.|[^"])*"\])')
 INSTANCE_SUFFIX_RE = r'(?P<instances>(?:\[[^]]+\])*)$'
+MULTI_RUNNER_MODULE_PREFIX = "module.runners."
 
 # These are the relative addresses from the v1 module call to the v2 module
 # call. The runner key is inserted after module.runners/module.runner_configs
@@ -191,8 +192,10 @@ def key_refs(addresses: Iterable[str]) -> list[str]:
 
 
 def keyed_mapping(mapping: Mapping, key_ref: str) -> Mapping:
-    source = mapping.source.replace("module.runners", f"module.runners{key_ref}", 1)
-    target = mapping.target.replace(
+    source = MULTI_RUNNER_MODULE_PREFIX + mapping.source.replace(
+        "module.runners", f"module.runners{key_ref}", 1
+    )
+    target = MULTI_RUNNER_MODULE_PREFIX + mapping.target.replace(
         "module.runner_configs", f"module.runner_configs{key_ref}", 1
     )
     return Mapping(source, target)
