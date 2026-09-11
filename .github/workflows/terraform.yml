@@ -230,7 +230,8 @@ jobs:
             "termination-watcher",
             "multi-runner",
             "multi-runner-v2",
-            "migration-test",
+            "migration-test/v1",
+            "migration-test/v2",
             "external-managed-ssm-secrets"
           ]
     defaults:

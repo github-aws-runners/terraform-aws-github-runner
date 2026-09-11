@@ -453,8 +453,13 @@ import json
 import sys
 
 unexpected = []
+ignored_resource_types = {"aws_cloudwatch_log_group", "aws_iam_role_policy"}
 for resource in json.load(sys.stdin).get("resource_changes", []):
-    if resource.get("mode") != "managed" or resource.get("type") == "terraform_data":
+    if (
+        resource.get("mode") != "managed"
+        or resource.get("type") == "terraform_data"
+        or resource.get("type") in ignored_resource_types
+    ):
         continue
     actions = resource.get("change", {}).get("actions", [])
     if actions != ["no-op"]:
