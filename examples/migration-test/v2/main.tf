@@ -79,7 +79,7 @@ locals {
             max_attempts     = 2
             lambda = {
               memory_size                    = 256
-              reserved_concurrent_executions = 1
+              reserved_concurrent_executions = -1
               timeout                        = 30
             }
           }
