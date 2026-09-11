@@ -12,16 +12,17 @@ export AWS_EC2_METADATA_DISABLED="${AWS_EC2_METADATA_DISABLED:-true}"
 action="${1:-}"
 example="${2:-}"
 tfvars_file="${3:-${MINISTACK_TFVARS_FILE:-}}"
+microvm_foundation_default_tfvars=false
 
 case "$example" in
-  base | prebuilt | default | ephemeral | multi-runner | multi-runner-v2)
+  base | prebuilt | default | ephemeral | multi-runner | multi-runner-v2 | microvm-foundation)
     use_tfvars=true
     ;;
   termination-watcher)
     use_tfvars=false
     ;;
   *)
-  echo "Supported examples for the runner are: base, prebuilt, default, ephemeral, multi-runner, multi-runner-v2, termination-watcher" >&2
+  echo "Supported examples for the runner are: base, prebuilt, default, ephemeral, multi-runner, multi-runner-v2, microvm-foundation, termination-watcher" >&2
   exit 64
   ;;
 esac
@@ -29,7 +30,7 @@ esac
 case "$action" in
   init | plan | apply | destroy) ;;
   *)
-    echo "Usage: $0 {init|plan|apply|destroy} {base|prebuilt|default|ephemeral|multi-runner|multi-runner-v2|termination-watcher} [TFVARS_FILE]" >&2
+    echo "Usage: $0 {init|plan|apply|destroy} {base|prebuilt|default|ephemeral|multi-runner|multi-runner-v2|microvm-foundation|termination-watcher} [TFVARS_FILE]" >&2
     exit 64
     ;;
 esac
@@ -41,6 +42,9 @@ example_root="$source_root/examples/$example"
 if [ "$use_tfvars" = true ]; then
   if [ -z "$tfvars_file" ]; then
     tfvars_file="$script_dir/$example.tfvars"
+    if [ "$example" = microvm-foundation ]; then
+      microvm_foundation_default_tfvars=true
+    fi
   fi
 
   case "$tfvars_file" in
@@ -53,6 +57,7 @@ if [ "$use_tfvars" = true ]; then
     echo "Pass it as the third argument or set MINISTACK_TFVARS_FILE." >&2
     exit 66
   fi
+
 fi
 
 lambda_fixture_dir=""
@@ -60,6 +65,7 @@ lambda_created_paths=""
 ami_created_ids=""
 ssm_created_names=""
 override_created_paths=""
+tfvars_created_paths=""
 lambda_zip_paths="
 $source_root/lambdas/functions/ami-housekeeper/ami-housekeeper.zip
 $source_root/lambdas/functions/control-plane/runners.zip
@@ -71,6 +77,10 @@ $source_root/lambdas/functions/termination-watcher/termination-watcher.zip
 cleanup() {
   for override_file in $override_created_paths; do
     rm -f "$override_file"
+  done
+
+  for fixture_file in $tfvars_created_paths; do
+    rm -f "$fixture_file"
   done
 
   for name in $ssm_created_names; do
@@ -150,6 +160,48 @@ create_ssm_fixture() {
 $name"
 }
 
+create_microvm_foundation_fixture() {
+  vpc_id=$(ministack_aws ec2 describe-vpcs \
+    --filters Name=is-default,Values=true \
+    --query 'Vpcs[0].VpcId' \
+    --output text)
+  subnet_id=$(ministack_aws ec2 describe-subnets \
+    --filters "Name=vpc-id,Values=$vpc_id" "Name=state,Values=available" \
+    --query 'Subnets[0].SubnetId' \
+    --output text)
+
+  case "$vpc_id" in
+    vpc-[0-9a-f]*) ;;
+    *)
+      echo "MiniStack default VPC fixture was not found." >&2
+      exit 70
+      ;;
+  esac
+
+  case "$subnet_id" in
+    subnet-[0-9a-f]*) ;;
+    *)
+      echo "MiniStack default subnet fixture was not found." >&2
+      exit 70
+      ;;
+  esac
+
+  fixture_tfvars=$(mktemp "${TMPDIR:-/tmp}/terraform-aws-github-runner-microvm-foundation.XXXXXX")
+  printf '%s\n' \
+    "aws_region = \"$AWS_DEFAULT_REGION\"" \
+    '' \
+    'network_connectors = {' \
+    '  ministack = {' \
+    '    name        = "ministack"' \
+    "    vpc_id      = \"$vpc_id\"" \
+    "    subnet_ids  = [\"$subnet_id\"]" \
+    '  }' \
+    '}' > "$fixture_tfvars"
+  tfvars_created_paths="$tfvars_created_paths
+$fixture_tfvars"
+  tfvars_file="$fixture_tfvars"
+}
+
 create_ami_override() {
   override_file="$example_root/zz_ministack_ami_override.tf"
   printf '%s\n' \
@@ -212,6 +264,10 @@ create_ministack_fixtures() {
   fi
 
   wait_for_ministack
+
+  if [ "$microvm_foundation_default_tfvars" = true ]; then
+    create_microvm_foundation_fixture
+  fi
 
   lambda_fixture_dir=$(mktemp -d "${TMPDIR:-/tmp}/terraform-aws-github-runner-ministack-lambda.XXXXXX")
   printf '%s\n' 'exports.handler = async () => ({ statusCode: 200, body: "ministack" });' > "$lambda_fixture_dir/index.js"
