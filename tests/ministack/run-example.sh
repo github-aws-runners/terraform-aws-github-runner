@@ -47,6 +47,11 @@ script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 source_root=$(CDPATH='' cd -- "$script_dir/../.." && pwd)
 example_root="$source_root/examples/$example"
 lockfile="$example_root/.terraform.lock.hcl"
+lockfile_directory="$example_root"
+if [ "$example" = "migration-test" ]; then
+  lockfile="$example_root/v1/.terraform.lock.hcl"
+  lockfile_directory="$example_root/v1"
+fi
 expected_lockfile=".terraform.lock.hcl"
 if [ "$iac_binary" = tofu ]; then
   expected_lockfile="$expected_lockfile.tofu"
@@ -63,7 +68,7 @@ case "$lockfile_name" in
     exit 64
     ;;
 esac
-tool_lockfile="$example_root/$lockfile_name"
+tool_lockfile="$lockfile_directory/$lockfile_name"
 lockfile_backup=""
 lockfile_existed=false
 
@@ -384,18 +389,14 @@ restore_migration_v2_lockfile() {
 
 iac_migration_init() {
   select_migration_v2_lockfile
-  "$iac_binary" -chdir="$example_root" init -reconfigure -input=false
+  "$iac_binary" -chdir="$example_root/v1" init -reconfigure -input=false
   "$iac_binary" -chdir="$example_root/v2" init -reconfigure -input=false
 }
 
 iac_migration_example() {
   phase="$1"
   shift
-  if [ "$phase" = "v1" ]; then
-    migration_example_root="$example_root"
-  else
-    migration_example_root="$example_root/v2"
-  fi
+  migration_example_root="$example_root/$phase"
   "$iac_binary" -chdir="$migration_example_root" "$@" -var-file="$migration_example_root/$phase.tfvars"
 }
 
@@ -414,11 +415,7 @@ assert_migration_plan_is_empty() {
 
 assert_migration_plan_has_no_infrastructure_changes() {
   phase="$1"
-  if [ "$phase" = "v1" ]; then
-    migration_example_root="$example_root"
-  else
-    migration_example_root="$example_root/v2"
-  fi
+  migration_example_root="$example_root/$phase"
 
   plan_file=$(mktemp "${TMPDIR:-/tmp}/migration-test-plan.XXXXXX")
   plan_status=0
@@ -468,7 +465,7 @@ run_migration_test() {
   migration_state_backup=$(mktemp "${TMPDIR:-/tmp}/migration-test-state.XXXXXX")
   rm -f "$migration_state_backup"
   python3 "$source_root/scripts/migrate_multi_runner_state.py" \
-    --working-directory "$example_root" \
+    --working-directory "$example_root/v1" \
     --tool "$iac_binary" \
     --backup "$migration_state_backup" \
     --apply \

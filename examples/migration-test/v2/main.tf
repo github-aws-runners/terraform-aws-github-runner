@@ -208,7 +208,6 @@ module "runners" {
         timeout     = 75
       }
       config = {
-        tokenPath      = "/migration-test/tokens"
         minimumDaysOld = 3
         dryRun         = true
       }
