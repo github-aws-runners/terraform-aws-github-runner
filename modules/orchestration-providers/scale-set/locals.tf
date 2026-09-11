@@ -3,16 +3,22 @@ locals {
   contract_runner_names   = toset(keys(var.compute_provider_contracts))
   routable_runner_names   = sort(tolist(setintersection(local.configured_runner_names, local.contract_runner_names)))
 
+  github_config_urls = {
+    for runner_name, runner_config in var.runner_configs : runner_name => coalesce(
+      runner_config.github.enterprise_server.url,
+      "https://github.com",
+    )
+  }
   normalized_github_config_urls = {
     for runner_name, runner_config in var.runner_configs : runner_name => replace(
-      trimsuffix(lower(runner_config.github.config_url), "/"),
-      ":443/",
-      "/",
+      trimsuffix(lower(local.github_config_urls[runner_name]), "/"),
+      ":443",
+      "",
     )
   }
   github_config_url_ports = {
-    for runner_name, runner_config in var.runner_configs : runner_name => try(
-      tonumber(regex("^https://[A-Za-z0-9.-]+:([0-9]+)/", runner_config.github.config_url)[0]),
+    for runner_name in keys(var.runner_configs) : runner_name => try(
+      tonumber(regex("^https://[A-Za-z0-9.-]+:([0-9]+)", local.github_config_urls[runner_name])[0]),
       443,
     )
   }
@@ -83,7 +89,7 @@ locals {
         value = merge({
           schemaVersion        = 1
           runnerConfigName     = runner_name
-          githubConfigUrl      = var.runner_configs[runner_name].github.config_url
+          githubConfigUrl      = local.github_config_urls[runner_name]
           expectedScaleSetName = var.runner_configs[runner_name].scale_set.name
           minRunners           = var.runner_configs[runner_name].scale_set.runner.min_runners
           maxRunners           = var.runner_configs[runner_name].scale_set.runner.max_runners

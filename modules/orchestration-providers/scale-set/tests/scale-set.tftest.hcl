@@ -42,7 +42,6 @@ variables {
   runner_configs = {
     linux-small = {
       github = {
-        config_url = "https://github.com/example"
         enterprise_server = {
           ssl_verify = false
         }
@@ -73,8 +72,9 @@ variables {
     }
     linux-large = {
       github = {
-        config_url = "https://github.com/example"
-        enterprise_server = {}
+        enterprise_server = {
+          url = "https://github.example.test"
+        }
         app = {
           app_id = {
             name = "/github/linux-large/app-id"
@@ -101,7 +101,6 @@ variables {
     }
     microvm = {
       github = {
-        config_url = "https://github.com/example/repository"
         enterprise_server = {}
         app = {
           app_id = {
@@ -304,13 +303,15 @@ run "groups_by_compute_provider_and_hardens_each_task" {
     condition = (
       jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).schemaVersion == 1 &&
       jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).runnerConfigName == "linux-small" &&
-      jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).githubConfigUrl == "https://github.com/example" &&
+      jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).githubConfigUrl == "https://github.com" &&
       jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).expectedScaleSetName == "linux-small" &&
       jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).bootTimeoutMinutes == 10 &&
       jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).sslVerify == false &&
       jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).forceGhes == false &&
       jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).userAgent == "scale-set-test" &&
       jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).githubApp.privateKeyParameterName == "/github/linux-small/private-key" &&
+      jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-large"].value)).githubConfigUrl == "https://github.example.test" &&
+      jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-large"].value)).forceGhes == true &&
       !contains(keys(jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value))), "runnerConfig")
     )
     error_message = "Each SSM leaf must use the frozen flat reconciler schema and contain references instead of GitHub credential values."
@@ -520,9 +521,9 @@ run "rejects_duplicate_scale_set_ownership_across_groups" {
 
   variables {
     runner_configs = merge(var.runner_configs, {
-      microvm = merge(var.runner_configs.microvm, {
-        github = merge(var.runner_configs.microvm.github, {
-          config_url = "https://GITHUB.COM:443/example/"
+        microvm = merge(var.runner_configs.microvm, {
+          github = merge(var.runner_configs.microvm.github, {
+          enterprise_server = { url = "https://GITHUB.COM:443/" }
         })
         scale_set = merge(var.runner_configs.microvm.scale_set, {
           name = "linux-small"
@@ -543,9 +544,9 @@ run "rejects_leading_zero_default_port_spelling" {
 
   variables {
     runner_configs = merge(var.runner_configs, {
-      microvm = merge(var.runner_configs.microvm, {
-        github = merge(var.runner_configs.microvm.github, {
-          config_url = "https://github.com:0443/example/"
+        microvm = merge(var.runner_configs.microvm, {
+          github = merge(var.runner_configs.microvm.github, {
+          enterprise_server = { url = "https://github.com:0443/" }
         })
         scale_set = merge(var.runner_configs.microvm.scale_set, {
           name = "linux-small"
@@ -566,9 +567,9 @@ run "rejects_port_above_url_maximum" {
 
   variables {
     runner_configs = merge(var.runner_configs, {
-      microvm = merge(var.runner_configs.microvm, {
-        github = merge(var.runner_configs.microvm.github, {
-          config_url = "https://github.com:65536/example"
+        microvm = merge(var.runner_configs.microvm, {
+          github = merge(var.runner_configs.microvm.github, {
+          enterprise_server = { url = "https://github.com:65536/" }
         })
       })
     })
@@ -673,6 +674,9 @@ run "allows_same_scale_set_name_in_another_github_scope" {
   variables {
     runner_configs = merge(var.runner_configs, {
       microvm = merge(var.runner_configs.microvm, {
+        github = merge(var.runner_configs.microvm.github, {
+          enterprise_server = { url = "https://github.example.test" }
+        })
         scale_set = merge(var.runner_configs.microvm.scale_set, {
           name = "linux-small"
         })
@@ -682,7 +686,7 @@ run "allows_same_scale_set_name_in_another_github_scope" {
 
   assert {
     condition     = length(local.scale_set_ownership_keys) == length(distinct(local.scale_set_ownership_keys))
-    error_message = "Scale-set names are scoped to their normalized GitHub configuration URL."
+    error_message = "Scale-set names are scoped to their normalized enterprise-server URL."
   }
 }
 
@@ -696,7 +700,6 @@ run "bounds_default_session_owner_for_maximum_names" {
     runner_configs = {
       (join("", [for index in range(128) : "a"])) = {
         github = {
-          config_url = "https://github.com/example"
           enterprise_server = {}
           user_agent = "scale-set-test"
           app = {
@@ -845,7 +848,9 @@ run "rejects_invalid_boot_timeout" {
     runner_configs = merge(var.runner_configs, {
       linux-small = merge(var.runner_configs.linux-small, {
         scale_set = merge(var.runner_configs.linux-small.scale_set, {
-          boot_time_in_minutes = 0
+          runner = merge(var.runner_configs.linux-small.scale_set.runner, {
+            boot_time_in_minutes = 0
+          })
         })
       })
     })
