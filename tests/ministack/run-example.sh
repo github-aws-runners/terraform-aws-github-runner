@@ -97,6 +97,8 @@ override_created_paths=""
 migration_state_backup=""
 migration_v2_lockfile_backup=""
 migration_v2_lockfile_existed=false
+migration_iam_policy_v1_snapshot=""
+migration_iam_policy_v2_snapshot=""
 lambda_zip_paths="
 $source_root/lambdas/functions/ami-housekeeper/ami-housekeeper.zip
 $source_root/lambdas/functions/control-plane/runners.zip
@@ -136,6 +138,14 @@ cleanup() {
 
   if [ -n "$migration_state_backup" ]; then
     rm -f "$migration_state_backup"
+  fi
+
+  if [ -n "$migration_iam_policy_v1_snapshot" ]; then
+    rm -f "$migration_iam_policy_v1_snapshot"
+  fi
+
+  if [ -n "$migration_iam_policy_v2_snapshot" ]; then
+    rm -f "$migration_iam_policy_v2_snapshot"
   fi
 }
 trap cleanup EXIT INT TERM
@@ -400,6 +410,14 @@ iac_migration_example() {
   "$iac_binary" -chdir="$migration_example_root" "$@" -var-file="$migration_example_root/$phase.tfvars"
 }
 
+snapshot_migration_iam_policies() {
+  python3 "$example_root/compare_iam_role_policies.py" snapshot "$1"
+}
+
+compare_migration_iam_policies() {
+  python3 "$example_root/compare_iam_role_policies.py" compare "$1" "$2"
+}
+
 assert_migration_plan_is_empty() {
   phase="$1"
   if iac_migration_example "$phase" plan -input=false -detailed-exitcode; then
@@ -462,6 +480,9 @@ run_migration_test() {
   iac_migration_init
   iac_migration_example v1 apply -auto-approve -input=false
 
+  migration_iam_policy_v1_snapshot=$(mktemp "${TMPDIR:-/tmp}/migration-test-iam-v1.XXXXXX")
+  snapshot_migration_iam_policies "$migration_iam_policy_v1_snapshot"
+
   migration_state_backup=$(mktemp "${TMPDIR:-/tmp}/migration-test-state.XXXXXX")
   rm -f "$migration_state_backup"
   python3 "$source_root/scripts/migrate_multi_runner_state.py" \
@@ -473,6 +494,11 @@ run_migration_test() {
 
   assert_migration_plan_has_no_infrastructure_changes v2
   iac_migration_example v2 apply -auto-approve -input=false
+
+  migration_iam_policy_v2_snapshot=$(mktemp "${TMPDIR:-/tmp}/migration-test-iam-v2.XXXXXX")
+  snapshot_migration_iam_policies "$migration_iam_policy_v2_snapshot"
+  compare_migration_iam_policies "$migration_iam_policy_v1_snapshot" "$migration_iam_policy_v2_snapshot"
+
   assert_migration_plan_is_empty v2
 }
 
