@@ -1,0 +1,7 @@
+**/coverage
+**/dist
+**/node_modules
+.git
+.nx
+lambdas/.yarn/install-state.gz
+*.log
