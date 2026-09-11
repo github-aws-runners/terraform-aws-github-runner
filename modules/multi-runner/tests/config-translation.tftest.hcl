@@ -5,6 +5,18 @@ mock_provider "aws" {
     }
   }
 
+  mock_data "aws_partition" {
+    defaults = {
+      partition = "aws"
+    }
+  }
+
+  mock_data "aws_region" {
+    defaults = {
+      region = "eu-west-1"
+    }
+  }
+
   mock_data "aws_iam_policy_document" {
     defaults = {
       json = "{\"Version\":\"2012-10-17\",\"Statement\":[]}"
@@ -404,7 +416,7 @@ run "empty_v2_map_translates_stable_inputs" {
       && local.stable_to_v2.github.user_agent == var.user_agent
       && local.stable_to_v2.lambda.artifact.s3.bucket == var.lambda_s3_bucket
       && local.stable_to_v2.orchestration_provider.webhook.lambda.scale.up.event_source_mapping.batch_size == var.lambda_event_source_mapping_batch_size
-      && local.stable_to_v2.orchestration_provider.webhook.lambda.scale.down.idle_config == []
+      && length(local.stable_to_v2.orchestration_provider.webhook.lambda.scale.down.idle_config) == 0
       && local.stable_to_v2.ssm.parameters.tags.owner == var.parameter_store_tags.owner
       && local.stable_to_v2.ssm.housekeeper.lambda.memory_size == var.runners_ssm_housekeeper.lambda_memory_size
       && local.stable_to_v2.compute_provider.aws.ec2.runner_binaries.s3.encryption.sse_algorithm == "aws:kms"
@@ -510,12 +522,69 @@ run "v2_entry_without_matcher_config_is_authoritative" {
   variables {
     experimental_features = ["multi-runner-v2"]
 
+    global_config_github = {
+      app = {
+        key_base64_ssm = {
+          name = "/tests/scale-set/app-key"
+          arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/tests/scale-set/app-key"
+        }
+        id_ssm = {
+          name = "/tests/scale-set/app-id"
+          arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/tests/scale-set/app-id"
+        }
+        installation_id_ssm = {
+          name = "/tests/scale-set/installation-id"
+          arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/tests/scale-set/installation-id"
+        }
+        webhook_secret_ssm = {
+          name = "/tests/scale-set/webhook-secret"
+          arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/tests/scale-set/webhook-secret"
+        }
+      }
+    }
+
     global_config_compute_provider = {
       aws = {
         ec2 = {
           runner_binaries = {
             enabled = false
           }
+        }
+      }
+    }
+
+    global_config_lambda = {
+      artifact = {
+        s3 = {
+          bucket = "test-lambda-artifacts"
+        }
+      }
+    }
+
+    global_config_orchestration_provider = {
+      webhook = {
+        eventbridge = {
+          enabled = false
+        }
+        lambda = {
+          artifact = {
+            s3 = {
+              key = "runners.zip"
+            }
+          }
+          webhook = {
+            artifact = {
+              s3 = {
+                key = "webhook.zip"
+              }
+            }
+          }
+        }
+      }
+      scale_set = {
+        network = {
+          vpc_id     = "vpc-no-matcher"
+          subnet_ids = ["subnet-no-matcher"]
         }
       }
     }
@@ -527,7 +596,17 @@ run "v2_entry_without_matcher_config_is_authoritative" {
           architecture = "x64"
         }
         orchestration_provider = {
-          webhook = {}
+          scale_set = {
+            github = {
+              config_url = "https://github.com/example"
+              installation_id_ssm = {
+                name = "/tests/scale-set/installation-id"
+                arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/tests/scale-set/installation-id"
+              }
+            }
+            name = "no-matcher-scale-set"
+            id   = 42
+          }
         }
         compute_provider = {
           aws = {
@@ -547,6 +626,7 @@ run "v2_entry_without_matcher_config_is_authoritative" {
       local.use_v2_config
       && toset(keys(local.normalized_config.multi_runner_config)) == toset(["no_matcher"])
       && try(local.normalized_config.multi_runner_config["no_matcher"].orchestration_provider.webhook.matcherConfig, null) == null
+      && local.normalized_config.multi_runner_config["no_matcher"].orchestration_provider.scale_set.name == "no-matcher-scale-set"
     )
     error_message = "A v2 runner entry must be recognized without requiring matcher configuration."
   }

@@ -93,4 +93,3 @@ output "instance_termination_handler" {
     lambda_role      = module.instance_termination_watcher[0].spot_termination_handler.lambda_role
   } : null
 }
-

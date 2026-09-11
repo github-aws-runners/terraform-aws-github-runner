@@ -392,12 +392,25 @@ variable "multi_runner_config" {
         }), {})
       }), null)
       scale_set = optional(object({
-        name = string
-        runner = optional(object({
-          min_runners          = optional(number, 0)
-          max_runners          = optional(number, 10)
-          boot_time_in_minutes = optional(number, 10)
-        }), {})
+        github = object({
+          config_url = string
+          installation_id_ssm = object({
+            name        = string
+            arn         = string
+            kms_key_arn = optional(string, null)
+          })
+          runner_owner              = optional(string, null)
+          runner_registration_level = optional(string, "enterprise")
+          force_ghes                = optional(bool, null)
+        })
+        name                 = string
+        id                   = number
+        runner_group_id      = optional(number, null)
+        min_runners          = optional(number, 0)
+        max_runners          = optional(number, 10)
+        boot_time_in_minutes = optional(number, 10)
+        session_owner        = optional(string, null)
+        work_folder          = optional(string, null)
       }), null)
     }), {})
 

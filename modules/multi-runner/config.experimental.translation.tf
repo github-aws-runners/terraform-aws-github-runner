@@ -1,6 +1,9 @@
 # Translate stable v1 inputs into the experimental v2 structure.
 locals {
   stable_to_v2_tags = var.tags
+  # Keep empty translated maps statically typed as map(string) for Terraform's
+  # conditional type checking.
+  stable_to_v2_empty_string_map = false ? var.tags : {}
 
   stable_to_v2_roles = {
     path                 = var.role_path
@@ -8,26 +11,26 @@ locals {
   }
 
   stable_to_v2_runner = {
-    os                     = null
-    architecture           = null
+    os                     = tostring(null)
+    architecture           = tostring(null)
     disable_default_labels = false
-    extra_labels           = []
+    extra_labels           = false ? var.global_config.runner.extra_labels : []
     group_name             = "Default"
     name_prefix            = ""
     run_as_root            = false
     run_as                 = "ec2-user"
     auto_update_disabled   = false
-    tags                   = {}
+    tags                   = local.stable_to_v2_empty_string_map
     hooks = {
       job_started   = ""
       job_completed = ""
     }
     iam = {
-      role                         = null
-      managed_policy_arns          = {}
-      additional_trust_policy_json = null
-      path                         = null
-      permissions_boundary         = null
+      role                         = false ? var.global_config.runner.iam.role : null
+      managed_policy_arns          = local.stable_to_v2_empty_string_map
+      additional_trust_policy_json = tostring(null)
+      path                         = tostring(null)
+      permissions_boundary         = tostring(null)
     }
   }
 
@@ -54,8 +57,8 @@ locals {
     security_group_ids = var.lambda_security_group_ids
     tags               = var.lambda_tags
     role = {
-      path                 = null
-      permissions_boundary = null
+      path                 = tostring(null)
+      permissions_boundary = tostring(null)
     }
   }
 
@@ -70,8 +73,8 @@ locals {
       runner = {
         boot_time_in_minutes = 5
         ephemeral            = false
-        jit_config_enabled   = null
-        maximum_count        = null
+        jit_config_enabled   = tobool(null)
+        maximum_count        = tonumber(null)
       }
       github = {
         repository_white_list = var.repository_white_list
@@ -89,21 +92,21 @@ locals {
             memory_size                    = var.scale_up_lambda_memory_size
             timeout                        = var.runners_scale_up_lambda_timeout
             reserved_concurrent_executions = 1
-            job_queued_check_enabled       = null
+            job_queued_check_enabled       = tobool(null)
             event_source_mapping = {
               batch_size                         = var.lambda_event_source_mapping_batch_size
               maximum_batching_window_in_seconds = var.lambda_event_source_mapping_maximum_batching_window_in_seconds
             }
-            tags = {}
+            tags = local.stable_to_v2_empty_string_map
           }
           down = {
             memory_size                     = var.scale_down_lambda_memory_size
             timeout                         = var.runners_scale_down_lambda_timeout
             schedule_expression             = "cron(*/5 * * * ? *)"
-            minimum_running_time_in_minutes = null
-            idle_config                     = []
+            minimum_running_time_in_minutes = tonumber(null)
+            idle_config                     = false ? var.global_config_orchestration_provider.webhook.lambda.scale.down.idle_config : []
             idle_confirmation_seconds       = 0
-            tags                            = {}
+            tags                            = local.stable_to_v2_empty_string_map
           }
         }
         webhook = {
@@ -117,16 +120,16 @@ locals {
           api_gateway_access_log_settings = var.webhook_lambda_apigateway_access_log_settings
           memory_size                     = var.webhook_lambda_memory_size
           timeout                         = var.webhook_lambda_timeout
-          tags                            = {}
+          tags                            = local.stable_to_v2_empty_string_map
         }
         pool = {
           memory_size                    = 512
           timeout                        = var.pool_lambda_timeout
           reserved_concurrent_executions = var.pool_lambda_reserved_concurrent_executions
-          config                         = []
+          config                         = false ? var.global_config_orchestration_provider.webhook.lambda.pool.config : []
           include_busy_runners           = false
-          runner_owner                   = null
-          tags                           = {}
+          runner_owner                   = tostring(null)
+          tags                           = local.stable_to_v2_empty_string_map
         }
       }
       queue = {
@@ -135,9 +138,9 @@ locals {
         visibility_timeout_seconds     = var.runners_scale_up_lambda_timeout
         redrive_build_queue = {
           enabled         = false
-          maxReceiveCount = null
+          maxReceiveCount = tonumber(null)
         }
-        tags       = {}
+        tags       = local.stable_to_v2_empty_string_map
         encryption = var.queue_encryption
       }
     }
@@ -153,14 +156,14 @@ locals {
       config  = "${var.ssm_paths.runners}/config"
     }
     kms_key_id = var.kms_key_arn
-    tags       = {}
+    tags       = local.stable_to_v2_empty_string_map
     parameters = {
       tags = var.parameter_store_tags
     }
     housekeeper = {
       schedule_expression = var.runners_ssm_housekeeper.schedule_expression
       state               = var.runners_ssm_housekeeper.enabled ? "ENABLED" : "DISABLED"
-      tags                = {}
+      tags                = local.stable_to_v2_empty_string_map
       lambda = {
         artifact = {
           zip = var.lambda_s3_bucket == null ? var.runners_lambda_zip : null
@@ -186,7 +189,7 @@ locals {
       retention_in_days = var.logging_retention_in_days
       kms_key_id        = var.logging_kms_key_id
       class             = var.log_class
-      tags              = {}
+      tags              = local.stable_to_v2_empty_string_map
     }
     tracing = var.tracing_config
     metrics = {
@@ -207,7 +210,7 @@ locals {
   }
 
   stable_to_v2_compute_provider = {
-    selections = null
+    selections = false ? var.global_config_compute_provider.selections : null
     aws = {
       ec2 = {
         vpc_id                         = var.vpc_id
@@ -221,7 +224,7 @@ locals {
         instance_profile_path         = var.instance_profile_path
         key_name                      = var.key_name
         associate_public_ipv4_address = var.associate_public_ipv4_address
-        tags                          = {}
+        tags                          = local.stable_to_v2_empty_string_map
         ami = {
           housekeeper = {
             enabled        = var.enable_ami_housekeeper
@@ -273,15 +276,15 @@ locals {
           s3 = {
             encryption = {
               enabled            = var.runner_binaries_s3_sse_configuration != null
-              bucket_key_enabled = try(var.runner_binaries_s3_sse_configuration.rule.bucket_key_enabled, null)
-              sse_algorithm      = try(var.runner_binaries_s3_sse_configuration.rule.apply_server_side_encryption_by_default.sse_algorithm, "AES256")
-              kms_master_key_id  = try(var.runner_binaries_s3_sse_configuration.rule.apply_server_side_encryption_by_default.kms_master_key_id, null)
+              bucket_key_enabled = tobool(try(var.runner_binaries_s3_sse_configuration.rule.bucket_key_enabled, null))
+              sse_algorithm      = tostring(try(var.runner_binaries_s3_sse_configuration.rule.apply_server_side_encryption_by_default.sse_algorithm, "AES256"))
+              kms_master_key_id  = tostring(try(var.runner_binaries_s3_sse_configuration.rule.apply_server_side_encryption_by_default.kms_master_key_id, null))
             }
             tags       = var.runner_binaries_s3_tags
             versioning = var.runner_binaries_s3_versioning
             logging = {
-              bucket = null
-              prefix = null
+              bucket = tostring(null)
+              prefix = tostring(null)
             }
           }
           syncer = {
@@ -308,7 +311,7 @@ locals {
 
   stable_to_v2_multi_runner_config = {
     for k, v in local.legacy_multi_runner_config : k => {
-      tags = {}
+      tags = local.stable_to_v2_empty_string_map
 
       runner = {
         os                     = v.runner_config.runner_os
@@ -320,7 +323,7 @@ locals {
         run_as_root            = v.runner_config.runner_as_root
         run_as                 = v.runner_config.runner_run_as
         auto_update_disabled   = v.runner_config.disable_runner_autoupdate
-        tags                   = {}
+        tags                   = local.stable_to_v2_empty_string_map
         hooks = {
           job_started   = v.runner_config.runner_hook_job_started
           job_completed = v.runner_config.runner_hook_job_completed
@@ -333,21 +336,21 @@ locals {
             for policy_index, policy_arn in v.runner_config.runner_iam_role_managed_policy_arns :
             "legacy-${policy_index}" => policy_arn
           }
-          additional_trust_policy_json = null
-          path                         = null
-          permissions_boundary         = null
+          additional_trust_policy_json = tostring(null)
+          path                         = tostring(null)
+          permissions_boundary         = tostring(null)
         }
       }
 
       lambda = {
-        runtime            = null
-        architecture       = null
-        subnet_ids         = null
-        security_group_ids = null
-        tags               = {}
+        runtime            = tostring(null)
+        architecture       = tostring(null)
+        subnet_ids         = tolist(null)
+        security_group_ids = tolist(null)
+        tags               = local.stable_to_v2_empty_string_map
         role = {
-          path                 = null
-          permissions_boundary = null
+          path                 = tostring(null)
+          permissions_boundary = tostring(null)
         }
       }
 
@@ -376,34 +379,34 @@ locals {
           lambda = {
             scale = {
               up = {
-                memory_size                    = null
-                timeout                        = null
+                memory_size                    = tonumber(null)
+                timeout                        = tonumber(null)
                 reserved_concurrent_executions = v.runner_config.scale_up_reserved_concurrent_executions
                 job_queued_check_enabled       = v.runner_config.enable_job_queued_check
                 event_source_mapping = {
                   batch_size                         = v.runner_config.lambda_event_source_mapping_batch_size
                   maximum_batching_window_in_seconds = v.runner_config.lambda_event_source_mapping_maximum_batching_window_in_seconds
                 }
-                tags = {}
+                tags = local.stable_to_v2_empty_string_map
               }
               down = {
-                memory_size                     = null
-                timeout                         = null
+                memory_size                     = tonumber(null)
+                timeout                         = tonumber(null)
                 schedule_expression             = v.runner_config.scale_down_schedule_expression
                 minimum_running_time_in_minutes = v.runner_config.minimum_running_time_in_minutes
                 idle_config                     = v.runner_config.idle_config
                 idle_confirmation_seconds       = v.runner_config.scale_down_idle_confirmation_seconds
-                tags                            = {}
+                tags                            = local.stable_to_v2_empty_string_map
               }
             }
             pool = {
-              memory_size                    = null
-              timeout                        = null
-              reserved_concurrent_executions = null
+              memory_size                    = tonumber(null)
+              timeout                        = tonumber(null)
+              reserved_concurrent_executions = tonumber(null)
               config                         = v.runner_config.pool_config
               include_busy_runners           = false
               runner_owner                   = v.runner_config.pool_runner_owner
-              tags                           = {}
+              tags                           = local.stable_to_v2_empty_string_map
             }
           }
 
@@ -412,7 +415,7 @@ locals {
             job_queue_retention_in_seconds = v.runner_config.job_queue_retention_in_seconds
             visibility_timeout_seconds     = var.runners_scale_up_lambda_timeout
             redrive_build_queue            = v.redrive_build_queue
-            tags                           = {}
+            tags                           = local.stable_to_v2_empty_string_map
           }
 
           job_retry = {
@@ -420,7 +423,7 @@ locals {
             delay_in_seconds = v.runner_config.job_retry.delay_in_seconds
             delay_backoff    = v.runner_config.job_retry.delay_backoff
             max_attempts     = v.runner_config.job_retry.max_attempts
-            tags             = {}
+            tags             = local.stable_to_v2_empty_string_map
             lambda = {
               memory_size                    = v.runner_config.job_retry.lambda_memory_size
               reserved_concurrent_executions = 1
@@ -433,59 +436,59 @@ locals {
 
       ssm = {
         paths = {
-          root   = null
-          tokens = null
-          config = null
+          root   = tostring(null)
+          tokens = tostring(null)
+          config = tostring(null)
         }
-        tags = {}
+        tags = local.stable_to_v2_empty_string_map
         parameters = {
-          tags = {}
+          tags = local.stable_to_v2_empty_string_map
         }
         housekeeper = {
-          schedule_expression = null
-          state               = null
-          tags                = {}
+          schedule_expression = tostring(null)
+          state               = tostring(null)
+          tags                = local.stable_to_v2_empty_string_map
           lambda = {
             artifact = {
               zip = null
               s3  = null
             }
-            memory_size = null
-            timeout     = null
+            memory_size = tonumber(null)
+            timeout     = tonumber(null)
           }
           config = {
-            tokenPath      = null
-            minimumDaysOld = null
-            dryRun         = null
+            tokenPath      = tostring(null)
+            minimumDaysOld = tonumber(null)
+            dryRun         = tobool(null)
           }
         }
       }
 
       observability = {
         logs = {
-          level             = null
-          retention_in_days = null
-          kms_key_id        = null
-          class             = null
-          tags              = {}
+          level             = tostring(null)
+          retention_in_days = tonumber(null)
+          kms_key_id        = tostring(null)
+          class             = tostring(null)
+          tags              = local.stable_to_v2_empty_string_map
         }
         tracing = {
-          mode                  = null
-          capture_http_requests = null
-          capture_error         = null
+          mode                  = tostring(null)
+          capture_http_requests = tobool(null)
+          capture_error         = tobool(null)
         }
         metrics = {
-          enabled   = null
-          namespace = null
+          enabled   = tobool(null)
+          namespace = tostring(null)
           metric = {
             github_app_rate_limit = {
-              enabled = null
+              enabled = tobool(null)
             }
             job_retry = {
-              enabled = null
+              enabled = tobool(null)
             }
             spot_termination_warning = {
-              enabled = null
+              enabled = tobool(null)
             }
           }
         }
@@ -537,11 +540,11 @@ locals {
             instance_type_priorities       = v.runner_config.instance_type_priorities
             instance_types                 = v.runner_config.instance_types
             additional_security_group_ids  = length(v.runner_config.runner_additional_security_group_ids) == 0 ? null : v.runner_config.runner_additional_security_group_ids
-            managed_security_group_enabled = null
+            managed_security_group_enabled = tobool(null)
             egress_rules                   = null
-            instance_profile_path          = null
-            key_name                       = null
-            associate_public_ipv4_address  = null
+            instance_profile_path          = tostring(null)
+            key_name                       = tostring(null)
+            associate_public_ipv4_address  = tobool(null)
             instance_profile = v.runner_config.iam_overrides.override_instance_profile == true ? {
               name = v.runner_config.iam_overrides.instance_profile_name
             } : null
