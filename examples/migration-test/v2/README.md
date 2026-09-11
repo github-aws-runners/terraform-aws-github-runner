@@ -11,7 +11,7 @@
 
 | Name | Version |
 |------|---------|
-| <a name="provider_random"></a> [random](#provider\_random) | 3.9.0 |
+| <a name="provider_random"></a> [random](#provider\_random) | 3.9.1 |
 
 ## Modules
 
