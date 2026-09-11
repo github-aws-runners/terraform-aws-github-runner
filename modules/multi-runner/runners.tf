@@ -137,6 +137,7 @@ module "runners" {
   pool_runner_owner                          = each.value.orchestration_provider.webhook.lambda.pool.runner_owner
   pool_lambda_reserved_concurrent_executions = each.value.orchestration_provider.webhook.lambda.pool.reserved_concurrent_executions
   pool_include_busy_runners                  = each.value.orchestration_provider.webhook.lambda.pool.include_busy_runners
+  warm_pool                                  = each.value.orchestration_provider.webhook.lambda.pool.warm_pool
   associate_public_ipv4_address              = each.value.compute_provider.aws.ec2.associate_public_ipv4_address
 
   ssm_housekeeper = {

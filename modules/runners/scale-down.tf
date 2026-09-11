@@ -29,6 +29,7 @@ resource "aws_lambda_function" "scale_down" {
     variables = {
       ENVIRONMENT                              = var.prefix
       ENABLE_METRIC_GITHUB_APP_RATE_LIMIT      = var.metrics.enable && var.metrics.metric.enable_github_app_rate_limit
+      ENABLE_METRIC_WARM_POOL                  = var.metrics.enable && var.metrics.metric.enable_warm_pool
       GHES_URL                                 = var.ghes_url
       USER_AGENT                               = var.user_agent
       LOG_LEVEL                                = upper(var.log_level)
@@ -47,6 +48,15 @@ resource "aws_lambda_function" "scale_down" {
       POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.tracing_config.capture_http_requests
       POWERTOOLS_TRACER_CAPTURE_ERROR          = var.tracing_config.capture_error
       COMPUTE_PROVIDER_TYPE                    = "ec2"
+      WARM_POOL_CONFIG = jsonencode({
+        enabled                   = var.warm_pool.enabled
+        maxWarmInstances          = var.warm_pool.max_instances
+        maxWarmAgeHours           = var.warm_pool.max_age_hours
+        warmPoolReadyDelaySeconds = var.warm_pool.ready_timeout_seconds
+      })
+      WARM_POOL_TABLE_NAME      = var.warm_pool.enabled ? aws_dynamodb_table.warm_pool[0].name : ""
+      POOL_STRATEGY             = var.warm_pool.enabled ? "warm" : "hot"
+      AMI_ID_SSM_PARAMETER_NAME = local.ami_id_ssm_parameter_name
     }
   }
 
@@ -106,6 +116,9 @@ resource "aws_iam_role_policy" "scale_down" {
   role = aws_iam_role.scale_down.name
   policy = templatefile("${path.module}/policies/lambda-scale-down.json", {
     environment = var.prefix
+    # Untagged replacements from cancelled persistent spot requests (reconcileStalePersistentSpotRequests)
+    # never match the tag-scoped statements above, so termination is additionally scoped by VPC.
+    vpc_arn = "arn:${var.aws_partition}:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:vpc/${var.vpc_id}"
     github_app_parameter_arns = jsonencode(concat(
       [var.github_app_parameters.id.arn, var.github_app_parameters.key_base64.arn],
       var.github_app_parameters.additional_app_parameter_arns,
@@ -127,6 +140,12 @@ resource "aws_iam_role_policy_attachment" "scale_down_vpc_execution_role" {
   count      = length(var.lambda_subnet_ids) > 0 ? 1 : 0
   role       = aws_iam_role.scale_down.name
   policy_arn = "arn:${var.aws_partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
+
+resource "aws_iam_role_policy_attachment" "scale_down_ami_id_ssm_parameter_read" {
+  count      = local.ami_id_ssm_parameter_name != null ? 1 : 0
+  role       = aws_iam_role.scale_down.name
+  policy_arn = aws_iam_policy.ami_id_ssm_parameter_read[0].arn
 }
 
 resource "aws_iam_role_policy" "scale_down_xray" {

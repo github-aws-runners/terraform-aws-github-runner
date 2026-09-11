@@ -95,6 +95,12 @@ export interface RunnerInfo {
    * Set and cleared via `markIdle` / `unmarkIdle`; absent when no marker is recorded.
    */
   idleDetectedAt?: string;
+  /**
+   * The spot request that launched this instance, when it is a spot runner. Absent for on-demand
+   * runners. Used to keep spot instances out of the warm pool (stopping a spot instance leaves a
+   * persistent request that would relaunch an untagged replacement).
+   */
+  spotInstanceRequestId?: string;
 }
 
 export interface ListRunnerFilters {
@@ -118,6 +124,14 @@ export interface ScaleDownComputeProvider extends ComputeProvider {
   markIdle(id: string, at: string): Promise<void>;
   /** Clear the idle marker — the runner was seen busy again, so the window restarts. */
   unmarkIdle(id: string): Promise<void>;
+  /**
+   * Optional: dispose of an idle runner after it has been de-registered from GitHub. Providers may
+   * reclaim the instance instead of terminating it (e.g. the EC2 provider stops it into the warm
+   * pool). Callers fall back to `terminate` semantics when this is not implemented.
+   */
+  retire?(runner: RunnerInfo): Promise<void>;
+  /** Optional: post-scale-down maintenance hook (e.g. evict stale warm-pool instances). */
+  maintain?(environment: string): Promise<void>;
 }
 
 export interface RunnerStatus {
@@ -146,6 +160,11 @@ export interface PoolComputeProvider<TRunner = unknown> extends ComputeProvider 
     includeBusyRunners: boolean,
   ): number;
   createRunners(input: CreatePoolRunnersInput): Promise<string[]>;
+  /**
+   * Optional: extra capacity to count toward the pool target (e.g. EC2 warm/stopped instances that
+   * can be restarted quickly). Returns 0 when not implemented.
+   */
+  additionalPoolCapacity?(input: ListPoolRunnersInput): Promise<number>;
 }
 
 export interface ComputeProviderPlugin<TCapabilities, TType extends string = string> {

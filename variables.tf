@@ -875,6 +875,27 @@ variable "pool_config" {
   default = []
 }
 
+variable "warm_pool" {
+  description = <<-EOF
+    Warm pool configuration. When enabled, idle runners are stopped (hibernated) instead of terminated,
+    allowing 10-30s restart times instead of 2-5 minute cold starts. Scale-down stops idle runners into
+    the warm tier, and (when a `pool_config` schedule is set) the pool lambda maintains stopped standby
+    capacity. The proactive pool is org-level only.
+
+    `enabled`: Turn on the warm tier (stop-instead-of-terminate). Creates a DynamoDB table to track stopped instances.
+    `max_instances`: Maximum number of stopped instances to keep in the warm pool per runner owner. Must be >= the largest `pool_config` size.
+    `max_age_hours`: Maximum age in hours before a warm instance is terminated by TTL.
+    `ready_timeout_seconds`: Maximum seconds the pool lambda waits for a new instance to signal that it is safe to stop, before falling back to an idle check.
+  EOF
+  type = object({
+    enabled               = optional(bool, false)
+    max_instances         = optional(number, 3)
+    max_age_hours         = optional(number, 168)
+    ready_timeout_seconds = optional(number, 30)
+  })
+  default = {}
+}
+
 variable "pool_include_busy_runners" {
   description = "Include busy runners in the pool calculation. By default busy runners are not included in the pool."
   type        = bool
@@ -1081,6 +1102,7 @@ variable "metrics" {
       enable_github_app_rate_limit    = optional(bool, true)
       enable_job_retry                = optional(bool, true)
       enable_spot_termination_warning = optional(bool, true)
+      enable_warm_pool                = optional(bool, true)
     }), {})
   })
   default = {}

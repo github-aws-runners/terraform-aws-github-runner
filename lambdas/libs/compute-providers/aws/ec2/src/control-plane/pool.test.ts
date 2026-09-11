@@ -22,8 +22,12 @@ const ec2Operations = {
   list: vi.fn<Ec2RunnerResourceOperations['list']>(),
   create: vi.fn<Ec2RunnerResourceOperations['create']>(),
   terminate: vi.fn<Ec2RunnerResourceOperations['terminate']>(),
+  stop: vi.fn<Ec2RunnerResourceOperations['stop']>(),
+  start: vi.fn<Ec2RunnerResourceOperations['start']>(),
   tag: vi.fn<Ec2RunnerResourceOperations['tag']>(),
   untag: vi.fn<Ec2RunnerResourceOperations['untag']>(),
+  listActivePersistentSpotRequests: vi.fn<Ec2RunnerResourceOperations['listActivePersistentSpotRequests']>(),
+  cancelSpotRequests: vi.fn<Ec2RunnerResourceOperations['cancelSpotRequests']>(),
 } satisfies Ec2RunnerResourceOperations;
 const createStartRunnerConfig = vi.fn<CreateStartRunnerConfig>();
 const capability = createEc2PoolCapability(ec2Operations, createStartRunnerConfig);
@@ -152,6 +156,28 @@ describe('createEc2PoolCapability.createRunners', () => {
       ec2Operations,
       githubRunnerConfig,
       providerConfig,
+      1,
+      githubInstallationClient,
+      createStartRunnerConfig,
+      'pool-lambda',
+      undefined,
+    );
+  });
+
+  it('forwards enablePersistentSpot so pool spot instances are stoppable (warm pool)', async () => {
+    mockLoadProviderConfig.mockReturnValue({ ...providerConfig, enablePersistentSpot: true });
+    mockCreateRunners.mockResolvedValue({
+      instances: ['i-persistent'],
+      retryableErrorCount: 0,
+      nonRetryableErrorCount: 0,
+    });
+
+    await capability.createRunners({ githubRunnerConfig, numberOfRunners: 1, githubInstallationClient });
+
+    expect(mockCreateRunners).toHaveBeenCalledWith(
+      ec2Operations,
+      githubRunnerConfig,
+      expect.objectContaining({ enablePersistentSpot: true }),
       1,
       githubInstallationClient,
       createStartRunnerConfig,

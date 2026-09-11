@@ -71,6 +71,16 @@ resource "aws_lambda_function" "scale_up" {
       SCALE_ERRORS                             = jsonencode(var.scale_errors)
       JOB_RETRY_CONFIG                         = jsonencode(local.job_retry_config)
       USE_DEDICATED_HOST                       = var.use_dedicated_host
+      ENABLE_METRIC_WARM_POOL                  = var.metrics.enable && var.metrics.metric.enable_warm_pool
+      WARM_POOL_CONFIG = jsonencode({
+        enabled                   = var.warm_pool.enabled
+        maxWarmInstances          = var.warm_pool.max_instances
+        maxWarmAgeHours           = var.warm_pool.max_age_hours
+        warmPoolReadyDelaySeconds = var.warm_pool.ready_timeout_seconds
+      })
+      WARM_POOL_TABLE_NAME   = var.warm_pool.enabled ? aws_dynamodb_table.warm_pool[0].name : ""
+      POOL_STRATEGY          = var.warm_pool.enabled ? "warm" : "hot"
+      ENABLE_PERSISTENT_SPOT = var.warm_pool.enabled && var.instance_target_capacity_type == "spot"
     }
   }
 

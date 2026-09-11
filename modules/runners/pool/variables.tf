@@ -78,6 +78,14 @@ variable "config" {
     arn_ssm_parameters_path_config       = string
     lambda_tags                          = map(string)
     user_agent                           = string
+    warm_pool_table_name                 = string
+    warm_pool = object({
+      enabled               = bool
+      max_instances         = number
+      max_age_hours         = number
+      ready_timeout_seconds = number
+    })
+    enable_metric_warm_pool = bool
   })
 }
 

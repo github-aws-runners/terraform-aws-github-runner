@@ -28,4 +28,11 @@ describe('AWS SSM storage logger', () => {
 
     expect(getErrorNames(error)).toEqual(['GetParameterError', 'ParameterNotFound']);
   });
+
+  it('detects a namespaced __type instead of name (raw SSM GetParameter error shape)', () => {
+    const cause = { message: 'missing', __type: 'com.amazonaws.ssm#ParameterNotFound' };
+    const error = Object.assign(new Error('wrapped'), { name: 'GetParameterError', cause });
+
+    expect(getErrorNames(error)).toEqual(['GetParameterError', 'ParameterNotFound']);
+  });
 });

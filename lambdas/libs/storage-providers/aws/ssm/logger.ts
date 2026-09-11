@@ -20,6 +20,11 @@ export function getErrorNames(error: unknown): string[] {
     if ('name' in current && typeof current.name === 'string') {
       names.push(current.name);
     }
+    // Some AWS error responses carry the exception type as `__type` (e.g.
+    // "com.amazonaws.ssm#ParameterNotFound") instead of `.name`.
+    if ('__type' in current && typeof current.__type === 'string') {
+      names.push(current.__type.split('#').pop() as string);
+    }
     current = 'cause' in current ? current.cause : undefined;
   }
 

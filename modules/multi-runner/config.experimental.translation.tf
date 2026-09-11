@@ -126,7 +126,13 @@ locals {
           config                         = []
           include_busy_runners           = false
           runner_owner                   = null
-          tags                           = {}
+          warm_pool = {
+            enabled               = false
+            max_instances         = 3
+            max_age_hours         = 168
+            ready_timeout_seconds = 30
+          }
+          tags = {}
         }
       }
       queue = {
@@ -402,6 +408,7 @@ locals {
               config                         = v.runner_config.pool_config
               include_busy_runners           = false
               runner_owner                   = v.runner_config.pool_runner_owner
+              warm_pool                      = try(v.runner_config.warm_pool, { enabled = false, max_instances = 3, max_age_hours = 168, ready_timeout_seconds = 30 })
               tags                           = {}
             }
           }

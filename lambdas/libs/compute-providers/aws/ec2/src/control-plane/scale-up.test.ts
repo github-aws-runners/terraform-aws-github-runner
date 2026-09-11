@@ -13,6 +13,8 @@ const mockCreateRunner = vi.fn<Ec2RunnerProvisioningOperations['create']>();
 const mockListRunners = vi.fn<Ec2RunnerProvisioningOperations['list']>();
 const mockTag = vi.fn<Ec2RunnerProvisioningOperations['tag']>();
 const mockTerminateRunner = vi.fn<Ec2RunnerProvisioningOperations['terminate']>();
+const mockStop = vi.fn<Ec2RunnerProvisioningOperations['stop']>();
+const mockStart = vi.fn<Ec2RunnerProvisioningOperations['start']>();
 const mockUntag = vi.fn<Ec2RunnerProvisioningOperations['untag']>();
 const mockCreateStartRunnerConfig = vi.fn<CreateStartRunnerConfig>();
 const mockGetDefaultBlockDeviceNameFromLaunchTemplate =
@@ -26,8 +28,12 @@ const ec2Operations: Ec2RunnerProvisioningOperations = {
   list: mockListRunners,
   create: mockCreateRunner,
   terminate: mockTerminateRunner,
+  stop: mockStop,
+  start: mockStart,
   tag: mockTag,
   untag: mockUntag,
+  listActivePersistentSpotRequests: vi.fn<Ec2RunnerProvisioningOperations['listActivePersistentSpotRequests']>(),
+  cancelSpotRequests: vi.fn<Ec2RunnerProvisioningOperations['cancelSpotRequests']>(),
   getDefaultBlockDeviceNameFromLaunchTemplate: mockGetDefaultBlockDeviceNameFromLaunchTemplate,
 };
 const capability = createEc2ScaleUpCapability(ec2Operations, mockCreateStartRunnerConfig);
@@ -77,6 +83,7 @@ function expectedRunnerParams(
     onDemandFailoverOnError: [],
     source: 'scale-up-lambda',
     useDedicatedHost: false,
+    enablePersistentSpot: false,
     ec2OverrideConfig: undefined,
     ...overrides,
   };

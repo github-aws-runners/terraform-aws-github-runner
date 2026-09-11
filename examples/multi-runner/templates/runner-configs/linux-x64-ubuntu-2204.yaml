@@ -17,7 +17,22 @@ runner_config:
     - t3a.large
     - m5ad.large
     - m5a.large
-  runners_maximum_count: 1
+  enable_organization_runners: true
+  pool_runner_owner: philips-test-runners
+  runners_maximum_count: 20
+  instance_target_capacity_type: spot
+  pool_config:
+    - size: 2
+      schedule_expression: "cron(* * * * ? *)"
+  warm_pool:
+    enabled: true
+    max_instances: 10
+    max_age_hours: 168
+    ready_timeout_seconds: 30
+  enable_ephemeral_runners: true
+  # This AMI bootstraps docker/cloudwatch-agent/runner from scratch on every boot (~5-6 min);
+  # the 5 min default has scale-down retiring instances mid-boot, before they ever register.
+  runner_boot_time_in_minutes: 12
   delay_webhook_event: 0
   scale_down_schedule_expression: cron(* * * * ? *)
   userdata_template: ./templates/user-data.sh
