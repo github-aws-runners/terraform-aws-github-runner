@@ -82,7 +82,7 @@ Rate limits are **disabled by default** on GitHub Enterprise Server and must be 
 |---|---|
 | Combined throughput (Get + Put) | **40 TPS** (shared per-account per-region) |
 
-Each runner instance requires one `PutParameter` call for its JIT config. At 40 TPS shared across all operations in the account, a burst of 40+ concurrent writes will throttle.
+Each runner instance requires one `PutParameter` call for its JIT config. This is account-wide, not per-invocation or per-pool: several pools' scale-up/pool lambdas can each individually look fine while their combined writes exceed the account limit. The module paces its own writes to stay under a configured ceiling — `ssm_parameter_store_max_writes_per_second` (default `40`, matching the standard tier) — dividing the per-write delay across `ssm_parameter_store_max_concurrent_invocations` (default `1`), which should reflect how many scale-up/pool invocations across all pools can realistically run at the same time.
 
 **Higher throughput mode** raises the ceiling:
 
@@ -93,6 +93,8 @@ aws ssm update-service-setting \
 ```
 
 Cost: $0.05 per 10,000 API interactions beyond the standard tier.
+
+Enabling this alone does nothing for this module's own pacing — raise `ssm_parameter_store_max_writes_per_second` to match the new ceiling too, or the module keeps pacing writes at the old 40 TPS default regardless of what AWS now allows.
 
 ### EC2 CreateFleet
 
@@ -111,7 +113,7 @@ For deployments running more than a handful of concurrent runners:
 | Running On-Demand Standard (A,C,D,H,I,M,R,T,Z) instances | **5 vCPUs** | Service Quotas console |
 | All Standard Spot Instance Requests | **5 vCPUs** | Service Quotas console |
 | EC2 CreateFleet API rate | Undocumented | AWS Support ticket |
-| SSM Parameter Store throughput | 40 TPS | `update-service-setting` (see above) |
+| SSM Parameter Store throughput | 40 TPS | `update-service-setting` (see above), then raise `ssm_parameter_store_max_writes_per_second` to match |
 
 **vCPU quotas are measured in vCPUs, not instance count.** Running 50× `c5.large` (2 vCPU each) requires a quota of at least 100 vCPUs.
 
@@ -131,7 +133,7 @@ For deployments running more than a handful of concurrent runners:
 | `isJobQueued` calls | 100 | 100 (same total) |
 | JIT config generation calls | 100 | 100 (same total) |
 
-Larger `batch_size` reduces CreateFleet calls (the most constrained AWS API) and Lambda invocations. Per-runner work (SSM writes, JIT config, isJobQueued) stays the same total. SSM peak TPS is lower with larger batches because writes are serialized within each Lambda rather than concurrent across many.
+Larger `batch_size` reduces CreateFleet calls (the most constrained AWS API) and Lambda invocations. Per-runner work (SSM writes, JIT config, isJobQueued) stays the same total. SSM writes are paced within each Lambda regardless of batch size (see `ssm_parameter_store_max_writes_per_second`/`ssm_parameter_store_max_concurrent_invocations` above) — batch size does not change the SSM pacing behavior, only how many Lambda invocations are running concurrently in the first place.
 
 ### Tradeoffs
 
@@ -157,7 +159,7 @@ Higher windows improve batching efficiency but add latency to job pickup.
 |---|---|---|---|
 | Small (<50 concurrent jobs) | 1–5 | 90s | Defaults work |
 | Medium (50–200) | 5–10 | 180s | Monitor SSM throttling |
-| Large (200+) | 10 | 300s | Enable SSM higher throughput, raise vCPU quotas, request CreateFleet rate increase |
+| Large (200+) | 10 | 300s | Enable SSM higher throughput and raise `ssm_parameter_store_max_writes_per_second`/`ssm_parameter_store_max_concurrent_invocations` to match, raise vCPU quotas, request CreateFleet rate increase |
 
 ## Monitoring
 
