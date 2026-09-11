@@ -52,7 +52,7 @@ if [ "$use_tfvars" = true ]; then
     *) tfvars_file="$PWD/$tfvars_file" ;;
   esac
 
-  if [ ! -f "$tfvars_file" ]; then
+  if [ ! -f "$tfvars_file" ] && [ "$microvm_foundation_default_tfvars" != true ]; then
     echo "Terraform variables file not found: $tfvars_file" >&2
     echo "Pass it as the third argument or set MINISTACK_TFVARS_FILE." >&2
     exit 66
