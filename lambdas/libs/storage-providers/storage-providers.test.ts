@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { createAwsSsmRunnerConfigStore } from './aws/ssm/runner-config-store';
+
 import { createStorageProviders } from './storage-providers';
 
 vi.mock('./aws/ssm/runner-config-store', () => ({
@@ -20,6 +22,7 @@ describe('createStorageProviders', () => {
     const environment = Object.freeze({
       RUNNER_CONFIG_STORAGE_PROVIDER: 'AWS_SSM',
       SSM_TOKEN_PATH: '/runners/tokens',
+      SSM_TOKEN_TTL_SECONDS: '3600',
       SSM_CONFIG_PATH: '/runners/config',
       SSM_PARAMETER_STORE_TAGS: JSON.stringify([{ Key: 'Environment', Value: 'test' }]),
       PARAMETER_GITHUB_APP_ID_NAME: 'app-id',
@@ -32,6 +35,7 @@ describe('createStorageProviders', () => {
 
     const storage = createStorageProviders(environment);
 
+    expect(createAwsSsmRunnerConfigStore).toHaveBeenCalledWith(expect.objectContaining({ tokenTtlSeconds: 3600 }));
     expect(storage).toEqual({
       runnerConfig: expect.any(Object),
       runnerGroupCache: expect.any(Object),

@@ -28,6 +28,7 @@ describe('aws_ssm runner config store', () => {
     vi.clearAllMocks();
     process.env = { ...cleanEnv };
     delete process.env.SSM_PARAMETER_STORE_TAGS;
+    delete process.env.SSM_TOKEN_TTL_SECONDS;
     process.env.SSM_TOKEN_PATH = '/runner/tokens';
   });
 
@@ -61,6 +62,21 @@ describe('aws_ssm runner config store', () => {
     expect(putParameterMock).toHaveBeenCalledWith('/runner/tokens/runner-1', 'registration-config', true, {
       tags: [],
     });
+  });
+
+  it('passes the configured token TTL to SSM', async () => {
+    process.env.SSM_TOKEN_TTL_SECONDS = '3600';
+    await createAwsSsmRunnerConfigStore().create({ runnerId: 'runner-1', value: 'jit-config' });
+    expect(putParameterMock).toHaveBeenCalledWith('/runner/tokens/runner-1', 'jit-config', true, {
+      tags: [],
+      ttlSeconds: 3600,
+    });
+  });
+
+  it('rejects an invalid token TTL before writing', () => {
+    process.env.SSM_TOKEN_TTL_SECONDS = 'not-a-number';
+    expect(() => createAwsSsmRunnerConfigStore()).toThrow('SSM_TOKEN_TTL_SECONDS must be a positive number');
+    expect(putParameterMock).not.toHaveBeenCalled();
   });
 
   it.each([undefined, '', '   '])('rejects missing or blank SSM_TOKEN_PATH %j before writing', (tokenPath) => {

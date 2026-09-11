@@ -430,6 +430,9 @@ locals {
       }
 
       ssm = {
+        ttl_seconds = {
+          tokens = v.runner_config.ssm_ttl_seconds.tokens
+        }
         paths = {
           root   = null
           tokens = null

@@ -58,3 +58,30 @@ run "plan_with_pool_enabled" {
     error_message = "Pool module should be enabled when pool_config is non-empty"
   }
 }
+
+run "token_ttl_defaults_to_disabled" {
+  command = plan
+  assert {
+    condition     = aws_lambda_function.scale_up.environment[0].variables["SSM_TOKEN_TTL_SECONDS"] == ""
+    error_message = "Omitted token TTL must leave expiration disabled."
+  }
+}
+
+run "nested_token_ttl_reaches_scale_up" {
+  command = plan
+  variables {
+    ssm_ttl_seconds = { tokens = 3600 }
+  }
+  assert {
+    condition     = aws_lambda_function.scale_up.environment[0].variables["SSM_TOKEN_TTL_SECONDS"] == "3600"
+    error_message = "The nested token TTL must reach the scale-up Lambda."
+  }
+}
+
+run "reject_non_positive_token_ttl" {
+  command = plan
+  variables {
+    ssm_ttl_seconds = { tokens = 0 }
+  }
+  expect_failures = [var.ssm_ttl_seconds]
+}
