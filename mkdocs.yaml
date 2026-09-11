@@ -56,6 +56,7 @@ markdown_extensions:
 nav:
   - Introduction: index.md
   - Configuration: configuration.md
+  - Multi-runner v1 to v2 configuration: multi-runner-v1-to-v2-configuration.md
   - Multi-runner v1 to v2 migration: multi-runner-v1-v2-migration.md
   - Getting started: getting-started.md
   - Security: security.md
