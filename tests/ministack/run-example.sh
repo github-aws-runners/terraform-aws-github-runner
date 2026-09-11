@@ -344,14 +344,14 @@ case "$action" in
     ;;
   plan)
     iac_init
-    iac_example plan -input=false
+    iac_example plan -input=false -parallelism=1
     ;;
   apply)
     iac_init
-    iac_example apply -auto-approve -input=false
+    iac_example apply -auto-approve -input=false -parallelism=1
     ;;
   destroy)
     iac_init
-    iac_example destroy -auto-approve -input=false
+    iac_example destroy -auto-approve -input=false -parallelism=1
     ;;
 esac

@@ -243,7 +243,7 @@ wait_for_log_event() {
   description="$3"
   attempts=60
   while ! aws --endpoint-url "$AWS_ENDPOINT_URL" logs filter-log-events \
-    --log-group-name "$log_group" --limit 50 --output text 2>/dev/null | grep -Fq "$marker"; do
+    --log-group-name "$log_group" --filter-pattern "$marker" --limit 1 --output text 2>/dev/null | grep -Fq "$marker"; do
     attempts=$((attempts - 1))
     if [ "$attempts" -le 0 ]; then
       echo "Timed out waiting for MiniStack log marker '$marker' in $log_group." >&2
@@ -260,7 +260,7 @@ wait_for_optional_log_event() {
   description="$3"
   attempts=60
   while ! aws --endpoint-url "$AWS_ENDPOINT_URL" logs filter-log-events \
-    --log-group-name "$log_group" --limit 50 --output text 2>/dev/null | grep -Fq "$marker"; do
+    --log-group-name "$log_group" --filter-pattern "$marker" --limit 1 --output text 2>/dev/null | grep -Fq "$marker"; do
     attempts=$((attempts - 1))
     if [ "$attempts" -le 0 ]; then
       printf '  [WARN] %s (log marker %s was not observed in %s)\n' \
