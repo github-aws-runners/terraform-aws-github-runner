@@ -80,7 +80,7 @@ variable "experimental_features" {
     for one release when the feature graduates.
   EOT
   type        = set(string)
-  default     = []
+  default     = ["multi-runner-v2"]
 
   validation {
     condition     = alltrue([for feature in var.experimental_features : feature == "multi-runner-v2"])
