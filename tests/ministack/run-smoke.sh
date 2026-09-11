@@ -203,7 +203,7 @@ printf '%s\n' \
   '  [ ] Pool called every expected GitHub API route in MockServer' \
   '  [ ] Pool Lambda created a runner instance' \
   '  [ ] Pool EC2 instance has the expected runner discovery tags' \
-  '  [ ] Scale-down checks are temporarily disabled pending the MiniStack CreateFleet fix'
+  '  [ ] Scale-down removed each runner from GitHub and terminated its EC2 instance'
 
 webhook_endpoint=$(terraform -chdir="$example_root" output -raw webhook_endpoint)
 endpoint_host_port=${AWS_ENDPOINT_URL#*://}
@@ -616,17 +616,6 @@ wait_for_ec2_termination() {
   done
 }
 
-terminate_ec2_instance_directly() {
-  instance_id="$1"
-  description="$2"
-  if ! aws --endpoint-url "$AWS_ENDPOINT_URL" ec2 terminate-instances \
-    --instance-ids "$instance_id" >/dev/null; then
-    echo "Failed to terminate $description through the MiniStack EC2 API." >&2
-    exit 1
-  fi
-  wait_for_ec2_termination "$instance_id" "$description"
-}
-
 invoke_lambda() {
   function_name="$1"
   payload="$2"
@@ -644,26 +633,19 @@ invoke_lambda() {
   printf '  [PASS] %s (Lambda API accepted the request)\n' "$description"
 }
 
-# Temporarily disabled until MiniStack fixes its CreateFleet behavior. Keep the
-# lifecycle assertions here so this coverage can be restored with the fix.
-# scale_up_runner_id=987654321
-# configure_mock_runner_state "$scale_up_instance_id" "$scale_up_runner_id"
-# clear_mock_request_log
-# invoke_lambda "ministack-default-scale-down" '{"smokeMarker":"ministack-scale-up-scale-down"}' \
-#   "Scale-down Lambda invoked for the scale-up runner"
-# wait_for_log_event "/aws/lambda/ministack-default-scale-down" "ministack-scale-up-scale-down" \
-#   "Scale-down Lambda started processing the scale-up runner"
-# assert_scale_down_github_routes "$scale_up_runner_id"
-# configure_mock_runner_removed "$scale_up_runner_id"
-# assert_mock_runner_removed "$scale_up_runner_id"
-# wait_for_ec2_termination "$scale_up_instance_id" "the scale-up instance"
-# wait_for_optional_log_event "/aws/lambda/ministack-default-scale-down" "$scale_up_instance_id" \
-#   "Scale-down log recorded termination of the scale-up EC2 runner"
-
-# Temporary cleanup workaround for MiniStack CreateFleet issue #1678. Directly
-# terminate the test-created instance so the next scale-up is not blocked by
-# runners_maximum_count or mistaken for this instance.
-terminate_ec2_instance_directly "$scale_up_instance_id" "the standard scale-up instance"
+scale_up_runner_id=987654321
+configure_mock_runner_state "$scale_up_instance_id" "$scale_up_runner_id"
+clear_mock_request_log
+invoke_lambda "ministack-default-scale-down" '{"smokeMarker":"ministack-scale-up-scale-down"}' \
+  "Scale-down Lambda invoked for the scale-up runner"
+wait_for_log_event "/aws/lambda/ministack-default-scale-down" "ministack-scale-up-scale-down" \
+  "Scale-down Lambda started processing the scale-up runner"
+assert_scale_down_github_routes "$scale_up_runner_id"
+configure_mock_runner_removed "$scale_up_runner_id"
+assert_mock_runner_removed "$scale_up_runner_id"
+wait_for_ec2_termination "$scale_up_instance_id" "the scale-up instance"
+wait_for_optional_log_event "/aws/lambda/ministack-default-scale-down" "$scale_up_instance_id" \
+  "Scale-down log recorded termination of the scale-up EC2 runner"
 
 clear_mock_request_log
 send_webhook "$dynamic_fixture" "ministack-smoke-123457"
@@ -680,22 +662,19 @@ assert_ec2_runner_tags "$dynamic_scale_up_instance_id" "scale-up-lambda" \
   "the dynamic-label scale-up runner"
 assert_ec2_instance_type "$dynamic_scale_up_instance_id" "m5.large"
 
-# Temporarily disabled for the same MiniStack CreateFleet issue.
-# dynamic_scale_up_runner_id=987654323
-# configure_mock_runner_state "$dynamic_scale_up_instance_id" "$dynamic_scale_up_runner_id"
-# clear_mock_request_log
-# invoke_lambda "ministack-default-scale-down" '{"smokeMarker":"ministack-dynamic-scale-up-scale-down"}' \
-#   "Scale-down Lambda invoked for the dynamic-label scale-up runner"
-# wait_for_log_event "/aws/lambda/ministack-default-scale-down" "ministack-dynamic-scale-up-scale-down" \
-#   "Scale-down Lambda started processing the dynamic-label scale-up runner"
-# assert_scale_down_github_routes "$dynamic_scale_up_runner_id"
-# configure_mock_runner_removed "$dynamic_scale_up_runner_id"
-# assert_mock_runner_removed "$dynamic_scale_up_runner_id"
-# wait_for_ec2_termination "$dynamic_scale_up_instance_id" "the dynamic-label scale-up instance"
-# wait_for_optional_log_event "/aws/lambda/ministack-default-scale-down" "$dynamic_scale_up_instance_id" \
-#   "Scale-down log recorded termination of the dynamic-label scale-up EC2 runner"
-
-terminate_ec2_instance_directly "$dynamic_scale_up_instance_id" "the dynamic-label scale-up instance"
+dynamic_scale_up_runner_id=987654323
+configure_mock_runner_state "$dynamic_scale_up_instance_id" "$dynamic_scale_up_runner_id"
+clear_mock_request_log
+invoke_lambda "ministack-default-scale-down" '{"smokeMarker":"ministack-dynamic-scale-up-scale-down"}' \
+  "Scale-down Lambda invoked for the dynamic-label scale-up runner"
+wait_for_log_event "/aws/lambda/ministack-default-scale-down" "ministack-dynamic-scale-up-scale-down" \
+  "Scale-down Lambda started processing the dynamic-label scale-up runner"
+assert_scale_down_github_routes "$dynamic_scale_up_runner_id"
+configure_mock_runner_removed "$dynamic_scale_up_runner_id"
+assert_mock_runner_removed "$dynamic_scale_up_runner_id"
+wait_for_ec2_termination "$dynamic_scale_up_instance_id" "the dynamic-label scale-up instance"
+wait_for_optional_log_event "/aws/lambda/ministack-default-scale-down" "$dynamic_scale_up_instance_id" \
+  "Scale-down log recorded termination of the dynamic-label scale-up EC2 runner"
 
 echo "MiniStack smoke chain 1 passed: API Gateway -> webhook -> EventBridge -> dispatcher -> SQS -> scale-up without and with EC2 dynamic label -> GitHub API mock."
 
@@ -710,22 +689,19 @@ wait_for_ec2_instance "pool-lambda" "a pool instance"
 pool_instance_id="$found_instance_id"
 assert_ec2_runner_tags "$pool_instance_id" "pool-lambda" "the pool runner"
 
-# Temporarily disabled for the same MiniStack CreateFleet issue.
-# pool_runner_id=987654322
-# configure_mock_runner_state "$pool_instance_id" "$pool_runner_id"
-# clear_mock_request_log
-# invoke_lambda "ministack-default-scale-down" '{"smokeMarker":"ministack-pool-scale-down"}' \
-#   "Scale-down Lambda invoked for the pool runner"
-# wait_for_log_event "/aws/lambda/ministack-default-scale-down" "ministack-pool-scale-down" \
-#   "Scale-down Lambda started processing the pool runner"
-# assert_scale_down_github_routes "$pool_runner_id"
-# configure_mock_runner_removed "$pool_runner_id"
-# assert_mock_runner_removed "$pool_runner_id"
-# wait_for_ec2_termination "$pool_instance_id" "the pool instance"
-# wait_for_optional_log_event "/aws/lambda/ministack-default-scale-down" "$pool_instance_id" \
-#   "Scale-down log recorded termination of the pool EC2 runner"
+pool_runner_id=987654322
+configure_mock_runner_state "$pool_instance_id" "$pool_runner_id"
+clear_mock_request_log
+invoke_lambda "ministack-default-scale-down" '{"smokeMarker":"ministack-pool-scale-down"}' \
+  "Scale-down Lambda invoked for the pool runner"
+wait_for_log_event "/aws/lambda/ministack-default-scale-down" "ministack-pool-scale-down" \
+  "Scale-down Lambda started processing the pool runner"
+assert_scale_down_github_routes "$pool_runner_id"
+configure_mock_runner_removed "$pool_runner_id"
+assert_mock_runner_removed "$pool_runner_id"
+wait_for_ec2_termination "$pool_instance_id" "the pool instance"
+wait_for_optional_log_event "/aws/lambda/ministack-default-scale-down" "$pool_instance_id" \
+  "Scale-down log recorded termination of the pool EC2 runner"
 
-terminate_ec2_instance_directly "$pool_instance_id" "the pool instance"
-
-echo "MiniStack smoke chain 2 passed: pool -> GitHub API mock -> EC2 runner creation."
-echo "MiniStack smoke tests passed: scale-up and pool lifecycle checks completed; scale-down checks are temporarily disabled."
+echo "MiniStack smoke chain 2 passed: pool -> GitHub API mock -> EC2 runner creation -> scale-down -> GitHub API mock -> EC2 termination."
+echo "MiniStack smoke tests passed: both lifecycle chains completed."
