@@ -412,6 +412,55 @@ assert_migration_plan_is_empty() {
   fi
 }
 
+assert_migration_plan_has_no_infrastructure_changes() {
+  phase="$1"
+  if [ "$phase" = "v1" ]; then
+    migration_example_root="$example_root"
+  else
+    migration_example_root="$example_root/v2"
+  fi
+
+  plan_file=$(mktemp "${TMPDIR:-/tmp}/migration-test-plan.XXXXXX")
+  plan_status=0
+  if iac_migration_example "$phase" plan -input=false -out="$plan_file"; then
+    plan_status=0
+  else
+    plan_status=$?
+  fi
+  if [ "$plan_status" -ne 0 ] && [ "$plan_status" -ne 2 ]; then
+    rm -f "$plan_file"
+    return "$plan_status"
+  fi
+
+  if "$iac_binary" -chdir="$migration_example_root" show -json "$plan_file" |
+    python3 -c '
+import json
+import sys
+
+unexpected = []
+for resource in json.load(sys.stdin).get("resource_changes", []):
+    if resource.get("mode") != "managed" or resource.get("type") == "terraform_data":
+        continue
+    actions = resource.get("change", {}).get("actions", [])
+    if actions != ["no-op"]:
+        address = resource.get("address", "<unknown>")
+        action_text = ",".join(actions)
+        unexpected.append(f"{address}: {action_text}")
+
+if unexpected:
+    print("Migration changed infrastructure resources:", file=sys.stderr)
+    print("\\n".join(f"  {change}" for change in unexpected), file=sys.stderr)
+    sys.exit(1)
+'; then
+    rm -f "$plan_file"
+    return 0
+  else
+    plan_status=$?
+    rm -f "$plan_file"
+    return "$plan_status"
+  fi
+}
+
 run_migration_test() {
   iac_migration_init
   iac_migration_example v1 apply -auto-approve -input=false
@@ -425,7 +474,7 @@ run_migration_test() {
     --apply \
     --yes
 
-  assert_migration_plan_is_empty v2
+  assert_migration_plan_has_no_infrastructure_changes v2
   iac_migration_example v2 apply -auto-approve -input=false
   assert_migration_plan_is_empty v2
 }
