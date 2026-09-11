@@ -26,14 +26,16 @@ locals {
             kms_key_arn = local.effective_config.ssm.kms_key_id
           }
         }
-        user_agent = local.effective_config.github.user_agent
+        runner_owner              = runner_config.orchestration_provider.scale_set.github.runner_owner
+        runner_registration_level = runner_config.orchestration_provider.scale_set.github.runner_registration_level
+        user_agent                = local.effective_config.github.user_agent
       }
       scale_set = {
         name = runner_config.orchestration_provider.scale_set.name
         runner = {
-          min_runners          = runner_config.orchestration_provider.scale_set.runner.min_runners
-          max_runners          = runner_config.orchestration_provider.scale_set.runner.max_runners
-          boot_time_in_minutes = runner_config.orchestration_provider.scale_set.runner.boot_time_in_minutes
+          min_runners          = runner_config.orchestration_provider.scale_set.min_runners
+          max_runners          = runner_config.orchestration_provider.scale_set.max_runners
+          boot_time_in_minutes = runner_config.orchestration_provider.scale_set.boot_time_in_minutes
         }
       }
     }
