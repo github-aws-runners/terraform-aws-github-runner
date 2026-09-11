@@ -73,14 +73,14 @@ resource "random_id" "webhook_secret" {
 }
 
 module "base" {
-  source = "../base"
+  source = "../../base"
 
   prefix     = local.environment
   aws_region = var.aws_region
 }
 
 module "runners" {
-  source = "../../modules/multi-runner"
+  source = "../../../modules/multi-runner"
 
   prefix     = local.environment
   aws_region = var.aws_region
@@ -145,7 +145,6 @@ module "runners" {
     lambda_memory_size  = 640
     lambda_timeout      = 75
     config = {
-      tokenPath      = "/migration-test/tokens"
       minimumDaysOld = 3
       dryRun         = true
     }
@@ -186,7 +185,7 @@ module "runners" {
 }
 
 module "webhook_github_app" {
-  source     = "../../modules/webhook-github-app"
+  source     = "../../../modules/webhook-github-app"
   depends_on = [module.runners]
 
   github_app = {

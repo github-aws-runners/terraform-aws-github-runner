@@ -1,6 +1,6 @@
 terraform {
   backend "local" {
-    path = "migration.tfstate"
+    path = "../migration.tfstate"
   }
 
   required_providers {

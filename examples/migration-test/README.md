@@ -2,7 +2,7 @@
 
 This example keeps the same root module address while switching its
 `multi_runner_config` from the v1 contract to the v2 contract. The v1
-configuration is at the example root and the v2 configuration is in `v2/`. It enables the
+configuration is in `v1/` and the v2 configuration is in `v2/`. It enables the
 AMI housekeeper, SSM housekeeper, runner-binaries syncer, pool, job retry,
 EventBridge, metrics, tracing, termination watcher, and the EC2 runner
 features that exercise the v1-to-v2 resource topology.
@@ -10,7 +10,7 @@ features that exercise the v1-to-v2 resource topology.
 The MiniStack lifecycle test performs this sequence without editing the
 example files:
 
-1. Apply the root configuration with `v1.tfvars`.
+1. Apply the `v1/` configuration with `v1.tfvars`.
 2. Run `scripts/migrate_multi_runner_state.py` against the resulting v1 state.
 3. Plan the `v2/` configuration with `v2.tfvars` using the shared
    `migration.tfstate` file and verify that only v2 validation records are
