@@ -40,3 +40,9 @@ MiniStack's AWS-compatible EC2 API, then removes only the resources it created
 during cleanup. MiniStack v1.5.7 provides the EC2 image behavior needed by the
 `default`, `ephemeral`, `multi-runner`, and `multi-runner-scale-set` examples,
 so they are included in the same lifecycle matrix.
+
+The workflow also runs `run-scale-set-integration.sh`. It applies the
+`multi-runner-scale-set` example and verifies the managed ECS controller,
+Fargate task hardening, scale-set environment contract, and reconciler SSM
+parameter through MiniStack's AWS-compatible APIs. It does not send webhook
+events or exercise webhook scale-up, scale-down, or pool handlers.

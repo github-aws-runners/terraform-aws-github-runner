@@ -132,3 +132,39 @@ jobs:
           IAC_BINARY: ${{ matrix.iac.binary }}
           IAC_LOCK_FILE: ${{ matrix.iac.lockfile }}
         run: tests/ministack/run-example.sh destroy "$EXAMPLE"
+
+  integration_scale_set:
+    name: Run scale-set controller integration test against MiniStack
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      ministack:
+        image: ghcr.io/ministackorg/ministack:1.5.7@sha256:37361b9ef886463d5632d5a4b2d114da4b7a5c5793f52f07dbc72579f2fd9207
+        ports:
+          - 4566:4566
+        env:
+          MINISTACK_ACCOUNT_ID: "000000000000"
+          MINISTACK_REGION: eu-west-1
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: latest
+          terraform_wrapper: false
+
+      - name: Mark repository as safe
+        shell: sh
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Run scale-set controller integration test
+        run: sh tests/ministack/run-scale-set-integration.sh
