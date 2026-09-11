@@ -1,4 +1,7 @@
 name: Release build
+env:
+  SCALE_SET_IMAGE: ghcr.io/${{ github.repository_owner }}/terraform-aws-github-runner-scale-set-service
+
 on:
   push:
     branches:
@@ -21,6 +24,8 @@ jobs:
       actions: write # for release-please-action to trigger other workflows
       id-token: write # for actions/attest-build-provenance to generate attestations
       attestations: write # for actions/attest-build-provenance to write attestations
+      artifact-metadata: write # for publishing linked container attestations
+      packages: write # for publishing the scale-set service image to GHCR
     environment: release
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -32,22 +37,27 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
       - name: Build dist
         working-directory: lambdas
         run: yarn install --frozen-lockfile && yarn run test && yarn dist
+
       - name: Get installation token
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         id: token
         with:
           app-id: ${{ vars.RELEASER_APP_ID }}
           private-key: ${{ secrets.RELEASER_APP_PRIVATE_KEY }}
+
       - name: Extract branch name
         id: branch
         shell: bash
         run: echo "name=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
+
       - name: Release
         id: release
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
@@ -55,30 +65,85 @@ jobs:
           target-branch: ${{ steps.branch.outputs.name }}
           release-type: terraform-module
           token: ${{ steps.token.outputs.token }}
+
+      - name: Set up QEMU
+        if: ${{ steps.release.outputs.releases_created == 'true' }}
+        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
+
+      - name: Set up Docker Buildx
+        if: ${{ steps.release.outputs.releases_created == 'true' }}
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
+      - name: Log in to the GitHub Container Registry
+        if: ${{ steps.release.outputs.releases_created == 'true' }}
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish scale-set service image
+        if: ${{ steps.release.outputs.releases_created == 'true' }}
+        id: scale-set-image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: ./lambdas/services/scale-set/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ env.SCALE_SET_IMAGE }}:${{ steps.release.outputs.tag_name }}
+            ${{ env.SCALE_SET_IMAGE }}:latest
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.release.outputs.tag_name }}
+          sbom: true
+          provenance: mode=max
+          cache-from: type=gha,scope=scale-set-service
+          cache-to: type=gha,mode=max,scope=scale-set-service
+
+      - name: Attest scale-set service image
+        if: ${{ steps.release.outputs.releases_created == 'true' }}
+        id: scale-set-image-attest
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ env.SCALE_SET_IMAGE }}
+          subject-digest: ${{ steps.scale-set-image.outputs.digest }}
+          push-to-registry: true
+
       - name: Attest
         if: ${{ steps.release.outputs.releases_created == 'true' }}
         id: attest
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: '${{ github.workspace }}/lambdas/functions/**/*.zip'
+
       - name: Update release notes with attestation
         if: ${{ steps.release.outputs.releases_created == 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ github.event.inputs.version }}
           TAG_NAME: ${{ steps.release.outputs.tag_name }}
           ATTESTATION_URL: ${{ steps.attest.outputs.attestation-url }}
+          CONTAINER_ATTESTATION_URL: ${{ steps.scale-set-image-attest.outputs.attestation-url }}
+          CONTAINER_IMAGE: ${{ env.SCALE_SET_IMAGE }}
+          CONTAINER_DIGEST: ${{ steps.scale-set-image.outputs.digest }}
           REPOSITORY: ${{ github.repository }}
         run: |
-          version="${VERSION}"
           tag_name="${TAG_NAME}"
           attestation_url="${ATTESTATION_URL}"
+          container_attestation_url="${CONTAINER_ATTESTATION_URL}"
+          container_image="${CONTAINER_IMAGE}"
+          container_digest="${CONTAINER_DIGEST}"
           repository="${REPOSITORY}"
-          gh release view $version --json body -q '.body' > new-release-notes.md
+          gh release view "$tag_name" --json body -q '.body' > new-release-notes.md
           echo "## Attestation" >> new-release-notes.md
           echo "Attestation url: $attestation_url" >> new-release-notes.md
           echo "Verify the artifacts by running \`gh attestation verify <name_of_artifact> --repo ${repository}\`" >> new-release-notes.md
-          gh release edit $tag_name -F new-release-notes.md -t $tag_name
+          echo "Scale-set service image: \`${container_image}@${container_digest}\`" >> new-release-notes.md
+          echo "Container attestation url: $container_attestation_url" >> new-release-notes.md
+          gh release edit "$tag_name" -F new-release-notes.md -t "$tag_name"
+
       - name: Upload release assets
         if: ${{ steps.release.outputs.releases_created == 'true' }}
         env:
@@ -89,6 +154,7 @@ jobs:
           for f in $(find . -name '*.zip'); do
             gh release upload $tag_name $f
           done
+
       - name: Attach attestation
         if: ${{ steps.release.outputs.releases_created == 'true' }}
         env:
