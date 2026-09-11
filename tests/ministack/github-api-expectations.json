@@ -1,0 +1,77 @@
+[
+  {
+    "httpRequest": {
+      "method": "GET",
+      "path": "/api/v3/repos/test-owner/test-repo/actions/jobs/123456"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": ["application/json"],
+        "X-RateLimit-Limit": ["5000"],
+        "X-RateLimit-Remaining": ["4999"]
+      },
+      "body": "{\"id\":123456,\"status\":\"queued\",\"name\":\"ministack-smoke\"}"
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "GET",
+      "path": "/api/v3/repos/test-owner/test-repo/actions/jobs/123457"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": ["application/json"],
+        "X-RateLimit-Limit": ["5000"],
+        "X-RateLimit-Remaining": ["4999"]
+      },
+      "body": "{\"id\":123457,\"status\":\"queued\",\"name\":\"ministack-smoke-dynamic\"}"
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "POST",
+      "path": "/api/v3/app/installations/123/access_tokens"
+    },
+    "httpResponse": {
+      "statusCode": 201,
+      "headers": {
+        "Content-Type": ["application/json"],
+        "X-RateLimit-Limit": ["5000"],
+        "X-RateLimit-Remaining": ["4999"]
+      },
+      "body": "{\"token\":\"ministack-installation-token\",\"expires_at\":\"2099-01-01T00:00:00Z\"}"
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "GET",
+      "path": "/api/v3/orgs/test-owner/installation"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": ["application/json"],
+        "X-RateLimit-Limit": ["5000"],
+        "X-RateLimit-Remaining": ["4999"]
+      },
+      "body": "{\"id\":123}"
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "POST",
+      "path": "/api/v3/orgs/test-owner/actions/runners/registration-token"
+    },
+    "httpResponse": {
+      "statusCode": 201,
+      "headers": {
+        "Content-Type": ["application/json"],
+        "X-RateLimit-Limit": ["5000"],
+        "X-RateLimit-Remaining": ["4999"]
+      },
+      "body": "{\"token\":\"ministack-registration-token\",\"expires_at\":\"2099-01-01T00:00:00Z\"}"
+    }
+  }
+]
