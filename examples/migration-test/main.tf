@@ -85,6 +85,9 @@ module "runners" {
   prefix     = local.environment
   aws_region = var.aws_region
 
+  vpc_id     = module.base.vpc.vpc_id
+  subnet_ids = module.base.vpc.private_subnets
+
   experimental_features = []
   multi_runner_config   = local.multi_runner_config
 
