@@ -1,5 +1,48 @@
 # Changelog
 
+## [7.12.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v7.11.0...v7.12.0) (2026-09-11)
+
+
+### Features
+
+* **compute-providers:** add AWS EC2 provider modules ([#5343](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5343)) ([ffa299f](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/ffa299f6cd2c7e3c92ce81612d1562fa3ef0d24d))
+* **examples:** add multi-runner-v2 example ([#5367](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5367)) ([f2779cc](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/f2779cc4ab341289a18b07922525ad217dc95c05))
+* **github-app:** select app by rate limit budget ([#5391](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5391)) ([668d8da](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/668d8da2de7ff7496df49f936741d1a9497a10ec))
+* **github-app:** use ssm manifest for extra apps ([#5282](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5282)) ([33c3332](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/33c3332fca17ea087ecc078d6268d05818e3e344))
+* **multi-runner:** add experimental config translation ([#5284](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5284)) ([dd24d33](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/dd24d33a44f0508b5719cf68ab7381bf5fc97483))
+* **multi-runner:** consume resolved experimental config ([#5340](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5340)) ([ff8bfc2](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/ff8bfc275783249fdcfd5225e1c3d6099549c094))
+* **orchestration-providers:** add webhook provider modules ([#5344](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5344)) ([c05c9b3](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/c05c9b3c288cba6a04d5af8e3d8da2246539acae))
+* **runner-config:** add provider-aware runner configuration ([#5345](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5345)) ([42b1261](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/42b126182a65264b272251fb1fd59419e7a1c4f3))
+* **scale-down:** opt-in idle confirmation window before terminating not-busy runners ([#5397](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5397)) ([595f3e5](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/595f3e580501a7d8b99fc78d7e9e6b102c1cc98a))
+* **storage:** add runner config consumer ([#5358](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5358)) ([138309c](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/138309c299db59cee6d0588c2e79ba94efdd595b))
+
+
+### Bug Fixes
+
+* **control-plane:** clarify partial runner creation test name ([#5339](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5339)) ([b1dd396](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/b1dd396223aa794c5cb1fceb1e0af16e762dab89))
+* **deps:** bump github/codeql-action/upload-sarif from 4.36.3 to 4.37.8 ([#5317](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5317)) ([fdb4385](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/fdb4385c6c08d3d7adae70481570b0899d4c9dd9))
+* **deps:** bump google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml from 2.5.0 to 2.5.1 ([#5331](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5331)) ([1523a66](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/1523a66c55795f830bed57d232cb0f7fa51ef2ba))
+* **deps:** bump ossf/scorecard-action from 2.4.3 to 2.4.4 ([#5319](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5319)) ([d798070](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/d7980705fa9e9e9a2edb1be2837b765b6ba4708b))
+* **deps:** bump step-security/harden-runner from 2.19.4 to 2.21.0 ([#5318](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5318)) ([c81927a](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/c81927a38d4609b40dd27469f860138cafe8ecb2))
+* **deps:** bump step-security/harden-runner from 2.19.4 to 2.21.1 ([#5386](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5386)) ([48b0c42](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/48b0c4276106ff55e03849cc5f2796a607b24286))
+* **deps:** bump the github group with 3 updates ([#5330](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5330)) ([ab6edf5](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/ab6edf55c06ef268d5c01127cb4fda7c87f65b6a))
+* **deps:** bump zizmorcore/zizmor-action from 0.6.2 to 0.6.3 ([#5387](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5387)) ([62aef5d](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/62aef5d2cd57d757fdea81a9815ec5e69495b9ec))
+* **ec2:** improve failure observability ([#5335](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5335)) ([91751ef](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/91751effd3357971f0a3b3f44e022ab782ecee61))
+* **lambda:** bump @babel/core from 7.23.9 to 7.29.7 in /lambdas ([#5181](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5181)) ([3729cf7](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/3729cf714a0cdecb18b425f6ef274fe0f148d819))
+* **lambda:** bump @humanfs/node from 0.16.6 to 0.16.8 in /lambdas ([#5336](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5336)) ([f7dd7cb](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/f7dd7cb0d82bd0f38bdbbdb2984529015b3852af))
+* **lambda:** bump axios from 1.18.0 to 1.18.1 in /lambdas ([#5223](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5223)) ([21d27f1](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/21d27f14057931366da3009b54ca8effd48fd96a))
+* **lambda:** bump browserslist from 4.22.3 to 4.28.8 in /lambdas ([#5329](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5329)) ([27e7d53](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/27e7d533d81f7cb843f958e10bbaec52b5355bfd))
+* **lambda:** bump fast-uri from 3.1.2 to 3.1.5 in /lambdas ([#5242](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5242)) ([9c3e28c](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/9c3e28c17eeae644c67c9daccc142a1e3e23ea79))
+* **lambda:** bump fast-uri from 3.1.5 to 3.1.6 in /lambdas ([#5337](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5337)) ([07bbc87](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/07bbc878cc00c0b1fc2b3457bc7e16e09d379d6b))
+* **lambda:** bump js-yaml from 3.15.0 to 3.15.1 in /lambdas ([#5264](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5264)) ([a3116bd](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/a3116bd8796ab022b3504fe04ede905f972965f0))
+* **lambda:** create log groups before functions ([#5324](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5324)) ([2f844ab](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/2f844ab45fdb17eab96cd6224379f2db6aaf518e)), closes [#5323](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5323)
+* **multi-runner:** make v2 inputs independent ([#5368](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5368)) ([45d3d0e](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/45d3d0e8d89b2a954c27d9b0e01de4d135854e81))
+* **multi-runner:** route v1 and v2 runners separately ([#5346](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5346)) ([cfac174](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/cfac174ae2f1410c59f7534c3823af5d1b329e36))
+* **pages:** configure GitHub Pages deployment environment ([#5334](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5334)) ([f081004](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/f081004e3d9679ea620cd1d96da09eb015b4cd56))
+* re-indent commands in CONTRIBUTING.md guide ([#5305](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5305)) ([547a98b](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/547a98b1ad844899925ef88339b348723f9fd17e))
+* **runners:** support instance requirements in EC2 Fleet overrides ([#5314](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5314)) ([4f80654](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/4f80654034eb7b6d8133c7a738b9de5f1274e327))
+* **storage:** add SSM adapter diagnostics ([#5385](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5385)) ([d08be31](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/d08be31e76e3067c55f261dab985321a1cd26d00))
+
 ## [7.11.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v7.10.2...v7.11.0) (2026-08-14)
 
 
