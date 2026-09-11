@@ -12,10 +12,13 @@ example files:
 
 1. Apply the `v1/` configuration with `v1.tfvars`.
 2. Run `scripts/migrate_multi_runner_state.py` against the resulting v1 state.
-3. Plan the `v2/` configuration with `v2.tfvars` using the shared
+3. Snapshot the effective permissions from all inline IAM policies, grouped by
+   IAM role, created by v1.
+4. Plan the `v2/` configuration with `v2.tfvars` using the shared
    `migration.tfstate` file and verify that only v2 validation records are
    new.
-4. Apply v2 and assert that the following plan is empty.
+5. Apply v2, compare effective inline IAM permissions grouped by IAM role with
+   the v1 snapshot, and assert that the following plan is empty.
 
 Run it with:
 
