@@ -43,6 +43,9 @@ variables {
     linux-small = {
       github = {
         config_url = "https://github.com/example"
+        enterprise_server = {
+          ssl_verify = false
+        }
         app = {
           app_id = {
             name = "/github/linux-small/app-id"
@@ -59,19 +62,19 @@ variables {
           }
         }
         user_agent = "scale-set-test"
-        ssl_verify = false
       }
       scale_set = {
-        id              = 101
-        name            = "linux-small"
-        runner_group_id = 1
-        min_runners     = 1
-        max_runners     = 10
+        name = "linux-small"
+        runner = {
+          min_runners = 1
+          max_runners = 10
+        }
       }
     }
     linux-large = {
       github = {
         config_url = "https://github.com/example"
+        enterprise_server = {}
         app = {
           app_id = {
             name = "/github/linux-large/app-id"
@@ -86,18 +89,20 @@ variables {
             arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github/linux-large/installation-id"
           }
         }
+        user_agent = "scale-set-test"
       }
       scale_set = {
-        id          = 102
-        name        = "linux-large"
-        min_runners = 0
-        max_runners = 20
+        name = "linux-large"
+        runner = {
+          min_runners = 0
+          max_runners = 20
+        }
       }
-      work_folder = "_work/linux-large"
     }
     microvm = {
       github = {
         config_url = "https://github.com/example/repository"
+        enterprise_server = {}
         app = {
           app_id = {
             name = "/github/microvm/app-id"
@@ -112,14 +117,14 @@ variables {
             arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github/microvm/installation-id"
           }
         }
-        force_ghes = false
+        user_agent = "scale-set-test"
       }
       scale_set = {
-        id            = 201
-        name          = "microvm"
-        min_runners   = 0
-        max_runners   = 5
-        session_owner = "test.microvm"
+        name = "microvm"
+        runner = {
+          min_runners = 0
+          max_runners = 5
+        }
       }
     }
   }
@@ -299,10 +304,12 @@ run "groups_by_compute_provider_and_hardens_each_task" {
     condition = (
       jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).schemaVersion == 1 &&
       jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).runnerConfigName == "linux-small" &&
-      jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).scaleSetId == 101 &&
+      jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).githubConfigUrl == "https://github.com/example" &&
       jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).expectedScaleSetName == "linux-small" &&
       jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).bootTimeoutMinutes == 10 &&
       jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).sslVerify == false &&
+      jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).forceGhes == false &&
+      jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).userAgent == "scale-set-test" &&
       jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).githubApp.privateKeyParameterName == "/github/linux-small/private-key" &&
       !contains(keys(jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value))), "runnerConfig")
     )
@@ -518,7 +525,7 @@ run "rejects_duplicate_scale_set_ownership_across_groups" {
           config_url = "https://GITHUB.COM:443/example/"
         })
         scale_set = merge(var.runner_configs.microvm.scale_set, {
-          id = 101
+          name = "linux-small"
         })
       })
     })
@@ -541,7 +548,7 @@ run "rejects_leading_zero_default_port_spelling" {
           config_url = "https://github.com:0443/example/"
         })
         scale_set = merge(var.runner_configs.microvm.scale_set, {
-          id = 101
+          name = "linux-small"
         })
       })
     })
@@ -608,46 +615,6 @@ run "rejects_invalid_compute_provider_type_identifier" {
   expect_failures = [terraform_data.validate_contract]
 }
 
-run "rejects_scale_set_id_above_runtime_integer_maximum" {
-  command = plan
-
-  plan_options {
-    target = [terraform_data.validate_contract]
-  }
-
-  variables {
-    runner_configs = merge(var.runner_configs, {
-      microvm = merge(var.runner_configs.microvm, {
-        scale_set = merge(var.runner_configs.microvm.scale_set, {
-          id = 2147483648
-        })
-      })
-    })
-  }
-
-  expect_failures = [terraform_data.validate_contract]
-}
-
-run "rejects_runner_group_id_above_runtime_integer_maximum" {
-  command = plan
-
-  plan_options {
-    target = [terraform_data.validate_contract]
-  }
-
-  variables {
-    runner_configs = merge(var.runner_configs, {
-      microvm = merge(var.runner_configs.microvm, {
-        scale_set = merge(var.runner_configs.microvm.scale_set, {
-          runner_group_id = 2147483648
-        })
-      })
-    })
-  }
-
-  expect_failures = [terraform_data.validate_contract]
-}
-
 run "rejects_credential_arn_name_mismatch" {
   command = plan
 
@@ -696,7 +663,7 @@ run "rejects_cross_account_credential_parameter" {
   expect_failures = [terraform_data.validate_contract]
 }
 
-run "allows_same_numeric_scale_set_id_in_another_github_scope" {
+run "allows_same_scale_set_name_in_another_github_scope" {
   command = plan
 
   plan_options {
@@ -707,7 +674,7 @@ run "allows_same_numeric_scale_set_id_in_another_github_scope" {
     runner_configs = merge(var.runner_configs, {
       microvm = merge(var.runner_configs.microvm, {
         scale_set = merge(var.runner_configs.microvm.scale_set, {
-          id = 101
+          name = "linux-small"
         })
       })
     })
@@ -715,7 +682,7 @@ run "allows_same_numeric_scale_set_id_in_another_github_scope" {
 
   assert {
     condition     = length(local.scale_set_ownership_keys) == length(distinct(local.scale_set_ownership_keys))
-    error_message = "Scale-set IDs are scoped to their normalized GitHub configuration URL."
+    error_message = "Scale-set names are scoped to their normalized GitHub configuration URL."
   }
 }
 
@@ -730,6 +697,8 @@ run "bounds_default_session_owner_for_maximum_names" {
       (join("", [for index in range(128) : "a"])) = {
         github = {
           config_url = "https://github.com/example"
+          enterprise_server = {}
+          user_agent = "scale-set-test"
           app = {
             app_id = {
               name = "/github/max/app-id"
@@ -746,7 +715,6 @@ run "bounds_default_session_owner_for_maximum_names" {
           }
         }
         scale_set = {
-          id   = 301
           name = "maximum-name"
         }
       }

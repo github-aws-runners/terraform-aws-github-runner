@@ -9,11 +9,15 @@ variable "runner_configs" {
   description = <<-EOT
     Normalized scale-set runner configurations keyed by stable runner-config name.
 
-    Map keys must be known during planning. Credential values are never accepted: `github.app` contains only the exact GitHub App Parameter Store references used by the runtime. `github.ssl_verify` applies TLS verification per reconciler without changing process-global TLS behavior. Parameter and optional KMS ARNs, scale-set IDs, and other inner values may remain unknown until apply.
+    Map keys must be known during planning. Credential values are never accepted: `github.app` contains only the exact GitHub App Parameter Store references used by the runtime. `github.enterprise_server` and `github.user_agent` carry the global GitHub settings needed to render each reconciler configuration. Parameter and optional KMS ARNs, scale-set names, and other inner values may remain unknown until apply.
   EOT
   type = map(object({
     github = object({
       config_url = string
+      enterprise_server = object({
+        url        = optional(string, null)
+        ssl_verify = optional(bool, true)
+      })
       app = object({
         app_id = object({
           name        = string
@@ -31,20 +35,16 @@ variable "runner_configs" {
           kms_key_arn = optional(string, null)
         })
       })
-      force_ghes = optional(bool, null)
-      ssl_verify = optional(bool, true)
-      user_agent = optional(string, null)
+      user_agent = string
     })
     scale_set = object({
-      name                 = string
-      id                   = number
-      runner_group_id      = optional(number, null)
-      min_runners          = optional(number, 0)
-      max_runners          = optional(number, 10)
-      boot_time_in_minutes = optional(number, 10)
-      session_owner        = optional(string, null)
+      name = string
+      runner = optional(object({
+        min_runners          = optional(number, 0)
+        max_runners          = optional(number, 10)
+        boot_time_in_minutes = optional(number, 10)
+      }), {})
     })
-    work_folder = optional(string, null)
   }))
   nullable = false
 }
