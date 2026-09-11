@@ -30,6 +30,29 @@ Global provider blocks supply defaults and shared settings. They do not select
 the provider for a lane. Provider selection belongs inside each
 `multi_runner_config.<name>` entry.
 
+## Complete migration example
+
+The repository includes a complete side-by-side migration example in
+[`examples/migration-test`](../examples/migration-test/). It keeps the same
+lane key, resource prefix, and state backend while showing the v1 and v2
+configuration as sibling directories:
+
+- [v1 `main.tf`](../examples/migration-test/v1/main.tf) and [v2 `main.tf`](../examples/migration-test/v2/main.tf)
+- [v1 `variables.tf`](../examples/migration-test/v1/variables.tf) and [v2 `variables.tf`](../examples/migration-test/v2/variables.tf)
+- [v1 `v1.tfvars`](../examples/migration-test/v1/v1.tfvars) and [v2 `v2.tfvars`](../examples/migration-test/v2/v2.tfvars)
+- [v1 `providers.tf`](../examples/migration-test/v1/providers.tf) and [v2 `providers.tf`](../examples/migration-test/v2/providers.tf)
+- [migration test README](../examples/migration-test/README.md)
+
+Open the two `main.tf` files next to each other to see the configuration
+translation: v1 uses the legacy flat `runner_config` shape, while v2 uses
+global defaults plus nested runner, orchestration, and compute-provider
+blocks. The example also shows the corresponding v1 and v2 variable files and
+keeps the lane name (for example, `large`) unchanged. Use these files as a
+reference when adapting an existing deployment; do not apply both directories
+to the same deployment at the same time. After updating the real configuration,
+run the [state migration procedure](multi-runner-v1-v2-migration.md) before
+the first v2 plan.
+
 ## Global configuration
 
 Use the following global variables for settings shared by multiple lanes:
