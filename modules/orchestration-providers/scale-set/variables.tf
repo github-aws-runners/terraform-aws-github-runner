@@ -13,7 +13,6 @@ variable "runner_configs" {
   EOT
   type = map(object({
     github = object({
-      config_url = string
       enterprise_server = object({
         url        = optional(string, null)
         ssl_verify = optional(bool, true)
