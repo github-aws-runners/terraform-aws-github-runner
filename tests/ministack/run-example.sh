@@ -454,6 +454,29 @@ import sys
 
 unexpected = []
 ignored_resource_types = {"aws_cloudwatch_log_group", "aws_iam_role_policy"}
+ignored_tag_keys = {"Name", "ghr:ssm_config_path"}
+
+def without_ignored_attributes(value, resource_type):
+    if not isinstance(value, dict):
+        return value
+
+    normalized = dict(value)
+    ignored_attributes = {"tags", "tags_all"}
+    if resource_type == "aws_lambda_function":
+        ignored_attributes.update({"filename", "last_modified"})
+
+    for attribute in ignored_attributes:
+        tags = normalized.get(attribute)
+        if attribute in {"tags", "tags_all"} and isinstance(tags, dict):
+            normalized[attribute] = {
+                key: tag_value
+                for key, tag_value in tags.items()
+                if key not in ignored_tag_keys
+            }
+        elif attribute in normalized:
+            normalized.pop(attribute)
+    return normalized
+
 for resource in json.load(sys.stdin).get("resource_changes", []):
     if (
         resource.get("mode") != "managed"
@@ -462,6 +485,11 @@ for resource in json.load(sys.stdin).get("resource_changes", []):
     ):
         continue
     actions = resource.get("change", {}).get("actions", [])
+    if actions == ["update"]:
+        change = resource["change"]
+        resource_type = resource.get("type")
+        if without_ignored_attributes(change.get("before"), resource_type) == without_ignored_attributes(change.get("after"), resource_type):
+            continue
     if actions != ["no-op"]:
         address = resource.get("address", "<unknown>")
         action_text = ",".join(actions)
