@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Move v1 multi-runner state into the v2 runner-config topology.
 
-The module's moved.tf file contains relative, unkeyed mappings. The actual
+The migration mapping table contains relative, unkeyed mappings. The actual
 state contains one module instance per dynamic multi-runner key, for example:
 
     module.runners["large"].aws_iam_role.runner[0]
@@ -24,8 +24,90 @@ from typing import Iterable
 
 
 MODULE_KEY_RE = re.compile(r'module\.runners(\["(?:\\.|[^"])*"\])')
-ATTRIBUTE_RE = re.compile(r'^\s*(from|to)\s*=\s*(\S+)\s*$')
 INSTANCE_SUFFIX_RE = r'(?P<instances>(?:\[[^]]+\])*)$'
+
+# These are the relative addresses from the v1 module call to the v2 module
+# call. The runner key is inserted after module.runners/module.runner_configs
+# at runtime because it is a user-controlled for_each key.
+MIGRATION_MAPPINGS = (
+    ('module.runners.aws_iam_role.runner', 'module.runner_configs.aws_iam_role.runner'),
+    ('module.runners.aws_ssm_parameter.runner_agent_mode', 'module.runner_configs.aws_ssm_parameter.runner_agent_mode'),
+    ('module.runners.aws_ssm_parameter.disable_default_labels', 'module.runner_configs.aws_ssm_parameter.disable_default_labels'),
+    ('module.runners.aws_ssm_parameter.jit_config_enabled', 'module.runner_configs.aws_ssm_parameter.jit_config_enabled'),
+    ('module.runners.aws_ssm_parameter.token_path', 'module.runner_configs.aws_ssm_parameter.token_path'),
+    ('module.runners.aws_iam_policy.ami_id_ssm_parameter_read', 'module.runner_configs.module.compute_aws_ec2[0].aws_iam_policy.ami_id_ssm_parameter_read'),
+    ('module.runners.aws_iam_instance_profile.runner', 'module.runner_configs.module.compute_aws_ec2[0].aws_iam_instance_profile.runner'),
+    ('module.runners.aws_ssm_parameter.cloudwatch_agent_config_runner', 'module.runner_configs.module.compute_aws_ec2[0].aws_ssm_parameter.cloudwatch_agent_config_runner'),
+    ('module.runners.aws_cloudwatch_log_group.gh_runners', 'module.runner_configs.module.compute_aws_ec2[0].aws_cloudwatch_log_group.gh_runners'),
+    ('module.runners.aws_iam_role_policy.cloudwatch[0]', 'module.runner_configs.aws_iam_role_policy.runner_provider["cloudwatch"]'),
+    ('module.runners.aws_ssm_parameter.runner_ami_id', 'module.runner_configs.module.compute_aws_ec2[0].aws_ssm_parameter.runner_ami_id'),
+    ('module.runners.aws_launch_template.runner', 'module.runner_configs.module.compute_aws_ec2[0].aws_launch_template.runner'),
+    ('module.runners.aws_security_group.runner_sg', 'module.runner_configs.module.compute_aws_ec2[0].aws_security_group.runner_sg'),
+    ('module.runners.aws_ssm_parameter.runner_config_run_as', 'module.runner_configs.module.compute_aws_ec2[0].aws_ssm_parameter.runner_config_run_as'),
+    ('module.runners.aws_ssm_parameter.runner_enable_cloudwatch', 'module.runner_configs.module.compute_aws_ec2[0].aws_ssm_parameter.runner_enable_cloudwatch'),
+    ('module.runners.aws_iam_role_policy.runner_session_manager_aws_managed[0]', 'module.runner_configs.aws_iam_role_policy.runner_provider["session_manager"]'),
+    ('module.runners.aws_iam_role_policy.ssm_parameters[0]', 'module.runner_configs.aws_iam_role_policy.runner_provider["ssm_parameters"]'),
+    ('module.runners.aws_iam_role_policy.dist_bucket[0]', 'module.runner_configs.aws_iam_role_policy.runner_provider["distribution_bucket"]'),
+    ('module.runners.aws_iam_role_policy.describe_tags[0]', 'module.runner_configs.aws_iam_role_policy.runner_provider["describe_tags"]'),
+    ('module.runners.aws_iam_role_policy.create_tag[0]', 'module.runner_configs.aws_iam_role_policy.runner_provider["create_tags"]'),
+    ('module.runners.aws_iam_role_policy.ec2[0]', 'module.runner_configs.aws_iam_role_policy.runner_provider["terminate_self"]'),
+    ('module.runners.aws_iam_role_policy_attachment.xray_tracing[0]', 'module.runner_configs.aws_iam_role_policy_attachment.runner["xray"]'),
+    ('module.runners.module.pool.aws_lambda_function.pool', 'module.runner_configs.module.orchestration_webhook[0].module.pool.aws_lambda_function.pool'),
+    ('module.runners.module.pool.aws_cloudwatch_log_group.pool', 'module.runner_configs.module.orchestration_webhook[0].module.pool.aws_cloudwatch_log_group.pool'),
+    ('module.runners.module.pool.aws_iam_role.pool', 'module.runner_configs.module.orchestration_webhook[0].module.pool.aws_iam_role.pool'),
+    ('module.runners.module.pool.aws_iam_role_policy.pool', 'module.runner_configs.module.orchestration_webhook[0].module.pool.aws_iam_role_policy.pool'),
+    ('module.runners.module.pool.aws_iam_role_policy.pool_logging', 'module.runner_configs.module.orchestration_webhook[0].module.pool.aws_iam_role_policy.pool_logging'),
+    ('module.runners.module.pool.aws_iam_role_policy_attachment.pool_vpc_execution_role', 'module.runner_configs.module.orchestration_webhook[0].module.pool.aws_iam_role_policy_attachment.pool_vpc_execution_role'),
+    ('module.runners.module.pool.aws_iam_role_policy_attachment.ami_id_ssm_parameter_read', 'module.runner_configs.module.orchestration_webhook[0].module.pool.aws_iam_role_policy_attachment.provider'),
+    ('module.runners.module.pool.aws_iam_role_policy.pool_xray', 'module.runner_configs.module.orchestration_webhook[0].module.pool.aws_iam_role_policy.pool_xray'),
+    ('module.runners.module.pool.aws_scheduler_schedule_group.pool', 'module.runner_configs.module.orchestration_webhook[0].module.pool.aws_scheduler_schedule_group.pool'),
+    ('module.runners.module.pool.aws_iam_role.scheduler', 'module.runner_configs.module.orchestration_webhook[0].module.pool.aws_iam_role.scheduler'),
+    ('module.runners.module.pool.aws_iam_role_policy.scheduler', 'module.runner_configs.module.orchestration_webhook[0].module.pool.aws_iam_role_policy.scheduler'),
+    ('module.runners.module.pool.aws_scheduler_schedule.pool', 'module.runner_configs.module.orchestration_webhook[0].module.pool.aws_scheduler_schedule.pool'),
+    ('module.runners.aws_lambda_function.scale_up', 'module.runner_configs.module.orchestration_webhook[0].module.scale_runners.aws_lambda_function.scale_up'),
+    ('module.runners.aws_cloudwatch_log_group.scale_up', 'module.runner_configs.module.orchestration_webhook[0].module.scale_runners.aws_cloudwatch_log_group.scale_up'),
+    ('module.runners.aws_lambda_event_source_mapping.scale_up', 'module.runner_configs.module.orchestration_webhook[0].module.scale_runners.aws_lambda_event_source_mapping.scale_up'),
+    ('module.runners.aws_lambda_permission.scale_runners_lambda', 'module.runner_configs.module.orchestration_webhook[0].module.scale_runners.aws_lambda_permission.scale_runners_lambda'),
+    ('module.runners.aws_iam_role.scale_up', 'module.runner_configs.module.orchestration_webhook[0].module.scale_runners.aws_iam_role.scale_up'),
+    ('module.runners.aws_iam_role_policy.scale_up', 'module.runner_configs.module.orchestration_webhook[0].module.scale_runners.aws_iam_role_policy.scale_up'),
+    ('module.runners.aws_iam_role_policy.scale_up_logging', 'module.runner_configs.module.orchestration_webhook[0].module.scale_runners.aws_iam_role_policy.scale_up_logging'),
+    ('module.runners.aws_iam_role_policy.service_linked_role', 'module.runner_configs.module.orchestration_webhook[0].module.scale_runners.aws_iam_role_policy.service_linked_role'),
+    ('module.runners.aws_iam_role_policy_attachment.scale_up_vpc_execution_role', 'module.runner_configs.module.orchestration_webhook[0].module.scale_runners.aws_iam_role_policy_attachment.scale_up_vpc_execution_role'),
+    ('module.runners.aws_iam_role_policy_attachment.ami_id_ssm_parameter_read', 'module.runner_configs.module.orchestration_webhook[0].module.scale_runners.aws_iam_role_policy_attachment.provider'),
+    ('module.runners.aws_iam_role_policy.scale_up_xray', 'module.runner_configs.module.orchestration_webhook[0].module.scale_runners.aws_iam_role_policy.scale_up_xray'),
+    ('module.runners.aws_iam_role_policy.job_retry_sqs_publish', 'module.runner_configs.module.orchestration_webhook[0].module.scale_runners.aws_iam_role_policy.job_retry_sqs_publish'),
+    ('module.runners.aws_lambda_function.scale_down', 'module.runner_configs.module.orchestration_webhook[0].module.scale_runners.aws_lambda_function.scale_down'),
+    ('module.runners.aws_cloudwatch_log_group.scale_down', 'module.runner_configs.module.orchestration_webhook[0].module.scale_runners.aws_cloudwatch_log_group.scale_down'),
+    ('module.runners.aws_cloudwatch_event_rule.scale_down', 'module.runner_configs.module.orchestration_webhook[0].module.scale_runners.aws_cloudwatch_event_rule.scale_down'),
+    ('module.runners.aws_cloudwatch_event_target.scale_down', 'module.runner_configs.module.orchestration_webhook[0].module.scale_runners.aws_cloudwatch_event_target.scale_down'),
+    ('module.runners.aws_lambda_permission.scale_down', 'module.runner_configs.module.orchestration_webhook[0].module.scale_runners.aws_lambda_permission.scale_down'),
+    ('module.runners.aws_iam_role.scale_down', 'module.runner_configs.module.orchestration_webhook[0].module.scale_runners.aws_iam_role.scale_down'),
+    ('module.runners.aws_iam_role_policy.scale_down', 'module.runner_configs.module.orchestration_webhook[0].module.scale_runners.aws_iam_role_policy.scale_down'),
+    ('module.runners.aws_iam_role_policy.scale_down_logging', 'module.runner_configs.module.orchestration_webhook[0].module.scale_runners.aws_iam_role_policy.scale_down_logging'),
+    ('module.runners.aws_iam_role_policy_attachment.scale_down_vpc_execution_role', 'module.runner_configs.module.orchestration_webhook[0].module.scale_runners.aws_iam_role_policy_attachment.scale_down_vpc_execution_role'),
+    ('module.runners.aws_iam_role_policy.scale_down_xray', 'module.runner_configs.module.orchestration_webhook[0].module.scale_runners.aws_iam_role_policy.scale_down_xray'),
+    ('module.runners.module.job_retry.aws_sqs_queue_policy.job_retry_check_queue_policy', 'module.runner_configs.module.orchestration_webhook[0].module.job_retry.aws_sqs_queue_policy.job_retry_check_queue_policy'),
+    ('module.runners.module.job_retry.aws_sqs_queue.job_retry_check_queue', 'module.runner_configs.module.orchestration_webhook[0].module.job_retry.aws_sqs_queue.job_retry_check_queue'),
+    ('module.runners.module.job_retry.module.job_retry.aws_lambda_function.main', 'module.runner_configs.module.orchestration_webhook[0].module.job_retry.aws_lambda_function.job_retry'),
+    ('module.runners.module.job_retry.module.job_retry.aws_cloudwatch_log_group.main', 'module.runner_configs.module.orchestration_webhook[0].module.job_retry.aws_cloudwatch_log_group.job_retry'),
+    ('module.runners.module.job_retry.module.job_retry.aws_iam_role.main', 'module.runner_configs.module.orchestration_webhook[0].module.job_retry.aws_iam_role.job_retry'),
+    ('module.runners.module.job_retry.module.job_retry.aws_iam_role_policy.lambda_logging', 'module.runner_configs.module.orchestration_webhook[0].module.job_retry.aws_iam_role_policy.job_retry_logging'),
+    ('module.runners.module.job_retry.module.job_retry.aws_iam_role_policy_attachment.vpc_execution_role', 'module.runner_configs.module.orchestration_webhook[0].module.job_retry.aws_iam_role_policy_attachment.job_retry_vpc_execution_role'),
+    ('module.runners.module.job_retry.module.job_retry.aws_iam_role_policy.xray', 'module.runner_configs.module.orchestration_webhook[0].module.job_retry.aws_iam_role_policy.job_retry_xray'),
+    ('module.runners.module.job_retry.aws_lambda_event_source_mapping.job_retry', 'module.runner_configs.module.orchestration_webhook[0].module.job_retry.aws_lambda_event_source_mapping.job_retry'),
+    ('module.runners.module.job_retry.aws_lambda_permission.job_retry', 'module.runner_configs.module.orchestration_webhook[0].module.job_retry.aws_lambda_permission.job_retry'),
+    ('module.runners.module.job_retry.aws_iam_role_policy.job_retry', 'module.runner_configs.module.orchestration_webhook[0].module.job_retry.aws_iam_role_policy.job_retry'),
+    ('module.runners.aws_lambda_function.ssm_housekeeper', 'module.runner_configs.module.ssm_housekeeper.aws_lambda_function.ssm_housekeeper'),
+    ('module.runners.aws_cloudwatch_log_group.ssm_housekeeper', 'module.runner_configs.module.ssm_housekeeper.aws_cloudwatch_log_group.ssm_housekeeper'),
+    ('module.runners.aws_cloudwatch_event_rule.ssm_housekeeper', 'module.runner_configs.module.ssm_housekeeper.aws_cloudwatch_event_rule.ssm_housekeeper'),
+    ('module.runners.aws_cloudwatch_event_target.ssm_housekeeper', 'module.runner_configs.module.ssm_housekeeper.aws_cloudwatch_event_target.ssm_housekeeper'),
+    ('module.runners.aws_lambda_permission.ssm_housekeeper', 'module.runner_configs.module.ssm_housekeeper.aws_lambda_permission.ssm_housekeeper'),
+    ('module.runners.aws_iam_role.ssm_housekeeper', 'module.runner_configs.module.ssm_housekeeper.aws_iam_role.ssm_housekeeper'),
+    ('module.runners.aws_iam_role_policy.ssm_housekeeper', 'module.runner_configs.module.ssm_housekeeper.aws_iam_role_policy.ssm_housekeeper'),
+    ('module.runners.aws_iam_role_policy.ssm_housekeeper_logging', 'module.runner_configs.module.ssm_housekeeper.aws_iam_role_policy.ssm_housekeeper_logging'),
+    ('module.runners.aws_iam_role_policy_attachment.ssm_housekeeper_vpc_execution_role', 'module.runner_configs.module.ssm_housekeeper.aws_iam_role_policy_attachment.ssm_housekeeper_vpc_execution_role'),
+    ('module.runners.aws_iam_role_policy.ssm_housekeeper_xray', 'module.runner_configs.module.ssm_housekeeper.aws_iam_role_policy.ssm_housekeeper_xray'),
+)
 
 
 @dataclass(frozen=True)
@@ -43,7 +125,7 @@ class Move:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Expand multi-runner moved.tf mappings for dynamic state keys "
+            "Expand multi-runner migration mappings for dynamic state keys "
             "and optionally run terraform/terragrunt state mv."
         )
     )
@@ -52,12 +134,6 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=Path.cwd(),
         help="Terraform/Terragrunt working directory (default: current directory).",
-    )
-    parser.add_argument(
-        "--moved-file",
-        type=Path,
-        required=True,
-        help="The multi-runner moved.tf file containing relative mappings.",
     )
     parser.add_argument(
         "--tool",
@@ -98,36 +174,6 @@ def command(tool: str, args: list[str], working_directory: Path) -> str:
             f"{completed.returncode}: {details}"
         )
     return completed.stdout
-
-
-def parse_moved_file(path: Path) -> list[Mapping]:
-    mappings: list[Mapping] = []
-    current: dict[str, str] = {}
-    in_block = False
-
-    for raw_line in path.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
-        if line == "moved {":
-            current = {}
-            in_block = True
-            continue
-        if not in_block:
-            continue
-        match = ATTRIBUTE_RE.match(raw_line)
-        if match:
-            current[match.group(1)] = match.group(2)
-            continue
-        if line == "}":
-            if "from" in current and "to" in current:
-                mappings.append(Mapping(current["from"], current["to"]))
-            current = {}
-            in_block = False
-
-    if in_block:
-        raise ValueError(f"unterminated moved block in {path}")
-    if not mappings:
-        raise ValueError(f"no moved blocks found in {path}")
-    return mappings
 
 
 def state_addresses(tool: str, working_directory: Path) -> list[str]:
@@ -196,18 +242,14 @@ def pull_backup(tool: str, working_directory: Path, path: Path) -> None:
 
 def main() -> int:
     args = parse_args()
-    moved_file = args.moved_file.resolve()
     working_directory = args.working_directory.resolve()
 
-    if not moved_file.is_file():
-        print(f"moved file not found: {moved_file}", file=sys.stderr)
-        return 2
     if not working_directory.is_dir():
         print(f"working directory not found: {working_directory}", file=sys.stderr)
         return 2
 
     try:
-        mappings = parse_moved_file(moved_file)
+        mappings = [Mapping(source, target) for source, target in MIGRATION_MAPPINGS]
         addresses = state_addresses(args.tool, working_directory)
     except (OSError, RuntimeError, ValueError) as error:
         print(str(error), file=sys.stderr)
@@ -218,7 +260,7 @@ def main() -> int:
     conflicts = [move for move in moves if move.target in address_set]
 
     print(f"Found {len(key_refs(addresses))} runner key(s).")
-    print(f"Found {len(mappings)} moved.tf mapping(s).")
+    print(f"Found {len(mappings)} migration mapping(s).")
     print(f"Generated {len(moves)} state move(s).")
     if not moves:
         print("No old keyed addresses matched the current state.")

@@ -26,11 +26,11 @@ case "$example" in
   base | prebuilt | default | ephemeral | multi-runner | multi-runner-v2)
     use_tfvars=true
     ;;
-  termination-watcher)
+  migration-test | termination-watcher)
     use_tfvars=false
     ;;
   *)
-  echo "Supported examples for the runner are: base, prebuilt, default, ephemeral, multi-runner, multi-runner-v2, termination-watcher" >&2
+  echo "Supported examples for the runner are: base, prebuilt, default, ephemeral, multi-runner, multi-runner-v2, migration-test, termination-watcher" >&2
   exit 64
   ;;
 esac
@@ -38,7 +38,7 @@ esac
 case "$action" in
   init | plan | apply | destroy) ;;
   *)
-    echo "Usage: $0 {init|plan|apply|destroy} {base|prebuilt|default|ephemeral|multi-runner|multi-runner-v2|termination-watcher} [TFVARS_FILE]" >&2
+    echo "Usage: $0 {init|plan|apply|destroy} {base|prebuilt|default|ephemeral|multi-runner|multi-runner-v2|migration-test|termination-watcher} [TFVARS_FILE]" >&2
     exit 64
     ;;
 esac
@@ -89,6 +89,9 @@ lambda_created_paths=""
 ami_created_ids=""
 ssm_created_names=""
 override_created_paths=""
+migration_state_backup=""
+migration_v2_lockfile_backup=""
+migration_v2_lockfile_existed=false
 lambda_zip_paths="
 $source_root/lambdas/functions/ami-housekeeper/ami-housekeeper.zip
 $source_root/lambdas/functions/control-plane/runners.zip
@@ -98,6 +101,10 @@ $source_root/lambdas/functions/termination-watcher/termination-watcher.zip
 "
 
 cleanup() {
+  if command -v restore_migration_v2_lockfile >/dev/null 2>&1; then
+    restore_migration_v2_lockfile
+  fi
+
   if command -v restore_lockfile >/dev/null 2>&1; then
     restore_lockfile
   fi
@@ -120,6 +127,10 @@ cleanup() {
 
   if [ -n "$lambda_fixture_dir" ]; then
     rm -rf "$lambda_fixture_dir"
+  fi
+
+  if [ -n "$migration_state_backup" ]; then
+    rm -f "$migration_state_backup"
   fi
 }
 trap cleanup EXIT INT TERM
@@ -317,6 +328,9 @@ $lambda_zip"
       create_ami_fixture "ministack-v2-linux-x64" x86_64 >/dev/null
       create_ami_fixture "ministack-v2-windows-x64" x86_64 >/dev/null
       ;;
+    migration-test)
+      create_ami_fixture "migration-test-linux" x86_64 >/dev/null
+      ;;
   esac
 }
 
@@ -338,20 +352,116 @@ iac_example() {
   fi
 }
 
+select_migration_v2_lockfile() {
+  migration_v2_lockfile="$example_root/v2/.terraform.lock.hcl"
+  migration_v2_tool_lockfile="$example_root/v2/$lockfile_name"
+
+  if [ "$migration_v2_tool_lockfile" = "$migration_v2_lockfile" ]; then
+    return
+  fi
+
+  migration_v2_lockfile_backup=$(mktemp "${TMPDIR:-/tmp}/terraform-aws-github-runner-migration-lock.XXXXXX")
+  if [ -f "$migration_v2_lockfile" ]; then
+    cp "$migration_v2_lockfile" "$migration_v2_lockfile_backup"
+    migration_v2_lockfile_existed=true
+  fi
+  cp "$migration_v2_tool_lockfile" "$migration_v2_lockfile"
+}
+
+restore_migration_v2_lockfile() {
+  if [ -z "$migration_v2_lockfile_backup" ]; then
+    return
+  fi
+
+  if [ "$migration_v2_lockfile_existed" = true ]; then
+    cp "$migration_v2_lockfile_backup" "$migration_v2_lockfile"
+  else
+    rm -f "$migration_v2_lockfile"
+  fi
+  rm -f "$migration_v2_lockfile_backup"
+  migration_v2_lockfile_backup=""
+}
+
+iac_migration_init() {
+  select_migration_v2_lockfile
+  "$iac_binary" -chdir="$example_root" init -reconfigure -input=false
+  "$iac_binary" -chdir="$example_root/v2" init -reconfigure -input=false
+}
+
+iac_migration_example() {
+  phase="$1"
+  shift
+  if [ "$phase" = "v1" ]; then
+    migration_example_root="$example_root"
+  else
+    migration_example_root="$example_root/v2"
+  fi
+  "$iac_binary" -chdir="$migration_example_root" "$@" -var-file="$migration_example_root/$phase.tfvars"
+}
+
+assert_migration_plan_is_empty() {
+  phase="$1"
+  if iac_migration_example "$phase" plan -input=false -detailed-exitcode; then
+    return 0
+  else
+    status=$?
+    if [ "$status" -eq 2 ]; then
+      echo "Migration test produced a non-empty plan for $phase." >&2
+    fi
+    return "$status"
+  fi
+}
+
+run_migration_test() {
+  iac_migration_init
+  iac_migration_example v1 apply -auto-approve -input=false
+
+  migration_state_backup=$(mktemp "${TMPDIR:-/tmp}/migration-test-state.XXXXXX")
+  rm -f "$migration_state_backup"
+  python3 "$source_root/scripts/migrate_multi_runner_state.py" \
+    --working-directory "$example_root/v2" \
+    --tool "$iac_binary" \
+    --backup "$migration_state_backup" \
+    --apply \
+    --yes
+
+  assert_migration_plan_is_empty v2
+  iac_migration_example v2 apply -auto-approve -input=false
+  assert_migration_plan_is_empty v2
+}
+
 case "$action" in
   init)
-    iac_init
+    if [ "$example" = "migration-test" ]; then
+      iac_migration_init
+    else
+      iac_init
+    fi
     ;;
   plan)
-    iac_init
-    iac_example plan -input=false
+    if [ "$example" = "migration-test" ]; then
+      iac_migration_init
+      iac_migration_example v1 plan -input=false
+    else
+      iac_init
+      iac_example plan -input=false
+    fi
     ;;
   apply)
-    iac_init
-    iac_example apply -auto-approve -input=false
+    if [ "$example" = "migration-test" ]; then
+      run_migration_test
+    else
+      iac_init
+      iac_example apply -auto-approve -input=false
+    fi
     ;;
   destroy)
-    iac_init
-    iac_example destroy -auto-approve -input=false
+    if [ "$example" = "migration-test" ]; then
+      iac_migration_init
+      iac_migration_example v2 destroy -auto-approve -input=false
+    else
+      iac_init
+      iac_example destroy -auto-approve -input=false
+    fi
     ;;
 esac
