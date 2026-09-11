@@ -18,7 +18,7 @@ locals {
   }
   scale_set_ownership_keys = [
     for runner_name, runner_config in var.runner_configs :
-    "${local.normalized_github_config_urls[runner_name]}#${runner_config.scale_set.id}"
+    "${local.normalized_github_config_urls[runner_name]}#${runner_config.scale_set.name}"
   ]
 
   declared_custom_groups = var.grouping.strategy == "custom" && var.grouping.custom != null ? {
@@ -81,20 +81,17 @@ locals {
         group_name  = group_name
         runner_name = runner_name
         value = merge({
-          schemaVersion         = 1
-          runnerConfigName      = runner_name
-          githubConfigUrl       = var.runner_configs[runner_name].github.config_url
-          scaleSetId            = var.runner_configs[runner_name].scale_set.id
-          expectedScaleSetName  = var.runner_configs[runner_name].scale_set.name
-          expectedRunnerGroupId = var.runner_configs[runner_name].scale_set.runner_group_id
-          minRunners            = var.runner_configs[runner_name].scale_set.min_runners
-          maxRunners            = var.runner_configs[runner_name].scale_set.max_runners
-          bootTimeoutMinutes    = var.runner_configs[runner_name].scale_set.boot_time_in_minutes
-          sslVerify             = var.runner_configs[runner_name].github.ssl_verify
+          schemaVersion        = 1
+          runnerConfigName     = runner_name
+          githubConfigUrl      = var.runner_configs[runner_name].github.config_url
+          expectedScaleSetName = var.runner_configs[runner_name].scale_set.name
+          minRunners           = var.runner_configs[runner_name].scale_set.runner.min_runners
+          maxRunners           = var.runner_configs[runner_name].scale_set.runner.max_runners
+          bootTimeoutMinutes   = var.runner_configs[runner_name].scale_set.runner.boot_time_in_minutes
+          sslVerify            = var.runner_configs[runner_name].github.enterprise_server.ssl_verify
+          forceGhes            = var.runner_configs[runner_name].github.enterprise_server.url != null
           sessionOwner = (
-            var.runner_configs[runner_name].scale_set.session_owner != null
-            ? var.runner_configs[runner_name].scale_set.session_owner
-            : length("${group_name}.${runner_name}") <= 256
+            length("${group_name}.${runner_name}") <= 256
             ? "${group_name}.${runner_name}"
             : "${substr(group_name, 0, 119)}.${substr(runner_name, 0, 119)}.${substr(sha256(format("%s.%s", group_name, runner_name)), 0, 16)}"
           )
@@ -107,11 +104,6 @@ locals {
             type          = var.compute_provider_contracts[runner_name].type
             configuration = jsondecode(var.compute_provider_contracts[runner_name].capabilities.scale_set.configuration_json)
           }
-          }, var.runner_configs[runner_name].work_folder == null ? {} : {
-          workFolder = var.runner_configs[runner_name].work_folder
-          }, var.runner_configs[runner_name].github.force_ghes == null ? {} : {
-          forceGhes = var.runner_configs[runner_name].github.force_ghes
-          }, var.runner_configs[runner_name].github.user_agent == null ? {} : {
           userAgent = var.runner_configs[runner_name].github.user_agent
         })
       }
