@@ -278,10 +278,10 @@ run "v2_effective_config_contains_derived_values" {
 
   assert {
     condition = (
-      module.runner_configs["lane"].scale_up.lambda.environment[0].variables["PARAMETER_GITHUB_APP_ID_NAME"] == "/github-action-runners/github-actions/app/github_app_id:/tests/github-app/additional-0/id:/tests/github-app/additional-1/id"
-      && module.runner_configs["lane"].scale_up.lambda.environment[0].variables["PARAMETER_GITHUB_APP_KEY_BASE64_NAME"] == "/github-action-runners/github-actions/app/github_app_key_base64:/tests/github-app/additional-0/key:/tests/github-app/additional-1/key"
-      && module.runner_configs["lane"].scale_up.lambda.environment[0].variables["PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME"] == ":/tests/github-app/additional-0/installation-id:"
+      module.runner_configs["lane"].scale_up.lambda.environment[0].variables["PARAMETER_GITHUB_APP_ID_NAME"] == "/github-action-runners/github-actions/app/github_app_id"
+      && module.runner_configs["lane"].scale_up.lambda.environment[0].variables["PARAMETER_GITHUB_APP_KEY_BASE64_NAME"] == "/github-action-runners/github-actions/app/github_app_key_base64"
+      && module.runner_configs["lane"].scale_up.lambda.environment[0].variables["PARAMETER_GITHUB_APPS_MANIFEST_NAME"] == "/github-action-runners/github-actions/app/additional_github_apps_manifest"
     )
-    error_message = "The v2 runner-config adapter must preserve primary and additional GitHub App parameter ordering."
+    error_message = "The v2 runner-config adapter must pass the primary GitHub App parameters and additional-app manifest."
   }
 }

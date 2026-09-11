@@ -10,24 +10,17 @@ module "runner_configs" {
   prefix        = "${var.prefix}-${each.key}"
 
   tags = merge(
+    local.effective_config.tags,
     each.value.tags,
-    { "ghr:environment" = var.prefix },
+    { "ghr:environment" = "${var.prefix}-${each.key}" },
   )
   runner = each.value.runner
   github = merge(each.value.github, {
     app_parameters = {
-      id = concat(
-        [local.primary_app_id],
-        [for app in module.ssm.additional_app_parameters : app.id],
-      )
-      key_base64 = concat(
-        [local.primary_app_key_base64],
-        [for app in module.ssm.additional_app_parameters : app.key_base64],
-      )
-      installation_id = concat(
-        [null],
-        [for app in module.ssm.additional_app_parameters : app.installation_id],
-      )
+      id                            = local.github_app_parameters.id
+      key_base64                    = local.github_app_parameters.key_base64
+      additional_apps_manifest      = local.github_app_parameters.additional_apps_manifest
+      additional_app_parameter_arns = local.github_app_parameters.additional_app_parameter_arns
     }
   })
   lambda = each.value.lambda

@@ -12,7 +12,7 @@ module "compute_aws_ec2" {
   aws_partition = var.aws_partition
   aws_region    = var.aws_region
   prefix        = var.prefix
-  tags          = var.tags
+  tags          = local.runner_tags
 
   config = var.compute_provider.aws.ec2
   runner = merge(var.runner, {
