@@ -35,7 +35,10 @@ locals {
               artifact = local.normalized_config.orchestration_provider.webhook.lambda.artifact
             })
           })
-          scale_set = try(v.orchestration_provider.scale_set, null)
+          scale_set = try(coalesce(
+            v.orchestration_provider.scale_set,
+            local.normalized_config.orchestration_provider.scale_set,
+          ), null)
         }
 
         ssm = merge(v.ssm, {

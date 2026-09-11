@@ -295,7 +295,10 @@ locals {
               tags = merge(local.normalized_config.orchestration_provider.webhook.queue.tags, v.orchestration_provider.webhook.queue.tags)
             })
           })
-          scale_set = try(v.orchestration_provider.scale_set, null)
+          scale_set = try(coalesce(
+            v.orchestration_provider.scale_set,
+            local.normalized_config.orchestration_provider.scale_set,
+          ), null)
         }
 
         ssm = merge(v.ssm, {
