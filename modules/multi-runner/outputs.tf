@@ -33,6 +33,16 @@ output "runners_map_v2" {
   }
 }
 
+output "scale_set" {
+  description = "Shared scale-set orchestration resources, or null when no runner configuration selects scale_set."
+  value = length(module.orchestration_scale_set) == 0 ? null : {
+    cluster                      = one(module.orchestration_scale_set[*].cluster)
+    controller_groups            = one(module.orchestration_scale_set[*].controller_groups)
+    reconciler_config_parameters = one(module.orchestration_scale_set[*].reconciler_config_parameters)
+    resolved_container_image     = one(module.orchestration_scale_set[*].resolved_container_image)
+  }
+}
+
 output "binaries_syncer_map" {
   value = { for runner_binary_key, runner_binary in module.runner_binaries : runner_binary_key => {
     lambda           = runner_binary.lambda

@@ -3,7 +3,8 @@ variable "orchestration_provider" {
   description = <<-EOT
     Runner demand-orchestration provider configuration. Exactly one provider block must be non-null. Wrapper presence selects the provider and must therefore be known during planning; values inside the selected provider may remain unknown until apply.
 
-    - `webhook`: Selects the workflow-job webhook control plane. It owns runner lifecycle and capacity, the build queue reference, the runner-control artifact, scale-up, scale-down, scheduled pool, and optional job-retry controls. Future providers can be added as sibling blocks without moving this contract.
+    - `webhook`: Selects the workflow-job webhook control plane. It owns runner lifecycle and capacity, the build queue reference, the runner-control artifact, scale-up, scale-down, scheduled pool, and optional job-retry controls.
+    - `scale_set`: Selects scale-set orchestration for this runner config. The multi-runner topology owns the shared controller service and passes this plan-known selection marker to runner-config. Scale-set runners always use ephemeral JIT registration.
     - `webhook.runner`: Runner lifecycle, boot timeout, and capacity settings owned by webhook orchestration.
     - `webhook.runner.boot_time_in_minutes`: Expected runner boot duration used by scale-down and pool controls. The default is `5`.
     - `webhook.runner.ephemeral`: Registers runners in ephemeral mode. The default is `false`.
@@ -135,6 +136,7 @@ variable "orchestration_provider" {
         }), {})
       }), {})
     }), null)
+    scale_set = optional(object({}), null)
   })
   nullable = false
 
