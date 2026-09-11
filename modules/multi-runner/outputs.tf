@@ -36,10 +36,10 @@ output "runners_map_v2" {
 output "scale_set" {
   description = "Shared scale-set orchestration resources, or null when no runner configuration selects scale_set."
   value = length(module.orchestration_scale_set) == 0 ? null : {
-    cluster                      = one(module.orchestration_scale_set[*].cluster)
-    controller_groups            = one(module.orchestration_scale_set[*].controller_groups)
-    reconciler_config_parameters = one(module.orchestration_scale_set[*].reconciler_config_parameters)
-    resolved_container_image     = one(module.orchestration_scale_set[*].resolved_container_image)
+    cluster                      = module.orchestration_scale_set[0].cluster
+    controller_groups            = module.orchestration_scale_set[0].controller_groups
+    reconciler_config_parameters = module.orchestration_scale_set[0].reconciler_config_parameters
+    resolved_container_image     = module.orchestration_scale_set[0].resolved_container_image
   }
 }
 
