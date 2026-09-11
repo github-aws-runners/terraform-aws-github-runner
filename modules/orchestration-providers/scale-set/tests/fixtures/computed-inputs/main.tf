@@ -1,7 +1,6 @@
 resource "terraform_data" "computed" {
   input = {
     external_cluster_arn = "arn:aws:ecs:eu-west-1:123456789012:cluster/external"
-    github_config_url    = "https://github.com/example"
     app_id_arn           = "arn:aws:ssm:eu-west-1:123456789012:parameter/github/computed/app-id"
     private_key_arn      = "arn:aws:ssm:eu-west-1:123456789012:parameter/github/computed/private-key"
     installation_id_arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github/computed/installation-id"
@@ -20,7 +19,6 @@ module "subject" {
   runner_configs = {
     computed = {
       github = {
-        config_url        = terraform_data.computed.output.github_config_url
         enterprise_server = {}
         app = {
           app_id = {
