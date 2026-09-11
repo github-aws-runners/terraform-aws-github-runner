@@ -182,7 +182,7 @@ module "runners" {
     tokens = "${var.ssm_paths.runners}/tokens"
     config = "${var.ssm_paths.runners}/config"
   }
-  ssm_token_ttl_seconds = var.ssm_token_ttl_seconds
+  ssm_ttl_seconds = var.ssm_ttl_seconds
 
   s3_runner_binaries = var.enable_runner_binaries_syncer ? {
     arn = module.runner_binaries[0].bucket.arn
