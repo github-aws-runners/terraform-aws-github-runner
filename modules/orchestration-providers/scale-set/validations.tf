@@ -119,38 +119,22 @@ resource "terraform_data" "validate_contract" {
       condition = alltrue([
         for runner_config in values(var.runner_configs) : (
           can(regex("^[ -~]{1,128}$", runner_config.scale_set.name)) &&
-          runner_config.scale_set.id >= 1 &&
-          runner_config.scale_set.id <= 2147483647 &&
-          floor(runner_config.scale_set.id) == runner_config.scale_set.id &&
-          (runner_config.scale_set.runner_group_id == null ? true : (
-            runner_config.scale_set.runner_group_id >= 1 &&
-            runner_config.scale_set.runner_group_id <= 2147483647 &&
-            floor(runner_config.scale_set.runner_group_id) == runner_config.scale_set.runner_group_id
-          )) &&
-          runner_config.scale_set.min_runners >= 0 &&
-          floor(runner_config.scale_set.min_runners) == runner_config.scale_set.min_runners &&
-          runner_config.scale_set.max_runners >= 1 &&
-          runner_config.scale_set.max_runners <= 10000 &&
-          floor(runner_config.scale_set.max_runners) == runner_config.scale_set.max_runners &&
-          runner_config.scale_set.min_runners <= runner_config.scale_set.max_runners &&
-          runner_config.scale_set.boot_time_in_minutes >= 1 &&
-          runner_config.scale_set.boot_time_in_minutes <= 120 &&
-          floor(runner_config.scale_set.boot_time_in_minutes) == runner_config.scale_set.boot_time_in_minutes &&
-          (runner_config.scale_set.session_owner == null ? true : can(regex("^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$", runner_config.scale_set.session_owner))) &&
-          (runner_config.work_folder == null ? true : (
-            length(runner_config.work_folder) <= 128 &&
-            !startswith(runner_config.work_folder, "/") &&
-            !can(regex("\\\\", runner_config.work_folder)) &&
-            can(regex("^[A-Za-z0-9._/-]+$", runner_config.work_folder)) &&
-            alltrue([for part in split("/", runner_config.work_folder) : !contains(["", ".", ".."], part)])
-          )) &&
+          runner_config.scale_set.runner.min_runners >= 0 &&
+          floor(runner_config.scale_set.runner.min_runners) == runner_config.scale_set.runner.min_runners &&
+          runner_config.scale_set.runner.max_runners >= 1 &&
+          runner_config.scale_set.runner.max_runners <= 10000 &&
+          floor(runner_config.scale_set.runner.max_runners) == runner_config.scale_set.runner.max_runners &&
+          runner_config.scale_set.runner.min_runners <= runner_config.scale_set.runner.max_runners &&
+          runner_config.scale_set.runner.boot_time_in_minutes >= 1 &&
+          runner_config.scale_set.runner.boot_time_in_minutes <= 120 &&
+          floor(runner_config.scale_set.runner.boot_time_in_minutes) == runner_config.scale_set.runner.boot_time_in_minutes &&
           (runner_config.github.user_agent == null ? true : (
             length(runner_config.github.user_agent) <= 256 &&
             can(regex("^[ -~]+$", runner_config.github.user_agent))
           ))
         )
       ])
-      error_message = "Scale-set names and IDs must be valid, boot_time_in_minutes must be an integer from 1 through 120, optional session/work-folder/user-agent values must match runtime constraints, and min_runners must be between zero and max_runners (maximum 10000)."
+      error_message = "Scale-set names must be valid, boot_time_in_minutes must be an integer from 1 through 120, optional user-agent values must match runtime constraints, and min_runners must be between zero and max_runners (maximum 10000)."
     }
 
     precondition {
