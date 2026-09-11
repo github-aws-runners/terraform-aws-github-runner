@@ -2,7 +2,6 @@ resource "terraform_data" "computed" {
   input = {
     external_cluster_arn = "arn:aws:ecs:eu-west-1:123456789012:cluster/external"
     github_config_url    = "https://github.com/example"
-    scale_set_id         = 901
     app_id_arn           = "arn:aws:ssm:eu-west-1:123456789012:parameter/github/computed/app-id"
     private_key_arn      = "arn:aws:ssm:eu-west-1:123456789012:parameter/github/computed/private-key"
     installation_id_arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github/computed/installation-id"
@@ -21,7 +20,8 @@ module "subject" {
   runner_configs = {
     computed = {
       github = {
-        config_url = terraform_data.computed.output.github_config_url
+        config_url        = terraform_data.computed.output.github_config_url
+        enterprise_server = {}
         app = {
           app_id = {
             name = "/github/computed/app-id"
@@ -37,11 +37,10 @@ module "subject" {
             arn  = terraform_data.computed.output.installation_id_arn
           }
         }
+        user_agent = "scale-set-test"
       }
       scale_set = {
-        id              = terraform_data.computed.output.scale_set_id
-        name            = "computed"
-        runner_group_id = null
+        name = "computed"
       }
     }
   }
