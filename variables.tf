@@ -767,11 +767,15 @@ variable "aws_dynamic_labels_policy" {
     override labels using the `ghr-ec2-*` prefix.
 
     Evaluation:
-      1. Keys in `blocked_keys` are always rejected.
-      2. Keys in `restricted_keys` are allowed only when their value passes the rule.
-      3. Keys not listed in `blocked_keys` or `restricted_keys` are allowed.
+      1. If `allowed_keys` is set (non-empty), any key not listed in it is rejected;
+         everything else in the policy still applies to the keys it does allow.
+      2. Keys in `blocked_keys` are always rejected. Cannot be used together with
+         `allowed_keys` — see `docs/configuration.md` for why.
+      3. Keys in `restricted_keys` are allowed only when their value passes the rule.
+      4. A key not listed anywhere above is allowed.
 
     Schema:
+      - `allowed_keys`: only these keys are accepted; every other key is rejected.
       - `blocked_keys`: keys to reject outright.
       - `restricted_keys`: map of key to value rule:
           `{ allowed = [globs], denied = [globs], max = number|string }`.
@@ -781,6 +785,17 @@ variable "aws_dynamic_labels_policy" {
   EOT
   type        = any
   default     = null
+
+  validation {
+    condition = (
+      var.aws_dynamic_labels_policy == null ||
+      !(
+        try(length(var.aws_dynamic_labels_policy.allowed_keys), 0) > 0 &&
+        try(length(var.aws_dynamic_labels_policy.blocked_keys), 0) > 0
+      )
+    )
+    error_message = "aws_dynamic_labels_policy: allowed_keys and blocked_keys cannot both be set."
+  }
 }
 
 variable "enable_job_queued_check" {
