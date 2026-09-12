@@ -313,6 +313,7 @@ variable "multi_runner_config" {
           priority                = optional(number, 999)
           dynamic_labels_enabled  = optional(bool, false)
           awsDynamicLabelsPolicy = optional(object({
+            allowed_keys = optional(list(string), [])
             blocked_keys = optional(list(string), [])
             restricted_keys = optional(map(object({
               allowed = optional(list(string), [])
@@ -666,7 +667,7 @@ variable "multi_runner_config" {
         bidirectionalLabelMatch: "If set to true, the runner labels and workflow job labels must be an exact two-way match (same set, any order, no extras or missing labels). This is stricter than `exactMatch` which only checks that workflow labels are a subset of runner labels. When false, if __any__ workflow label matches it will trigger the webhook."
         priority: "If set it defines the priority of the matcher, the matcher with the lowest priority will be evaluated first. Default is 999, allowed values 0-999."
         enableDynamicLabels: "Experimental! When true the dispatcher allows `ghr-*` dynamic labels for jobs routed to this runner. Default false."
-        awsDynamicLabelsPolicy: "Optional AWS dynamic label policy evaluated by the dispatcher. Only effective when `enableDynamicLabels = true`. Jobs whose provider dynamic labels violate every matching runner's policy are rejected with a 202 (a warning is logged). Evaluation: keys in `blocked_keys` are always rejected; keys in `restricted_keys` are allowed only when their value passes the rule; unlisted keys are allowed. Schema: `{ blocked_keys = [<key>], restricted_keys = { <key> = { allowed = [globs], denied = [globs], max = number|string } } }`. Keys use the dynamic label suffix, e.g. `instance-type` for `ghr-ec2-instance-type`."
+        awsDynamicLabelsPolicy: "Optional AWS dynamic label policy evaluated by the dispatcher. Only effective when `enableDynamicLabels = true`. Jobs whose provider dynamic labels violate every matching runner's policy are rejected with a 202 (a warning is logged). Evaluation: if `allowed_keys` is set, only those keys are accepted; keys in `blocked_keys` are always rejected (cannot be used together with `allowed_keys`); keys in `restricted_keys` are allowed only when their value passes the rule; a key not listed anywhere is allowed. Schema: `{ allowed_keys = [<key>], blocked_keys = [<key>], restricted_keys = { <key> = { allowed = [globs], denied = [globs], max = number|string } } }`. Keys use the dynamic label suffix, e.g. `instance-type` for `ghr-ec2-instance-type`."
       }
       redrive_build_queue: "Set options to attach (optional) a dead letter queue to the build queue, the queue between the webhook and the scale up lambda. You have the following options. 1. Disable by setting `enabled` to false. 2. Enable by setting `enabled` to `true`, `maxReceiveCount` to a number of max retries."
     }
@@ -678,6 +679,19 @@ variable "multi_runner_config" {
       || length([for config in var.multi_runner_config : config if !can(config.runner_config.runner_os)]) == 0
     )
     error_message = "Use one multi_runner_config shape per module invocation: provide either v1 entries with runner_config or v2 entries without runner_config, not both in the same map."
+  }
+
+  validation {
+    condition = alltrue([
+      for config in var.multi_runner_config : !(
+        try(length(config.matcherConfig.awsDynamicLabelsPolicy.allowed_keys), 0) > 0 &&
+        try(length(config.matcherConfig.awsDynamicLabelsPolicy.blocked_keys), 0) > 0
+        ) && !(
+        try(length(config.orchestration_provider.webhook.matcherConfig.awsDynamicLabelsPolicy.allowed_keys), 0) > 0 &&
+        try(length(config.orchestration_provider.webhook.matcherConfig.awsDynamicLabelsPolicy.blocked_keys), 0) > 0
+      )
+    ])
+    error_message = "multi_runner_config: allowed_keys and blocked_keys cannot both be set in awsDynamicLabelsPolicy."
   }
 }
 
