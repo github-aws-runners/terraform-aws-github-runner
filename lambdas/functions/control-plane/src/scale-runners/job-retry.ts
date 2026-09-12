@@ -44,6 +44,7 @@ export async function checkAndRetryJob(payload: ActionRequestMessageRetry): Prom
   const runnerNamePrefix = process.env.RUNNER_NAME_PREFIX ?? '';
   const jobQueueUrl = process.env.JOB_QUEUE_SCALE_UP_URL ?? '';
   const enableMetrics = yn(process.env.ENABLE_METRIC_JOB_RETRY, { default: false });
+  const enableJobQueuedCheck = yn(process.env.ENABLE_JOB_QUEUED_CHECK, { default: true });
   const environment = process.env.ENVIRONMENT;
 
   addPersistentContextToChildLogger({
@@ -63,8 +64,9 @@ export async function checkAndRetryJob(payload: ActionRequestMessageRetry): Prom
   const { ghesApiUrl } = getGitHubEnterpriseApiUrl();
   const ghClient = await getOctokit(ghesApiUrl, enableOrgLevel, payload);
 
-  // check job is still queued
-  if (await isJobQueued(ghClient, payload)) {
+  // check job is still queued, unless the check is disabled (same flag the scale-up path uses)
+  const jobQueued = enableJobQueuedCheck ? await isJobQueued(ghClient, payload) : true;
+  if (jobQueued) {
     await publishMessage(JSON.stringify(payload), jobQueueUrl);
     createMetric(enableMetrics, environment, payload);
     logger.info(`Job is still queued, message published to build queue and will be handled by scale-up.`, { payload });
