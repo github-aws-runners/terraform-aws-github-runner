@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Snapshot and compare effective inline IAM permissions grouped by role."""
+"""Snapshot and compare IAM statements grouped by role."""
 
 from __future__ import annotations
 
@@ -166,6 +166,11 @@ def snapshot() -> dict[str, Any]:
     for role in sorted(roles, key=lambda item: item["RoleName"]):
         role_name = role["RoleName"]
         permissions: set[str] = set()
+        assume_role_policy = role.get("AssumeRolePolicyDocument")
+        if assume_role_policy:
+            permissions.update(
+                permission_entries(policy_document(assume_role_policy))
+            )
         policy_names = aws("list-role-policies", "--role-name", role_name).get("PolicyNames", [])
         for policy_name in sorted(policy_names):
             response = aws(
