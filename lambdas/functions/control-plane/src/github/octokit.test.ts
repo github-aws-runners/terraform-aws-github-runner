@@ -1,8 +1,14 @@
 import { Octokit } from '@octokit/rest';
 import type { ActionRequestMessage } from '../scale-runners/types';
-import { getOctokit } from './octokit';
+import { getOctokit, getOctokitWithFailover } from './octokit';
 import { describe, it, expect, beforeEach, vi, Mock } from 'vitest';
-import { createGithubAppAuth, createGithubInstallationAuth, getStoredInstallationId } from '../github/auth';
+import {
+  createGithubAppAuth,
+  createGithubInstallationAuth,
+  getStoredInstallationId,
+  hasAlternativeAppWithHeadroom,
+  isGitHubRateLimitError,
+} from '../github/auth';
 
 const mockOctokit = {
   apps: {
@@ -19,6 +25,8 @@ vi.mock('../github/auth', async () => ({
   createGithubAppAuth: vi.fn().mockResolvedValue({ token: 'token', appIndex: 0 }),
   getAppCount: vi.fn().mockResolvedValue(1),
   getStoredInstallationId: vi.fn().mockResolvedValue(undefined),
+  hasAlternativeAppWithHeadroom: vi.fn().mockReturnValue(false),
+  isGitHubRateLimitError: vi.fn().mockReturnValue(false),
 }));
 
 vi.mock('@octokit/rest', async () => ({
@@ -188,5 +196,96 @@ describe('Test getOctokit stale installation fallback', () => {
     await expect(getOctokit('', true, payload)).rejects.toThrow('Server Error');
     expect(mockOctokit.apps.getOrgInstallation).not.toHaveBeenCalled();
     expect(createGithubInstallationAuth).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('Test getOctokitWithFailover', () => {
+  const payload = {
+    eventType: 'workflow_job',
+    id: 0,
+    installationId: 5,
+    repositoryOwner: 'owner',
+    repositoryName: 'repo',
+  } as ActionRequestMessage;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (getStoredInstallationId as Mock).mockResolvedValue(undefined);
+  });
+
+  it('passes every already-tried app index through to app selection when retrying', async () => {
+    (createGithubAppAuth as Mock).mockResolvedValue({ token: 'token', appIndex: 0 });
+    (isGitHubRateLimitError as Mock).mockReturnValue(true);
+    (hasAlternativeAppWithHeadroom as Mock).mockReturnValue(true);
+
+    const rateLimitError = Object.assign(new Error('rate limit exceeded'), { status: 403 });
+    const work = vi.fn().mockRejectedValueOnce(rateLimitError).mockResolvedValueOnce('done');
+
+    await expect(getOctokitWithFailover('', true, payload, work)).resolves.toBe('done');
+
+    expect(createGithubAppAuth).toHaveBeenNthCalledWith(1, undefined, '', undefined, undefined, []);
+    expect(createGithubAppAuth).toHaveBeenNthCalledWith(2, undefined, '', undefined, undefined, [0]);
+    expect(work).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps failing over past a second exhausted app with 3+ configured apps', async () => {
+    (createGithubAppAuth as Mock)
+      .mockResolvedValueOnce({ token: 'token', appIndex: 0 })
+      .mockResolvedValueOnce({ token: 'token', appIndex: 1 })
+      .mockResolvedValueOnce({ token: 'token', appIndex: 2 });
+    (isGitHubRateLimitError as Mock).mockReturnValue(true);
+    (hasAlternativeAppWithHeadroom as Mock).mockReturnValue(true);
+
+    const rateLimitError = Object.assign(new Error('rate limit exceeded'), { status: 403 });
+    const work = vi
+      .fn()
+      .mockRejectedValueOnce(rateLimitError) // app 0 exhausted
+      .mockRejectedValueOnce(rateLimitError) // app 1 also exhausted
+      .mockResolvedValueOnce('done'); // app 2 has headroom
+
+    await expect(getOctokitWithFailover('', true, payload, work)).resolves.toBe('done');
+
+    expect(createGithubAppAuth).toHaveBeenNthCalledWith(1, undefined, '', undefined, undefined, []);
+    expect(createGithubAppAuth).toHaveBeenNthCalledWith(2, undefined, '', undefined, undefined, [0]);
+    expect(createGithubAppAuth).toHaveBeenNthCalledWith(3, undefined, '', undefined, undefined, [0, 1]);
+    expect(work).toHaveBeenCalledTimes(3);
+  });
+
+  it('gives up after a bounded number of failover attempts instead of looping forever', async () => {
+    let nextAppIndex = 0;
+    (createGithubAppAuth as Mock).mockImplementation(async () => ({ token: 'token', appIndex: nextAppIndex++ }));
+    (isGitHubRateLimitError as Mock).mockReturnValue(true);
+    (hasAlternativeAppWithHeadroom as Mock).mockReturnValue(true); // pretend there's always another app
+
+    const rateLimitError = Object.assign(new Error('rate limit exceeded'), { status: 403 });
+    const work = vi.fn().mockRejectedValue(rateLimitError);
+
+    await expect(getOctokitWithFailover('', true, payload, work)).rejects.toThrow('rate limit exceeded');
+    expect(work.mock.calls.length).toBeLessThan(20);
+  });
+
+  it('does not retry when the error is not a rate limit error', async () => {
+    (createGithubAppAuth as Mock).mockResolvedValue({ token: 'token', appIndex: 0 });
+    (isGitHubRateLimitError as Mock).mockReturnValue(false);
+
+    const otherError = new Error('boom');
+    const work = vi.fn().mockRejectedValueOnce(otherError);
+
+    await expect(getOctokitWithFailover('', true, payload, work)).rejects.toThrow('boom');
+    expect(work).toHaveBeenCalledTimes(1);
+    expect(createGithubAppAuth).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not retry when no alternate app has headroom', async () => {
+    (createGithubAppAuth as Mock).mockResolvedValue({ token: 'token', appIndex: 0 });
+    (isGitHubRateLimitError as Mock).mockReturnValue(true);
+    (hasAlternativeAppWithHeadroom as Mock).mockReturnValue(false);
+
+    const rateLimitError = Object.assign(new Error('rate limit exceeded'), { status: 403 });
+    const work = vi.fn().mockRejectedValueOnce(rateLimitError);
+
+    await expect(getOctokitWithFailover('', true, payload, work)).rejects.toThrow('rate limit exceeded');
+    expect(work).toHaveBeenCalledTimes(1);
+    expect(createGithubAppAuth).toHaveBeenCalledTimes(1);
   });
 });

@@ -6,7 +6,12 @@ import {
   createGithubInstallationAuth,
   createOctokitClient,
   getStoredInstallationId,
+  hasAlternativeAppWithHeadroom,
+  isGitHubRateLimitError,
+  type AppIndexExclusion,
 } from './auth';
+
+const MAX_FAILOVER_ATTEMPTS = 5;
 
 const logger = createChildLogger('octokit');
 
@@ -78,15 +83,18 @@ export async function getInstallationId(
  * phase out the usages of methods in gh-auth.ts outside of this module. Main purpose to make
  * mocking of the octokit client easier.
  *
- * @returns ockokit client
+ * @param excludeAppIndexes skip these apps during selection (used to fail over away from apps that
+ *   were already tried and found rate-limited)
+ * @returns octokit client and the index of the GitHub App used to authenticate it
  */
 export async function getOctokit(
   ghesApiUrl: string,
   enableOrgLevel: boolean,
   payload: ActionRequestMessage,
-): Promise<Octokit> {
+  excludeAppIndexes?: AppIndexExclusion,
+): Promise<{ client: Octokit; appIndex: number }> {
   // Select one app for this entire auth flow
-  const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl);
+  const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl, undefined, undefined, excludeAppIndexes);
   const appIdx = ghAuth.appIndex;
   const githubAppClient = await createOctokitClient(ghAuth.token, ghesApiUrl, appIdx);
 
@@ -94,7 +102,8 @@ export async function getOctokit(
 
   try {
     const installationAuth = await createGithubInstallationAuth(installationId, ghesApiUrl, appIdx);
-    return await createOctokitClient(installationAuth.token, ghesApiUrl, appIdx);
+    const client = await createOctokitClient(installationAuth.token, ghesApiUrl, appIdx);
+    return { client, appIndex: appIdx };
   } catch (error) {
     // The installation id can be stale when it was reused from the webhook payload or from the
     // pre-configured per-app value while the app was uninstalled and reinstalled. Re-resolve the
@@ -117,6 +126,43 @@ export async function getOctokit(
     });
 
     const installationAuth = await createGithubInstallationAuth(resolvedInstallationId, ghesApiUrl, appIdx);
-    return await createOctokitClient(installationAuth.token, ghesApiUrl, appIdx);
+    const client = await createOctokitClient(installationAuth.token, ghesApiUrl, appIdx);
+    return { client, appIndex: appIdx };
+  }
+}
+
+/**
+ * Runs `work` against the app selected for this auth flow. If it fails with a rate-limit error
+ * and another configured app still has budget, fails over to that app and retries, instead of
+ * waiting out the exhausted app's retry-after window. Every app tried so far is excluded from
+ * later selections, so with 3+ configured apps a failover that lands on an app that turns out to
+ * also be exhausted keeps failing over rather than giving up after a single retry.
+ */
+export async function getOctokitWithFailover<T>(
+  ghesApiUrl: string,
+  enableOrgLevel: boolean,
+  payload: ActionRequestMessage,
+  work: (client: Octokit, appIndex: number) => Promise<T>,
+): Promise<T> {
+  const triedAppIndexes: number[] = [];
+  for (let attempt = 0; ; attempt++) {
+    // Pass a snapshot: getOctokit call args must not change out from under a caller inspecting them.
+    const { client, appIndex } = await getOctokit(ghesApiUrl, enableOrgLevel, payload, [...triedAppIndexes]);
+    triedAppIndexes.push(appIndex);
+    try {
+      return await work(client, appIndex);
+    } catch (error) {
+      if (
+        attempt >= MAX_FAILOVER_ATTEMPTS ||
+        !isGitHubRateLimitError(error) ||
+        !hasAlternativeAppWithHeadroom(triedAppIndexes)
+      ) {
+        throw error;
+      }
+      logger.warn('Rate limit hit on selected app, failing over to an alternate app', {
+        appIndex,
+        triedAppIndexes: [...triedAppIndexes],
+      });
+    }
   }
 }
