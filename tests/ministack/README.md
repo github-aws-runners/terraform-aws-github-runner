@@ -1,7 +1,7 @@
 # MiniStack example tests
 
 The MiniStack workflow runs the `base`, `prebuilt`, `default`, `ephemeral`,
-`multi-runner`, `multi-runner-v2`, `migration-test`, and `termination-watcher` examples directly
+`multi-runner`, `multi-runner-v2`, and `termination-watcher` examples directly
 with Terraform 1.5.6 and the latest Terraform release, and with OpenTofu 1.11
 and the latest OpenTofu release.
 The examples with input variables get their inputs from their own tfvars files
@@ -10,7 +10,8 @@ and uses the configuration checked into the example itself. No override files,
 setup module, or Terraform fixture configuration is checked in. The helper
 creates and removes a temporary AMI override for `default` and
 `ephemeral`, temporary SSM parameters for `multi-runner`, and temporary AMI
-fixtures for `multi-runner-v2` and `migration-test`.
+fixtures for `multi-runner-v2`. The migration test uses its dedicated
+`run-migration-test.sh` lifecycle script.
 
 Start MiniStack, set the AWS endpoint and test credentials, then run:
 
@@ -26,8 +27,6 @@ tests/ministack/run-example.sh apply ephemeral
 tests/ministack/run-example.sh apply multi-runner
 # or
 tests/ministack/run-example.sh apply multi-runner-v2
-# or
-tests/ministack/run-example.sh apply migration-test
 # or
 tests/ministack/run-example.sh apply termination-watcher
 ```

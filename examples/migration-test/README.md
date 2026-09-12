@@ -12,18 +12,20 @@ example files:
 
 1. Apply the `v1/` configuration with `v1.tfvars`.
 2. Run `scripts/migrate_multi_runner_state.py` against the resulting v1 state.
-3. Snapshot the effective permissions from all inline IAM policies, grouped by
-   IAM role, created by v1.
+3. Snapshot the IAM statements from v1, including role trust policies and inline
+   policies, grouped by IAM role.
 4. Plan the `v2/` configuration with `v2.tfvars` using the shared
    `migration.tfstate` file and verify that only v2 validation records are
-   new.
-5. Apply v2, compare effective inline IAM permissions grouped by IAM role with
-   the v1 snapshot, and assert that the following plan is empty.
+   new. The plan is parsed so only explicitly expected migration or MiniStack
+   differences, including the MiniStack launch-template drift, are ignored.
+   Inline IAM role policies are checked separately by the IAM comparison.
+5. Apply v2, compare the consolidated IAM statements grouped by IAM role with
+   the v1 snapshot, and run the same parsed plan check again.
 
 Run it with:
 
 ```sh
-tests/ministack/run-example.sh apply migration-test
+tests/ministack/run-migration-test.sh apply
 ```
 
 <!-- BEGIN_TF_DOCS -->
