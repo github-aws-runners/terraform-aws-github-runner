@@ -26,7 +26,10 @@ case "$example" in
   base | prebuilt | default | ephemeral | multi-runner | multi-runner-v2)
     use_tfvars=true
     ;;
-  migration-test | termination-watcher)
+  migration-test)
+    use_tfvars=false
+    ;;
+  termination-watcher)
     use_tfvars=false
     ;;
   *)
@@ -45,13 +48,13 @@ esac
 
 script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 source_root=$(CDPATH='' cd -- "$script_dir/../.." && pwd)
+
+if [ "$example" = "migration-test" ]; then
+  exec "$script_dir/run-migration-test.sh" "$action"
+fi
+
 example_root="$source_root/examples/$example"
 lockfile="$example_root/.terraform.lock.hcl"
-lockfile_directory="$example_root"
-if [ "$example" = "migration-test" ]; then
-  lockfile="$example_root/v1/.terraform.lock.hcl"
-  lockfile_directory="$example_root/v1"
-fi
 expected_lockfile=".terraform.lock.hcl"
 if [ "$iac_binary" = tofu ]; then
   expected_lockfile="$expected_lockfile.tofu"
@@ -68,7 +71,7 @@ case "$lockfile_name" in
     exit 64
     ;;
 esac
-tool_lockfile="$lockfile_directory/$lockfile_name"
+tool_lockfile="$example_root/$lockfile_name"
 lockfile_backup=""
 lockfile_existed=false
 
@@ -94,11 +97,6 @@ lambda_created_paths=""
 ami_created_ids=""
 ssm_created_names=""
 override_created_paths=""
-migration_state_backup=""
-migration_v2_lockfile_backup=""
-migration_v2_lockfile_existed=false
-migration_iam_policy_v1_snapshot=""
-migration_iam_policy_v2_snapshot=""
 lambda_zip_paths="
 $source_root/lambdas/functions/ami-housekeeper/ami-housekeeper.zip
 $source_root/lambdas/functions/control-plane/runners.zip
@@ -108,10 +106,6 @@ $source_root/lambdas/functions/termination-watcher/termination-watcher.zip
 "
 
 cleanup() {
-  if command -v restore_migration_v2_lockfile >/dev/null 2>&1; then
-    restore_migration_v2_lockfile
-  fi
-
   if command -v restore_lockfile >/dev/null 2>&1; then
     restore_lockfile
   fi
@@ -134,18 +128,6 @@ cleanup() {
 
   if [ -n "$lambda_fixture_dir" ]; then
     rm -rf "$lambda_fixture_dir"
-  fi
-
-  if [ -n "$migration_state_backup" ]; then
-    rm -f "$migration_state_backup"
-  fi
-
-  if [ -n "$migration_iam_policy_v1_snapshot" ]; then
-    rm -f "$migration_iam_policy_v1_snapshot"
-  fi
-
-  if [ -n "$migration_iam_policy_v2_snapshot" ]; then
-    rm -f "$migration_iam_policy_v2_snapshot"
   fi
 }
 trap cleanup EXIT INT TERM
@@ -343,9 +325,6 @@ $lambda_zip"
       create_ami_fixture "ministack-v2-linux-x64" x86_64 >/dev/null
       create_ami_fixture "ministack-v2-windows-x64" x86_64 >/dev/null
       ;;
-    migration-test)
-      create_ami_fixture "migration-test-linux" x86_64 >/dev/null
-      ;;
   esac
 }
 
@@ -367,216 +346,20 @@ iac_example() {
   fi
 }
 
-select_migration_v2_lockfile() {
-  migration_v2_lockfile="$example_root/v2/.terraform.lock.hcl"
-  migration_v2_tool_lockfile="$example_root/v2/$lockfile_name"
-
-  if [ "$migration_v2_tool_lockfile" = "$migration_v2_lockfile" ]; then
-    return
-  fi
-
-  migration_v2_lockfile_backup=$(mktemp "${TMPDIR:-/tmp}/terraform-aws-github-runner-migration-lock.XXXXXX")
-  if [ -f "$migration_v2_lockfile" ]; then
-    cp "$migration_v2_lockfile" "$migration_v2_lockfile_backup"
-    migration_v2_lockfile_existed=true
-  fi
-  cp "$migration_v2_tool_lockfile" "$migration_v2_lockfile"
-}
-
-restore_migration_v2_lockfile() {
-  if [ -z "$migration_v2_lockfile_backup" ]; then
-    return
-  fi
-
-  if [ "$migration_v2_lockfile_existed" = true ]; then
-    cp "$migration_v2_lockfile_backup" "$migration_v2_lockfile"
-  else
-    rm -f "$migration_v2_lockfile"
-  fi
-  rm -f "$migration_v2_lockfile_backup"
-  migration_v2_lockfile_backup=""
-}
-
-iac_migration_init() {
-  select_migration_v2_lockfile
-  "$iac_binary" -chdir="$example_root/v1" init -reconfigure -input=false
-  "$iac_binary" -chdir="$example_root/v2" init -reconfigure -input=false
-}
-
-iac_migration_example() {
-  phase="$1"
-  shift
-  migration_example_root="$example_root/$phase"
-  "$iac_binary" -chdir="$migration_example_root" "$@" -var-file="$migration_example_root/$phase.tfvars"
-}
-
-snapshot_migration_iam_policies() {
-  python3 "$example_root/compare_iam_role_policies.py" snapshot "$1"
-}
-
-compare_migration_iam_policies() {
-  python3 "$example_root/compare_iam_role_policies.py" compare "$1" "$2"
-}
-
-assert_migration_plan_is_empty() {
-  phase="$1"
-  if iac_migration_example "$phase" plan -input=false -detailed-exitcode; then
-    return 0
-  else
-    status=$?
-    if [ "$status" -eq 2 ]; then
-      echo "Migration test produced a non-empty plan for $phase." >&2
-    fi
-    return "$status"
-  fi
-}
-
-assert_migration_plan_has_no_infrastructure_changes() {
-  phase="$1"
-  migration_example_root="$example_root/$phase"
-
-  plan_file=$(mktemp "${TMPDIR:-/tmp}/migration-test-plan.XXXXXX")
-  plan_status=0
-  if iac_migration_example "$phase" plan -input=false -out="$plan_file"; then
-    plan_status=0
-  else
-    plan_status=$?
-  fi
-  if [ "$plan_status" -ne 0 ] && [ "$plan_status" -ne 2 ]; then
-    rm -f "$plan_file"
-    return "$plan_status"
-  fi
-
-  if "$iac_binary" -chdir="$migration_example_root" show -json "$plan_file" |
-    python3 -c '
-import json
-import sys
-
-unexpected = []
-ignored_resource_types = {
-    "aws_cloudwatch_log_group",
-    "aws_iam_role_policy",
-    "aws_ssm_parameter",
-}
-ignored_tag_keys = {"Name", "ghr:ssm_config_path"}
-
-def without_ignored_attributes(value, resource_type):
-    if not isinstance(value, dict):
-        return value
-
-    normalized = dict(value)
-    ignored_attributes = {"tags", "tags_all"}
-    if resource_type == "aws_lambda_function":
-        ignored_attributes.update({"filename", "last_modified"})
-
-    for attribute in ignored_attributes:
-        tags = normalized.get(attribute)
-        if attribute in {"tags", "tags_all"} and isinstance(tags, dict):
-            normalized[attribute] = {
-                key: tag_value
-                for key, tag_value in tags.items()
-                if key not in ignored_tag_keys
-            }
-        elif attribute in normalized:
-            normalized.pop(attribute)
-    return normalized
-
-for resource in json.load(sys.stdin).get("resource_changes", []):
-    if (
-        resource.get("mode") != "managed"
-        or resource.get("type") == "terraform_data"
-        or resource.get("type") in ignored_resource_types
-    ):
-        continue
-    address = resource.get("address", "")
-    if not address.startswith("module.runners."):
-        continue
-    actions = resource.get("change", {}).get("actions", [])
-    if actions == ["update"]:
-        change = resource["change"]
-        resource_type = resource.get("type")
-        if (
-            without_ignored_attributes(change.get("before"), resource_type)
-            == without_ignored_attributes(change.get("after"), resource_type)
-        ):
-            continue
-    if actions != ["no-op"]:
-        address = resource.get("address", "<unknown>")
-        action_text = ",".join(actions)
-        unexpected.append(f"{address}: {action_text}")
-
-if unexpected:
-    print("Migration changed infrastructure resources:", file=sys.stderr)
-    print("\\n".join(f"  {change}" for change in unexpected), file=sys.stderr)
-    sys.exit(1)
-'; then
-    rm -f "$plan_file"
-    return 0
-  else
-    plan_status=$?
-    rm -f "$plan_file"
-    return "$plan_status"
-  fi
-}
-
-run_migration_test() {
-  iac_migration_init
-  iac_migration_example v1 apply -auto-approve -input=false
-
-  migration_iam_policy_v1_snapshot=$(mktemp "${TMPDIR:-/tmp}/migration-test-iam-v1.XXXXXX")
-  snapshot_migration_iam_policies "$migration_iam_policy_v1_snapshot"
-
-  migration_state_backup=$(mktemp "${TMPDIR:-/tmp}/migration-test-state.XXXXXX")
-  rm -f "$migration_state_backup"
-  python3 "$source_root/scripts/migrate_multi_runner_state.py" \
-    --working-directory "$example_root/v1" \
-    --tool "$iac_binary" \
-    --backup "$migration_state_backup" \
-    --apply \
-    --yes
-
-  assert_migration_plan_has_no_infrastructure_changes v2
-  iac_migration_example v2 apply -auto-approve -input=false
-
-  migration_iam_policy_v2_snapshot=$(mktemp "${TMPDIR:-/tmp}/migration-test-iam-v2.XXXXXX")
-  snapshot_migration_iam_policies "$migration_iam_policy_v2_snapshot"
-  compare_migration_iam_policies "$migration_iam_policy_v1_snapshot" "$migration_iam_policy_v2_snapshot"
-
-  assert_migration_plan_is_empty v2
-}
-
 case "$action" in
   init)
-    if [ "$example" = "migration-test" ]; then
-      iac_migration_init
-    else
-      iac_init
-    fi
+    iac_init
     ;;
   plan)
-    if [ "$example" = "migration-test" ]; then
-      iac_migration_init
-      iac_migration_example v1 plan -input=false
-    else
-      iac_init
-      iac_example plan -input=false
-    fi
+    iac_init
+    iac_example plan -input=false
     ;;
   apply)
-    if [ "$example" = "migration-test" ]; then
-      run_migration_test
-    else
-      iac_init
-      iac_example apply -auto-approve -input=false
-    fi
+    iac_init
+    iac_example apply -auto-approve -input=false
     ;;
   destroy)
-    if [ "$example" = "migration-test" ]; then
-      iac_migration_init
-      iac_migration_example v2 destroy -auto-approve -input=false
-    else
-      iac_init
-      iac_example destroy -auto-approve -input=false
-    fi
+    iac_init
+    iac_example destroy -auto-approve -input=false
     ;;
 esac
