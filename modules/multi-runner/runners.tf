@@ -65,6 +65,7 @@ module "runners" {
   metadata_options                     = each.value.compute_provider.aws.ec2.metadata_options
   credit_specification                 = each.value.compute_provider.aws.ec2.credit_specification
   cpu_options                          = each.value.compute_provider.aws.ec2.cpu_options
+  network_interfaces                   = each.value.compute_provider.aws.ec2.network_interfaces
   placement                            = each.value.compute_provider.aws.ec2.placement
   license_specifications               = each.value.compute_provider.aws.ec2.license_specifications
   use_dedicated_host                   = each.value.compute_provider.aws.ec2.use_dedicated_host
