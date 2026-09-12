@@ -248,6 +248,9 @@ ignored_resource_address_fragments = {
     ".aws_launch_template.",
     ".aws_security_group.",
 }
+ignored_tag_only_resource_address_suffixes = {
+    ".aws_lambda_event_source_mapping.job_retry",
+}
 ignored_tag_keys = {"Name", "ghr:ssm_config_path"}
 
 def without_ignored_attributes(value, resource_type, resource_address=""):
@@ -256,8 +259,9 @@ def without_ignored_attributes(value, resource_type, resource_address=""):
 
     normalized = dict(value)
     ignored_attributes = {"tags", "tags_all"}
-    ignore_all_tags = resource_address.endswith(
-        ".aws_lambda_event_source_mapping.job_retry"
+    ignore_all_tags = any(
+        resource_address.endswith(suffix)
+        for suffix in ignored_tag_only_resource_address_suffixes
     )
     if (
         resource_type == "aws_lambda_function"
