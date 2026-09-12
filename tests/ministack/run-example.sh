@@ -26,11 +26,14 @@ case "$example" in
   base | prebuilt | default | ephemeral | multi-runner | multi-runner-v2)
     use_tfvars=true
     ;;
+  migration-test)
+    use_tfvars=false
+    ;;
   termination-watcher)
     use_tfvars=false
     ;;
   *)
-  echo "Supported examples for the runner are: base, prebuilt, default, ephemeral, multi-runner, multi-runner-v2, termination-watcher" >&2
+  echo "Supported examples for the runner are: base, prebuilt, default, ephemeral, multi-runner, multi-runner-v2, migration-test, termination-watcher" >&2
   exit 64
   ;;
 esac
@@ -38,13 +41,18 @@ esac
 case "$action" in
   init | plan | apply | destroy) ;;
   *)
-    echo "Usage: $0 {init|plan|apply|destroy} {base|prebuilt|default|ephemeral|multi-runner|multi-runner-v2|termination-watcher} [TFVARS_FILE]" >&2
+    echo "Usage: $0 {init|plan|apply|destroy} {base|prebuilt|default|ephemeral|multi-runner|multi-runner-v2|migration-test|termination-watcher} [TFVARS_FILE]" >&2
     exit 64
     ;;
 esac
 
 script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 source_root=$(CDPATH='' cd -- "$script_dir/../.." && pwd)
+
+if [ "$example" = "migration-test" ]; then
+  exec "$script_dir/run-migration-test.sh" "$action"
+fi
+
 example_root="$source_root/examples/$example"
 lockfile="$example_root/.terraform.lock.hcl"
 expected_lockfile=".terraform.lock.hcl"

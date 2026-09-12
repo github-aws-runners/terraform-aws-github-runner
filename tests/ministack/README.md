@@ -10,7 +10,8 @@ and uses the configuration checked into the example itself. No override files,
 setup module, or Terraform fixture configuration is checked in. The helper
 creates and removes a temporary AMI override for `default` and
 `ephemeral`, temporary SSM parameters for `multi-runner`, and temporary AMI
-fixtures for `multi-runner-v2`.
+fixtures for `multi-runner-v2`. The migration test uses its dedicated
+`run-migration-test.sh` lifecycle script.
 
 Start MiniStack, set the AWS endpoint and test credentials, then run:
 

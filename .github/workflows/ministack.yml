@@ -70,6 +70,7 @@ jobs:
           - ephemeral
           - multi-runner
           - multi-runner-v2
+          - migration-test
           - termination-watcher
     services:
       ministack:
