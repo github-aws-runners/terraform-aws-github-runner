@@ -258,7 +258,9 @@ module "runners" {
   runner_name_prefix                                             = var.runner_name_prefix
   parameter_store_tags                                           = var.parameter_store_tags
 
-  scale_up_reserved_concurrent_executions = var.scale_up_reserved_concurrent_executions
+  scale_up_reserved_concurrent_executions        = var.scale_up_reserved_concurrent_executions
+  ssm_parameter_store_max_concurrent_invocations = var.ssm_parameter_store_max_concurrent_invocations
+  ssm_parameter_store_max_writes_per_second      = var.ssm_parameter_store_max_writes_per_second
 
   associate_public_ipv4_address = var.associate_public_ipv4_address
 
