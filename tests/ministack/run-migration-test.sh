@@ -292,15 +292,36 @@ def without_ignored_attributes(value, resource_type, resource_address=""):
         if resource_address.endswith(address_suffix):
             environment = normalized.get("environment")
             if isinstance(environment, dict):
-                variables = environment.get("variables")
-                if isinstance(variables, dict):
-                    environment = dict(environment)
-                    environment["variables"] = {
-                        key: value
-                        for key, value in variables.items()
-                        if key not in environment_keys
-                    }
-                    normalized["environment"] = environment
+                environments = [environment]
+                environment_was_list = False
+            elif isinstance(environment, list):
+                environments = environment
+                environment_was_list = True
+            else:
+                continue
+
+            normalized_environments = []
+            for environment_block in environments:
+                if not isinstance(environment_block, dict):
+                    normalized_environments.append(environment_block)
+                    continue
+                variables = environment_block.get("variables")
+                if not isinstance(variables, dict):
+                    normalized_environments.append(environment_block)
+                    continue
+                environment_block = dict(environment_block)
+                environment_block["variables"] = {
+                    key: value
+                    for key, value in variables.items()
+                    if key not in environment_keys
+                }
+                normalized_environments.append(environment_block)
+
+            normalized["environment"] = (
+                normalized_environments
+                if environment_was_list
+                else normalized_environments[0]
+            )
 
     for attribute in ignored_attributes:
         attribute_value = normalized.get(attribute)
