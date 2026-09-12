@@ -107,6 +107,42 @@ locals {
     var.runner.os == "osx" ? base64encode(local.user_data) :
     null
   )
+
+  # All-null defaults so both branches below share one object type.
+  network_interfaces_zero = {
+    associate_carrier_ip_address      = null
+    associate_public_ip_address       = null
+    delete_on_termination             = null
+    description                       = null
+    device_index                      = null
+    interface_type                    = null
+    ipv4_address_count                = null
+    ipv4_addresses                    = null
+    ipv4_prefix_count                 = null
+    ipv4_prefixes                     = null
+    ipv6_address_count                = null
+    ipv6_addresses                    = null
+    ipv6_prefix_count                 = null
+    ipv6_prefixes                     = null
+    network_card_index                = null
+    network_interface_id              = null
+    primary_ipv6                      = null
+    private_ip_address                = null
+    security_groups                   = null
+    subnet_id                         = null
+    connection_tracking_specification = null
+    ena_srd_specification             = null
+  }
+
+  network_interfaces = length(var.config.network_interfaces) > 0 ? var.config.network_interfaces : (
+    var.config.associate_public_ipv4_address ? [merge(local.network_interfaces_zero, {
+      associate_public_ip_address = true
+      security_groups = compact(concat(
+        var.config.managed_security_group_enabled ? [aws_security_group.runner_sg[0].id] : [],
+        var.config.additional_security_group_ids,
+      ))
+    })] : []
+  )
 }
 
 data "aws_ami" "runner" {
@@ -280,14 +316,50 @@ resource "aws_launch_template" "runner" {
   update_default_version = true
 
   dynamic "network_interfaces" {
-    for_each = var.config.associate_public_ipv4_address ? [var.config.associate_public_ipv4_address] : []
-    iterator = associate_public_ipv4_address
+    for_each = local.network_interfaces
     content {
-      associate_public_ip_address = associate_public_ipv4_address.value
-      security_groups = compact(concat(
-        var.config.managed_security_group_enabled ? [aws_security_group.runner_sg[0].id] : [],
-        var.config.additional_security_group_ids,
-      ))
+      associate_carrier_ip_address = try(network_interfaces.value.associate_carrier_ip_address, null)
+      associate_public_ip_address  = try(network_interfaces.value.associate_public_ip_address, null)
+      delete_on_termination        = try(network_interfaces.value.delete_on_termination, null)
+      description                  = try(network_interfaces.value.description, null)
+      device_index                 = try(network_interfaces.value.device_index, null)
+      interface_type               = try(network_interfaces.value.interface_type, null)
+      ipv4_address_count           = try(network_interfaces.value.ipv4_address_count, null)
+      ipv4_addresses               = try(network_interfaces.value.ipv4_addresses, null)
+      ipv4_prefix_count            = try(network_interfaces.value.ipv4_prefix_count, null)
+      ipv4_prefixes                = try(network_interfaces.value.ipv4_prefixes, null)
+      ipv6_address_count           = try(network_interfaces.value.ipv6_address_count, null)
+      ipv6_addresses               = try(network_interfaces.value.ipv6_addresses, null)
+      ipv6_prefix_count            = try(network_interfaces.value.ipv6_prefix_count, null)
+      ipv6_prefixes                = try(network_interfaces.value.ipv6_prefixes, null)
+      network_card_index           = try(network_interfaces.value.network_card_index, null)
+      network_interface_id         = try(network_interfaces.value.network_interface_id, null)
+      primary_ipv6                 = try(network_interfaces.value.primary_ipv6, null)
+      private_ip_address           = try(network_interfaces.value.private_ip_address, null)
+      security_groups              = try(network_interfaces.value.security_groups, null)
+      subnet_id                    = try(network_interfaces.value.subnet_id, null)
+
+      dynamic "connection_tracking_specification" {
+        for_each = try(network_interfaces.value.connection_tracking_specification, null) != null ? [network_interfaces.value.connection_tracking_specification] : []
+        content {
+          tcp_established_timeout = try(connection_tracking_specification.value.tcp_established_timeout, null)
+          udp_stream_timeout      = try(connection_tracking_specification.value.udp_stream_timeout, null)
+          udp_timeout             = try(connection_tracking_specification.value.udp_timeout, null)
+        }
+      }
+
+      dynamic "ena_srd_specification" {
+        for_each = try(network_interfaces.value.ena_srd_specification, null) != null ? [network_interfaces.value.ena_srd_specification] : []
+        content {
+          ena_srd_enabled = try(ena_srd_specification.value.ena_srd_enabled, null)
+          dynamic "ena_srd_udp_specification" {
+            for_each = try(ena_srd_specification.value.ena_srd_udp_specification, null) != null ? [ena_srd_specification.value.ena_srd_udp_specification] : []
+            content {
+              ena_srd_udp_enabled = try(ena_srd_udp_specification.value.ena_srd_udp_enabled, null)
+            }
+          }
+        }
+      }
     }
   }
 }
