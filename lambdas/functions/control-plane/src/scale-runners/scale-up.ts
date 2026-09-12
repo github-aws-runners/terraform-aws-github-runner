@@ -5,7 +5,13 @@ import { createStorageProviders, type StorageProviders } from '@aws-github-runne
 import { Octokit } from '@octokit/rest';
 import yn from 'yn';
 
-import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
+import {
+  createGithubAppAuth,
+  createGithubInstallationAuth,
+  createOctokitClient,
+  hasAlternativeAppWithHeadroom,
+  isGitHubRateLimitError,
+} from '../github/auth';
 import { controlPlaneProviderRegistry } from '../control-plane-providers';
 import {
   getGitHubEnterpriseApiUrl,
@@ -25,6 +31,12 @@ import type {
 } from './types';
 
 const logger = createChildLogger('scale-up');
+const MAX_FAILOVER_ATTEMPTS = 5;
+
+interface GithubClientHolder {
+  client: Octokit;
+  appIndex: number;
+}
 
 function getErrorStatus(error: unknown): number | undefined {
   if (typeof error !== 'object' || error === null) {
@@ -87,6 +99,55 @@ async function createGithubInstallationClient(
       storage?.githubAppCredentials,
     );
     return await createOctokitClient(ghAuth.token, ghesApiUrl, appIndex);
+  }
+}
+
+// On a rate limit, retries against a different app instead of sleeping; mutates clientHolder so later messages in the group reuse it.
+async function checkJobQueuedWithFailover(
+  clientHolder: GithubClientHolder,
+  message: ActionRequestMessageSQS,
+  enableOrgLevel: boolean,
+  ghesApiUrl: string,
+  storage: StorageProviders,
+): Promise<boolean> {
+  const triedAppIndexes: number[] = [];
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await isJobQueued(clientHolder.client, message, clientHolder.appIndex);
+    } catch (error) {
+      if (
+        error instanceof UnsupportedEventError ||
+        attempt >= MAX_FAILOVER_ATTEMPTS ||
+        !isGitHubRateLimitError(error) ||
+        !hasAlternativeAppWithHeadroom([...triedAppIndexes, clientHolder.appIndex])
+      ) {
+        throw error;
+      }
+
+      triedAppIndexes.push(clientHolder.appIndex);
+      logger.warn('Rate limit hit checking job status, failing over to an alternate app', {
+        appIndex: clientHolder.appIndex,
+        triedAppIndexes: [...triedAppIndexes],
+      });
+
+      const failoverAuth = await createGithubAppAuth(
+        undefined,
+        ghesApiUrl,
+        undefined,
+        storage.githubAppCredentials,
+        triedAppIndexes,
+      );
+      const failoverAppClient = await createOctokitClient(failoverAuth.token, ghesApiUrl, failoverAuth.appIndex);
+      clientHolder.client = await createGithubInstallationClient(
+        failoverAppClient,
+        enableOrgLevel,
+        message,
+        ghesApiUrl,
+        failoverAuth.appIndex,
+        storage,
+      );
+      clientHolder.appIndex = failoverAuth.appIndex;
+    }
   }
 }
 
@@ -212,6 +273,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
     // Work out how much we want to scale up by.
     let scaleUp = 0;
     const queuedMessages: ActionRequestMessageSQS[] = [];
+    const clientHolder: GithubClientHolder = { client: githubInstallationClient, appIndex: appIdx };
 
     // Reset per group to avoid accumulating labels across iterations
     let groupRunnerLabels = runnerLabels;
@@ -256,7 +318,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       if (enableJobQueuedCheck) {
         let jobQueued = true;
         try {
-          jobQueued = await isJobQueued(githubInstallationClient, message, appIdx);
+          jobQueued = await checkJobQueuedWithFailover(clientHolder, message, enableOrgLevel, ghesApiUrl, storage);
         } catch (e) {
           // An unsupported event type is not a transient fault — the check can never
           // succeed for it, so lets skip
@@ -337,7 +399,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
     });
 
     const githubRunnerConfig: CreateGitHubRunnerConfig = {
-      appIndex: appIdx,
+      appIndex: clientHolder.appIndex,
       ephemeral: ephemeralEnabled,
       enableJitConfig,
       ghesBaseUrl,
@@ -354,7 +416,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       createRunnersResult = await computeProvider.createRunners({
         githubRunnerConfig,
         numberOfRunners: newRunners,
-        githubInstallationClient,
+        githubInstallationClient: clientHolder.client,
         state: runnerLabelResolution.state,
         storage,
       });

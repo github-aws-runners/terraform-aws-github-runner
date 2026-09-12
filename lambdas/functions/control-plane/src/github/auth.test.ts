@@ -10,6 +10,8 @@ import {
   createGithubAppAuth,
   createOctokitClient,
   getStoredInstallationId,
+  hasAlternativeAppWithHeadroom,
+  isGitHubRateLimitError,
   onRateLimit,
   onSecondaryRateLimit,
   reportAppRateLimit,
@@ -532,5 +534,144 @@ describe('Test rate-limit aware app selection', () => {
 
     const result = await createGithubAppAuth(undefined, '', 1);
     expect(result.appIndex).toBe(1);
+  });
+
+  it('excludes the given app index from selection, e.g. one that just got rate-limited', async () => {
+    reportAppRateLimit(0, 5000);
+    reportAppRateLimit(1, 100);
+
+    const result = await createGithubAppAuth(undefined, '', undefined, undefined, 0);
+    expect(result.appIndex).toBe(1);
+  });
+
+  it('falls back to the excluded app when it is the only one configured', async () => {
+    delete process.env.PARAMETER_GITHUB_APPS_MANIFEST_NAME;
+
+    const result = await createGithubAppAuth(undefined, '', undefined, undefined, 0);
+    expect(result.appIndex).toBe(0);
+  });
+});
+
+describe('Test app selection with 3+ apps (multi-app failover)', () => {
+  const decryptedValue = 'decryptedValue';
+  const b64 = Buffer.from(decryptedValue, 'binary').toString('base64');
+  const app2IdParam = `/actions-runner/${ENVIRONMENT}/additional_github_app_0_id`;
+  const app2KeyParam = `/actions-runner/${ENVIRONMENT}/additional_github_app_0_key_base64`;
+  const app3IdParam = `/actions-runner/${ENVIRONMENT}/additional_github_app_1_id`;
+  const app3KeyParam = `/actions-runner/${ENVIRONMENT}/additional_github_app_1_key_base64`;
+
+  beforeEach(() => {
+    const mockedAuth = vi.fn().mockResolvedValue({ token: 'token' });
+    vi.mocked(createAppAuth).mockReturnValue(Object.assign(mockedAuth, { hook: vi.fn() }));
+
+    process.env.PARAMETER_GITHUB_APPS_MANIFEST_NAME = `/actions-runner/${ENVIRONMENT}/additional_github_apps_manifest`;
+    mockedGetParameter.mockResolvedValue(
+      JSON.stringify([
+        { idParamName: app2IdParam, keyParamName: app2KeyParam },
+        { idParamName: app3IdParam, keyParamName: app3KeyParam },
+      ]),
+    );
+    mockedGetParameters.mockResolvedValue(
+      new Map([
+        [PARAMETER_GITHUB_APP_ID_NAME, GITHUB_APP_ID],
+        [PARAMETER_GITHUB_APP_KEY_BASE64_NAME, b64],
+        [app2IdParam, '2'],
+        [app2KeyParam, b64],
+        [app3IdParam, '3'],
+        [app3KeyParam, b64],
+      ]),
+    );
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+  });
+
+  it('excludes every already-tried app, not just the most recent one, when given an array', async () => {
+    reportAppRateLimit(0, 5000);
+    reportAppRateLimit(1, 4000);
+    reportAppRateLimit(2, 3000);
+
+    const result = await createGithubAppAuth(undefined, '', undefined, undefined, [0, 1]);
+    expect(result.appIndex).toBe(2);
+  });
+
+  it('hasAlternativeAppWithHeadroom finds the third app once the first two are excluded', async () => {
+    await createGithubAppAuth(undefined); // populate the credentials cache
+    reportAppRateLimit(0, 0);
+    reportAppRateLimit(1, 0);
+    reportAppRateLimit(2, 100);
+
+    expect(hasAlternativeAppWithHeadroom(0)).toBe(true); // apps 1/2 still uninspected in this call
+    expect(hasAlternativeAppWithHeadroom([0, 1])).toBe(true); // app 2 still has budget
+    expect(hasAlternativeAppWithHeadroom([0, 1, 2])).toBe(false); // nothing left to try
+  });
+});
+
+describe('Test hasAlternativeAppWithHeadroom', () => {
+  const decryptedValue = 'decryptedValue';
+  const b64 = Buffer.from(decryptedValue, 'binary').toString('base64');
+  const app2IdParam = `/actions-runner/${ENVIRONMENT}/additional_github_app_0_id`;
+  const app2KeyParam = `/actions-runner/${ENVIRONMENT}/additional_github_app_0_key_base64`;
+
+  beforeEach(async () => {
+    const mockedAuth = vi.fn().mockResolvedValue({ token: 'token' });
+    vi.mocked(createAppAuth).mockReturnValue(Object.assign(mockedAuth, { hook: vi.fn() }));
+
+    process.env.PARAMETER_GITHUB_APPS_MANIFEST_NAME = `/actions-runner/${ENVIRONMENT}/additional_github_apps_manifest`;
+    mockedGetParameter.mockResolvedValue(JSON.stringify([{ idParamName: app2IdParam, keyParamName: app2KeyParam }]));
+    mockedGetParameters.mockResolvedValue(
+      new Map([
+        [PARAMETER_GITHUB_APP_ID_NAME, GITHUB_APP_ID],
+        [PARAMETER_GITHUB_APP_KEY_BASE64_NAME, b64],
+        [app2IdParam, '2'],
+        [app2KeyParam, b64],
+      ]),
+    );
+    // Populates the credentials cache that the sync check reads.
+    await createGithubAppAuth(undefined);
+  });
+
+  it('returns false before any credentials have been loaded', () => {
+    resetAppCredentialsCache();
+    expect(hasAlternativeAppWithHeadroom(0)).toBe(false);
+  });
+
+  it('returns true when another app has remaining budget', () => {
+    reportAppRateLimit(1, 100);
+    expect(hasAlternativeAppWithHeadroom(0)).toBe(true);
+  });
+
+  it('returns false when the only other app is exhausted', () => {
+    reportAppRateLimit(1, 0);
+    expect(hasAlternativeAppWithHeadroom(0)).toBe(false);
+  });
+
+  it('returns false when the only other app is cooling down from a secondary rate limit', () => {
+    reportAppRateLimit(1, 100);
+    reportAppSecondaryRateLimit(1);
+    expect(hasAlternativeAppWithHeadroom(0)).toBe(false);
+  });
+
+  it('returns false in a single-app deployment', async () => {
+    resetAppCredentialsCache();
+    delete process.env.PARAMETER_GITHUB_APPS_MANIFEST_NAME;
+    await createGithubAppAuth(undefined);
+
+    expect(hasAlternativeAppWithHeadroom(0)).toBe(false);
+  });
+});
+
+describe('Test isGitHubRateLimitError', () => {
+  it.each([
+    [
+      'a 403 with x-ratelimit-remaining: 0',
+      { status: 403, response: { headers: { 'x-ratelimit-remaining': '0' } } },
+      true,
+    ],
+    ['a 429 with a rate limit message', { status: 429, message: 'You have exceeded a secondary rate limit' }, true],
+    ['a 403 that is a plain permission error', { status: 403, response: { headers: {} } }, false],
+    ['a 404', { status: 404 }, false],
+    ['a non-error value', 'not an error', false],
+    ['null', null, false],
+  ])('%s -> %s', (_description, error, expected) => {
+    expect(isGitHubRateLimitError(error)).toBe(expected);
   });
 });
