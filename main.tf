@@ -238,6 +238,7 @@ module "runners" {
   lambda_runtime                                                 = var.lambda_runtime
   lambda_architecture                                            = var.lambda_architecture
   lambda_event_source_mapping_batch_size                         = var.lambda_event_source_mapping_batch_size
+  enable_scale_up_event_source_mapping                           = var.enable_scale_up_event_source_mapping
   lambda_event_source_mapping_maximum_batching_window_in_seconds = var.lambda_event_source_mapping_maximum_batching_window_in_seconds
   lambda_zip                                                     = var.runners_lambda_zip
   lambda_scale_up_memory_size                                    = var.runners_scale_up_lambda_memory_size
