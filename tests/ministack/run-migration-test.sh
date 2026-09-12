@@ -252,6 +252,9 @@ ignored_resource_address_fragments = {
 ignored_tag_only_resource_address_suffixes = {
     ".aws_lambda_event_source_mapping.job_retry",
 }
+ignored_assume_role_sid_resource_address_suffixes = {
+    ".aws_iam_role.job_retry",
+}
 ignored_tag_keys = {"Name", "ghr:ssm_config_path"}
 
 def without_ignored_attributes(value, resource_type, resource_address=""):
@@ -284,7 +287,10 @@ def without_ignored_attributes(value, resource_type, resource_address=""):
         elif attribute in normalized:
             normalized.pop(attribute)
 
-    if resource_type == "aws_iam_role":
+    if resource_type == "aws_iam_role" or any(
+        resource_address.endswith(suffix)
+        for suffix in ignored_assume_role_sid_resource_address_suffixes
+    ):
         assume_role_policy = normalized.get("assume_role_policy")
         if isinstance(assume_role_policy, str):
             try:
