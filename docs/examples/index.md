@@ -11,3 +11,5 @@ Examples are located in the [examples](https://github.com/github-aws-runners/ter
 - _[Termination watcher](termination-watcher.md)_: Example usages of termination watcher.
 - _[Dedicated Mac Hosts](dedicated-mac-hosts.md)_: Example usage of setting up dedicated hosts for macOS runners.
 - _[Externally managed SSM secrets](external-managed-ssm-secrets.md)_: Example usage of externally managed SSM secrets for the GitHub App credentials.
+- _[MicroVM foundation](microvm-foundation.md)_: Example usage of the regional Lambda MicroVM image-build and Network Connector prerequisites.
+- _[Lambda MicroVM](microvm.md)_: Example usage of Linux ARM64 ephemeral runners backed by Lambda MicroVM images.
