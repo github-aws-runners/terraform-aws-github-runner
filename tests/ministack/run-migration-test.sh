@@ -255,6 +255,19 @@ ignored_tag_only_resource_address_suffixes = {
 ignored_assume_role_sid_resource_address_suffixes = {
     ".aws_iam_role.job_retry",
 }
+ignored_lambda_environment_keys_by_address_suffix = {
+    ".aws_lambda_function.job_retry": {
+        "NODE_TLS_REJECT_UNAUTHORIZED",
+        "RUNNER_NAME_PREFIX",
+        "USER_AGENT",
+    },
+    ".aws_lambda_function.pool": {
+        "SSM_PARAMETER_STORE_TAGS",
+    },
+    ".aws_lambda_function.scale_up": {
+        "SSM_PARAMETER_STORE_TAGS",
+    },
+}
 ignored_tag_keys = {"Name", "ghr:ssm_config_path"}
 
 def without_ignored_attributes(value, resource_type, resource_address=""):
@@ -272,6 +285,22 @@ def without_ignored_attributes(value, resource_type, resource_address=""):
         or ".aws_lambda_function." in resource_address
     ):
         ignored_attributes.update({"filename", "last_modified", "layers"})
+
+    for address_suffix, environment_keys in (
+        ignored_lambda_environment_keys_by_address_suffix.items()
+    ):
+        if resource_address.endswith(address_suffix):
+            environment = normalized.get("environment")
+            if isinstance(environment, dict):
+                variables = environment.get("variables")
+                if isinstance(variables, dict):
+                    environment = dict(environment)
+                    environment["variables"] = {
+                        key: value
+                        for key, value in variables.items()
+                        if key not in environment_keys
+                    }
+                    normalized["environment"] = environment
 
     for attribute in ignored_attributes:
         attribute_value = normalized.get(attribute)
