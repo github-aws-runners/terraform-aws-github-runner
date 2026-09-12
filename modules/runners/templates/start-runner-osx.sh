@@ -66,6 +66,9 @@ if [ -z "$token" ]; then
   done
 fi
 
+ami_id=$(curl -f -H "X-aws-ec2-metadata-token: $token" \
+  http://169.254.169.254/latest/meta-data/ami-id)
+
 region=$(curl -f -H "X-aws-ec2-metadata-token: $token" \
   http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r .region)
 echo "Retrieved REGION from AWS API ($region)"
@@ -141,6 +144,10 @@ tee /opt/actions-runner/.setup_info <<EOL
   {
     "group": "Operating System",
     "detail": "Distribution: $info_os $info_ver\nArchitecture: $info_arch"
+  },
+  {
+    "group": "Runner Image",
+    "detail": "AMI id: $ami_id"
   },
   {
     "group": "EC2",
