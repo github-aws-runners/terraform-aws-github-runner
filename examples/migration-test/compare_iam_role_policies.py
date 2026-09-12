@@ -14,6 +14,9 @@ from typing import Any
 from urllib.parse import unquote_plus
 
 
+MIGRATION_RUNNER_PARAMETER_PATH = "<migration-runner-parameter-path>"
+
+
 def aws(*arguments: str) -> dict[str, Any]:
     endpoint = os.environ.get("AWS_ENDPOINT_URL")
     region = os.environ.get("AWS_DEFAULT_REGION") or os.environ.get("AWS_REGION")
@@ -80,6 +83,83 @@ def permission_entries(document: dict[str, Any]) -> set[str]:
     return entries
 
 
+def is_scaling_role(role_name: str) -> bool:
+    return "-scale-up-lambda-" in role_name or "-scale-down-lambda-" in role_name
+
+
+def is_runner_parameter_resource(value: Any) -> bool:
+    if value == "*":
+        return True
+    if not isinstance(value, str):
+        return False
+    return any(
+        value.endswith(suffix)
+        for suffix in (
+            "/runners/config",
+            "/runners/config/*",
+            "/runners/config/ami_id",
+            "/runners/tokens",
+            "/runners/tokens/*",
+        )
+    )
+
+
+def normalize_known_v1_v2_fixes(role_name: str, entry: str) -> str:
+    permission = json.loads(entry)
+
+    if is_scaling_role(role_name):
+        condition = permission.get("Condition")
+        if isinstance(condition, dict):
+            normalized_condition: dict[str, Any] = {}
+            for operator, clauses in condition.items():
+                if isinstance(clauses, dict):
+                    normalized_condition[operator] = {
+                        (
+                            "ec2:ResourceTag/ghr:environment"
+                            if key == "ec2:ResourceTag/gh:environment"
+                            else key
+                        ): value
+                        for key, value in clauses.items()
+                    }
+                else:
+                    normalized_condition[operator] = clauses
+            permission["Condition"] = normalized_condition
+
+    action = permission.get("Action")
+    resource = permission.get("Resource")
+    if (
+        is_runner_parameter_resource(resource)
+        and (
+            (
+                "-scale-up-lambda-" in role_name
+                and action
+                in {
+                    "ssm:AddTagsToResource",
+                    "ssm:GetParameter",
+                    "ssm:GetParameters",
+                    "ssm:PutParameter",
+                }
+            )
+            or (
+                "-pool-lambda-" in role_name
+                and action
+                in {"ssm:AddTagsToResource", "ssm:PutParameter"}
+            )
+        )
+    ):
+        permission["Resource"] = MIGRATION_RUNNER_PARAMETER_PATH
+
+    return json.dumps(canonical(permission), sort_keys=True)
+
+
+def normalized_permissions(role_name: str, role: dict[str, Any]) -> list[dict[str, Any]]:
+    normalized = {
+        normalize_known_v1_v2_fixes(role_name, json.dumps(permission))
+        for permission in role["permissions"]
+    }
+    return [json.loads(permission) for permission in sorted(normalized)]
+
+
 def snapshot() -> dict[str, Any]:
     roles_snapshot: dict[str, Any] = {}
     roles = aws("list-roles").get("Roles", [])
@@ -122,11 +202,17 @@ def compare(first_path: Path, second_path: Path) -> int:
         differences = True
         print(f"IAM role added after migration: {key}", file=sys.stderr)
     for key in sorted(first_keys & second_keys):
-        if first[key] == second[key]:
+        first_permissions = normalized_permissions(key, first[key])
+        second_permissions = normalized_permissions(key, second[key])
+        if first_permissions == second_permissions:
             continue
         differences = True
-        before = json.dumps(first[key], indent=2, sort_keys=True).splitlines(keepends=True)
-        after = json.dumps(second[key], indent=2, sort_keys=True).splitlines(keepends=True)
+        before = json.dumps(
+            {"permissions": first_permissions}, indent=2, sort_keys=True
+        ).splitlines(keepends=True)
+        after = json.dumps(
+            {"permissions": second_permissions}, indent=2, sort_keys=True
+        ).splitlines(keepends=True)
         print(f"IAM role permissions changed after migration: {key}", file=sys.stderr)
         print(
             "".join(
