@@ -247,6 +247,7 @@ ignored_resource_types = {
 ignored_resource_address_fragments = {
     ".aws_launch_template.",
     ".aws_security_group.",
+    ".aws_sqs_queue_policy.job_retry_check_queue_policy",
 }
 ignored_tag_only_resource_address_suffixes = {
     ".aws_lambda_event_source_mapping.job_retry",
