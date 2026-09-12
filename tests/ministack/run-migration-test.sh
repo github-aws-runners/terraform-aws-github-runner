@@ -244,6 +244,10 @@ ignored_resource_types = {
     "aws_security_group",
     "aws_ssm_parameter",
 }
+ignored_resource_address_fragments = {
+    ".aws_launch_template.",
+    ".aws_security_group.",
+}
 ignored_tag_keys = {"Name", "ghr:ssm_config_path"}
 
 def without_ignored_attributes(value, resource_type, resource_address=""):
@@ -255,7 +259,10 @@ def without_ignored_attributes(value, resource_type, resource_address=""):
     ignore_all_tags = resource_address.endswith(
         ".aws_lambda_event_source_mapping.job_retry"
     )
-    if resource_type == "aws_lambda_function":
+    if (
+        resource_type == "aws_lambda_function"
+        or ".aws_lambda_function." in resource_address
+    ):
         ignored_attributes.update({"filename", "last_modified", "layers"})
 
     for attribute in ignored_attributes:
@@ -299,14 +306,15 @@ def without_ignored_attributes(value, resource_type, resource_address=""):
     return normalized
 
 for resource in json.load(sys.stdin).get("resource_changes", []):
-    if (
-        resource.get("mode") != "managed"
-        or resource.get("type") == "terraform_data"
-        or resource.get("type") in ignored_resource_types
-    ):
-        continue
     address = resource.get("address", "")
+    if resource.get("mode") != "managed" or resource.get("type") == "terraform_data":
+        continue
     if not address.startswith("module.runners."):
+        continue
+    if (
+        resource.get("type") in ignored_resource_types
+        or any(fragment in address for fragment in ignored_resource_address_fragments)
+    ):
         continue
     actions = resource.get("change", {}).get("actions", [])
     if actions == ["update"]:
