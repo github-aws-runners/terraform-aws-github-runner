@@ -40,13 +40,29 @@ env:
 
 jobs:
   terraform_lifecycle:
-    name: Apply/destroy ${{ matrix.example }} against MiniStack (Terraform ${{ matrix.terraform }})
+    name: Apply/destroy ${{ matrix.example }} against MiniStack (${{ matrix.iac.name }} ${{ matrix.iac.version }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       fail-fast: false
-      max-parallel: 4
       matrix:
+        iac:
+          - name: terraform-1.5.6
+            version: "1.5.6"
+            binary: terraform
+            lockfile: .terraform.lock.hcl
+          - name: terraform-latest
+            version: latest
+            binary: terraform
+            lockfile: .terraform.lock.hcl
+          - name: tofu-1.11
+            version: "1.11"
+            binary: tofu
+            lockfile: .terraform.lock.hcl.tofu
+          - name: tofu-latest
+            version: latest
+            binary: tofu
+            lockfile: .terraform.lock.hcl.tofu
         example:
           - base
           - prebuilt
@@ -55,9 +71,6 @@ jobs:
           - multi-runner
           - multi-runner-v2
           - termination-watcher
-        terraform:
-          - "1.4.0"
-          - latest
     services:
       ministack:
         image: ghcr.io/ministackorg/ministack:1.5.7@sha256:37361b9ef886463d5632d5a4b2d114da4b7a5c5793f52f07dbc72579f2fd9207
@@ -78,29 +91,43 @@ jobs:
           persist-credentials: false
 
       - name: Setup Terraform
+        if: matrix.iac.binary == 'terraform'
         uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
-          terraform_version: ${{ matrix.terraform }}
+          terraform_version: ${{ matrix.iac.version }}
           terraform_wrapper: false
+
+      - name: Setup OpenTofu
+        if: matrix.iac.binary == 'tofu'
+        uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version: ${{ matrix.iac.version }}
+          tofu_wrapper: false
 
       - name: Mark repository as safe
         shell: sh
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - id: init
-        name: Terraform init
+        name: ${{ matrix.iac.name }} init
         env:
           EXAMPLE: ${{ matrix.example }}
+          IAC_BINARY: ${{ matrix.iac.binary }}
+          IAC_LOCK_FILE: ${{ matrix.iac.lockfile }}
         run: tests/ministack/run-example.sh init "$EXAMPLE"
 
       - id: apply
-        name: Terraform apply
+        name: ${{ matrix.iac.name }} apply
         env:
           EXAMPLE: ${{ matrix.example }}
+          IAC_BINARY: ${{ matrix.iac.binary }}
+          IAC_LOCK_FILE: ${{ matrix.iac.lockfile }}
         run: tests/ministack/run-example.sh apply "$EXAMPLE"
 
-      - name: Terraform destroy
+      - name: ${{ matrix.iac.name }} destroy
         if: always() && steps.init.outcome == 'success'
         env:
           EXAMPLE: ${{ matrix.example }}
+          IAC_BINARY: ${{ matrix.iac.binary }}
+          IAC_LOCK_FILE: ${{ matrix.iac.lockfile }}
         run: tests/ministack/run-example.sh destroy "$EXAMPLE"
