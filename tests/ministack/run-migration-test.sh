@@ -337,7 +337,9 @@ for resource in json.load(sys.stdin).get("resource_changes", []):
         ):
             continue
     if actions != ["no-op"]:
-        unexpected.append(f"{resource.get('address', '<unknown>')}: {','.join(actions)}")
+        resource_address = resource.get("address", "<unknown>")
+        action_text = ",".join(actions)
+        unexpected.append(f"{resource_address}: {action_text}")
 
 if unexpected:
     print("Migration changed infrastructure resources:", file=sys.stderr)
