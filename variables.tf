@@ -784,7 +784,7 @@ variable "aws_dynamic_labels_policy" {
 }
 
 variable "enable_job_queued_check" {
-  description = "Only scale if the job event received by the scale up lambda is in the queued state. By default enabled for non ephemeral runners and disabled for ephemeral. Set this variable to overwrite the default behavior."
+  description = "Only scale if the job event received by the scale up lambda (and the job retry lambda) is in the queued state. By default enabled for non ephemeral runners and disabled for ephemeral. Set this variable to overwrite the default behavior."
   type        = bool
   default     = null
 }

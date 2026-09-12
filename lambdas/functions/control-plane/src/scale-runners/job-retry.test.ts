@@ -270,6 +270,72 @@ describe(`Test job retry check`, () => {
     // assert
     expect(publishMessage).not.toHaveBeenCalled();
   });
+
+  it(`should publish a message for retry without calling the GitHub API when ENABLE_JOB_QUEUED_CHECK is false, even if the job is no longer queued.`, async () => {
+    // setup
+    mockOctokit.actions.getJobForWorkflowRun.mockImplementation(() => ({
+      data: {
+        status: 'completed',
+      },
+    }));
+
+    const message: ActionRequestMessageRetry = {
+      eventType: 'workflow_job',
+      id: 0,
+      installationId: 0,
+      repositoryName: 'test',
+      repositoryOwner: 'github-aws-runners',
+      repoOwnerType: 'Organization',
+      retryCounter: 0,
+    };
+    process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+    process.env.RUNNER_NAME_PREFIX = 'test';
+    process.env.ENABLE_JOB_QUEUED_CHECK = 'false';
+    process.env.JOB_QUEUE_SCALE_UP_URL =
+      'https://sqs.eu-west-1.amazonaws.com/123456789/webhook_events_workflow_job_queue';
+
+    // act
+    await checkAndRetryJob(message);
+
+    // assert
+    expect(mockOctokit.actions.getJobForWorkflowRun).not.toHaveBeenCalled();
+    expect(publishMessage).toHaveBeenCalledWith(
+      JSON.stringify({
+        ...message,
+      }),
+      'https://sqs.eu-west-1.amazonaws.com/123456789/webhook_events_workflow_job_queue',
+    );
+  });
+
+  it(`should still check job status by default (ENABLE_JOB_QUEUED_CHECK unset) and skip retry when job is no longer queued.`, async () => {
+    // setup
+    mockOctokit.actions.getJobForWorkflowRun.mockImplementation(() => ({
+      data: {
+        status: 'completed',
+      },
+    }));
+
+    const message: ActionRequestMessageRetry = {
+      eventType: 'workflow_job',
+      id: 0,
+      installationId: 0,
+      repositoryName: 'test',
+      repositoryOwner: 'github-aws-runners',
+      repoOwnerType: 'Organization',
+      retryCounter: 0,
+    };
+    process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+    process.env.RUNNER_NAME_PREFIX = 'test';
+    process.env.JOB_QUEUE_SCALE_UP_URL =
+      'https://sqs.eu-west-1.amazonaws.com/123456789/webhook_events_workflow_job_queue';
+
+    // act
+    await checkAndRetryJob(message);
+
+    // assert
+    expect(mockOctokit.actions.getJobForWorkflowRun).toHaveBeenCalled();
+    expect(publishMessage).not.toHaveBeenCalled();
+  });
 });
 
 describe('Test job retry handler (batch processing)', () => {
