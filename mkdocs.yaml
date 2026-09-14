@@ -58,6 +58,7 @@ nav:
   - Configuration: configuration.md
   - Multi-runner v1 to v2 configuration: multi-runner-v1-to-v2-configuration.md
   - Multi-runner v1 to v2 migration: multi-runner-v1-v2-migration.md
+  - Multiple organizations: multi-org.md
   - Getting started: getting-started.md
   - Security: security.md
   - Architecture decisions:

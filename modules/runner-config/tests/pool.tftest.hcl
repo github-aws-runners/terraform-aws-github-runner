@@ -675,3 +675,40 @@ run "job_retry_uses_common_runner_configuration_identity" {
     error_message = "Job retry must apply its configured Lambda reserved concurrency."
   }
 }
+
+
+run "multi_org_mode_reaches_all_lifecycle_functions" {
+  command = plan
+  variables {
+    orchestration_provider = {
+      webhook = {
+        github = { organization_runners = true, multi_org_runners = true }
+        queue = {
+          build = {
+            arn = "arn:aws:sqs:eu-west-1:123456789012:build-queue"
+            url = "https://sqs.eu-west-1.amazonaws.com/123456789012/build-queue"
+          }
+        }
+        lambda = {
+          artifact = { s3 = { key = "runners.zip" } }
+          pool = {
+            config = [
+              { schedule_expression = "cron(0 8 * * ? *)", size = 2, org = "org-a" },
+              { schedule_expression = "cron(0 8 * * ? *)", size = 5, org = "org-b" },
+            ]
+          }
+        }
+        job_retry = { enabled = true }
+      }
+    }
+  }
+  assert {
+    condition = (
+      module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["ENABLE_MULTI_ORG_RUNNERS"] == "true" &&
+      module.orchestration_webhook[0].scale_down.lambda.environment[0].variables["ENABLE_MULTI_ORG_RUNNERS"] == "true" &&
+      module.orchestration_webhook[0].pool.lambda.environment[0].variables["ENABLE_MULTI_ORG_RUNNERS"] == "true" &&
+      module.orchestration_webhook[0].job_retry.lambda.function.environment[0].variables["ENABLE_MULTI_ORG_RUNNERS"] == "true"
+    )
+    error_message = "Multi-org mode must reach every lifecycle Lambda through runner-config."
+  }
+}

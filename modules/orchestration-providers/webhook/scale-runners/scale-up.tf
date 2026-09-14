@@ -40,6 +40,7 @@ resource "aws_lambda_function" "scale_up" {
       RUNNERS_MAXIMUM_COUNT                    = var.config.runner.maximum_count
       POWERTOOLS_SERVICE_NAME                  = "${var.config.prefix}-scale-up"
       JOB_RETRY_CONFIG                         = jsonencode(local.job_retry_config)
+      ENABLE_MULTI_ORG_RUNNERS                 = var.config.github.multi_org_runners
       }, {
       PARAMETER_GITHUB_APP_ID_NAME         = var.config.github.app_parameters.id.name
       PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.config.github.app_parameters.key_base64.name

@@ -30,6 +30,7 @@ variable "config" {
     - `runner.boot_time_in_minutes`: Webhook-provider runner boot timeout used by scale-down.
     - `runner.maximum_count`: Webhook-provider runner capacity limit for this runner configuration.
     - `github.organization_runners`: Registers organization runners when true.
+    - `github.multi_org_runners`: Opt-in multi-organization runners. Overrides repository scope, resolves installations per organization, and scopes runner-group caching and idle retention to each organization. Defaults to false.
     - `github.enterprise_server.url`: Optional GitHub Enterprise Server URL.
     - `github.enterprise_server.ssl_verify`: Enables TLS verification for GitHub Enterprise Server.
     - `github.user_agent`: Optional User-Agent sent to GitHub.
@@ -106,6 +107,7 @@ variable "config" {
     })
     github = object({
       organization_runners = bool
+      multi_org_runners    = optional(bool, false)
       enterprise_server = object({
         url        = optional(string, null)
         ssl_verify = bool

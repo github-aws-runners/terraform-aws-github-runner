@@ -10,6 +10,7 @@ variable "orchestration_provider" {
     - `webhook.runner.jit_config_enabled`: Explicitly enables or disables just-in-time configuration. The default is null, which follows `runner.ephemeral`.
     - `webhook.runner.maximum_count`: Maximum number of runners managed for this runner configuration. The default is `3`.
     - `webhook.github.organization_runners`: Registers runners at organization scope when true; otherwise registration is repository-scoped.
+    - `webhook.github.multi_org_runners`: Opt-in multi-organization runners. Overrides repository scope, resolves installations per organization, and scopes runner-group caching and idle retention to each organization. Defaults to false.
     - `webhook.queue.build.arn`: ARN of the runner configuration's build queue.
     - `webhook.queue.build.url`: URL of the runner configuration's build queue.
     - `webhook.queue.kms_key_id`: Optional KMS key ARN encrypting the build queue. The default is null and is independent from the Parameter Store KMS key.
@@ -44,6 +45,7 @@ variable "orchestration_provider" {
     - `webhook.lambda.pool.config[].schedule_expression`: Scheduler expression that activates the target size.
     - `webhook.lambda.pool.config[].schedule_expression_timezone`: Optional IANA time zone used to evaluate the schedule.
     - `webhook.lambda.pool.config[].size`: Desired number of runners for the schedule.
+    - `webhook.lambda.pool.config[].org`: Optional organization login for this schedule when multi-org mode is enabled. Omitted values use the default pool runner owner.
     - `webhook.lambda.pool.include_busy_runners`: Includes busy runners when reconciling scheduled pool capacity. The default is `false`.
     - `webhook.lambda.pool.runner_owner`: Optional GitHub organization or repository owner used for pooled runners. The default is null.
     - `webhook.lambda.pool.tags`: Tags applied within pool resource scopes after common provider tags. The default is `{}`.
@@ -66,6 +68,7 @@ variable "orchestration_provider" {
       }), {})
       github = object({
         organization_runners = bool
+        multi_org_runners    = optional(bool, false)
       })
       queue = object({
         build = object({
@@ -117,6 +120,7 @@ variable "orchestration_provider" {
           config = optional(list(object({
             schedule_expression          = string
             schedule_expression_timezone = optional(string)
+            org                          = optional(string)
             size                         = number
           })), [])
           include_busy_runners = optional(bool, false)

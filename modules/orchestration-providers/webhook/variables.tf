@@ -25,6 +25,7 @@ variable "config" {
     - `runner.jit_config_enabled`: Explicitly enables or disables just-in-time configuration. Null follows `runner.ephemeral`.
     - `runner.maximum_count`: Maximum number of runners managed for this runner configuration.
     - `github.organization_runners`: Registers runners at organization scope when true; otherwise registration is repository-scoped.
+    - `github.multi_org_runners`: Opt-in multi-organization runners. Overrides repository scope, resolves installations per organization, and scopes runner-group caching and idle retention to each organization. Defaults to false.
     - `queue.build.arn`: ARN of the runner configuration's build queue.
     - `queue.build.url`: URL of the runner configuration's build queue.
     - `queue.kms_key_id`: Optional KMS key ARN encrypting the build queue. This is independent from the Parameter Store KMS key.
@@ -59,6 +60,7 @@ variable "config" {
     - `lambda.pool.config[].schedule_expression`: Scheduler expression that activates the target size.
     - `lambda.pool.config[].schedule_expression_timezone`: Optional IANA time zone used to evaluate the schedule.
     - `lambda.pool.config[].size`: Desired number of runners for the schedule.
+    - `lambda.pool.config[].org`: Optional organization login for this schedule when multi-org mode is enabled. Omitted values use the default pool runner owner.
     - `lambda.pool.include_busy_runners`: Includes busy runners when reconciling scheduled pool capacity.
     - `lambda.pool.runner_owner`: Optional GitHub organization or repository owner used for pooled runners.
     - `lambda.pool.tags`: Tags applied within pool resource scopes after common provider tags.
@@ -80,6 +82,7 @@ variable "config" {
     })
     github = object({
       organization_runners = bool
+      multi_org_runners    = optional(bool, false)
     })
     queue = object({
       build = object({
@@ -131,6 +134,7 @@ variable "config" {
         config = list(object({
           schedule_expression          = string
           schedule_expression_timezone = optional(string)
+          org                          = optional(string)
           size                         = number
         }))
         include_busy_runners = bool
