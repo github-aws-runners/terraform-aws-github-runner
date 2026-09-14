@@ -66,6 +66,21 @@ data "aws_iam_policy_document" "task" {
     resources = [for parameter in local.group_github_parameters[each.key] : parameter.arn]
   }
 
+}
+
+resource "aws_iam_role_policy" "task" {
+  for_each = local.controller_groups
+
+  name   = "scale-set-controller"
+  role   = aws_iam_role.task[each.key].name
+  policy = data.aws_iam_policy_document.task[each.key].json
+
+  depends_on = [terraform_data.validate_group_task_policy]
+}
+
+data "aws_iam_policy_document" "task_compute" {
+  for_each = local.controller_groups
+
   dynamic "statement" {
     for_each = local.group_compute_iam_statements[each.key]
 
@@ -87,14 +102,14 @@ data "aws_iam_policy_document" "task" {
   }
 }
 
-resource "aws_iam_role_policy" "task" {
+resource "aws_iam_role_policy" "task_compute" {
   for_each = local.controller_groups
 
-  name   = "scale-set-controller"
+  name   = "scale-set-controller-compute"
   role   = aws_iam_role.task[each.key].name
-  policy = data.aws_iam_policy_document.task[each.key].json
+  policy = data.aws_iam_policy_document.task_compute[each.key].json
 
-  depends_on = [terraform_data.validate_group_task_policy]
+  depends_on = [terraform_data.validate_group_compute_policy]
 }
 
 resource "aws_iam_role" "execution" {

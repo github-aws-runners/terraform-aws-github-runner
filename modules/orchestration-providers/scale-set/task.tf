@@ -103,5 +103,6 @@ resource "aws_ecs_task_definition" "controller" {
   depends_on = [
     aws_iam_role_policy.execution,
     aws_iam_role_policy.task,
+    aws_iam_role_policy.task_compute,
   ]
 }
