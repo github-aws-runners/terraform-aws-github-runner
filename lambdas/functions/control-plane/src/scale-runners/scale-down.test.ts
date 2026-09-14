@@ -298,6 +298,55 @@ describe('Scale down runners', () => {
       expect(runners[0].owner).toBe('Org-A');
     });
 
+    it.each(['oldest_first', 'newest_first'])(
+      'shares one organization allowance with legacy repository runners using %s eviction',
+      async (evictionStrategy) => {
+        process.env.ENABLE_MULTI_ORG_RUNNERS = 'true';
+        process.env.SCALE_DOWN_CONFIG = JSON.stringify([
+          { idleCount: 1, cron: '* * * * * *', timeZone: 'UTC', evictionStrategy },
+        ]);
+        const orgRunner = createRunnerTestData('new-org', 'Org', 40, true, false, false, 'acme');
+        const repoA = createRunnerTestData('old-a', 'Repo', 60, true, false, false, 'ACME/repo-a');
+        const repoB = createRunnerTestData('old-b', 'Repo', 90, true, false, false, 'Acme/repo-b');
+        const otherOrg = createRunnerTestData('other', 'Org', 50, true, false, false, 'other');
+        // Interleave owners so retention cannot depend on traversal order.
+        const runners = [repoA, otherOrg, orgRunner, repoB];
+        mockProviderRunners(runners);
+        mockOctokit.paginate.mockImplementation(async (_route, { org, owner, repo }) =>
+          runners
+            .filter((runner) => runner.owner === (org ?? `${owner}/${repo}`))
+            .map((runner) => ({ id: runner.id, name: runner.id })),
+        );
+        await scaleDown();
+        expect(mockTerminateRunners).toHaveBeenCalledTimes(2);
+        expect(mockTerminateRunners).toHaveBeenCalledWith(repoA.id);
+        expect(mockTerminateRunners).not.toHaveBeenCalledWith(otherOrg.id);
+        const retained = evictionStrategy === 'oldest_first' ? orgRunner : repoB;
+        const removed = evictionStrategy === 'oldest_first' ? repoB : orgRunner;
+        expect(mockTerminateRunners).not.toHaveBeenCalledWith(retained.id);
+        expect(mockTerminateRunners).toHaveBeenCalledWith(removed.id);
+        expect(mockOctokit.actions.deleteSelfHostedRunnerFromRepo).toHaveBeenCalledWith({
+          owner: 'ACME',
+          repo: 'repo-a',
+          runner_id: repoA.id,
+        });
+        if (evictionStrategy === 'newest_first') {
+          expect(mockOctokit.actions.deleteSelfHostedRunnerFromOrg).toHaveBeenCalledWith({
+            org: 'acme',
+            runner_id: orgRunner.id,
+          });
+        } else {
+          expect(mockOctokit.actions.deleteSelfHostedRunnerFromRepo).toHaveBeenCalledWith({
+            owner: 'Acme',
+            repo: 'repo-b',
+            runner_id: repoB.id,
+          });
+        }
+        expect(repoA.owner).toBe('ACME/repo-a');
+        expect(repoA.type).toBe('Repo');
+      },
+    );
+
     it('checks tagged orphans against their owning organization even when runner IDs overlap', async () => {
       process.env.ENABLE_MULTI_ORG_RUNNERS = 'true';
       vi.mocked(ghAuth.getStoredInstallationId).mockResolvedValueOnce(999);
