@@ -106,7 +106,7 @@ async function expectCurrentRunners(runnerType: RunnerType, owner: string) {
       runnerType,
       runnerOwner: owner,
     }),
-  ).resolves.toBe(1);
+  ).resolves.toEqual(['i-1234']);
   expect(mockListRunners).toHaveBeenCalledWith({
     environment: 'unit-test-environment',
     runnerType,
