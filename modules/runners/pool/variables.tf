@@ -65,19 +65,21 @@ variable "config" {
       schedule_expression_timezone = string
       size                         = number
     }))
-    include_busy_runners                 = bool
-    role_permissions_boundary            = string
-    kms_key_arn                          = string
-    ami_kms_key_arn                      = string
-    ami_id_ssm_parameter_arn             = string
-    role_path                            = string
-    ssm_token_path                       = string
-    ssm_config_path                      = string
-    ami_id_ssm_parameter_name            = string
-    ami_id_ssm_parameter_read_policy_arn = string
-    arn_ssm_parameters_path_config       = string
-    lambda_tags                          = map(string)
-    user_agent                           = string
+    include_busy_runners                           = bool
+    role_permissions_boundary                      = string
+    kms_key_arn                                    = string
+    ami_kms_key_arn                                = string
+    ami_id_ssm_parameter_arn                       = string
+    role_path                                      = string
+    ssm_token_path                                 = string
+    ssm_config_path                                = string
+    ssm_parameter_store_max_concurrent_invocations = optional(number, 1)
+    ssm_parameter_store_max_writes_per_second      = optional(number, 40)
+    ami_id_ssm_parameter_name                      = string
+    ami_id_ssm_parameter_read_policy_arn           = string
+    arn_ssm_parameters_path_config                 = string
+    lambda_tags                                    = map(string)
+    user_agent                                     = string
   })
 }
 

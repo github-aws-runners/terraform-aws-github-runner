@@ -1,7 +1,7 @@
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import { createAwsSsmGitHubAppCredentialsStore } from './aws/ssm/github-app-credentials-store';
 import { createAwsSsmRunnerConfigConsumer } from './aws/ssm/runner-config-consumer';
-import { createAwsSsmRunnerConfigStore } from './aws/ssm/runner-config-store';
+import { createAwsSsmRunnerConfigStore, resolveMaxWritesPerSecond } from './aws/ssm/runner-config-store';
 import { createAwsSsmRunnerGroupCacheStore } from './aws/ssm/runner-group-cache-store';
 import type { CommonStorage, StorageProviders } from './core';
 import { loadRunnerConfigConsumerConfigFromEnvironment } from './runner-config-consumer';
@@ -29,7 +29,11 @@ export function createStorageProviders(environment: Environment = process.env): 
   });
 
   return {
-    runnerConfig: createAwsSsmRunnerConfigStore({ tokenPath, parameterStoreTags }),
+    runnerConfig: createAwsSsmRunnerConfigStore({
+      tokenPath,
+      parameterStoreTags,
+      maxWritesPerSecond: resolveMaxWritesPerSecond(environment.SSM_PARAMETER_STORE_MAX_WRITES_PER_SECOND),
+    }),
     runnerGroupCache: createAwsSsmRunnerGroupCacheStore({ configPath, parameterStoreTags }),
     consumer: createAwsSsmRunnerConfigConsumer({ SSM_TOKEN_PATH: tokenPath }, consumerConfig),
     ...createCommonStorage(environment),

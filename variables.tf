@@ -168,6 +168,18 @@ variable "scale_up_reserved_concurrent_executions" {
   default     = 1
 }
 
+variable "ssm_parameter_store_max_concurrent_invocations" {
+  description = "Expected number of concurrent scale-up/pool lambda invocations writing to Parameter Store, used to pace each invocation's writes to a share of the account-wide write-rate limit."
+  type        = number
+  default     = 1
+}
+
+variable "ssm_parameter_store_max_writes_per_second" {
+  description = "Parameter Store write-rate limit to pace against, in writes/second. Defaults to the standard-tier limit; raise this if SSM's higher-throughput tier is enabled (up to several thousand writes/second)."
+  type        = number
+  default     = 40
+}
+
 variable "webhook_lambda_zip" {
   description = "File location of the webhook lambda zip file."
   type        = string
