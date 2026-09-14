@@ -16,9 +16,9 @@ example files:
    policies, grouped by IAM role.
 4. Plan the `v2/` configuration with `v2.tfvars` using the shared
    `migration.tfstate` file and verify that only v2 validation records are
-   new. The plan is parsed so only explicitly expected migration or MiniStack
-   differences, including the MiniStack launch-template drift, are ignored.
-   Inline IAM role policies are checked separately by the IAM comparison.
+   new. The plan is parsed so only explicitly expected migration differences
+   are ignored. Inline IAM role policies are checked separately by the IAM
+   comparison.
 5. Apply v2, compare the consolidated IAM statements grouped by IAM role with
    the v1 snapshot, and run the same parsed plan check again.
 
