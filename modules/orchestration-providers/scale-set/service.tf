@@ -35,6 +35,5 @@ resource "aws_ecs_service" "controller" {
   depends_on = [
     aws_iam_role_policy.execution,
     aws_iam_role_policy.task,
-    aws_ssm_parameter.reconciler_config,
   ]
 }

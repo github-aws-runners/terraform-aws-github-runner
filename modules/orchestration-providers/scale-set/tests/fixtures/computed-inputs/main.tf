@@ -42,34 +42,31 @@ module "subject" {
       scale_set = {
         name = "computed"
       }
-    }
-  }
-
-  compute_provider_contracts = {
-    computed = {
-      type = "ec2"
-      capabilities = {
-        scale_set = {
-          configuration_json = jsonencode({
-            region                 = "eu-west-1"
-            environment            = "computed-test"
-            runnerOwner            = "example"
-            runnerType             = "Org"
-            runnerNamePrefix       = "computed-"
-            jitConfigParameterPath = "/computed-test/runners/tokens"
-            subnets                = ["subnet-12345678"]
-            launchTemplateName     = terraform_data.computed.output.launch_template_name
-            ec2instanceCriteria = {
-              instanceTypes              = ["m7i.large"]
-              targetCapacityType         = "on-demand"
-              instanceAllocationStrategy = "lowest-price"
-            }
-            scaleErrors = []
-          })
-          iam_statements = {
-            run_instances = {
-              actions   = [terraform_data.computed.output.action]
-              resources = [terraform_data.computed.output.resource]
+      compute_provider = {
+        type = "ec2"
+        capabilities = {
+          scale_set = {
+            configuration_json = jsonencode({
+              region                 = "eu-west-1"
+              environment            = "computed-test"
+              runnerOwner            = "example"
+              runnerType             = "Org"
+              runnerNamePrefix       = "computed-"
+              jitConfigParameterPath = "/computed-test/runners/tokens"
+              subnets                = ["subnet-12345678"]
+              launchTemplateName     = terraform_data.computed.output.launch_template_name
+              ec2instanceCriteria = {
+                instanceTypes              = ["m7i.large"]
+                targetCapacityType         = "on-demand"
+                instanceAllocationStrategy = "lowest-price"
+              }
+              scaleErrors = []
+            })
+            iam_statements = {
+              run_instances = {
+                actions   = [terraform_data.computed.output.action]
+                resources = [terraform_data.computed.output.resource]
+              }
             }
           }
         }

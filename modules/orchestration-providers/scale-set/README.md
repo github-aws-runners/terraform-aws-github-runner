@@ -63,23 +63,65 @@ The symbolic locals above represent outputs from the selected compute-provider T
 
 ## Configuration delivery
 
-Large groups do not embed their full manifest in an ECS task definition. The module writes one non-secret SSM `String` parameter per reconciler:
+For the current ECS deployment, each task receives one bounded `SCALE_SET_CONTROLLER_MANIFEST` environment variable. Its value is JSON with this shape:
 
 ```text
-/<prefix>/scale-set-controller/<controller-group>/<runner-config>
+{
+  "version": 1,
+  "groupName": "ec2",
+  "revision": "<sha256>",
+  "reconcilers": [
+    {
+      "schemaVersion": 1,
+      "runnerConfigName": "linux-small",
+      "runnerGroupName": "Default",
+      "scaleSetName": "linux-small",
+      "githubConfigUrl": "https://github.com",
+      "githubApp": {
+        "appIdParameterName": "/github/app-id",
+        "privateKeyParameterName": "/github/private-key",
+        "installationIdParameterName": "/github/installation-id"
+      },
+      "computeProvider": {
+        "type": "ec2",
+        "configuration": {}
+      },
+      "minRunners": 0,
+      "maxRunners": 20,
+      "bootTimeoutMinutes": 10,
+      "sessionOwner": "ec2.linux-small",
+      "workFolder": "_work",
+      "forceGhes": false,
+      "sslVerify": true
+    }
+  ]
+}
 ```
 
-Each leaf is the flat `ScaleSetReconcilerConfig` consumed by the service:
+Each leaf is the flat `ScaleSetReconcilerConfig` consumed by the service. GitHub credential values never enter the manifest; it contains only the exact Parameter Store names used by the runtime. The manifest source is mutually exclusive with the service's SSM group-path source, so the task does not receive `SCALE_SET_CONTROLLER_GROUP_CONFIG_PATH` or `SCALE_SET_CONTROLLER_GROUP_CONFIG_REVISION`.
+
+The module also keeps the per-reconciler SSM parameters available for the grouped configuration path while that delivery mode is being phased in. The task currently uses the manifest environment variable.
+
+Terraform derives `sessionOwner` locally as `<group>.<runner-config>`; if that would exceed the runtime's 256-character limit, the module truncates both readable components and appends a deterministic hash.
+
+The manifest must remain within the ECS task-definition size budget. Use the SSM group-path delivery mode for larger groups once it is enabled by the deployment configuration.
+
+The individual reconciler object has this shape:
 
 ```json
 {
   "schemaVersion": 1,
   "runnerConfigName": "linux-small",
+  "runnerGroupName": "Default",
   "githubConfigUrl": "https://github.com",
-  "expectedScaleSetName": "linux-small",
+  "scaleSetName": "linux-small",
   "minRunners": 0,
   "maxRunners": 20,
   "bootTimeoutMinutes": 10,
+  "sessionOwner": "ec2.linux-small",
+  "workFolder": "_work",
+  "forceGhes": false,
+  "sslVerify": true,
   "githubApp": {
     "appIdParameterName": "/github/app-id",
     "privateKeyParameterName": "/github/private-key",
@@ -91,10 +133,6 @@ Each leaf is the flat `ScaleSetReconcilerConfig` consumed by the service:
   }
 }
 ```
-
-The task receives only the group name, group path, and a SHA-256 revision. It loads the direct children with `GetParametersByPath`. Standard parameters are limited to 4096 encoded bytes and Advanced parameters to 8192 encoded bytes; Terraform validates every leaf against the selected tier and limits the decoded aggregate for one group to 4 MiB. The group revision changes the task definition whenever any reconciler configuration changes.
-
-Terraform derives `sessionOwner` locally as `<group>.<runner-config>`; if that would exceed the runtime's 256-character limit, the module truncates both readable components and appends a deterministic hash.
 
 GitHub credential **values** never enter Terraform configuration, task definitions, or controller-config parameters. Each leaf carries only three Parameter Store names. The task role can read the exact credential parameter ARNs for its group and decrypt only explicitly declared KMS keys.
 
@@ -114,7 +152,7 @@ container = {
 }
 ```
 
-Public registry images need no pull permission. For a private ECR override, set `container.ecr_repository.arn`; the execution role receives repository-scoped layer permissions plus the unavoidable resource-unscoped `ecr:GetAuthorizationToken` action.
+Public registry images need no pull permission. For a private ECR override, set `container.image` to the ECR image URI. The module grants the ECS task execution role wildcard ECR layer-pull permissions plus the unavoidable resource-unscoped `ecr:GetAuthorizationToken` action. The application task role is not used for image pulls. Repository-side access policy remains owned by the ECR module that owns the repository.
 
 For the official GHCR default, verify an anonymous pull after the first package publish. Package visibility may inherit repository or organization settings and must not be inferred only from a successful authenticated workflow push.
 
@@ -191,15 +229,14 @@ No modules.
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_compute_provider_contracts"></a> [compute\_provider\_contracts](#input\_compute\_provider\_contracts) | Provider-neutral, scale-set capability fragments keyed exactly like `runner_configs`.<br/><br/>`type` is the plan-known provider discriminator used by the default grouping implementation and the runtime adapter registry. `configuration_json` is provider-owned, valid JSON and must contain no secrets. `environment_variables` contains non-secret provider process settings shared by every reconciler in the same controller group; conflicting values are rejected. IAM statement map keys and optional condition shapes must be known during planning; their action, resource, and condition values may be computed. | <pre>map(object({<br/>    type = string<br/>    capabilities = object({<br/>      scale_set = object({<br/>        configuration_json    = optional(string, "{}")<br/>        environment_variables = optional(map(string), {})<br/>        iam_statements = optional(map(object({<br/>          actions   = set(string)<br/>          resources = set(string)<br/>          conditions = optional(list(object({<br/>            test     = string<br/>            variable = string<br/>            values   = set(string)<br/>          })), [])<br/>        })), {})<br/>      })<br/>    })<br/>  }))</pre> | n/a | yes |
 | <a name="input_config_store"></a> [config\_store](#input\_config\_store) | Non-secret controller configuration storage. The module writes one SSM String parameter per reconciler below `path_prefix/<controller-group>/<runner-config>`. The task receives only its group path and a SHA-256 revision, then loads the group with `GetParametersByPath`.<br/><br/>Standard parameters are limited to 4096 encoded bytes and Advanced parameters to 8192 encoded bytes. Null `path_prefix` resolves to `/<prefix>/scale-set-controller`. | <pre>object({<br/>    path_prefix = optional(string, null)<br/>    tier        = optional(string, "Standard")<br/>    tags        = optional(map(string), {})<br/>  })</pre> | `{}` | no |
-| <a name="input_container"></a> [container](#input\_container) | Scale-set controller image and runtime settings. A null image uses the internal official convenience image; production callers should use the release digest. Filesystem and Linux capability hardening are enforced by the module; health\_path is fixed at /healthz, the ECS liveness endpoint. | <pre>object({<br/>    image                             = optional(string, null)<br/>    user                              = optional(string, "10001:10001")<br/>    health_port                       = optional(number, 8080)<br/>    health_path                       = optional(string, "/healthz")<br/>    health_check_command              = optional(list(string), null)<br/>    health_check_interval             = optional(number, 30)<br/>    health_check_timeout              = optional(number, 5)<br/>    health_check_retries              = optional(number, 3)<br/>    health_check_start_period         = optional(number, 30)<br/>    health_stale_after_seconds        = optional(number, 180)<br/>    shutdown_timeout_seconds          = optional(number, 110)<br/>    session_close_timeout_seconds     = optional(number, 10)<br/>    reconnect_initial_backoff_seconds = optional(number, 1)<br/>    reconnect_max_backoff_seconds     = optional(number, 30)<br/>    stop_timeout_seconds              = optional(number, 120)<br/>    ecr_repository = optional(object({<br/>      arn = string<br/>    }), null)<br/>  })</pre> | `{}` | no |
+| <a name="input_container"></a> [container](#input\_container) | Scale-set controller image and runtime settings. A null image uses the internal official convenience image; production callers should use the release digest. Filesystem and Linux capability hardening are enforced by the module; health\_path is fixed at /healthz, the ECS liveness endpoint. | <pre>object({<br/>    image                             = optional(string, null)<br/>    user                              = optional(string, "10001:10001")<br/>    health_port                       = optional(number, 8080)<br/>    health_path                       = optional(string, "/healthz")<br/>    health_check_command              = optional(list(string), null)<br/>    health_check_interval             = optional(number, 30)<br/>    health_check_timeout              = optional(number, 5)<br/>    health_check_retries              = optional(number, 3)<br/>    health_check_start_period         = optional(number, 30)<br/>    health_stale_after_seconds        = optional(number, 180)<br/>    shutdown_timeout_seconds          = optional(number, 110)<br/>    session_close_timeout_seconds     = optional(number, 10)<br/>    reconnect_initial_backoff_seconds = optional(number, 1)<br/>    reconnect_max_backoff_seconds     = optional(number, 30)<br/>    stop_timeout_seconds              = optional(number, 120)<br/>  })</pre> | `{}` | no |
 | <a name="input_ecs"></a> [ecs](#input\_ecs) | ECS substrate configuration. A managed cluster is created by default. For an external cluster, set `cluster.mode = "external"` and pass its ARN; the mode must be plan-known while the ARN may be computed. | <pre>object({<br/>    cluster = optional(object({<br/>      mode               = optional(string, "managed")<br/>      arn                = optional(string, null)<br/>      name               = optional(string, null)<br/>      container_insights = optional(bool, true)<br/>    }), {})<br/>    task = optional(object({<br/>      cpu              = optional(number, 512)<br/>      memory           = optional(number, 1024)<br/>      cpu_architecture = optional(string, "X86_64")<br/>      ephemeral_storage = optional(object({<br/>        size_in_gib = number<br/>      }), null)<br/>    }), {})<br/>    service = optional(object({<br/>      platform_version = optional(string, "LATEST")<br/>    }), {})<br/>    iam = optional(object({<br/>      path                 = optional(string, "/")<br/>      permissions_boundary = optional(string, null)<br/>    }), {})<br/>  })</pre> | `{}` | no |
 | <a name="input_grouping"></a> [grouping](#input\_grouping) | Packing strategy for scale-set reconcilers. `compute_provider` creates one controller group per compute-provider type and is the default. `runner_config` creates one group per runner config. `custom` uses `custom.groups`; custom membership must cover every runner config exactly once.<br/><br/>The strategy, custom group keys, and memberships select Terraform `for_each` instances and must be known during planning. | <pre>object({<br/>    strategy = optional(string, "compute_provider")<br/>    custom = optional(object({<br/>      groups = map(object({<br/>        runner_configs = set(string)<br/>      }))<br/>    }), null)<br/>  })</pre> | `{}` | no |
 | <a name="input_logging"></a> [logging](#input\_logging) | CloudWatch Logs configuration. CloudWatch encrypts logs at rest with an AWS-owned key by default; set `kms_key_arn` to use a customer-managed key. | <pre>object({<br/>    retention_in_days = optional(number, 30)<br/>    kms_key_arn       = optional(string, null)<br/>    log_group_class   = optional(string, "STANDARD")<br/>    tags              = optional(map(string), {})<br/>  })</pre> | `{}` | no |
 | <a name="input_network"></a> [network](#input\_network) | Private Fargate networking. Tasks never receive public IP addresses and the managed security groups have no ingress. HTTPS egress defaults to IPv4 Internet access because GitHub endpoints cannot be represented as security-group destinations; route it through controlled NAT, firewall, or proxy infrastructure when required. | <pre>object({<br/>    vpc_id     = string<br/>    subnet_ids = set(string)<br/>    https_egress = optional(object({<br/>      ipv4_cidrs = optional(set(string), ["0.0.0.0/0"])<br/>      ipv6_cidrs = optional(set(string), [])<br/>    }), {})<br/>  })</pre> | n/a | yes |
 | <a name="input_prefix"></a> [prefix](#input\_prefix) | Stable prefix used for scale-set controller resources. | `string` | `"github-actions"` | no |
-| <a name="input_runner_configs"></a> [runner\_configs](#input\_runner\_configs) | Normalized scale-set runner configurations keyed by stable runner-config name.<br/><br/>Map keys must be known during planning. Credential values are never accepted: `github.app` contains only the exact GitHub App Parameter Store references used by the runtime. `github.enterprise_server` and `github.user_agent` carry the global GitHub settings needed to render each reconciler configuration. `runner_registration_level` selects the GitHub scale-set scope, and `runner_owner` supplies the organization or repository path for organization- and repository-level registration. Parameter and optional KMS ARNs, scale-set names, and other inner values may remain unknown until apply. | <pre>map(object({<br/>    github = object({<br/>      enterprise_server = object({<br/>        url        = optional(string, null)<br/>        ssl_verify = optional(bool, true)<br/>      })<br/>      app = object({<br/>        app_id = object({<br/>          name        = string<br/>          arn         = string<br/>          kms_key_arn = optional(string, null)<br/>        })<br/>        private_key = object({<br/>          name        = string<br/>          arn         = string<br/>          kms_key_arn = optional(string, null)<br/>        })<br/>        installation_id = object({<br/>          name        = string<br/>          arn         = string<br/>          kms_key_arn = optional(string, null)<br/>        })<br/>      })<br/>      runner_owner              = string<br/>      runner_registration_level = string<br/>      user_agent                = string<br/>    })<br/>    scale_set = object({<br/>      name = string<br/>      runner = optional(object({<br/>        min_runners          = optional(number, 0)<br/>        max_runners          = optional(number, 10)<br/>        boot_time_in_minutes = optional(number, 10)<br/>      }), {})<br/>    })<br/>  }))</pre> | n/a | yes |
+| <a name="input_runner_configs"></a> [runner\_configs](#input\_runner\_configs) | Normalized scale-set runner configurations keyed by stable runner-config name.<br/><br/>Map keys must be known during planning. Credential values are never accepted: `github.app` contains only the exact GitHub App Parameter Store references used by the runtime. `github.enterprise_server` and `github.user_agent` carry the global GitHub settings needed to render each reconciler configuration. `scale_set.runner.group_name` selects the GitHub runner group. `runner_registration_level` selects the GitHub scale-set scope, and `runner_owner` supplies the organization or repository path for organization- and repository-level registration. `compute_provider` carries the provider-neutral scale-set capability contract for this runner configuration. Parameter and optional KMS ARNs, scale-set names, and other inner values may remain unknown until apply. | <pre>map(object({<br/>    github = object({<br/>      enterprise_server = object({<br/>        url        = optional(string, null)<br/>        ssl_verify = optional(bool, true)<br/>      })<br/>      app = object({<br/>        app_id = object({<br/>          name        = string<br/>          arn         = string<br/>          kms_key_arn = optional(string, null)<br/>        })<br/>        private_key = object({<br/>          name        = string<br/>          arn         = string<br/>          kms_key_arn = optional(string, null)<br/>        })<br/>        installation_id = object({<br/>          name        = string<br/>          arn         = string<br/>          kms_key_arn = optional(string, null)<br/>        })<br/>      })<br/>      runner_owner              = string<br/>      runner_registration_level = string<br/>      user_agent                = string<br/>    })<br/>    scale_set = object({<br/>      name = string<br/>      runner = optional(object({<br/>        group_name           = optional(string, "Default")<br/>        min_runners          = optional(number, 0)<br/>        max_runners          = optional(number, 10)<br/>        boot_time_in_minutes = optional(number, 10)<br/>      }), {})<br/>    })<br/>    compute_provider = object({<br/>      type = string<br/>      capabilities = object({<br/>        scale_set = object({<br/>          configuration_json    = optional(string, "{}")<br/>          environment_variables = optional(map(string), {})<br/>          iam_statements = optional(map(object({<br/>            actions   = set(string)<br/>            resources = set(string)<br/>            conditions = optional(list(object({<br/>              test     = string<br/>              variable = string<br/>              values   = set(string)<br/>            })), [])<br/>          })), {})<br/>        })<br/>      })<br/>    })<br/>  }))</pre> | n/a | yes |
 | <a name="input_tags"></a> [tags](#input\_tags) | Tags applied to scale-set orchestration resources. | `map(string)` | `{}` | no |
 
 ## Outputs

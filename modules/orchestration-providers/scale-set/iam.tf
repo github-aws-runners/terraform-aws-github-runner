@@ -63,7 +63,7 @@ data "aws_iam_policy_document" "task" {
       "ssm:GetParameter",
       "ssm:GetParameters",
     ]
-    resources = local.group_ssm_parameter_arns[each.key]
+    resources = [for parameter in local.group_github_parameters[each.key] : parameter.arn]
   }
 
   dynamic "statement" {
@@ -126,31 +126,23 @@ data "aws_iam_policy_document" "execution" {
     resources = ["${aws_cloudwatch_log_group.controller[each.key].arn}:*"]
   }
 
-  dynamic "statement" {
-    for_each = var.container.ecr_repository == null ? [] : [var.container.ecr_repository]
-
-    content {
-      sid    = "PullPrivateEcrImage"
-      effect = "Allow"
-      actions = [
-        "ecr:BatchCheckLayerAvailability",
-        "ecr:BatchGetImage",
-        "ecr:GetDownloadUrlForLayer",
-      ]
-      resources = [statement.value.arn]
-    }
+  statement {
+    sid    = "PullPrivateEcrImage"
+    effect = "Allow"
+    actions = [
+      "ecr:BatchCheckLayerAvailability",
+      "ecr:BatchGetImage",
+      "ecr:GetDownloadUrlForLayer",
+    ]
+    resources = ["*"]
   }
 
-  dynamic "statement" {
-    for_each = var.container.ecr_repository == null ? [] : [1]
-
-    content {
-      # ECR does not support resource-level permissions for authorization tokens.
-      sid       = "AuthorizePrivateEcrPull"
-      effect    = "Allow"
-      actions   = ["ecr:GetAuthorizationToken"]
-      resources = ["*"]
-    }
+  statement {
+    # ECR does not support resource-level permissions for authorization tokens.
+    sid       = "AuthorizePrivateEcrPull"
+    effect    = "Allow"
+    actions   = ["ecr:GetAuthorizationToken"]
+    resources = ["*"]
   }
 }
 

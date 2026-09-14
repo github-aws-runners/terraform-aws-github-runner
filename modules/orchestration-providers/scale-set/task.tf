@@ -41,16 +41,12 @@ resource "aws_ecs_task_definition" "controller" {
       environment = concat(
         [
           {
-            name  = "SCALE_SET_CONTROLLER_GROUP_NAME"
-            value = each.key
+            name  = "SCALE_SET_CONTROLLER_MANIFEST"
+            value = local.group_controller_manifests[each.key]
           },
           {
-            name  = "SCALE_SET_CONTROLLER_GROUP_CONFIG_PATH"
-            value = local.group_config_paths[each.key]
-          },
-          {
-            name  = "SCALE_SET_CONTROLLER_GROUP_CONFIG_REVISION"
-            value = local.group_config_revisions[each.key]
+            name  = "AWS_XRAY_CONTEXT_MISSING"
+            value = "IGNORE_ERROR"
           },
           {
             name  = "SCALE_SET_HEALTH_PORT"
@@ -107,6 +103,5 @@ resource "aws_ecs_task_definition" "controller" {
   depends_on = [
     aws_iam_role_policy.execution,
     aws_iam_role_policy.task,
-    aws_ssm_parameter.reconciler_config,
   ]
 }
