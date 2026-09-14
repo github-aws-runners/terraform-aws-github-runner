@@ -27,6 +27,7 @@ locals {
     POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.tracing_config.capture_http_requests
     POWERTOOLS_TRACER_CAPTURE_ERROR          = var.tracing_config.capture_error
     INCLUDE_BUSY_RUNNERS                     = var.config.include_busy_runners
+    ENABLE_MULTI_ORG_RUNNERS                 = var.config.enable_multi_org_runners
   }
 
   ssm_environment_variables = {
@@ -237,9 +238,9 @@ resource "aws_scheduler_schedule" "pool" {
   target {
     arn      = aws_lambda_function.pool.arn
     role_arn = aws_iam_role.scheduler.arn
-    input = jsonencode({
+    input = jsonencode(merge({
       poolSize = each.value.size
       type     = var.runner_provider.type
-    })
+    }, var.config.enable_multi_org_runners ? { org = each.value.org } : {}))
   }
 }

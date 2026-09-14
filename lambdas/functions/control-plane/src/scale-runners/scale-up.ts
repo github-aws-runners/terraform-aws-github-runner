@@ -7,6 +7,7 @@ import { Octokit } from '@octokit/rest';
 import { withAppFailover } from '../github/app-failover';
 import yn from 'yn';
 
+import { multiOrgEnabled } from '../github/multi-org';
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
 import { controlPlaneProviderRegistry } from '../control-plane-providers';
 import {
@@ -113,7 +114,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
     n_requests: payloads.length,
   });
 
-  const enableOrgLevel = yn(process.env.ENABLE_ORGANIZATION_RUNNERS, { default: true });
+  const enableOrgLevel = multiOrgEnabled() || yn(process.env.ENABLE_ORGANIZATION_RUNNERS, { default: true });
   const maximumRunners = parseInt(process.env.RUNNERS_MAXIMUM_COUNT || '3');
   const runnerLabels = process.env.RUNNER_LABELS || '';
   const runnerGroup = process.env.RUNNER_GROUP_NAME || 'Default';

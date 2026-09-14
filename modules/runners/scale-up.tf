@@ -35,6 +35,7 @@ resource "aws_lambda_function" "scale_up" {
       ENABLE_EPHEMERAL_RUNNERS                 = var.enable_ephemeral_runners
       ENABLE_JIT_CONFIG                        = var.enable_jit_config
       ENABLE_JOB_QUEUED_CHECK                  = local.enable_job_queued_check
+      ENABLE_MULTI_ORG_RUNNERS                 = var.enable_multi_org_runners
       ENABLE_METRIC_GITHUB_APP_RATE_LIMIT      = var.metrics.enable && var.metrics.metric.enable_github_app_rate_limit
       ENABLE_ORGANIZATION_RUNNERS              = var.enable_organization_runners
       ENVIRONMENT                              = var.prefix
