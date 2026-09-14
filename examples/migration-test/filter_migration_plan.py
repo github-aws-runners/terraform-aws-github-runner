@@ -12,13 +12,11 @@ from typing import Any
 IGNORED_RESOURCE_TYPES = {
     # Inline role policies are validated by compare_iam_role_policies.py.
     "aws_iam_role_policy",
-    # MiniStack does not preserve the configured KMS key on these resources.
-    "aws_ssm_parameter",
 }
 IGNORED_RESOURCE_ADDRESS_SUFFIXES = {
-    # MiniStack does not preserve this queue policy consistently.
+    # The v1 and v2 queue policies intentionally use different statements.
     ".aws_sqs_queue_policy.job_retry_check_queue_policy",
-    # MiniStack does not preserve the launch-template version and tag state.
+    # The v2 launch template adds propagated tags and reports computed versions.
     ".aws_launch_template.runner",
 }
 IGNORED_TAG_KEYS = {"Name", "ghr:ssm_config_path"}
@@ -87,7 +85,7 @@ def without_expected_changes(
         normalized.pop("tags_all", None)
 
     if resource_type == "aws_lambda_function":
-        for attribute in ("filename", "last_modified", "layers"):
+        for attribute in ("filename", "last_modified"):
             normalized.pop(attribute, None)
         for address_suffix, environment_keys in IGNORED_LAMBDA_ENVIRONMENT_KEYS.items():
             if not resource_address.endswith(address_suffix):
@@ -112,20 +110,6 @@ def without_expected_changes(
                 normalized["environment"] = normalized_environments
             elif normalized_environments:
                 normalized["environment"] = normalized_environments[0]
-
-    if resource_type == "aws_cloudwatch_log_group":
-        # MiniStack does not return logGroupClass from DescribeLogGroups.
-        normalized.pop("log_group_class", None)
-
-    if resource_type == "aws_launch_template" and ".module.compute_aws_ec2[" in resource_address:
-        normalized.pop("metadata_options", None)
-        normalized.pop("instance_initiated_shutdown_behavior", None)
-
-    if resource_type == "aws_security_group" and resource_address.endswith(
-        ".aws_security_group.runner_sg[0]"
-    ):
-        # MiniStack duplicates/normalizes the runner egress CIDR blocks.
-        normalized.pop("egress", None)
 
     if resource_type == "aws_iam_role" and resource_address.endswith(
         ".aws_iam_role.job_retry"
@@ -158,11 +142,6 @@ def main() -> int:
         if actions == ["no-op"]:
             continue
         change = resource.get("change", {})
-        if resource_type == "aws_cloudwatch_log_group" and change.get(
-            "replace_paths"
-        ) == [["log_group_class"]]:
-            # MiniStack does not return logGroupClass from DescribeLogGroups.
-            continue
         before = without_expected_changes(change.get("before"), resource_type, address)
         after = without_expected_changes(change.get("after"), resource_type, address)
         if before == after:

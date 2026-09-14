@@ -35,7 +35,7 @@ The script also supports `init`, `plan`, and `destroy`. It creates inert Lambda
 ZIP fixtures in the paths expected by the modules when they are absent, and
 removes only the files it created. For `prebuilt`, it seeds AMI metadata through
 MiniStack's AWS-compatible EC2 API, then removes only the resources it created
-during cleanup. MiniStack v1.5.10 provides the EC2 image behavior needed by the
+during cleanup. MiniStack v1.5.11 provides the EC2 image behavior needed by the
 `default`, `ephemeral`, and `multi-runner` examples, so they are included in
 the same lifecycle matrix.
 
