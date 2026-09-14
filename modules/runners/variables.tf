@@ -220,6 +220,12 @@ variable "sqs_build_queue" {
   })
 }
 
+variable "enable_multi_org_runners" {
+  description = "Enable organization-scoped runners across multiple GitHub organizations. Resolves app installations per organization, scopes runner-group caches and idle retention by organization, and enables pool_config.org."
+  type        = bool
+  default     = false
+}
+
 variable "enable_organization_runners" {
   description = "Register runners to organization, instead of repo level"
   type        = bool
@@ -629,6 +635,7 @@ variable "pool_config" {
   type = list(object({
     schedule_expression          = string
     schedule_expression_timezone = optional(string)
+    org                          = optional(string)
     size                         = number
   }))
   default = []

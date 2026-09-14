@@ -262,6 +262,59 @@ describe('Scale down runners', () => {
     mockCreateClient.mockResolvedValue(mockOctokit as unknown as Octokit);
   });
 
+  describe('multi-org lifecycle', () => {
+    it.each([true, false])('applies idle retention per organization only when enabled=%s', async (enabled) => {
+      process.env.ENABLE_MULTI_ORG_RUNNERS = String(enabled);
+      process.env.SCALE_DOWN_CONFIG = JSON.stringify([{ idleCount: 1, cron: '* * * * * *', timeZone: 'UTC' }]);
+      const runners = ['org-a', 'org-b'].map((org) => createRunnerTestData(org, 'Org', 60, true, false, false, org));
+      mockProviderRunners(runners);
+      mockOctokit.paginate.mockImplementation(async (_route, { org }) =>
+        runners.filter((runner) => runner.owner === org).map((runner) => ({ id: runner.id, name: runner.id })),
+      );
+      await scaleDown();
+      expect(mockTerminateRunners).toHaveBeenCalledTimes(enabled ? 0 : 1);
+      expect(mockOctokit.apps.getOrgInstallation).toHaveBeenCalledWith({ org: 'org-a' });
+      expect(mockOctokit.apps.getOrgInstallation).toHaveBeenCalledWith({ org: 'org-b' });
+    });
+
+    it('checks tagged orphans against their owning organization even when runner IDs overlap', async () => {
+      process.env.ENABLE_MULTI_ORG_RUNNERS = 'true';
+      vi.mocked(ghAuth.getStoredInstallationId).mockResolvedValueOnce(999);
+      const runners = ['org-a', 'org-b'].map((org) => createRunnerTestData(org, 'Org', 60, true, true, false, org, 42));
+      mockProviderRunners(runners);
+      mockOctokit.actions.getSelfHostedRunnerForOrg.mockImplementation(async ({ org }) => {
+        if (org === 'org-a')
+          throw new RequestError('Not Found', 404, { request: { method: 'GET', url: '', headers: {} } });
+        return { data: { busy: true, status: 'online' } };
+      });
+      await scaleDown();
+      expect(ghAuth.getStoredInstallationId).not.toHaveBeenCalled();
+      expect(mockOctokit.actions.getSelfHostedRunnerForOrg).toHaveBeenCalledWith({ org: 'org-a', runner_id: 42 });
+      expect(mockOctokit.actions.getSelfHostedRunnerForOrg).toHaveBeenCalledWith({ org: 'org-b', runner_id: 42 });
+      expect(mockTerminateRunners).toHaveBeenCalledExactlyOnceWith(runners[0].id);
+      expect(mockUnmarkOrphan).toHaveBeenCalledExactlyOnceWith(runners[1].id);
+      vi.mocked(ghAuth.getStoredInstallationId).mockReset().mockResolvedValue(undefined);
+    });
+
+    it('de-registers a runner using its owning org and leaves another org busy', async () => {
+      process.env.ENABLE_MULTI_ORG_RUNNERS = 'true';
+      const runners = ['org-a', 'org-b'].map((org) => createRunnerTestData(org, 'Org', 60, true, false, false, org));
+      mockProviderRunners(runners);
+      mockOctokit.paginate.mockImplementation(async (_route, { org }) =>
+        runners.filter((runner) => runner.owner === org).map((runner) => ({ id: 'same-id', name: runner.id })),
+      );
+      mockOctokit.actions.getSelfHostedRunnerForOrg.mockImplementation(async ({ org }) => ({
+        data: { busy: org === 'org-b', status: 'online' },
+      }));
+      await scaleDown();
+      expect(mockOctokit.actions.deleteSelfHostedRunnerFromOrg).toHaveBeenCalledExactlyOnceWith({
+        org: 'org-a',
+        runner_id: 'same-id',
+      });
+      expect(mockTerminateRunners).toHaveBeenCalledExactlyOnceWith(runners[0].id);
+    });
+  });
+
   const endpoints = ['https://api.github.com', 'https://github.enterprise.something', 'https://companyname.ghe.com'];
 
   describe.each(endpoints)('for %s', (endpoint) => {
