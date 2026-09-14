@@ -54,6 +54,8 @@ Without a token cache, each runner also costs a `POST /app/installations/{id}/ac
 
 Rate limits are per App installation and cannot be raised. To scale beyond one App's budget, configure extra Apps with `additional_github_apps`. The control-plane lambdas select one App per invocation, making the effective limit N × the per-App limit. Selection prefers the App with the most rate-limit budget remaining, based on the `x-ratelimit-remaining` headers observed by the running Lambda container; Apps that hit a secondary rate limit are skipped for 60 seconds.
 
+If the selected App still gets rate-limited mid-invocation (its budget was exhausted since the last time headers were observed, or a burst raced past that check), the job-status check (`isJobQueued`, in both the scale-up and retry lambdas) fails over immediately to another configured App with headroom instead of sleeping out the `retry-after` window. Failover keeps trying further Apps (bounded) if a second one also turns out exhausted, so it isn't limited to two-App deployments. The registration-token and JIT-config API calls (the ones that create the actual runner) don't yet get this reactive failover — they still rely on the proactive selection above and, if rate-limited, sleep out the window like before.
+
 > [!IMPORTANT]
 > Every additional App must be installed on the same organizations or repositories as the primary App. The module cannot verify this. A missing installation surfaces at runtime as installation lookup 404s on the fraction of invocations that select the misconfigured App, which is hard to trace back to the installation.
 

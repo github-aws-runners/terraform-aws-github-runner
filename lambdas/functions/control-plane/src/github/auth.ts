@@ -83,12 +83,21 @@ export function reportAppSecondaryRateLimit(appIndex: number): void {
   logger.warn(`GitHub App index ${appIndex} put in secondary rate limit cooldown`);
 }
 
-// Select the app with the most primary rate limit budget remaining, skipping
-// apps cooling down after a secondary rate limit. Apps with no observed state
-// are assumed full. Iteration starts at a random offset so concurrent
-// cold-started lambdas do not all converge on the same app.
-async function selectAppIndex(credentialsStore?: GitHubAppCredentialsStore): Promise<number> {
+// One or more apps to skip during selection, e.g. apps already tried in a failover sequence.
+export type AppIndexExclusion = number | number[];
+
+function toExcludeSet(exclude?: AppIndexExclusion): Set<number> {
+  if (exclude === undefined) return new Set();
+  return new Set(Array.isArray(exclude) ? exclude : [exclude]);
+}
+
+// Picks the app with the most rate-limit budget left, skipping excluded/cooling-down apps; random offset avoids concurrent cold starts converging on the same app.
+async function selectAppIndex(
+  credentialsStore?: GitHubAppCredentialsStore,
+  excludeAppIndexes?: AppIndexExclusion,
+): Promise<number> {
   const credentials = await getAppCredentials(credentialsStore);
+  const exclude = toExcludeSet(excludeAppIndexes);
   if (credentials.length === 1) return 0;
   const now = Date.now();
   const offset = Math.floor(Math.random() * credentials.length);
@@ -96,6 +105,7 @@ async function selectAppIndex(credentialsStore?: GitHubAppCredentialsStore): Pro
   let bestRemaining = -1;
   for (let n = 0; n < credentials.length; n++) {
     const i = (offset + n) % credentials.length;
+    if (exclude.has(i)) continue;
     const state = appRateLimitStates.get(i);
     if (state && state.cooldownUntil > now) continue;
     const remaining = state?.remaining ?? Number.MAX_SAFE_INTEGER;
@@ -105,8 +115,9 @@ async function selectAppIndex(credentialsStore?: GitHubAppCredentialsStore): Pro
     }
   }
   if (best === -1) {
-    // Every app is cooling down; pick the one with the most remaining anyway.
+    // Every non-excluded app is cooling down; pick the one with the most remaining anyway.
     for (let i = 0; i < credentials.length; i++) {
+      if (exclude.has(i)) continue;
       const remaining = appRateLimitStates.get(i)?.remaining ?? Number.MAX_SAFE_INTEGER;
       if (remaining > bestRemaining) {
         bestRemaining = remaining;
@@ -114,15 +125,33 @@ async function selectAppIndex(credentialsStore?: GitHubAppCredentialsStore): Pro
       }
     }
   }
+  if (best === -1) best = exclude.size > 0 ? [...exclude][0] : 0; // only excluded apps exist; nothing else to pick
   // Info so the app selection distribution is observable at default log level.
   logger.info(`Selected GitHub App index ${best} with ${bestRemaining} rate limit remaining`);
   return best;
 }
 
+let cachedAppCredentials: GitHubAppCredential[] | null = null;
+
 async function loadAppCredentials(): Promise<GitHubAppCredential[]> {
   const credentials = await createCommonStorage().githubAppCredentials.get();
   logger.info(`Loaded ${credentials.length} GitHub App credential(s)`);
+  cachedAppCredentials = credentials;
   return credentials;
+}
+
+// Sync (for the throttle plugin's callbacks); relies on createGithubAppAuth() having already cached credentials earlier in the same auth flow.
+export function hasAlternativeAppWithHeadroom(excludeAppIndexes: AppIndexExclusion): boolean {
+  if (!cachedAppCredentials || cachedAppCredentials.length <= 1) return false;
+  const exclude = toExcludeSet(excludeAppIndexes);
+  const now = Date.now();
+  for (let i = 0; i < cachedAppCredentials.length; i++) {
+    if (exclude.has(i)) continue;
+    const state = appRateLimitStates.get(i);
+    if (state && state.cooldownUntil > now) continue;
+    if ((state?.remaining ?? Number.MAX_SAFE_INTEGER) > 0) return true;
+  }
+  return false;
 }
 
 function getAppCredentials(credentialsStore?: GitHubAppCredentialsStore): Promise<GitHubAppCredential[]> {
@@ -139,6 +168,7 @@ export async function getAppCount(credentialsStore?: GitHubAppCredentialsStore):
 
 export function resetAppCredentialsCache(): void {
   appCredentialsPromise = null;
+  cachedAppCredentials = null;
   appRateLimitStates.clear();
 }
 
@@ -188,8 +218,14 @@ export async function createOctokitClient(token: string, ghesApiUrl = '', appInd
         retryCount: number,
       ) => {
         if (appIndex !== undefined) {
-          // Primary budget exhausted for this app; steer new flows elsewhere.
-          reportAppRateLimit(appIndex, 0);
+          reportAppRateLimit(appIndex, 0); // primary budget exhausted for this app; steer new flows elsewhere
+          if (hasAlternativeAppWithHeadroom(appIndex)) {
+            logger.warn(
+              `GitHub App index ${appIndex} rate-limited with an alternate app available; ` +
+                `failing over instead of waiting ${retryAfter}s`,
+            );
+            return false;
+          }
         }
         return onRateLimit(retryAfter, options, octokit, retryCount);
       },
@@ -201,6 +237,13 @@ export async function createOctokitClient(token: string, ghesApiUrl = '', appInd
       ) => {
         if (appIndex !== undefined) {
           reportAppSecondaryRateLimit(appIndex);
+          if (hasAlternativeAppWithHeadroom(appIndex)) {
+            logger.warn(
+              `GitHub App index ${appIndex} secondary rate-limited with an alternate app available; ` +
+                `failing over instead of waiting ${retryAfter}s`,
+            );
+            return false;
+          }
         }
         return onSecondaryRateLimit(retryAfter, options, octokit, retryCount);
       },
@@ -213,10 +256,19 @@ export async function createGithubAppAuth(
   ghesApiUrl = '',
   appIndex?: number,
   credentialsStore?: GitHubAppCredentialsStore,
+  excludeAppIndexes?: AppIndexExclusion,
 ): Promise<AppAuthentication & { appIndex: number }> {
-  const idx = appIndex ?? (await selectAppIndex(credentialsStore));
+  const idx = appIndex ?? (await selectAppIndex(credentialsStore, excludeAppIndexes));
   const auth = await createAuth(installationId, ghesApiUrl, idx, credentialsStore);
   return { ...(await auth({ type: 'app' })), appIndex: idx };
+}
+
+export function isGitHubRateLimitError(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false;
+  const err = error as { status?: number; response?: { headers?: Record<string, string> }; message?: string };
+  if (err.status !== 403 && err.status !== 429) return false;
+  if (err.response?.headers?.['x-ratelimit-remaining'] === '0') return true;
+  return typeof err.message === 'string' && /rate limit/i.test(err.message);
 }
 
 export async function createGithubInstallationAuth(

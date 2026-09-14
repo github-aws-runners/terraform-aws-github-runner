@@ -85,6 +85,8 @@ vi.mock('../github/auth', async () => ({
   createOctokitClient: vi.fn(),
   getAppCount: vi.fn().mockResolvedValue(1),
   getStoredInstallationId: vi.fn().mockResolvedValue(undefined),
+  hasAlternativeAppWithHeadroom: vi.fn().mockReturnValue(false),
+  isGitHubRateLimitError: vi.fn().mockReturnValue(false),
 }));
 
 vi.mock('@aws-github-runner/aws-ssm-util', async () => {
@@ -2338,6 +2340,77 @@ describe('Multi-app round-robin', () => {
     // Stored id (77) wins — no API lookup needed
     expect(mockOctokit.apps.getOrgInstallation).not.toHaveBeenCalled();
     expect(mockedInstallationAuth).toHaveBeenCalledWith(77, expect.any(String), 1, expect.anything());
+  });
+});
+
+describe('App failover for isJobQueued', () => {
+  const mockedHasAlternativeAppWithHeadroom = vi.mocked(ghAuth.hasAlternativeAppWithHeadroom);
+  const mockedIsGitHubRateLimitError = vi.mocked(ghAuth.isGitHubRateLimitError);
+  const rateLimitError = Object.assign(new Error('rate limit exceeded'), { status: 403 });
+
+  const groupMessages = (count: number): ActionRequestMessageSQS[] =>
+    Array.from({ length: count }, (_, i) => ({ ...TEST_DATA_SINGLE, messageId: `message-${i}` }));
+
+  it('fails over to a re-selected app and treats the job as queued on retry success', async () => {
+    mockedIsGitHubRateLimitError.mockReturnValue(true);
+    mockedHasAlternativeAppWithHeadroom.mockReturnValue(true);
+    mockOctokit.actions.getJobForWorkflowRun
+      .mockRejectedValueOnce(rateLimitError)
+      .mockResolvedValueOnce({ data: { status: 'queued' } });
+
+    await scaleUpModule.scaleUp(TEST_DATA);
+
+    expect(mockOctokit.actions.getJobForWorkflowRun).toHaveBeenCalledTimes(2);
+    expect(mockedAppAuth).toHaveBeenCalledTimes(2); // invocation-level select + one failover
+    expect(mockedAppAuth).toHaveBeenNthCalledWith(2, undefined, expect.any(String), undefined, expect.anything(), [0]);
+    expect(createRunner).toHaveBeenCalledWith(expect.objectContaining({ numberOfRunners: 1 }));
+  });
+
+  it('reuses the failed-over client for the rest of the group without re-selecting again', async () => {
+    mockedIsGitHubRateLimitError.mockReturnValue(true);
+    mockedHasAlternativeAppWithHeadroom.mockReturnValue(true);
+    mockOctokit.actions.getJobForWorkflowRun
+      .mockRejectedValueOnce(rateLimitError) // first message triggers failover
+      .mockResolvedValue({ data: { status: 'queued' } }); // retry and second message both succeed
+
+    await scaleUpModule.scaleUp(groupMessages(2));
+
+    expect(mockOctokit.actions.getJobForWorkflowRun).toHaveBeenCalledTimes(3);
+    expect(mockedAppAuth).toHaveBeenCalledTimes(2); // invocation-level select + one failover, not two
+    expect(createRunner).toHaveBeenCalledWith(expect.objectContaining({ numberOfRunners: 2 }));
+  });
+
+  it('does not fail over when the error is not rate-limit shaped (falls open as before)', async () => {
+    mockedIsGitHubRateLimitError.mockReturnValue(false);
+    mockedHasAlternativeAppWithHeadroom.mockReturnValue(true);
+    mockOctokit.actions.getJobForWorkflowRun.mockRejectedValue(new Error('GitHub API 502'));
+
+    await scaleUpModule.scaleUp(TEST_DATA);
+
+    expect(mockedAppAuth).toHaveBeenCalledTimes(1); // no failover attempted
+    expect(createRunner).toHaveBeenCalledWith(expect.objectContaining({ numberOfRunners: 1 }));
+  });
+
+  it('does not fail over when no alternate app has headroom (falls open as before)', async () => {
+    mockedIsGitHubRateLimitError.mockReturnValue(true);
+    mockedHasAlternativeAppWithHeadroom.mockReturnValue(false);
+    mockOctokit.actions.getJobForWorkflowRun.mockRejectedValue(rateLimitError);
+
+    await scaleUpModule.scaleUp(TEST_DATA);
+
+    expect(mockedAppAuth).toHaveBeenCalledTimes(1); // no failover attempted
+    expect(createRunner).toHaveBeenCalledWith(expect.objectContaining({ numberOfRunners: 1 }));
+  });
+
+  it('gives up after a bounded number of failover attempts instead of looping forever', async () => {
+    mockedIsGitHubRateLimitError.mockReturnValue(true);
+    mockedHasAlternativeAppWithHeadroom.mockReturnValue(true); // pretend there's always another app
+    mockOctokit.actions.getJobForWorkflowRun.mockRejectedValue(rateLimitError);
+
+    await scaleUpModule.scaleUp(TEST_DATA);
+
+    expect(mockOctokit.actions.getJobForWorkflowRun.mock.calls.length).toBeLessThan(20);
+    expect(createRunner).toHaveBeenCalledWith(expect.objectContaining({ numberOfRunners: 1 })); // fail-open
   });
 });
 
