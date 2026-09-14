@@ -5,7 +5,7 @@ import { createStorageProviders, type StorageProviders } from '@aws-github-runne
 import { Octokit } from '@octokit/rest';
 import yn from 'yn';
 
-import { multiOrgEnabled } from '../github/multi-org';
+import { multiOrgEnabled, normalizeOrganization } from '../github/multi-org';
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
 import { controlPlaneProviderRegistry } from '../control-plane-providers';
 import {
@@ -135,7 +135,10 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
 
   const validMessages = new Map<string, MessagesWithClient>();
   const retryMessageIds = new Set<string>();
-  for (const payload of payloads) {
+  for (const originalPayload of payloads) {
+    const payload = multiOrgEnabled()
+      ? { ...originalPayload, repositoryOwner: normalizeOrganization(originalPayload.repositoryOwner) }
+      : originalPayload;
     const { eventType, messageId, repositoryName, repositoryOwner, labels } = payload;
     if (ephemeralEnabled && eventType !== 'workflow_job') {
       logger.warn(
@@ -290,7 +293,11 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
     const currentRunners =
       maximumRunners === -1
         ? 0
-        : await computeProvider.getCurrentRunners(runnerLabelResolution.state, { runnerType, runnerOwner });
+        : await computeProvider.getCurrentRunners(runnerLabelResolution.state, {
+            runnerType,
+            runnerOwner,
+            ...(multiOrgEnabled() ? { runnerOwnerIgnoreCase: true } : {}),
+          });
 
     logger.info('Current runners', {
       currentRunners,

@@ -106,13 +106,47 @@ it('keeps mixed-org batches and maximum counts separate when multi-org is enable
     installationId: i + 10,
   }));
   expect(await scaleUp(messages)).toEqual([]);
-  expect(provider.getCurrentRunners).toHaveBeenCalledWith(state, { runnerType: 'Org', runnerOwner: 'org-a' });
-  expect(provider.getCurrentRunners).toHaveBeenCalledWith(state, { runnerType: 'Org', runnerOwner: 'org-b' });
+  expect(provider.getCurrentRunners).toHaveBeenCalledWith(state, {
+    runnerType: 'Org',
+    runnerOwner: 'org-a',
+    runnerOwnerIgnoreCase: true,
+  });
+  expect(provider.getCurrentRunners).toHaveBeenCalledWith(state, {
+    runnerType: 'Org',
+    runnerOwner: 'org-b',
+    runnerOwnerIgnoreCase: true,
+  });
   expect(provider.createRunners).toHaveBeenCalledTimes(1);
   expect(provider.createRunners).toHaveBeenCalledWith(
     expect.objectContaining({
       numberOfRunners: 1,
       githubRunnerConfig: expect.objectContaining({ runnerType: 'Org', runnerOwner: 'org-b' }),
+    }),
+  );
+});
+
+it('groups case variants into one org capacity check and registration batch', async () => {
+  process.env.ENABLE_MULTI_ORG_RUNNERS = 'true';
+  process.env.RUNNERS_MAXIMUM_COUNT = '2';
+  const { provider, state } = computeProviders[0];
+  mockedResolveCapability.mockReturnValue(() => provider);
+  provider.resolveLabelsForRunners.mockResolvedValue({ state, runnerLabels: [] });
+  provider.getCurrentRunners.mockResolvedValue(1);
+  provider.createRunners.mockResolvedValue({
+    instances: ['runner-a'],
+    retryableErrorCount: 0,
+    nonRetryableErrorCount: 0,
+  });
+  await scaleUp(['Org-A', 'org-a'].map((org) => ({ ...payloads[0], repositoryOwner: org, messageId: org })));
+  expect(provider.getCurrentRunners).toHaveBeenCalledExactlyOnceWith(state, {
+    runnerType: 'Org',
+    runnerOwner: 'org-a',
+    runnerOwnerIgnoreCase: true,
+  });
+  expect(provider.createRunners).toHaveBeenCalledExactlyOnceWith(
+    expect.objectContaining({
+      numberOfRunners: 1,
+      githubRunnerConfig: expect.objectContaining({ runnerOwner: 'org-a' }),
     }),
   );
 });
