@@ -1,5 +1,5 @@
 import type { Octokit } from '@octokit/rest';
-import { beforeEach, vi } from 'vitest';
+import { beforeEach, expect, it, vi } from 'vitest';
 
 import { providerTypes } from '../test/compute-provider-contracts/provider-types';
 import { defineScaleUpContractTests } from '../test/compute-provider-contracts/scale-up';
@@ -84,4 +84,35 @@ defineScaleUpContractTests({
   githubInstallationClient: githubClient,
   resolveCapability: mockedResolveCapability,
   scaleUp,
+});
+
+it('keeps mixed-org batches and maximum counts separate when multi-org is enabled', async () => {
+  process.env.ENABLE_MULTI_ORG_RUNNERS = 'true';
+  process.env.ENABLE_ORGANIZATION_RUNNERS = 'false';
+  process.env.RUNNERS_MAXIMUM_COUNT = '2';
+  const { provider, state } = computeProviders[0];
+  mockedResolveCapability.mockReturnValue(() => provider);
+  provider.resolveLabelsForRunners.mockResolvedValue({ state, runnerLabels: [] });
+  provider.getCurrentRunners.mockImplementation(async (_state, { runnerOwner }) => (runnerOwner === 'org-a' ? 2 : 0));
+  provider.createRunners.mockResolvedValue({
+    instances: ['runner-b'],
+    retryableErrorCount: 0,
+    nonRetryableErrorCount: 0,
+  });
+  const messages = ['org-a', 'org-b'].map((org, i) => ({
+    ...payloads[0],
+    repositoryOwner: org,
+    messageId: org,
+    installationId: i + 10,
+  }));
+  expect(await scaleUp(messages)).toEqual([]);
+  expect(provider.getCurrentRunners).toHaveBeenCalledWith(state, { runnerType: 'Org', runnerOwner: 'org-a' });
+  expect(provider.getCurrentRunners).toHaveBeenCalledWith(state, { runnerType: 'Org', runnerOwner: 'org-b' });
+  expect(provider.createRunners).toHaveBeenCalledTimes(1);
+  expect(provider.createRunners).toHaveBeenCalledWith(
+    expect.objectContaining({
+      numberOfRunners: 1,
+      githubRunnerConfig: expect.objectContaining({ runnerType: 'Org', runnerOwner: 'org-b' }),
+    }),
+  );
 });

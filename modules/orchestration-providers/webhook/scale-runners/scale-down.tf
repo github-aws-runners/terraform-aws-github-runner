@@ -32,6 +32,7 @@ resource "aws_lambda_function" "scale_down" {
       POWERTOOLS_TRACER_CAPTURE_ERROR          = var.config.observability.tracing.capture_error
       COMPUTE_PROVIDER_TYPE                    = var.runner_provider.type
       RUNNER_BOOT_TIME_IN_MINUTES              = var.config.runner.boot_time_in_minutes
+      ENABLE_MULTI_ORG_RUNNERS                 = var.config.github.multi_org_runners
       }, {
       PARAMETER_GITHUB_APP_ID_NAME         = var.config.github.app_parameters.id.name
       PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.config.github.app_parameters.key_base64.name

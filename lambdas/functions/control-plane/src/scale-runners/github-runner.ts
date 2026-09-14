@@ -9,6 +9,7 @@ import {
 import { Octokit } from '@octokit/rest';
 import type { ResponseHeaders } from '@octokit/types';
 
+import { multiOrgEnabled } from '../github/multi-org';
 import { getStoredInstallationId } from '../github/auth';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
 import { ActionRequestMessage, CreateGitHubRunnerConfig, EphemeralRunnerConfig, RunnerGroup } from './types';
@@ -111,7 +112,7 @@ export async function getInstallationId(
   credentialsStore?: GitHubAppCredentialsStore,
 ): Promise<number> {
   // Use the pre-configured installation ID when available (avoids an API call).
-  if (appIndex !== undefined) {
+  if (!multiOrgEnabled() && appIndex !== undefined) {
     const storedId = await getStoredInstallationId(appIndex, credentialsStore);
     if (storedId !== undefined) return storedId;
   }
@@ -178,12 +179,15 @@ export async function getRunnerGroupId(
   let runnerGroupId: number | undefined = 1;
   if (githubRunnerConfig.runnerType === 'Org' && githubRunnerConfig.runnerGroup !== undefined) {
     const cacheStore = runnerGroupCacheStore ?? createStorageProviders().runnerGroupCache;
-    const runnerGroup = await cacheStore.get(githubRunnerConfig.runnerGroup);
+    const cacheKey = multiOrgEnabled()
+      ? `${githubRunnerConfig.runnerOwner.toLowerCase()}/${githubRunnerConfig.runnerGroup}`
+      : githubRunnerConfig.runnerGroup;
+    const runnerGroup = await cacheStore.get(cacheKey);
     if (runnerGroup === undefined) {
       // get runner group id from GitHub
       runnerGroupId = await getRunnerGroupByName(ghClient, githubRunnerConfig);
       await cacheStore.create({
-        runnerGroupName: githubRunnerConfig.runnerGroup,
+        runnerGroupName: cacheKey,
         runnerGroupId,
       });
     } else {
