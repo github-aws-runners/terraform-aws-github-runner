@@ -7,6 +7,7 @@ import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import { resolveComputeProviderType } from '@aws-github-runner/compute-providers/provider-types';
 import moment from 'moment';
 
+import { multiOrgEnabled } from '../github/multi-org';
 import {
   createGithubAppAuth,
   createGithubInstallationAuth,
@@ -58,7 +59,7 @@ async function getOrCreateOctokit(runner: RunnerInfo, remainingTime: () => numbe
     async (appIdx) => {
       requireTime(remainingTime);
       // Use the pre-configured installation ID when available (avoids an API call).
-      let installationId = await getStoredInstallationId(appIdx);
+      let installationId = multiOrgEnabled() ? undefined : await getStoredInstallationId(appIdx);
       if (installationId === undefined) {
         requireTime(remainingTime);
         const githubClientPre = await createOctokitClient(
@@ -412,6 +413,9 @@ async function evaluateAndRemoveRunners(
   const ownerTags = new Set(runners.map((runner) => runner.owner));
 
   for (const ownerTag of ownerTags) {
+    if (multiOrgEnabled()) {
+      idleCounter = getIdleRunnerCount(scaleDownConfigs);
+    }
     const ownerRunners = runners
       .filter((runner) => runner.owner === ownerTag)
       .sort(evictionStrategy === 'oldest_first' ? oldestFirstStrategy : newestFirstStrategy);

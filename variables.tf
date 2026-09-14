@@ -25,6 +25,12 @@ variable "prefix" {
   default     = "github-actions"
 }
 
+variable "enable_multi_org_runners" {
+  description = "Enable organization-scoped runners across multiple GitHub organizations. Resolves app installations per organization, scopes runner-group caches and idle retention by organization, and enables pool_config.org."
+  type        = bool
+  default     = false
+}
+
 variable "enable_organization_runners" {
   description = "Register runners to organization, instead of repo level"
   type        = bool
@@ -881,10 +887,11 @@ variable "pool_lambda_reserved_concurrent_executions" {
 }
 
 variable "pool_config" {
-  description = "The configuration for updating the pool. The `pool_size` to adjust to by the events triggered by the `schedule_expression`. For example you can configure a cron expression for weekdays to adjust the pool to 10 and another expression for the weekend to adjust the pool to 1. Use `schedule_expression_timezone` to override the schedule time zone (defaults to UTC)."
+  description = "The configuration for updating the pool. The `pool_size` to adjust to by the events triggered by the `schedule_expression`. For example you can configure a cron expression for weekdays to adjust the pool to 10 and another expression for the weekend to adjust the pool to 1. Use `schedule_expression_timezone` to override the schedule time zone (defaults to UTC). With `enable_multi_org_runners`, set `org` per schedule; omitted values use `pool_runner_owner`."
   type = list(object({
     schedule_expression          = string
     schedule_expression_timezone = optional(string)
+    org                          = optional(string)
     size                         = number
   }))
   default = []
