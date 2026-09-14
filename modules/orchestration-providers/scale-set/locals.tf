@@ -1,71 +1,33 @@
 locals {
-  configured_runner_names = toset(keys(var.runner_configs))
-  contract_runner_names   = toset(keys(var.compute_provider_contracts))
-  routable_runner_names   = sort(tolist(setintersection(local.configured_runner_names, local.contract_runner_names)))
-
-  github_server_urls = {
-    for runner_name, runner_config in var.runner_configs : runner_name => trimsuffix(
-      coalesce(runner_config.github.enterprise_server.url, "https://github.com"),
-      "/",
-    )
-  }
   github_config_urls = {
-    for runner_name, runner_config in var.runner_configs : runner_name => (
-      runner_config.github.runner_registration_level == "enterprise" || runner_config.github.runner_owner == null
-      ? local.github_server_urls[runner_name]
-      : format("%s/%s", local.github_server_urls[runner_name], runner_config.github.runner_owner)
+    for runner_name, runner_config in var.runner_configs : runner_name => format(
+      "%s%s",
+      trimsuffix(coalesce(runner_config.github.enterprise_server.url, "https://github.com"), "/"),
+      runner_config.github.runner_owner == null ? "" : "/${runner_config.github.runner_owner}",
     )
   }
-  normalized_github_config_urls = {
-    for runner_name, runner_config in var.runner_configs : runner_name => replace(
-      trimsuffix(lower(local.github_config_urls[runner_name]), "/"),
-      ":443",
-      "",
-    )
-  }
-  github_config_url_ports = {
-    for runner_name in keys(var.runner_configs) : runner_name => try(
-      tonumber(regex("^https://[A-Za-z0-9.-]+:([0-9]+)", local.github_config_urls[runner_name])[0]),
-      443,
-    )
-  }
-  scale_set_ownership_keys = [
-    for runner_name, runner_config in var.runner_configs :
-    "${local.normalized_github_config_urls[runner_name]}#${runner_config.scale_set.name}"
-  ]
-
   declared_custom_groups = var.grouping.strategy == "custom" && var.grouping.custom != null ? {
     for group_name, group in var.grouping.custom.groups : group_name => sort(tolist(group.runner_configs))
   } : {}
 
-  custom_members = flatten(values(local.declared_custom_groups))
-
-  compute_provider_types = distinct([
-    for runner_name in local.routable_runner_names : var.compute_provider_contracts[runner_name].type
-  ])
-
-  compute_provider_groups = {
-    for provider_type in local.compute_provider_types : provider_type => [
-      for runner_name in local.routable_runner_names : runner_name
-      if var.compute_provider_contracts[runner_name].type == provider_type
-    ]
-  }
-
-  runner_config_groups = {
-    for runner_name in local.routable_runner_names : runner_name => [runner_name]
-  }
-
-  custom_groups = {
-    for group_name, runner_names in local.declared_custom_groups : group_name => [
-      for runner_name in runner_names : runner_name
-      if contains(local.routable_runner_names, runner_name)
-    ]
-  }
-
   controller_groups = (
-    var.grouping.strategy == "compute_provider" ? local.compute_provider_groups :
-    var.grouping.strategy == "runner_config" ? local.runner_config_groups :
-    var.grouping.strategy == "custom" ? local.custom_groups :
+    var.grouping.strategy == "compute_provider" ? {
+      for provider_type in distinct([
+        for runner_name in keys(var.runner_configs) : var.runner_configs[runner_name].compute_provider.type
+        ]) : provider_type => [
+        for runner_name in keys(var.runner_configs) : runner_name
+        if var.runner_configs[runner_name].compute_provider.type == provider_type
+      ]
+    } :
+    var.grouping.strategy == "runner_config" ? {
+      for runner_name in keys(var.runner_configs) : runner_name => [runner_name]
+    } :
+    var.grouping.strategy == "custom" ? {
+      for group_name, runner_names in local.declared_custom_groups : group_name => [
+        for runner_name in runner_names : runner_name
+        if contains(keys(var.runner_configs), runner_name)
+      ]
+    } :
     {}
   )
 
@@ -94,15 +56,17 @@ locals {
         group_name  = group_name
         runner_name = runner_name
         value = merge({
-          schemaVersion        = 1
-          runnerConfigName     = runner_name
-          githubConfigUrl      = local.github_config_urls[runner_name]
-          expectedScaleSetName = var.runner_configs[runner_name].scale_set.name
-          minRunners           = var.runner_configs[runner_name].scale_set.runner.min_runners
-          maxRunners           = var.runner_configs[runner_name].scale_set.runner.max_runners
-          bootTimeoutMinutes   = var.runner_configs[runner_name].scale_set.runner.boot_time_in_minutes
-          sslVerify            = var.runner_configs[runner_name].github.enterprise_server.ssl_verify
-          forceGhes            = var.runner_configs[runner_name].github.enterprise_server.url != null
+          schemaVersion      = 1
+          runnerConfigName   = runner_name
+          runnerGroupName    = var.runner_configs[runner_name].scale_set.runner.group_name
+          githubConfigUrl    = local.github_config_urls[runner_name]
+          scaleSetName       = var.runner_configs[runner_name].scale_set.name
+          minRunners         = var.runner_configs[runner_name].scale_set.runner.min_runners
+          maxRunners         = var.runner_configs[runner_name].scale_set.runner.max_runners
+          bootTimeoutMinutes = var.runner_configs[runner_name].scale_set.runner.boot_time_in_minutes
+          workFolder         = "_work"
+          sslVerify          = var.runner_configs[runner_name].github.enterprise_server.ssl_verify
+          forceGhes          = var.runner_configs[runner_name].github.enterprise_server.url != null
           sessionOwner = (
             length("${group_name}.${runner_name}") <= 256
             ? "${group_name}.${runner_name}"
@@ -114,8 +78,8 @@ locals {
             installationIdParameterName = var.runner_configs[runner_name].github.app.installation_id.name
           }
           computeProvider = {
-            type          = var.compute_provider_contracts[runner_name].type
-            configuration = jsondecode(var.compute_provider_contracts[runner_name].capabilities.scale_set.configuration_json)
+            type          = var.runner_configs[runner_name].compute_provider.type
+            configuration = jsondecode(var.runner_configs[runner_name].compute_provider.capabilities.scale_set.configuration_json)
           }
           userAgent = var.runner_configs[runner_name].github.user_agent
         })
@@ -133,36 +97,43 @@ locals {
     }))
   }
 
-  group_ssm_parameter_arns = {
-    for group_name, runner_names in local.controller_groups : group_name => flatten([
-      for runner_name in runner_names : [
-        var.runner_configs[runner_name].github.app.app_id.arn,
-        var.runner_configs[runner_name].github.app.private_key.arn,
-        var.runner_configs[runner_name].github.app.installation_id.arn,
+  group_controller_manifests = {
+    for group_name, runner_names in local.controller_groups : group_name => jsonencode({
+      version   = 1
+      groupName = group_name
+      revision  = local.group_config_revisions[group_name]
+      reconcilers = [
+        for runner_name in runner_names : local.reconciler_configs["${group_name}/${runner_name}"].value
       ]
-    ])
+    })
   }
-
-  group_ssm_kms_key_arns = {
+  group_github_parameters = {
     for group_name, runner_names in local.controller_groups : group_name => flatten([
       for runner_name in runner_names : [
-        for parameter in [
-          var.runner_configs[runner_name].github.app.app_id,
-          var.runner_configs[runner_name].github.app.private_key,
-          var.runner_configs[runner_name].github.app.installation_id,
-        ] : parameter.kms_key_arn
+        {
+          arn         = var.runner_configs[runner_name].github.app.app_id.arn
+          kms_key_arn = var.runner_configs[runner_name].github.app.app_id.kms_key_arn
+        },
+        {
+          arn         = var.runner_configs[runner_name].github.app.private_key.arn
+          kms_key_arn = var.runner_configs[runner_name].github.app.private_key.kms_key_arn
+        },
+        {
+          arn         = var.runner_configs[runner_name].github.app.installation_id.arn
+          kms_key_arn = var.runner_configs[runner_name].github.app.installation_id.kms_key_arn
+        },
       ]
     ])
   }
 
   group_github_kms_policy_json = {
-    for group_name, kms_key_arns in local.group_ssm_kms_key_arns : group_name => jsonencode({
+    for group_name, parameters in local.group_github_parameters : group_name => jsonencode({
       Version = "2012-10-17"
-      Statement = length(compact(kms_key_arns)) == 0 ? [] : [{
+      Statement = length(compact([for parameter in parameters : parameter.kms_key_arn])) == 0 ? [] : [{
         Sid      = "DecryptGitHubAppParameters"
         Effect   = "Allow"
         Action   = ["kms:Decrypt"]
-        Resource = distinct(compact(kms_key_arns))
+        Resource = distinct(compact([for parameter in parameters : parameter.kms_key_arn]))
       }]
     })
   }
@@ -170,7 +141,7 @@ locals {
   group_compute_iam_statements = {
     for group_name, runner_names in local.controller_groups : group_name => merge([
       for runner_name in runner_names : {
-        for statement_name, statement in var.compute_provider_contracts[runner_name].capabilities.scale_set.iam_statements :
+        for statement_name, statement in var.runner_configs[runner_name].compute_provider.capabilities.scale_set.iam_statements :
         "${runner_name}/${statement_name}" => statement
       }
     ]...)
@@ -179,7 +150,7 @@ locals {
   group_compute_environment_entries = {
     for group_name, runner_names in local.controller_groups : group_name => flatten([
       for runner_name in runner_names : [
-        for name, value in var.compute_provider_contracts[runner_name].capabilities.scale_set.environment_variables : {
+        for name, value in var.runner_configs[runner_name].compute_provider.capabilities.scale_set.environment_variables : {
           runner_name = runner_name
           name        = name
           value       = value
@@ -194,41 +165,15 @@ locals {
     ]...)
   }
 
-  reserved_environment_variable_names = toset([
-    "PATH",
-    "HOME",
-    "HOSTNAME",
-    "PWD",
-    "SHLVL",
-  ])
-
   config_store_max_bytes = var.config_store.tier == "Advanced" ? 8192 : 4096
 
   reconciler_config_json = {
     for config_key, config in local.reconciler_configs : config_key => jsonencode(config.value)
   }
-  reconciler_config_base64 = {
-    for config_key, config_json in local.reconciler_config_json : config_key => base64encode(config_json)
-  }
   reconciler_config_bytes = {
-    for config_key, encoded in local.reconciler_config_base64 : config_key => (
-      floor(length(encoded) * 3 / 4) -
-      (endswith(encoded, "==") ? 2 : endswith(encoded, "=") ? 1 : 0)
-    )
-  }
-  group_reconciler_config_bytes = {
-    for group_name, runner_names in local.controller_groups : group_name => sum([
-      for runner_name in runner_names : local.reconciler_config_bytes["${group_name}/${runner_name}"]
-    ])
-  }
-
-  group_task_policy_base64 = {
-    for group_name, policy in data.aws_iam_policy_document.task : group_name => base64encode(policy.json)
-  }
-  group_task_policy_bytes = {
-    for group_name, encoded in local.group_task_policy_base64 : group_name => (
-      floor(length(encoded) * 3 / 4) -
-      (endswith(encoded, "==") ? 2 : endswith(encoded, "=") ? 1 : 0)
+    for config_key, config_json in local.reconciler_config_json : config_key => (
+      floor(length(base64encode(config_json)) * 3 / 4) -
+      (endswith(base64encode(config_json), "==") ? 2 : endswith(base64encode(config_json), "=") ? 1 : 0)
     )
   }
 

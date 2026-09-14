@@ -67,8 +67,41 @@ variables {
       scale_set = {
         name = "linux-small"
         runner = {
+          group_name  = "stable-group"
           min_runners = 1
           max_runners = 10
+        }
+      }
+      compute_provider = {
+        type = "ec2"
+        capabilities = {
+          scale_set = {
+            configuration_json = jsonencode({
+              region                 = "eu-west-1"
+              environment            = "scale-set-test"
+              runnerOwner            = "example"
+              runnerType             = "Org"
+              runnerNamePrefix       = "small-"
+              jitConfigParameterPath = "/scale-set-test/runners/tokens"
+              subnets                = ["subnet-11111111"]
+              launchTemplateName     = "lt-small"
+              ec2instanceCriteria = {
+                instanceTypes              = ["m7i.large"]
+                targetCapacityType         = "on-demand"
+                instanceAllocationStrategy = "lowest-price"
+              }
+              scaleErrors = []
+            })
+            environment_variables = {
+              EC2_CONTROLLER_MODE = "grouped"
+            }
+            iam_statements = {
+              run_instances = {
+                actions   = ["ec2:RunInstances"]
+                resources = ["arn:aws:ec2:eu-west-1:123456789012:launch-template/lt-small"]
+              }
+            }
+          }
         }
       }
     }
@@ -102,6 +135,38 @@ variables {
           max_runners = 20
         }
       }
+      compute_provider = {
+        type = "ec2"
+        capabilities = {
+          scale_set = {
+            configuration_json = jsonencode({
+              region                 = "eu-west-1"
+              environment            = "scale-set-test"
+              runnerOwner            = "example"
+              runnerType             = "Org"
+              runnerNamePrefix       = "large-"
+              jitConfigParameterPath = "/scale-set-test/runners/tokens"
+              subnets                = ["subnet-22222222"]
+              launchTemplateName     = "lt-large"
+              ec2instanceCriteria = {
+                instanceTypes              = ["m7i.xlarge"]
+                targetCapacityType         = "on-demand"
+                instanceAllocationStrategy = "lowest-price"
+              }
+              scaleErrors = []
+            })
+            environment_variables = {
+              EC2_CONTROLLER_MODE = "grouped"
+            }
+            iam_statements = {
+              run_instances = {
+                actions   = ["ec2:RunInstances"]
+                resources = ["arn:aws:ec2:eu-west-1:123456789012:launch-template/lt-large"]
+              }
+            }
+          }
+        }
+      }
     }
     microvm = {
       github = {
@@ -131,84 +196,17 @@ variables {
           max_runners = 5
         }
       }
-    }
-  }
-
-  compute_provider_contracts = {
-    linux-small = {
-      type = "ec2"
-      capabilities = {
-        scale_set = {
-          configuration_json = jsonencode({
-            region                 = "eu-west-1"
-            environment            = "scale-set-test"
-            runnerOwner            = "example"
-            runnerType             = "Org"
-            runnerNamePrefix       = "small-"
-            jitConfigParameterPath = "/scale-set-test/runners/tokens"
-            subnets                = ["subnet-11111111"]
-            launchTemplateName     = "lt-small"
-            ec2instanceCriteria = {
-              instanceTypes              = ["m7i.large"]
-              targetCapacityType         = "on-demand"
-              instanceAllocationStrategy = "lowest-price"
-            }
-            scaleErrors = []
-          })
-          environment_variables = {
-            EC2_CONTROLLER_MODE = "grouped"
-          }
-          iam_statements = {
-            run_instances = {
-              actions   = ["ec2:RunInstances"]
-              resources = ["arn:aws:ec2:eu-west-1:123456789012:launch-template/lt-small"]
-            }
-          }
-        }
-      }
-    }
-    linux-large = {
-      type = "ec2"
-      capabilities = {
-        scale_set = {
-          configuration_json = jsonencode({
-            region                 = "eu-west-1"
-            environment            = "scale-set-test"
-            runnerOwner            = "example"
-            runnerType             = "Org"
-            runnerNamePrefix       = "large-"
-            jitConfigParameterPath = "/scale-set-test/runners/tokens"
-            subnets                = ["subnet-22222222"]
-            launchTemplateName     = "lt-large"
-            ec2instanceCriteria = {
-              instanceTypes              = ["m7i.xlarge"]
-              targetCapacityType         = "on-demand"
-              instanceAllocationStrategy = "lowest-price"
-            }
-            scaleErrors = []
-          })
-          environment_variables = {
-            EC2_CONTROLLER_MODE = "grouped"
-          }
-          iam_statements = {
-            run_instances = {
-              actions   = ["ec2:RunInstances"]
-              resources = ["arn:aws:ec2:eu-west-1:123456789012:launch-template/lt-large"]
-            }
-          }
-        }
-      }
-    }
-    microvm = {
-      # Future provider used only to prove grouping remains provider-neutral.
-      type = "microvm"
-      capabilities = {
-        scale_set = {
-          configuration_json = jsonencode({ image_arn = "arn:aws:lambda:eu-west-1:123456789012:runtime-management-config:microvm" })
-          iam_statements = {
-            run_microvm = {
-              actions   = ["lambda:InvokeFunction"]
-              resources = ["arn:aws:lambda:eu-west-1:123456789012:function:microvm"]
+      compute_provider = {
+        # Future provider used only to prove grouping remains provider-neutral.
+        type = "microvm"
+        capabilities = {
+          scale_set = {
+            configuration_json = jsonencode({ image_arn = "arn:aws:lambda:eu-west-1:123456789012:runtime-management-config:microvm" })
+            iam_statements = {
+              run_microvm = {
+                actions   = ["lambda:InvokeFunction"]
+                resources = ["arn:aws:lambda:eu-west-1:123456789012:function:microvm"]
+              }
             }
           }
         }
@@ -280,10 +278,59 @@ run "groups_by_compute_provider_and_hardens_each_task" {
         jsondecode(task.container_definitions)[0].user == "10001:10001" &&
         jsondecode(task.container_definitions)[0].linuxParameters.capabilities.drop == ["ALL"] &&
         jsondecode(task.container_definitions)[0].healthCheck.command[3] == "fetch('http://127.0.0.1:8080/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" &&
-        !contains([for entry in jsondecode(task.container_definitions)[0].environment : entry.name], "SCALE_SET_CONTROLLER_MANIFEST")
+        contains([for entry in jsondecode(task.container_definitions)[0].environment : entry.name], "SCALE_SET_CONTROLLER_MANIFEST") &&
+        one([for entry in jsondecode(task.container_definitions)[0].environment : entry.value if entry.name == "AWS_XRAY_CONTEXT_MISSING"]) == "IGNORE_ERROR" &&
+        !contains([for entry in jsondecode(task.container_definitions)[0].environment : entry.name], "SCALE_SET_CONTROLLER_GROUP_CONFIG_PATH") &&
+        !contains([for entry in jsondecode(task.container_definitions)[0].environment : entry.name], "SCALE_SET_CONTROLLER_GROUP_CONFIG_REVISION")
       )
     ])
-    error_message = "Each task definition must contain one hardened controller container using group-path configuration and /healthz liveness."
+    error_message = "Each task definition must contain one hardened controller container using manifest configuration and /healthz liveness."
+  }
+
+  assert {
+    condition = (
+      contains(flatten([
+        for task in values(aws_ecs_task_definition.controller) : [
+          for entry in jsondecode(task.container_definitions)[0].environment : [
+            for reconciler in jsondecode(entry.value).reconcilers : reconciler.runnerGroupName
+          ]
+          if entry.name == "SCALE_SET_CONTROLLER_MANIFEST"
+        ]
+      ]), "stable-group") &&
+      alltrue([
+        for task in values(aws_ecs_task_definition.controller) : alltrue([
+          for entry in jsondecode(task.container_definitions)[0].environment : entry.name != "SCALE_SET_CONTROLLER_MANIFEST" || (
+            jsondecode(entry.value).version == 1 &&
+            jsondecode(entry.value).groupName == one([
+              for group_name in keys(local.controller_groups) : group_name
+              if local.group_controller_manifests[group_name] == entry.value
+            ]) &&
+            length(jsondecode(entry.value).reconcilers) > 0 &&
+            alltrue([
+              for reconciler in jsondecode(entry.value).reconcilers : (
+                reconciler.schemaVersion == 1 &&
+                reconciler.runnerConfigName != null &&
+                reconciler.runnerGroupName != null &&
+                reconciler.scaleSetName != null &&
+                reconciler.githubConfigUrl != null &&
+                reconciler.githubApp.appIdParameterName != null &&
+                reconciler.githubApp.privateKeyParameterName != null &&
+                reconciler.computeProvider.type != null &&
+                reconciler.computeProvider.configuration != null &&
+                reconciler.minRunners != null &&
+                reconciler.maxRunners != null &&
+                reconciler.bootTimeoutMinutes != null &&
+                reconciler.sessionOwner != null &&
+                reconciler.workFolder != null &&
+                reconciler.forceGhes != null &&
+                reconciler.sslVerify != null
+              )
+            ])
+          )
+        ])
+      ])
+    )
+    error_message = "Each ECS task must receive a versioned ScaleSetControllerManifest with complete reconciler configuration."
   }
 
   assert {
@@ -310,7 +357,7 @@ run "groups_by_compute_provider_and_hardens_each_task" {
       jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).schemaVersion == 1 &&
       jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).runnerConfigName == "linux-small" &&
       jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).githubConfigUrl == "https://github.com" &&
-      jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).expectedScaleSetName == "linux-small" &&
+      jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).scaleSetName == "linux-small" &&
       jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).bootTimeoutMinutes == 10 &&
       jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).sslVerify == false &&
       jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).forceGhes == false &&
@@ -354,6 +401,37 @@ run "supports_one_group_per_runner_config" {
       output.resolved_container_image == "ghcr.io/example/scale-set-controller@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     )
     error_message = "runner_config grouping must create one independently deployable controller task per runner config and honor an image override."
+  }
+}
+
+run "grants_execution_role_ecr_pull_permissions" {
+  command = plan
+
+  variables {
+    container = {
+      image = "999999999999.dkr.ecr.eu-west-1.amazonaws.com/scale-set-controller@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  }
+
+  assert {
+    condition = (
+      contains(flatten([
+        for statement in data.aws_iam_policy_document.execution["ec2"].statement : statement.resources
+      ]), "*") &&
+      contains(flatten([
+        for statement in data.aws_iam_policy_document.execution["ec2"].statement : statement.actions
+      ]), "ecr:GetAuthorizationToken") &&
+      contains(flatten([
+        for statement in data.aws_iam_policy_document.execution["ec2"].statement : statement.actions
+      ]), "ecr:BatchCheckLayerAvailability") &&
+      contains(flatten([
+        for statement in data.aws_iam_policy_document.execution["ec2"].statement : statement.actions
+      ]), "ecr:BatchGetImage") &&
+      contains(flatten([
+        for statement in data.aws_iam_policy_document.execution["ec2"].statement : statement.actions
+      ]), "ecr:GetDownloadUrlForLayer")
+    )
+    error_message = "The ECS execution role must have wildcard ECR pull permissions, including the authorization-token permission."
   }
 }
 
@@ -435,23 +513,6 @@ run "rejects_incomplete_custom_membership" {
   expect_failures = [terraform_data.validate_grouping]
 }
 
-run "rejects_contract_key_mismatch" {
-  command = plan
-
-  plan_options {
-    target = [terraform_data.validate_contract]
-  }
-
-  variables {
-    compute_provider_contracts = {
-      linux-small = var.compute_provider_contracts.linux-small
-      linux-large = var.compute_provider_contracts.linux-large
-    }
-  }
-
-  expect_failures = [terraform_data.validate_contract]
-}
-
 run "rejects_readiness_path_as_ecs_liveness" {
   command = plan
 
@@ -476,13 +537,15 @@ run "rejects_oversized_standard_parameter" {
   }
 
   variables {
-    compute_provider_contracts = merge(var.compute_provider_contracts, {
-      linux-small = merge(var.compute_provider_contracts.linux-small, {
-        capabilities = {
-          scale_set = merge(var.compute_provider_contracts.linux-small.capabilities.scale_set, {
-            configuration_json = jsonencode({ payload = join("", [for index in range(1000) : "xxxxxx"]) })
-          })
-        }
+    runner_configs = merge(var.runner_configs, {
+      linux-small = merge(var.runner_configs.linux-small, {
+        compute_provider = merge(var.runner_configs.linux-small.compute_provider, {
+          capabilities = {
+            scale_set = merge(var.runner_configs.linux-small.compute_provider.capabilities.scale_set, {
+              configuration_json = jsonencode({ payload = join("", [for index in range(1000) : "xxxxxx"]) })
+            })
+          }
+        })
       })
     })
   }
@@ -501,13 +564,15 @@ run "accepts_advanced_parameter_within_eight_kib" {
     config_store = {
       tier = "Advanced"
     }
-    compute_provider_contracts = merge(var.compute_provider_contracts, {
-      linux-small = merge(var.compute_provider_contracts.linux-small, {
-        capabilities = {
-          scale_set = merge(var.compute_provider_contracts.linux-small.capabilities.scale_set, {
-            configuration_json = jsonencode({ payload = join("", [for index in range(800) : "xxxxxx"]) })
-          })
-        }
+    runner_configs = merge(var.runner_configs, {
+      linux-small = merge(var.runner_configs.linux-small, {
+        compute_provider = merge(var.runner_configs.linux-small.compute_provider, {
+          capabilities = {
+            scale_set = merge(var.runner_configs.linux-small.compute_provider.capabilities.scale_set, {
+              configuration_json = jsonencode({ payload = join("", [for index in range(800) : "xxxxxx"]) })
+            })
+          }
+        })
       })
     })
   }
@@ -648,9 +713,11 @@ run "rejects_invalid_compute_provider_type_identifier" {
   }
 
   variables {
-    compute_provider_contracts = merge(var.compute_provider_contracts, {
-      microvm = merge(var.compute_provider_contracts.microvm, {
-        type = "AWS.MicroVM"
+    runner_configs = merge(var.runner_configs, {
+      microvm = merge(var.runner_configs.microvm, {
+        compute_provider = merge(var.runner_configs.microvm.compute_provider, {
+          type = "AWS.MicroVM"
+        })
       })
     })
   }
@@ -727,7 +794,19 @@ run "allows_same_scale_set_name_in_another_github_scope" {
   }
 
   assert {
-    condition     = length(local.scale_set_ownership_keys) == length(distinct(local.scale_set_ownership_keys))
+    condition = length([
+      for runner_name, runner_config in var.runner_configs : format(
+        "%s#%s",
+        replace(trimsuffix(lower(local.github_config_urls[runner_name]), "/"), ":443", ""),
+        runner_config.scale_set.name,
+      )
+      ]) == length(distinct([
+        for runner_name, runner_config in var.runner_configs : format(
+          "%s#%s",
+          replace(trimsuffix(lower(local.github_config_urls[runner_name]), "/"), ":443", ""),
+          runner_config.scale_set.name,
+        )
+    ]))
     error_message = "Scale-set names are scoped to their normalized enterprise-server URL."
   }
 }
@@ -764,14 +843,12 @@ run "bounds_default_session_owner_for_maximum_names" {
         scale_set = {
           name = "maximum-name"
         }
-      }
-    }
-    compute_provider_contracts = {
-      (join("", [for index in range(128) : "a"])) = {
-        type = "ec2"
-        capabilities = {
-          scale_set = {
-            configuration_json = "{}"
+        compute_provider = {
+          type = "ec2"
+          capabilities = {
+            scale_set = {
+              configuration_json = "{}"
+            }
           }
         }
       }
@@ -814,15 +891,17 @@ run "rejects_conflicting_group_environment_variables" {
   }
 
   variables {
-    compute_provider_contracts = merge(var.compute_provider_contracts, {
-      linux-large = merge(var.compute_provider_contracts.linux-large, {
-        capabilities = {
-          scale_set = merge(var.compute_provider_contracts.linux-large.capabilities.scale_set, {
-            environment_variables = {
-              EC2_CONTROLLER_MODE = "isolated"
-            }
-          })
-        }
+    runner_configs = merge(var.runner_configs, {
+      linux-large = merge(var.runner_configs.linux-large, {
+        compute_provider = merge(var.runner_configs.linux-large.compute_provider, {
+          capabilities = {
+            scale_set = merge(var.runner_configs.linux-large.compute_provider.capabilities.scale_set, {
+              environment_variables = {
+                EC2_CONTROLLER_MODE = "isolated"
+              }
+            })
+          }
+        })
       })
     })
   }
@@ -838,18 +917,20 @@ run "rejects_controller_group_environment_above_task_definition_budget" {
   }
 
   variables {
-    compute_provider_contracts = merge(var.compute_provider_contracts, {
-      linux-small = merge(var.compute_provider_contracts.linux-small, {
-        capabilities = {
-          scale_set = merge(var.compute_provider_contracts.linux-small.capabilities.scale_set, {
-            environment_variables = merge(
-              var.compute_provider_contracts.linux-small.capabilities.scale_set.environment_variables,
-              {
-                for index in range(16) : format("EC2_QUOTA_%02d", index) => join("", [for part in range(1024) : "xxxx"])
-              },
-            )
-          })
-        }
+    runner_configs = merge(var.runner_configs, {
+      linux-small = merge(var.runner_configs.linux-small, {
+        compute_provider = merge(var.runner_configs.linux-small.compute_provider, {
+          capabilities = {
+            scale_set = merge(var.runner_configs.linux-small.compute_provider.capabilities.scale_set, {
+              environment_variables = merge(
+                var.runner_configs.linux-small.compute_provider.capabilities.scale_set.environment_variables,
+                {
+                  for index in range(16) : format("EC2_QUOTA_%02d", index) => join("", [for part in range(1024) : "xxxx"])
+                },
+              )
+            })
+          }
+        })
       })
     })
   }
@@ -865,15 +946,17 @@ run "rejects_reserved_provider_environment_variables" {
   }
 
   variables {
-    compute_provider_contracts = merge(var.compute_provider_contracts, {
-      linux-small = merge(var.compute_provider_contracts.linux-small, {
-        capabilities = {
-          scale_set = merge(var.compute_provider_contracts.linux-small.capabilities.scale_set, {
-            environment_variables = {
-              SCALE_SET_OVERRIDE = "unsafe"
-            }
-          })
-        }
+    runner_configs = merge(var.runner_configs, {
+      linux-small = merge(var.runner_configs.linux-small, {
+        compute_provider = merge(var.runner_configs.linux-small.compute_provider, {
+          capabilities = {
+            scale_set = merge(var.runner_configs.linux-small.compute_provider.capabilities.scale_set, {
+              environment_variables = {
+                SCALE_SET_OVERRIDE = "unsafe"
+              }
+            })
+          }
+        })
       })
     })
   }
@@ -934,9 +1017,6 @@ run "rejects_controller_group_above_runtime_reconciler_limit" {
     runner_configs = {
       for index in range(1001) : format("runner-%04d", index) => var.runner_configs.linux-small
     }
-    compute_provider_contracts = {
-      for index in range(1001) : format("runner-%04d", index) => var.compute_provider_contracts.linux-small
-    }
     grouping = {
       strategy = "custom"
       custom = {
@@ -964,17 +1044,16 @@ run "rejects_controller_group_above_runtime_config_bytes" {
       tier = "Advanced"
     }
     runner_configs = {
-      for index in range(900) : format("runner-%04d", index) => var.runner_configs.linux-small
-    }
-    compute_provider_contracts = {
-      for index in range(900) : format("runner-%04d", index) => merge(var.compute_provider_contracts.linux-small, {
-        capabilities = {
-          scale_set = merge(var.compute_provider_contracts.linux-small.capabilities.scale_set, {
-            configuration_json = jsonencode({
-              payload = join("", [for part in range(1000) : "xxxxx"])
+      for index in range(900) : format("runner-%04d", index) => merge(var.runner_configs.linux-small, {
+        compute_provider = merge(var.runner_configs.linux-small.compute_provider, {
+          capabilities = {
+            scale_set = merge(var.runner_configs.linux-small.compute_provider.capabilities.scale_set, {
+              configuration_json = jsonencode({
+                payload = join("", [for part in range(1000) : "xxxxx"])
+              })
             })
-          })
-        }
+          }
+        })
       })
     }
     grouping = {

@@ -27,14 +27,6 @@ resource "terraform_data" "validate_contract" {
     }
 
     precondition {
-      condition = (
-        length(setsubtract(local.configured_runner_names, local.contract_runner_names)) == 0 &&
-        length(setsubtract(local.contract_runner_names, local.configured_runner_names)) == 0
-      )
-      error_message = "runner_configs and compute_provider_contracts must have exactly the same keys."
-    }
-
-    precondition {
       condition = alltrue([
         for runner_name in keys(var.runner_configs) : (
           length(runner_name) >= 1 &&
@@ -76,14 +68,26 @@ resource "terraform_data" "validate_contract" {
       condition = alltrue([
         for runner_name, runner_config in var.runner_configs : (
           can(regex("^https://[A-Za-z0-9.-]+(:[1-9][0-9]{0,4})?(/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)?)?/?$", local.github_config_urls[runner_name])) &&
-          local.github_config_url_ports[runner_name] <= 65535
+          try(tonumber(regex("^https://[A-Za-z0-9.-]+:([0-9]+)", local.github_config_urls[runner_name])[0]), 443) <= 65535
         )
       ])
       error_message = "Each assembled GitHub config URL must be an HTTPS GitHub Enterprise Server URL without credentials, query, fragment, or whitespace."
     }
 
     precondition {
-      condition     = length(local.scale_set_ownership_keys) == length(distinct(local.scale_set_ownership_keys))
+      condition = length([
+        for runner_name, runner_config in var.runner_configs : format(
+          "%s#%s",
+          replace(trimsuffix(lower(local.github_config_urls[runner_name]), "/"), ":443", ""),
+          runner_config.scale_set.name,
+        )
+        ]) == length(distinct([
+          for runner_name, runner_config in var.runner_configs : format(
+            "%s#%s",
+            replace(trimsuffix(lower(local.github_config_urls[runner_name]), "/"), ":443", ""),
+            runner_config.scale_set.name,
+          )
+      ]))
       error_message = "Each normalized githubConfigUrl and scale_set.name tuple must be unique across runner_configs so two controller services cannot own the same message session. URL matching ignores case, one trailing slash, and the default HTTPS port."
     }
 
@@ -137,14 +141,14 @@ resource "terraform_data" "validate_contract" {
 
     precondition {
       condition = alltrue([
-        for contract in values(var.compute_provider_contracts) : (
-          can(regex("^[a-z][a-z0-9_-]{0,63}$", contract.type)) &&
-          can(keys(jsondecode(contract.capabilities.scale_set.configuration_json))) &&
-          length(contract.capabilities.scale_set.environment_variables) <= 64 &&
+        for runner_config in values(var.runner_configs) : (
+          can(regex("^[a-z][a-z0-9_-]{0,63}$", runner_config.compute_provider.type)) &&
+          can(keys(jsondecode(runner_config.compute_provider.capabilities.scale_set.configuration_json))) &&
+          length(runner_config.compute_provider.capabilities.scale_set.environment_variables) <= 64 &&
           alltrue([
-            for name, value in contract.capabilities.scale_set.environment_variables : (
+            for name, value in runner_config.compute_provider.capabilities.scale_set.environment_variables : (
               can(regex("^[A-Z][A-Z0-9_]{0,127}$", name)) &&
-              !contains(local.reserved_environment_variable_names, name) &&
+              !contains(["PATH", "HOME", "HOSTNAME", "PWD", "SHLVL"], name) &&
               alltrue([
                 for prefix in ["AWS_", "ECS_", "GITHUB_", "SCALE_SET_", "NODE_"] :
                 !startswith(name, prefix)
@@ -157,7 +161,7 @@ resource "terraform_data" "validate_contract" {
             )
           ]) &&
           alltrue([
-            for statement_name, statement in contract.capabilities.scale_set.iam_statements : (
+            for statement_name, statement in runner_config.compute_provider.capabilities.scale_set.iam_statements : (
               can(regex("^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$", statement_name)) &&
               length(statement.actions) > 0 &&
               length(statement.resources) > 0 &&
@@ -216,9 +220,9 @@ resource "terraform_data" "validate_grouping" {
 
     precondition {
       condition = var.grouping.strategy != "custom" ? true : (
-        length(local.custom_members) == length(distinct(local.custom_members)) &&
-        length(setsubtract(toset(local.custom_members), local.configured_runner_names)) == 0 &&
-        length(setsubtract(local.configured_runner_names, toset(local.custom_members))) == 0
+        length(flatten(values(local.declared_custom_groups))) == length(distinct(flatten(values(local.declared_custom_groups)))) &&
+        length(setsubtract(toset(flatten(values(local.declared_custom_groups))), toset(keys(var.runner_configs)))) == 0 &&
+        length(setsubtract(toset(keys(var.runner_configs)), toset(flatten(values(local.declared_custom_groups))))) == 0
       )
       error_message = "Custom groups must contain every runner config exactly once and cannot contain unknown runner configs."
     }
@@ -236,7 +240,9 @@ resource "terraform_data" "validate_grouping" {
 
     precondition {
       condition = alltrue([
-        for group_name, decoded_bytes in local.group_reconciler_config_bytes : decoded_bytes <= 4 * 1024 * 1024
+        for group_name, runner_names in local.controller_groups : sum([
+          for runner_name in runner_names : local.reconciler_config_bytes["${group_name}/${runner_name}"]
+        ]) <= 4 * 1024 * 1024
       ])
       error_message = "A controller group's decoded reconciler configuration must not exceed the runtime's 4 MiB aggregate limit. Split the group or reduce provider configuration size."
     }
@@ -246,6 +252,15 @@ resource "terraform_data" "validate_grouping" {
         for group_name, environment_bytes in local.group_compute_environment_bytes : environment_bytes <= 48 * 1024
       ])
       error_message = "A controller group's compute-provider environment JSON must not exceed 49152 bytes. This reserves 16 KiB of AWS's 64 KiB ECS task-definition quota for the fixed task definition; split the group or reduce provider environment settings."
+    }
+
+    precondition {
+      condition = alltrue([
+        for group_name, manifest_bytes in local.group_controller_manifests : (
+          length(manifest_bytes) + local.group_compute_environment_bytes[group_name] <= 48 * 1024
+        )
+      ])
+      error_message = "A controller group's manifest and compute-provider environment JSON must fit the ECS task-definition budget; split the group or reduce provider configuration."
     }
   }
 }
@@ -389,8 +404,11 @@ resource "terraform_data" "validate_group_task_policy" {
 
   lifecycle {
     precondition {
-      condition     = local.group_task_policy_bytes[each.key] <= 10240
-      error_message = "Controller group ${each.key} produces a ${local.group_task_policy_bytes[each.key]}-byte task-role policy, exceeding AWS's 10240-byte inline role-policy quota. Split the group or reduce provider IAM statements."
+      condition = (
+        floor(length(base64encode(data.aws_iam_policy_document.task[each.key].json)) * 3 / 4) -
+        (endswith(base64encode(data.aws_iam_policy_document.task[each.key].json), "==") ? 2 : endswith(base64encode(data.aws_iam_policy_document.task[each.key].json), "=") ? 1 : 0)
+      ) <= 10240
+      error_message = "Controller group ${each.key} produces a task-role policy exceeding AWS's 10240-byte inline role-policy quota. Split the group or reduce provider IAM statements."
     }
   }
 }

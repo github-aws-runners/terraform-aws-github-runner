@@ -9,7 +9,7 @@ variable "runner_configs" {
   description = <<-EOT
     Normalized scale-set runner configurations keyed by stable runner-config name.
 
-    Map keys must be known during planning. Credential values are never accepted: `github.app` contains only the exact GitHub App Parameter Store references used by the runtime. `github.enterprise_server` and `github.user_agent` carry the global GitHub settings needed to render each reconciler configuration. `runner_registration_level` selects the GitHub scale-set scope, and `runner_owner` supplies the organization or repository path for organization- and repository-level registration. Parameter and optional KMS ARNs, scale-set names, and other inner values may remain unknown until apply.
+    Map keys must be known during planning. Credential values are never accepted: `github.app` contains only the exact GitHub App Parameter Store references used by the runtime. `github.enterprise_server` and `github.user_agent` carry the global GitHub settings needed to render each reconciler configuration. `scale_set.runner.group_name` selects the GitHub runner group. `runner_registration_level` selects the GitHub scale-set scope, and `runner_owner` supplies the organization or repository path for organization- and repository-level registration. `compute_provider` carries the provider-neutral scale-set capability contract for this runner configuration. Parameter and optional KMS ARNs, scale-set names, and other inner values may remain unknown until apply.
   EOT
   type = map(object({
     github = object({
@@ -41,36 +41,28 @@ variable "runner_configs" {
     scale_set = object({
       name = string
       runner = optional(object({
+        group_name           = optional(string, "Default")
         min_runners          = optional(number, 0)
         max_runners          = optional(number, 10)
         boot_time_in_minutes = optional(number, 10)
       }), {})
     })
-  }))
-  nullable = false
-}
-
-variable "compute_provider_contracts" {
-  description = <<-EOT
-    Provider-neutral, scale-set capability fragments keyed exactly like `runner_configs`.
-
-    `type` is the plan-known provider discriminator used by the default grouping implementation and the runtime adapter registry. `configuration_json` is provider-owned, valid JSON and must contain no secrets. `environment_variables` contains non-secret provider process settings shared by every reconciler in the same controller group; conflicting values are rejected. IAM statement map keys and optional condition shapes must be known during planning; their action, resource, and condition values may be computed.
-  EOT
-  type = map(object({
-    type = string
-    capabilities = object({
-      scale_set = object({
-        configuration_json    = optional(string, "{}")
-        environment_variables = optional(map(string), {})
-        iam_statements = optional(map(object({
-          actions   = set(string)
-          resources = set(string)
-          conditions = optional(list(object({
-            test     = string
-            variable = string
-            values   = set(string)
-          })), [])
-        })), {})
+    compute_provider = object({
+      type = string
+      capabilities = object({
+        scale_set = object({
+          configuration_json    = optional(string, "{}")
+          environment_variables = optional(map(string), {})
+          iam_statements = optional(map(object({
+            actions   = set(string)
+            resources = set(string)
+            conditions = optional(list(object({
+              test     = string
+              variable = string
+              values   = set(string)
+            })), [])
+          })), {})
+        })
       })
     })
   }))
@@ -113,9 +105,6 @@ variable "container" {
     reconnect_initial_backoff_seconds = optional(number, 1)
     reconnect_max_backoff_seconds     = optional(number, 30)
     stop_timeout_seconds              = optional(number, 120)
-    ecr_repository = optional(object({
-      arn = string
-    }), null)
   })
   default  = {}
   nullable = false
