@@ -280,6 +280,12 @@ async function removeRunner(
   }
 }
 
+function idleRetentionOwner(runner: RunnerInfo): string {
+  // Legacy Repo runners share their organization's allowance after enabling multi-org.
+  // Keep the original owner and type on the runner for installation lookup and removal.
+  return multiOrgEnabled() ? normalizeOrganization(runner.owner.split('/')[0]) : runner.owner;
+}
+
 async function evaluateAndRemoveRunners(
   runners: RunnerInfo[],
   scaleDownConfigs: ScalingDownConfigList,
@@ -287,17 +293,21 @@ async function evaluateAndRemoveRunners(
 ): Promise<void> {
   let idleCounter = getIdleRunnerCount(scaleDownConfigs);
   const evictionStrategy = getEvictionStrategy(scaleDownConfigs);
-  const ownerTags = new Set(runners.map((runner) => runner.owner));
+  const retentionOwners = new Set(runners.map(idleRetentionOwner));
 
-  for (const ownerTag of ownerTags) {
+  for (const retentionOwner of retentionOwners) {
     if (multiOrgEnabled()) {
       idleCounter = getIdleRunnerCount(scaleDownConfigs);
     }
     const ownerRunners = runners
-      .filter((runner) => runner.owner === ownerTag)
+      .filter((runner) => idleRetentionOwner(runner) === retentionOwner)
       .sort(evictionStrategy === 'oldest_first' ? oldestFirstStrategy : newestFirstStrategy);
-    logger.debug(`Found: '${ownerRunners.length}' active GitHub runners with owner tag: '${ownerTag}'`);
-    logger.debug(`Active GitHub runners with owner tag: '${ownerTag}': ${JSON.stringify(ownerRunners)}`);
+    logger.debug(
+      `Found: '${ownerRunners.length}' active GitHub runners with idle retention owner: '${retentionOwner}'`,
+    );
+    logger.debug(
+      `Active GitHub runners with idle retention owner: '${retentionOwner}': ${JSON.stringify(ownerRunners)}`,
+    );
     for (const runner of ownerRunners) {
       if (runner.bypassRemoval) {
         logger.debug(`Runner '${runner.id}' has bypass-removal tag set, skipping evaluation.`);
