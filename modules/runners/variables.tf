@@ -769,6 +769,44 @@ variable "associate_public_ipv4_address" {
   default     = false
 }
 
+variable "network_interfaces" {
+  description = "Advanced network interface configuration for the runner launch template. See https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#network-interfaces for details. Leave unset (default) to keep using associate_public_ipv4_address for a simple single-interface setup; set this to fully control one or more interfaces."
+  type = list(object({
+    associate_carrier_ip_address = optional(bool)
+    associate_public_ip_address  = optional(bool)
+    delete_on_termination        = optional(bool)
+    description                  = optional(string)
+    device_index                 = optional(number)
+    interface_type               = optional(string)
+    ipv4_address_count           = optional(number)
+    ipv4_addresses               = optional(list(string))
+    ipv4_prefix_count            = optional(number)
+    ipv4_prefixes                = optional(list(string))
+    ipv6_address_count           = optional(number)
+    ipv6_addresses               = optional(list(string))
+    ipv6_prefix_count            = optional(number)
+    ipv6_prefixes                = optional(list(string))
+    network_card_index           = optional(number)
+    network_interface_id         = optional(string)
+    primary_ipv6                 = optional(bool)
+    private_ip_address           = optional(string)
+    security_groups              = optional(list(string))
+    subnet_id                    = optional(string)
+    connection_tracking_specification = optional(object({
+      tcp_established_timeout = optional(number)
+      udp_stream_timeout      = optional(number)
+      udp_timeout             = optional(number)
+    }))
+    ena_srd_specification = optional(object({
+      ena_srd_enabled = optional(bool)
+      ena_srd_udp_specification = optional(object({
+        ena_srd_udp_enabled = optional(bool)
+      }))
+    }))
+  }))
+  default = []
+}
+
 variable "ssm_housekeeper" {
   description = <<EOF
   Configuration for the SSM housekeeper lambda. This lambda deletes token / JIT config from SSM.
