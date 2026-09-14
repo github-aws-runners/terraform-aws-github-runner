@@ -16,6 +16,7 @@ resource "aws_lambda_function" "scale_down" {
   environment {
     variables = merge(var.runner_provider.scale_down.environment_variables, {
       ENVIRONMENT                               = var.config.prefix
+      ENABLE_MULTI_ORG_RUNNERS                  = var.config.github.multi_org_runners
       ENABLE_METRIC_GITHUB_APP_RATE_LIMIT       = var.config.observability.metrics.enabled && var.config.observability.metrics.metric.github_app_rate_limit.enabled
       GHES_URL                                  = var.config.github.enterprise_server.url
       USER_AGENT                                = var.config.github.user_agent

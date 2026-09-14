@@ -50,6 +50,7 @@ resource "aws_lambda_function" "pool" {
       RUNNER_LABELS                            = lower(join(",", var.config.runner.labels))
       RUNNER_GROUP_NAME                        = var.config.runner.group_name
       RUNNER_NAME_PREFIX                       = var.config.runner.name_prefix
+      ENABLE_MULTI_ORG_RUNNERS                 = var.config.enable_multi_org_runners
       RUNNER_OWNER                             = var.config.runner.pool_owner
       RUNNERS_MAXIMUM_COUNT                    = var.config.runners_maximum_count
       SSM_TOKEN_PATH                           = var.config.ssm_token_path
@@ -235,9 +236,9 @@ resource "aws_scheduler_schedule" "pool" {
   target {
     arn      = aws_lambda_function.pool.arn
     role_arn = aws_iam_role.scheduler.arn
-    input = jsonencode({
+    input = jsonencode(merge({
       poolSize = each.value.size
       type     = "ec2"
-    })
+    }, var.config.enable_multi_org_runners ? { org = each.value.org } : {}))
   }
 }

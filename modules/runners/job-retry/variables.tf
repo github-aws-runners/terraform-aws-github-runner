@@ -40,6 +40,7 @@ variable "config" {
     aws_partition               = optional(string, null)
     architecture                = optional(string, null)
     enable_organization_runners = bool
+    enable_multi_org_runners    = optional(bool, false)
     environment_variables       = optional(map(string), {})
     ghes_url                    = optional(string, null)
     user_agent                  = optional(string, null)
