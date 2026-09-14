@@ -5,7 +5,7 @@ import type { ActionRequestMessage, ActionRequestMessageRetry } from './types';
 import { getOctokit } from '../github/octokit';
 import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import yn from 'yn';
-import { multiOrgEnabled } from '../github/multi-org';
+import { multiOrgEnabled, normalizeOrganization } from '../github/multi-org';
 
 interface JobRetryConfig {
   enable: boolean;
@@ -39,6 +39,7 @@ export async function publishRetryMessage(payload: ActionRequestMessage): Promis
 }
 
 export async function checkAndRetryJob(payload: ActionRequestMessageRetry): Promise<void> {
+  if (multiOrgEnabled()) payload = { ...payload, repositoryOwner: normalizeOrganization(payload.repositoryOwner) };
   const enableOrgLevel = multiOrgEnabled() || yn(process.env.ENABLE_ORGANIZATION_RUNNERS, { default: true });
   const runnerType = enableOrgLevel ? 'Org' : 'Repo';
   const runnerOwner = enableOrgLevel ? payload.repositoryOwner : `${payload.repositoryOwner}/${payload.repositoryName}`;
