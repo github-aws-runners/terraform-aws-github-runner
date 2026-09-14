@@ -131,6 +131,8 @@ jobs:
           - download-lambda
           - lambda
           - multi-runner
+          - compute-providers/aws/microvm
+          - compute-providers/aws/microvm/trust-policy
           - runner-binaries-syncer
           - runners
           - setup-iam-permissions

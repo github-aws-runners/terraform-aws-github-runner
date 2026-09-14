@@ -12,15 +12,6 @@ export AWS_EC2_METADATA_DISABLED="${AWS_EC2_METADATA_DISABLED:-true}"
 action="${1:-}"
 example="${2:-}"
 tfvars_file="${3:-${MINISTACK_TFVARS_FILE:-}}"
-iac_binary="${IAC_BINARY:-terraform}"
-
-case "$iac_binary" in
-  terraform | tofu) ;;
-  *)
-    echo "Supported IaC binaries are: terraform, tofu" >&2
-    exit 64
-    ;;
-esac
 
 case "$example" in
   base | prebuilt | default | ephemeral | multi-runner | multi-runner-v2)
@@ -46,26 +37,6 @@ esac
 script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 source_root=$(CDPATH='' cd -- "$script_dir/../.." && pwd)
 example_root="$source_root/examples/$example"
-lockfile="$example_root/.terraform.lock.hcl"
-expected_lockfile=".terraform.lock.hcl"
-if [ "$iac_binary" = tofu ]; then
-  expected_lockfile="$expected_lockfile.tofu"
-fi
-lockfile_name="${IAC_LOCK_FILE:-$expected_lockfile}"
-if [ "$lockfile_name" != "$expected_lockfile" ]; then
-  echo "Lock file does not match IaC binary: $lockfile_name (expected $expected_lockfile)" >&2
-  exit 64
-fi
-case "$lockfile_name" in
-  .terraform.lock.hcl | .terraform.lock.hcl.tofu) ;;
-  *)
-    echo "Supported IaC lock files are: .terraform.lock.hcl, .terraform.lock.hcl.tofu" >&2
-    exit 64
-    ;;
-esac
-tool_lockfile="$example_root/$lockfile_name"
-lockfile_backup=""
-lockfile_existed=false
 
 if [ "$use_tfvars" = true ]; then
   if [ -z "$tfvars_file" ]; then
@@ -98,10 +69,6 @@ $source_root/lambdas/functions/termination-watcher/termination-watcher.zip
 "
 
 cleanup() {
-  if command -v restore_lockfile >/dev/null 2>&1; then
-    restore_lockfile
-  fi
-
   for override_file in $override_created_paths; do
     rm -f "$override_file"
   done
@@ -123,40 +90,6 @@ cleanup() {
   fi
 }
 trap cleanup EXIT INT TERM
-
-select_lockfile() {
-  if [ ! -f "$tool_lockfile" ]; then
-    echo "IaC lock file not found: $tool_lockfile" >&2
-    exit 66
-  fi
-
-  if [ "$tool_lockfile" = "$lockfile" ]; then
-    return
-  fi
-
-  lockfile_backup=$(mktemp "${TMPDIR:-/tmp}/terraform-aws-github-runner-lock.XXXXXX")
-  if [ -f "$lockfile" ]; then
-    cp "$lockfile" "$lockfile_backup"
-    lockfile_existed=true
-  fi
-  cp "$tool_lockfile" "$lockfile"
-}
-
-restore_lockfile() {
-  if [ -z "$lockfile_backup" ]; then
-    return
-  fi
-
-  if [ "$lockfile_existed" = true ]; then
-    cp "$lockfile_backup" "$lockfile"
-  else
-    rm -f "$lockfile"
-  fi
-  rm -f "$lockfile_backup"
-  lockfile_backup=""
-}
-
-select_lockfile
 
 ministack_aws() {
   aws --endpoint-url "$AWS_ENDPOINT_URL" --region "$AWS_DEFAULT_REGION" "$@"
@@ -326,32 +259,32 @@ case "$action" in
     ;;
 esac
 
-iac_init() {
-  "$iac_binary" -chdir="$example_root" init -backend=false -input=false -lockfile=readonly
+terraform_init() {
+  terraform -chdir="$example_root" init -backend=false -input=false -lockfile=readonly
 }
 
-iac_example() {
+terraform_example() {
   if [ "$use_tfvars" = true ]; then
-    "$iac_binary" -chdir="$example_root" "$@" -var-file="$tfvars_file"
+    terraform -chdir="$example_root" "$@" -var-file="$tfvars_file"
   else
-    "$iac_binary" -chdir="$example_root" "$@"
+    terraform -chdir="$example_root" "$@"
   fi
 }
 
 case "$action" in
   init)
-    iac_init
+    terraform_init
     ;;
   plan)
-    iac_init
-    iac_example plan -input=false
+    terraform_init
+    terraform_example plan -input=false
     ;;
   apply)
-    iac_init
-    iac_example apply -auto-approve -input=false
+    terraform_init
+    terraform_example apply -auto-approve -input=false
     ;;
   destroy)
-    iac_init
-    iac_example destroy -auto-approve -input=false
+    terraform_init
+    terraform_example destroy -auto-approve -input=false
     ;;
 esac
