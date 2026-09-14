@@ -350,3 +350,119 @@ run "multi_org_pool_rejects_empty_override" {
   }
   expect_failures = [var.config]
 }
+
+run "rejects_trailing_hyphen_override" {
+  command = plan
+  variables {
+    config = merge(var.config, {
+      enable_multi_org_runners = true
+      pool                     = [merge(var.config.pool[0], { org = "org-" })]
+    })
+  }
+  expect_failures = [var.config]
+}
+
+run "rejects_trailing_hyphen_default" {
+  command = plan
+  variables {
+    config = merge(var.config, {
+      enable_multi_org_runners = true
+      runner                   = merge(var.config.runner, { pool_owner = "org-" })
+    })
+  }
+  expect_failures = [var.config]
+}
+
+run "rejects_repeated_hyphen_override" {
+  command = plan
+  variables {
+    config = merge(var.config, {
+      enable_multi_org_runners = true
+      pool                     = [merge(var.config.pool[0], { org = "org--name" })]
+    })
+  }
+  expect_failures = [var.config]
+}
+
+run "rejects_repeated_hyphen_default" {
+  command = plan
+  variables {
+    config = merge(var.config, {
+      enable_multi_org_runners = true
+      runner                   = merge(var.config.runner, { pool_owner = "org--name" })
+    })
+  }
+  expect_failures = [var.config]
+}
+
+run "rejects_leading_hyphen_override" {
+  command = plan
+  variables {
+    config = merge(var.config, {
+      enable_multi_org_runners = true
+      pool                     = [merge(var.config.pool[0], { org = "-org" })]
+    })
+  }
+  expect_failures = [var.config]
+}
+
+run "rejects_leading_hyphen_default" {
+  command = plan
+  variables {
+    config = merge(var.config, {
+      enable_multi_org_runners = true
+      runner                   = merge(var.config.runner, { pool_owner = "-org" })
+    })
+  }
+  expect_failures = [var.config]
+}
+
+run "rejects_too_long_override" {
+  command = plan
+  variables {
+    config = merge(var.config, {
+      enable_multi_org_runners = true
+      pool                     = [merge(var.config.pool[0], { org = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" })]
+    })
+  }
+  expect_failures = [var.config]
+}
+
+run "rejects_too_long_default" {
+  command = plan
+  variables {
+    config = merge(var.config, {
+      enable_multi_org_runners = true
+      runner                   = merge(var.config.runner, { pool_owner = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" })
+    })
+  }
+  expect_failures = [var.config]
+}
+
+run "accepts_valid_logins_and_length_boundary" {
+  command = plan
+  variables {
+    config = merge(var.config, {
+      enable_multi_org_runners = true
+      pool                     = [for org in ["a", "Org-1", "org-a-b", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-1"] : merge(var.config.pool[0], { org = org })]
+    })
+  }
+  assert {
+    condition     = length(aws_scheduler_schedule.pool) == 5
+    error_message = "Valid logins including the 39-character boundary must be accepted."
+  }
+}
+
+run "preserves_disabled_mode_login_handling" {
+  command = plan
+  variables {
+    config = merge(var.config, {
+      enable_multi_org_runners = false
+      runner                   = merge(var.config.runner, { pool_owner = "org--name" })
+    })
+  }
+  assert {
+    condition     = aws_lambda_function.pool.environment[0].variables["RUNNER_OWNER"] == "org--name"
+    error_message = "Stricter validation must remain gated by multi-org mode."
+  }
+}
