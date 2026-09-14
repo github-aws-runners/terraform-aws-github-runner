@@ -58,7 +58,7 @@ resource "terraform_data" "validate_config" {
         trim(var.ssm.paths.root, "/") != "" &&
         trim(var.ssm.paths.config, "/") != "" &&
         can(regex("^/[A-Za-z0-9_./-]+$", local.microvm_metadata_ssm_path)) &&
-        !strcontains(local.microvm_metadata_ssm_path, "//")
+        length(regexall("//", local.microvm_metadata_ssm_path)) == 0
       )
       error_message = "The derived MicroVM metadata Parameter Store path must be an absolute path containing only letters, numbers, dot, underscore, hyphen, and slash."
     }
