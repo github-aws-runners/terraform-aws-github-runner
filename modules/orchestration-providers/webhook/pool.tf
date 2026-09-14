@@ -3,7 +3,8 @@ module "pool" {
   source = "./pool"
 
   config = {
-    prefix = local.resolved_config.prefix
+    enable_multi_org_runners = local.resolved_config.github.multi_org_runners
+    prefix                   = local.resolved_config.prefix
     ghes = {
       ssl_verify = local.resolved_config.github.enterprise_server.ssl_verify
       url        = local.resolved_config.github.enterprise_server.url
