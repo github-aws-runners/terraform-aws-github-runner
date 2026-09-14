@@ -293,3 +293,60 @@ run "requires_enabled_compute_provider_managed_policy_arn" {
 
   expect_failures = [terraform_data.validate_config]
 }
+
+
+run "multi_org_pool_schedules" {
+  command = plan
+  variables {
+    config = merge(var.config, {
+      enable_multi_org_runners = true
+      pool = [
+        { schedule_expression = "cron(0 8 * * ? *)", schedule_expression_timezone = "UTC", size = 2, org = "org-a" },
+        { schedule_expression = "cron(0 8 * * ? *)", schedule_expression_timezone = "UTC", size = 5, org = "org-b" },
+      ]
+    })
+  }
+  assert {
+    condition = (
+      aws_lambda_function.pool.environment[0].variables["ENABLE_MULTI_ORG_RUNNERS"] == "true" &&
+      jsondecode(aws_scheduler_schedule.pool["0"].target[0].input).org == "org-a" &&
+      jsondecode(aws_scheduler_schedule.pool["1"].target[0].input).org == "org-b" &&
+      jsondecode(aws_scheduler_schedule.pool["1"].target[0].input).poolSize == 5
+    )
+    error_message = "Each pool schedule must preserve its organization and capacity."
+  }
+}
+
+run "legacy_pool_payload_is_unchanged" {
+  command = plan
+  assert {
+    condition = (
+      aws_lambda_function.pool.environment[0].variables["ENABLE_MULTI_ORG_RUNNERS"] == "false" &&
+      !contains(keys(jsondecode(aws_scheduler_schedule.pool["0"].target[0].input)), "org")
+    )
+    error_message = "Legacy pool payloads must not include organization overrides."
+  }
+}
+
+run "multi_org_pool_requires_an_owner" {
+  command = plan
+  variables {
+    config = merge(var.config, {
+      enable_multi_org_runners = true
+      runner                   = merge(var.config.runner, { pool_owner = null })
+    })
+  }
+  expect_failures = [var.config]
+}
+
+
+run "multi_org_pool_rejects_empty_override" {
+  command = plan
+  variables {
+    config = merge(var.config, {
+      enable_multi_org_runners = true
+      pool                     = [{ schedule_expression = "cron(0 8 * * ? *)", schedule_expression_timezone = "UTC", size = 2, org = "" }]
+    })
+  }
+  expect_failures = [var.config]
+}

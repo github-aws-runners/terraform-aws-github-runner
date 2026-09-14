@@ -51,6 +51,7 @@ variable "config" {
     - `user_agent`: User-Agent header used for GitHub API requests.
   EOF
   type = object({
+    enable_multi_org_runners = optional(bool, false)
     lambda = object({
       log_level                      = string
       logging_retention_in_days      = number
@@ -101,6 +102,7 @@ variable "config" {
     pool = list(object({
       schedule_expression          = string
       schedule_expression_timezone = string
+      org                          = optional(string)
       size                         = number
     }))
     include_busy_runners      = bool
@@ -110,6 +112,13 @@ variable "config" {
     log_group_tags            = optional(map(string), {})
     user_agent                = string
   })
+
+  validation {
+    condition = !var.config.enable_multi_org_runners || alltrue([
+      for pool in var.config.pool : can(regex("^[a-zA-Z0-9][a-zA-Z0-9-]*$", pool.org == null ? var.config.runner.pool_owner : pool.org))
+    ])
+    error_message = "Multi-org pools require an organization login in each schedule's org or the default pool owner."
+  }
 }
 
 variable "runner_provider" {
