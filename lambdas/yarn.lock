@@ -160,7 +160,7 @@ __metadata:
     "@aws-sdk/client-ec2": "npm:^3.1009.0"
     "@aws-sdk/client-sqs": "npm:^3.1009.0"
     "@aws-sdk/types": "npm:^3.973.6"
-    "@middy/core": "npm:^6.4.5"
+    "@middy/core": "npm:^7.9.2"
     "@octokit/auth-app": "npm:8.2.0"
     "@octokit/core": "npm:7.0.6"
     "@octokit/plugin-retry": "npm:8.0.3"
@@ -188,7 +188,7 @@ __metadata:
     "@aws-sdk/client-s3": "npm:^3.1009.0"
     "@aws-sdk/lib-storage": "npm:^3.1009.0"
     "@aws-sdk/types": "npm:^3.973.6"
-    "@middy/core": "npm:^6.4.5"
+    "@middy/core": "npm:^7.9.2"
     "@octokit/rest": "npm:22.0.1"
     "@types/aws-lambda": "npm:^8.10.159"
     "@types/node": "npm:^22.19.3"
@@ -222,7 +222,7 @@ __metadata:
     "@aws-sdk/client-ec2": "npm:^3.1009.0"
     "@aws-sdk/client-sqs": "npm:^3.1009.0"
     "@aws-sdk/types": "npm:^3.973.6"
-    "@middy/core": "npm:^6.4.5"
+    "@middy/core": "npm:^7.9.2"
     "@octokit/auth-app": "npm:8.2.0"
     "@octokit/core": "npm:7.0.6"
     "@octokit/plugin-throttling": "npm:11.0.3"
@@ -245,7 +245,7 @@ __metadata:
     "@aws-github-runner/compute-providers": "npm:*"
     "@aws-sdk/client-eventbridge": "npm:^3.1009.0"
     "@aws-sdk/client-sqs": "npm:^3.1009.0"
-    "@middy/core": "npm:^6.4.5"
+    "@middy/core": "npm:^7.9.2"
     "@octokit/rest": "npm:22.0.1"
     "@octokit/types": "npm:^16.0.0"
     "@octokit/webhooks": "npm:^14.2.0"
@@ -3162,10 +3162,24 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@middy/core@npm:^6.4.5":
-  version: 6.4.5
-  resolution: "@middy/core@npm:6.4.5"
-  checksum: 10c0/7fe05cafbaa6b3fe6f827b691808666f9d4bd96ca96496b2f70823d8b90e985488ea203d3fce4fd760605b7a1922c39cb399980a3bae39a905d467dd517ea666
+"@middy/core@npm:^7.9.2":
+  version: 7.9.2
+  resolution: "@middy/core@npm:7.9.2"
+  dependencies:
+    "@middy/util": "npm:7.9.2"
+  peerDependencies:
+    "@aws/durable-execution-sdk-js": ^2.0.0
+  peerDependenciesMeta:
+    "@aws/durable-execution-sdk-js":
+      optional: true
+  checksum: 10c0/de83efd7916b345bed9eb97cf29937cba5b7f8ca06597f6e8cd2d5a5f5ae682594b9a18d5967067cb543d33f0d405a4ac8ecaee409dfc92fcb6833f967ee24dd
+  languageName: node
+  linkType: hard
+
+"@middy/util@npm:7.9.2":
+  version: 7.9.2
+  resolution: "@middy/util@npm:7.9.2"
+  checksum: 10c0/8ffe3307ce1b1711e7988a7b7a360613abe5cf58cd0e868bdcc762bc25a96c93c12ac0c38474f65fa710ee479a19dcf6a6fb2f75e6b0d02201e06e71574e2d10
   languageName: node
   linkType: hard
 
