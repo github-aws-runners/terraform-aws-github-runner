@@ -20,6 +20,7 @@ module "runners" {
     tokens = each.value.ssm.paths.tokens
     config = each.value.ssm.paths.config
   }
+  ssm_ttl_seconds = each.value.ssm.ttl_seconds
 
   runner_os                     = each.value.runner.os
   instance_types                = each.value.compute_provider.aws.ec2.instance_types

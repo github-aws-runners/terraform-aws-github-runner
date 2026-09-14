@@ -417,6 +417,48 @@ describe('scaleUp with GHES', () => {
       });
     });
 
+    it('adds an expiration policy to the JIT config when SSM_TOKEN_TTL_SECONDS is set', async () => {
+      process.env.SSM_TOKEN_TTL_SECONDS = '3600';
+      await scaleUpModule.scaleUp(TEST_DATA);
+      expect(mockSSMClient).toHaveReceivedNthSpecificCommandWith(1, PutParameterCommand, {
+        Name: '/github-action-runners/default/runners/config/i-12345',
+        Value: 'TEST_JIT_CONFIG_ORG',
+        Type: 'SecureString',
+        Tier: 'Advanced',
+        Policies: expect.stringContaining('"Type":"Expiration"') as unknown as string,
+      });
+    });
+
+    it('adds an expiration policy to the registration token when SSM_TOKEN_TTL_SECONDS is set', async () => {
+      process.env.ENABLE_EPHEMERAL_RUNNERS = 'false';
+      process.env.SSM_TOKEN_TTL_SECONDS = '3600';
+      await scaleUpModule.scaleUp(TEST_DATA);
+      expect(mockOctokit.actions.createRegistrationTokenForOrg).toBeCalled();
+      expect(mockSSMClient).toHaveReceivedNthSpecificCommandWith(1, PutParameterCommand, {
+        Name: '/github-action-runners/default/runners/config/i-12345',
+        Type: 'SecureString',
+        Tier: 'Advanced',
+        Policies: expect.stringContaining('"Type":"Expiration"') as unknown as string,
+      });
+    });
+
+    it('does not add an expiration policy when SSM_TOKEN_TTL_SECONDS is not set', async () => {
+      await scaleUpModule.scaleUp(TEST_DATA);
+      expect(mockSSMClient).toHaveReceivedNthSpecificCommandWith(1, PutParameterCommand, {
+        Name: '/github-action-runners/default/runners/config/i-12345',
+        Value: 'TEST_JIT_CONFIG_ORG',
+        Type: 'SecureString',
+        Tier: 'Standard',
+        Policies: undefined,
+      });
+    });
+
+    it('rejects an invalid SSM_TOKEN_TTL_SECONDS before creating runners', async () => {
+      process.env.SSM_TOKEN_TTL_SECONDS = 'not-a-number';
+      await expect(scaleUpModule.scaleUp(TEST_DATA)).rejects.toThrow('SSM_TOKEN_TTL_SECONDS must be a positive number');
+      expect(mockSSMClient).not.toHaveReceivedCommand(PutParameterCommand);
+    });
+
     it('quotes runner labels with semicolon separators in non-ephemeral runner config', async () => {
       process.env.ENABLE_EPHEMERAL_RUNNERS = 'false';
       process.env.RUNNERS_MAXIMUM_COUNT = '2';
