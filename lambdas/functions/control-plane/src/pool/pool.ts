@@ -39,8 +39,15 @@ export async function adjust(event: PoolEvent): Promise<void> {
   const enableJitConfig = yn(process.env.ENABLE_JIT_CONFIG, { default: ephemeral });
   const disableAutoUpdate = yn(process.env.DISABLE_RUNNER_AUTOUPDATE, { default: false });
   const runnerOwner = multiOrgEnabled() ? (event.org ?? process.env.RUNNER_OWNER) : process.env.RUNNER_OWNER;
-  if (multiOrgEnabled() && (!runnerOwner || !/^[a-zA-Z0-9][a-zA-Z0-9-]*$/.test(runnerOwner))) {
-    throw new Error('Multi-org pools require an organization in event.org or RUNNER_OWNER');
+  if (
+    multiOrgEnabled() &&
+    (!runnerOwner ||
+      runnerOwner.length > 39 ||
+      runnerOwner.match(/^[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*$/)?.[0] !== runnerOwner)
+  ) {
+    throw new Error(
+      'Multi-org pools require an organization in event.org or RUNNER_OWNER: 1-39 alphanumeric characters or single hyphens, with no leading or trailing hyphen',
+    );
   }
   // -1 disables the maximum check, matching the scale-up lambda's semantics. Defaults to unlimited
   // when unset so the pool keeps its previous behavior on stacks that do not provide the variable.

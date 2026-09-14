@@ -84,9 +84,13 @@ variable "config" {
 
   validation {
     condition = !var.config.enable_multi_org_runners || alltrue([
-      for pool in var.config.pool : can(regex("^[a-zA-Z0-9][a-zA-Z0-9-]*$", pool.org == null ? var.config.runner.pool_owner : pool.org))
+      for pool in var.config.pool : try(
+        length(pool.org == null ? var.config.runner.pool_owner : pool.org) <= 39 &&
+        can(regex("^[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*$", pool.org == null ? var.config.runner.pool_owner : pool.org)),
+        false
+      )
     ])
-    error_message = "Multi-org pools require an organization login in each schedule's org or the default pool owner."
+    error_message = "Multi-org pools require an organization login in each schedule's org or the default pool owner: 1-39 alphanumeric characters or single hyphens, with no leading or trailing hyphen."
   }
 }
 

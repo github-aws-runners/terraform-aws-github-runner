@@ -404,6 +404,27 @@ describe('multi-org pools', () => {
     expect(mockedAppAuth).not.toHaveBeenCalled();
   });
 
+  describe.each(['event.org', 'RUNNER_OWNER'])('login validation for %s', (source) => {
+    it.each(['org-', 'org--name', '-org', 'a'.repeat(40), 'org_name', 'org\n'])(
+      'rejects invalid login %j before GitHub calls',
+      async (org) => {
+        process.env.ENABLE_MULTI_ORG_RUNNERS = 'true';
+        if (source === 'RUNNER_OWNER') process.env.RUNNER_OWNER = org;
+        await expect(adjust({ poolSize: 3, org: source === 'event.org' ? org : undefined })).rejects.toThrow(
+          '1-39 alphanumeric characters or single hyphens',
+        );
+        expect(mockedAppAuth).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each(['a', 'Org-1', 'org-a-b', 'a'.repeat(39), `${'a'.repeat(37)}-1`])('accepts valid login %s', async (org) => {
+      process.env.ENABLE_MULTI_ORG_RUNNERS = 'true';
+      if (source === 'RUNNER_OWNER') process.env.RUNNER_OWNER = org;
+      await adjust({ poolSize: 3, org: source === 'event.org' ? org : undefined });
+      expect(githubClient.apps.getOrgInstallation).toHaveBeenCalledWith({ org });
+    });
+  });
+
   it('ignores event.org when multi-org is disabled', async () => {
     process.env.ENABLE_MULTI_ORG_RUNNERS = 'false';
     await adjust({ poolSize: 3, org: 'org-b' });
