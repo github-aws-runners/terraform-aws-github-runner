@@ -5,7 +5,7 @@ import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import { resolveComputeProviderType } from '@aws-github-runner/compute-providers/provider-types';
 import moment from 'moment';
 
-import { multiOrgEnabled } from '../github/multi-org';
+import { multiOrgEnabled, normalizeOrganization } from '../github/multi-org';
 import {
   createGithubAppAuth,
   createGithubInstallationAuth,
@@ -373,7 +373,7 @@ async function lastChanceCheckOrphanRunner(runner: RunnerInfo): Promise<boolean>
 
 async function terminateOrphan(environment: string, computeProvider: ScaleDownComputeProvider): Promise<void> {
   try {
-    const orphanRunners = await computeProvider.list(environment, true);
+    const orphanRunners = (await computeProvider.list(environment, true)).map(normalizeRunnerOwner);
 
     for (const runner of orphanRunners) {
       if (runner.bypassRemoval) {
@@ -412,7 +412,13 @@ export function newestFirstStrategy(a: RunnerInfo, b: RunnerInfo): number {
 }
 
 async function listRunners(environment: string, computeProvider: ScaleDownComputeProvider) {
-  return await computeProvider.list(environment);
+  return (await computeProvider.list(environment)).map(normalizeRunnerOwner);
+}
+
+function normalizeRunnerOwner(runner: RunnerInfo): RunnerInfo {
+  return multiOrgEnabled() && runner.type === 'Org' && runner.owner
+    ? { ...runner, owner: normalizeOrganization(runner.owner) }
+    : runner;
 }
 
 function filterRunners(runners: RunnerInfo[]): RunnerInfo[] {

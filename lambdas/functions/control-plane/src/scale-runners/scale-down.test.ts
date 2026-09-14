@@ -277,10 +277,31 @@ describe('Scale down runners', () => {
       expect(mockOctokit.apps.getOrgInstallation).toHaveBeenCalledWith({ org: 'org-b' });
     });
 
+    it('shares idle retention and GitHub lookups across mixed-case owner tags', async () => {
+      process.env.ENABLE_MULTI_ORG_RUNNERS = 'true';
+      process.env.SCALE_DOWN_CONFIG = JSON.stringify([{ idleCount: 1, cron: '* * * * * *', timeZone: 'UTC' }]);
+      const runners = ['Org-A', 'org-a'].map((org, i) =>
+        createRunnerTestData(String(i), 'Org', 60, true, false, false, org),
+      );
+      mockProviderRunners(runners);
+      mockGitHubRunners(runners);
+      await scaleDown();
+      expect(mockTerminateRunners).toHaveBeenCalledTimes(1);
+      expect(mockOctokit.apps.getOrgInstallation).toHaveBeenCalledExactlyOnceWith({ org: 'org-a' });
+      expect(mockOctokit.paginate).toHaveBeenCalledExactlyOnceWith(mockOctokit.actions.listSelfHostedRunnersForOrg, {
+        org: 'org-a',
+        per_page: 100,
+      });
+      expect(mockOctokit.actions.deleteSelfHostedRunnerFromOrg).toHaveBeenCalledWith(
+        expect.objectContaining({ org: 'org-a' }),
+      );
+      expect(runners[0].owner).toBe('Org-A');
+    });
+
     it('checks tagged orphans against their owning organization even when runner IDs overlap', async () => {
       process.env.ENABLE_MULTI_ORG_RUNNERS = 'true';
       vi.mocked(ghAuth.getStoredInstallationId).mockResolvedValueOnce(999);
-      const runners = ['org-a', 'org-b'].map((org) => createRunnerTestData(org, 'Org', 60, true, true, false, org, 42));
+      const runners = ['Org-A', 'ORG-B'].map((org) => createRunnerTestData(org, 'Org', 60, true, true, false, org, 42));
       mockProviderRunners(runners);
       mockOctokit.actions.getSelfHostedRunnerForOrg.mockImplementation(async ({ org }) => {
         if (org === 'org-a')

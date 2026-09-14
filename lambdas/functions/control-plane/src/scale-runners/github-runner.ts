@@ -8,7 +8,7 @@ import {
 } from '@aws-github-runner/storage-providers';
 import { Octokit } from '@octokit/rest';
 
-import { multiOrgEnabled } from '../github/multi-org';
+import { multiOrgEnabled, normalizeOrganization } from '../github/multi-org';
 import { getStoredInstallationId } from '../github/auth';
 import { metricGitHubAppRateLimit } from '../github/rate-limit';
 import { ActionRequestMessage, CreateGitHubRunnerConfig, EphemeralRunnerConfig, RunnerGroup } from './types';
@@ -92,7 +92,7 @@ export async function resolveInstallationId(
   return enableOrgLevel
     ? (
         await githubAppClient.apps.getOrgInstallation({
-          org: payload.repositoryOwner,
+          org: normalizeOrganization(payload.repositoryOwner),
         })
       ).data.id
     : (

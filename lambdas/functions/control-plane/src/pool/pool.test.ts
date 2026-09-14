@@ -379,6 +379,7 @@ describe('multi-org pools', () => {
         environment: process.env.ENVIRONMENT,
         runnerOwner: org,
         runnerType: 'Org',
+        runnerOwnerIgnoreCase: true,
       });
       expect(poolProvider.createRunners).toHaveBeenLastCalledWith(
         expect.objectContaining({
@@ -421,7 +422,7 @@ describe('multi-org pools', () => {
       process.env.ENABLE_MULTI_ORG_RUNNERS = 'true';
       if (source === 'RUNNER_OWNER') process.env.RUNNER_OWNER = org;
       await adjust({ poolSize: 3, org: source === 'event.org' ? org : undefined });
-      expect(githubClient.apps.getOrgInstallation).toHaveBeenCalledWith({ org });
+      expect(githubClient.apps.getOrgInstallation).toHaveBeenCalledWith({ org: org.toLowerCase() });
     });
   });
 
@@ -434,5 +435,24 @@ describe('multi-org pools', () => {
         githubRunnerConfig: expect.objectContaining({ runnerOwner: ORG }),
       }),
     );
+  });
+});
+
+it('normalizes the pool owner for registration and capacity lookup only in multi-org mode', async () => {
+  process.env.ENABLE_MULTI_ORG_RUNNERS = 'true';
+  await adjust({ poolSize: 3, org: 'Org-A' });
+  expect(poolProvider.listRunners).toHaveBeenCalledWith(
+    expect.objectContaining({ runnerOwner: 'org-a', runnerOwnerIgnoreCase: true }),
+  );
+  expect(poolProvider.createRunners).toHaveBeenCalledWith(
+    expect.objectContaining({ githubRunnerConfig: expect.objectContaining({ runnerOwner: 'org-a' }) }),
+  );
+  process.env.ENABLE_MULTI_ORG_RUNNERS = 'false';
+  process.env.RUNNER_OWNER = 'Org-A';
+  await adjust({ poolSize: 3 });
+  expect(poolProvider.listRunners).toHaveBeenLastCalledWith({
+    environment: process.env.ENVIRONMENT,
+    runnerOwner: 'Org-A',
+    runnerType: 'Org',
   });
 });
