@@ -9,7 +9,7 @@ import {
   createOctokitClient,
   getStoredInstallationId,
 } from './auth';
-import { multiOrgEnabled } from './multi-org';
+import { multiOrgEnabled, normalizeOrganization } from './multi-org';
 
 const logger = createChildLogger('octokit');
 
@@ -30,7 +30,7 @@ async function resolveInstallationIdFromApi(
   return enableOrgLevel
     ? (
         await githubClient.apps.getOrgInstallation({
-          org: payload.repositoryOwner,
+          org: normalizeOrganization(payload.repositoryOwner),
         })
       ).data.id
     : (
