@@ -398,29 +398,40 @@ async function removeRunner(
   }
 }
 
+function idleRetentionOwner(runner: RunnerInfo): string {
+  // Legacy Repo runners share their organization's allowance after enabling multi-org.
+  // Keep the original owner and type on the runner for installation lookup and removal.
+  return multiOrgEnabled() ? normalizeOrganization(runner.owner.split('/')[0]) : runner.owner;
+}
+
 async function evaluateAndRemoveRunners(
   runners: RunnerInfo[],
   scaleDownConfigs: ScalingDownConfigList,
   computeProvider: ScaleDownComputeProvider,
   sweep = {
     idleRemaining: getIdleRunnerCount(scaleDownConfigs),
+    idleByOwner: new Map<string, number>(),
     evictionStrategy: getEvictionStrategy(scaleDownConfigs),
   },
   remainingTime = () => Infinity,
 ): Promise<void> {
   let idleCounter = sweep.idleRemaining;
   const evictionStrategy = sweep.evictionStrategy;
-  const ownerTags = new Set(runners.map((runner) => runner.owner));
+  const retentionOwners = new Set(runners.map(idleRetentionOwner));
 
-  for (const ownerTag of ownerTags) {
+  for (const retentionOwner of retentionOwners) {
     if (multiOrgEnabled()) {
-      idleCounter = getIdleRunnerCount(scaleDownConfigs);
+      idleCounter = sweep.idleByOwner.get(retentionOwner) ?? getIdleRunnerCount(scaleDownConfigs);
     }
     const ownerRunners = runners
-      .filter((runner) => runner.owner === ownerTag)
+      .filter((runner) => idleRetentionOwner(runner) === retentionOwner)
       .sort(evictionStrategy === 'oldest_first' ? oldestFirstStrategy : newestFirstStrategy);
-    logger.debug(`Found: '${ownerRunners.length}' active GitHub runners with owner tag: '${ownerTag}'`);
-    logger.debug(`Active GitHub runners with owner tag: '${ownerTag}': ${JSON.stringify(ownerRunners)}`);
+    logger.debug(
+      `Found: '${ownerRunners.length}' active GitHub runners with idle retention owner: '${retentionOwner}'`,
+    );
+    logger.debug(
+      `Active GitHub runners with idle retention owner: '${retentionOwner}': ${JSON.stringify(ownerRunners)}`,
+    );
     for (const runner of ownerRunners) {
       if (remainingTime() < 10000) return;
       try {
@@ -437,7 +448,8 @@ async function evaluateAndRemoveRunners(
           if (runnerMinimumTimeExceeded(runner)) {
             if (idleCounter > 0) {
               idleCounter--;
-              sweep.idleRemaining = idleCounter;
+              if (multiOrgEnabled()) sweep.idleByOwner.set(retentionOwner, idleCounter);
+              else sweep.idleRemaining = idleCounter;
               // A runner kept idle is not evaluated for removal, so its idle marker cannot be
               // refreshed by busy readings. Clear it so a later evaluation starts a fresh window.
               await clearIdleDetection(runner, computeProvider);
@@ -619,6 +631,7 @@ export async function scaleDown(remainingTime = () => Infinity): Promise<void> {
   if (computeProvider.listPage) {
     const sweep = {
       idleRemaining: getIdleRunnerCount(scaleDownConfigs),
+    idleByOwner: new Map<string, number>(),
       evictionStrategy: getEvictionStrategy(scaleDownConfigs),
     };
     let pages = 0;
@@ -635,6 +648,7 @@ export async function scaleDown(remainingTime = () => Infinity): Promise<void> {
       do {
         if (remainingTime() < 10000) return;
         const page = await computeProvider.listPage(environment, nextToken);
+        page.runners = page.runners.map(normalizeRunnerOwner);
         pages++;
         scannedRunners += page.runners.length;
         logger.info(
