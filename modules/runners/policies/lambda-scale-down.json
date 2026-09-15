@@ -5,7 +5,9 @@
       "Effect": "Allow",
       "Action": [
         "ec2:DescribeInstances",
-        "ec2:DescribeTags"
+        "ec2:DescribeTags",
+        "ec2:DescribeSpotInstanceRequests",
+        "ec2:CancelSpotInstanceRequests"
       ],
       "Resource": [
         "*"
@@ -40,6 +42,20 @@
       "Condition": {
         "StringEquals": {
           "ec2:ResourceTag/gh:environment": "${environment}"
+        }
+      }
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:TerminateInstances"
+      ],
+      "Resource": [
+        "*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "ec2:Vpc": "${vpc_arn}"
         }
       }
     },

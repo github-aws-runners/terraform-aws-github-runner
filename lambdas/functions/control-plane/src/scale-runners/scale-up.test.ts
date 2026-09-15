@@ -31,6 +31,8 @@ const mockOctokit = {
     getJobForWorkflowRun: vi.fn(),
     generateRunnerJitconfigForOrg: vi.fn(),
     generateRunnerJitconfigForRepo: vi.fn(),
+    deleteSelfHostedRunnerFromOrg: vi.fn(),
+    deleteSelfHostedRunnerFromRepo: vi.fn(),
   },
   apps: {
     getOrgInstallation: vi.fn(),
@@ -608,6 +610,55 @@ describe('scaleUp with GHES', () => {
 
       expect(mockSSMClient).not.toHaveReceivedCommandWith(PutParameterCommand, {
         Name: '/github-action-runners/default/runners/config/i-instance-1',
+      });
+    });
+
+    it('removes a stale runner registration and retries once when GitHub returns 409', async () => {
+      process.env.RUNNERS_MAXIMUM_COUNT = '5';
+      mockCreateRunner.mockImplementation(async () => {
+        return createRunnerResult(['i-instance-1']);
+      });
+      mockListRunners.mockImplementation(async () => {
+        return [];
+      });
+
+      mockOctokit.paginate.mockImplementation((route: string) => {
+        if (route === 'GET /orgs/{org}/actions/runners') {
+          return [{ id: 555, name: 'unit-test-i-instance-1' }];
+        }
+        return [{ id: 1, name: 'Default' }];
+      });
+      mockOctokit.actions.deleteSelfHostedRunnerFromOrg.mockResolvedValue({});
+
+      let attempt = 0;
+      mockOctokit.actions.generateRunnerJitconfigForOrg.mockImplementation(({ name }) => {
+        attempt++;
+        if (attempt === 1) {
+          const error = new Error('Conflict') as Error & { status: number };
+          error.status = 409;
+          throw error;
+        }
+        return {
+          data: {
+            runner: { id: 9876543210 },
+            encoded_jit_config: `TEST_JIT_CONFIG_${name}`,
+          },
+          headers: {},
+        };
+      });
+
+      await scaleUpModule.scaleUp(TEST_DATA);
+
+      expect(mockOctokit.actions.deleteSelfHostedRunnerFromOrg).toHaveBeenCalledWith({
+        org: TEST_DATA_SINGLE.repositoryOwner,
+        runner_id: 555,
+      });
+      expect(mockOctokit.actions.generateRunnerJitconfigForOrg).toHaveBeenCalledTimes(2);
+      expect(mockSSMClient).toHaveReceivedCommandWith(PutParameterCommand, {
+        Name: '/github-action-runners/default/runners/config/i-instance-1',
+        Value: 'TEST_JIT_CONFIG_unit-test-i-instance-1',
+        Type: 'SecureString',
+        Tags: [{ Key: 'RunnerId', Value: 'i-instance-1' }],
       });
     });
 

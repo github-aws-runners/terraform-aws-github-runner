@@ -47,4 +47,7 @@ export interface RunnerInputParameters {
   tracingEnabled?: boolean;
   onDemandFailoverOnError?: string[];
   useDedicatedHost?: boolean;
+  // When true and the capacity type is spot, launch stoppable persistent-spot instances via
+  // RunInstances instead of one-time CreateFleet spot, so the warm pool can stop/start them.
+  enablePersistentSpot?: boolean;
 }

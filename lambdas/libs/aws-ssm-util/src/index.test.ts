@@ -1,4 +1,5 @@
 import {
+  DeleteParameterCommand,
   GetParameterCommand,
   GetParameterCommandOutput,
   GetParametersCommand,
@@ -10,7 +11,15 @@ import 'aws-sdk-client-mock-jest/vitest';
 import { mockClient } from 'aws-sdk-client-mock';
 import nock from 'nock';
 
-import { getParameter, getParameters, putParameter, resetSSMClient, ssmClient, SSM_ADVANCED_TIER_THRESHOLD } from '.';
+import {
+  deleteParameter,
+  getParameter,
+  getParameters,
+  putParameter,
+  resetSSMClient,
+  ssmClient,
+  SSM_ADVANCED_TIER_THRESHOLD,
+} from '.';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 const mockSSMClient = mockClient(SSMClient);
@@ -169,8 +178,30 @@ describe('Test getParameter and putParameter', () => {
   });
 });
 
-describe('Test getParameters (batch)', () => {
-  beforeEach(() => {
+describe('Test deleteParameter', () => {
+  it('deletes the parameter', async () => {
+    mockSSMClient.on(DeleteParameterCommand).resolves({});
+
+    await deleteParameter('/some/parameter');
+
+    expect(mockSSMClient).toHaveReceivedCommandWith(DeleteParameterCommand, { Name: '/some/parameter' });
+  });
+
+  it('treats a missing parameter as success', async () => {
+    mockSSMClient.on(DeleteParameterCommand).rejects(Object.assign(new Error('missing'), { name: 'ParameterNotFound' }));
+
+    await expect(deleteParameter('/some/parameter')).resolves.not.toThrow();
+  });
+
+  it('rethrows other errors', async () => {
+    const error = Object.assign(new Error('denied'), { name: 'AccessDeniedException' });
+    mockSSMClient.on(DeleteParameterCommand).rejects(error);
+
+    await expect(deleteParameter('/some/parameter')).rejects.toThrow('denied');
+  });
+});
+
+describe('Test getParameters (batch)', () => {  beforeEach(() => {
     mockSSMClient.reset();
   });
 

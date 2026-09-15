@@ -31,6 +31,7 @@ export interface Ec2ProviderConfig {
   tracingEnabled?: boolean;
   onDemandFailoverOnError?: string[];
   scaleErrors: string[];
+  enablePersistentSpot?: boolean;
 }
 
 export interface CreateEC2RunnerConfig extends Ec2ProviderConfig {
@@ -59,6 +60,7 @@ export function loadEc2ProviderConfig(): Ec2ProviderConfig {
       ? (JSON.parse(process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS) as string[])
       : [],
     scaleErrors: JSON.parse(process.env.SCALE_ERRORS) as string[],
+    enablePersistentSpot: yn(process.env.ENABLE_PERSISTENT_SPOT, { default: false }),
   };
 }
 
@@ -92,6 +94,22 @@ export async function createRunners(
     return { instances: [], retryableErrorCount: numberOfRunners, nonRetryableErrorCount: 0 };
   }
 
+  return await registerRunners(ec2Operations, githubRunnerConfig, result, ghClient, createStartRunnerConfig, storage);
+}
+
+/**
+ * Registers already-provisioned EC2 instances with GitHub (JIT config or registration token) and
+ * terminates any instance that fails to get configured. Shared by the cold-start (`createRunners`)
+ * and warm-pool restart paths so both apply the same registration and clean-up behavior.
+ */
+export async function registerRunners(
+  ec2Operations: Ec2RunnerResourceOperations,
+  githubRunnerConfig: CreateGitHubRunnerConfig,
+  result: CreateRunnerResult,
+  ghClient: Octokit,
+  createStartRunnerConfig: CreateStartRunnerConfig,
+  storage?: RunnerConfigStorage,
+): Promise<CreateRunnerResult> {
   if (result.instances.length !== 0) {
     let failedInstances: string[];
     try {

@@ -72,7 +72,8 @@ locals {
     hook_job_started   = var.runner_hook_job_started
     hook_job_completed = var.runner_hook_job_completed
     start_runner = templatefile(local.userdata_start_runner[var.runner_os], {
-      metadata_tags = var.metadata_options != null ? var.metadata_options.instance_metadata_tags : "enabled"
+      metadata_tags        = var.metadata_options != null ? var.metadata_options.instance_metadata_tags : "enabled"
+      warm_pool_table_name = var.warm_pool.enabled ? aws_dynamodb_table.warm_pool[0].name : ""
     })
     ghes_url        = var.ghes_url
     ghes_ssl_verify = var.ghes_ssl_verify
