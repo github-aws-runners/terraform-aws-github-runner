@@ -18,6 +18,8 @@ const APPLICATION_VALUE = 'github-action-runner';
 const CREATED_BY_TAG = 'ghr:created_by';
 export const SCALE_SET_RUNNER_SOURCE = 'scale-set-service';
 const ENVIRONMENT_TAG = 'ghr:environment';
+const RUNNER_TYPE_TAG = 'ghr:Type';
+const RUNNER_OWNER_TAG = 'ghr:Owner';
 export const GITHUB_RUNNER_NAME_MAX_LENGTH = 64;
 
 type Ec2ScaleSetState = 'provisioning' | 'publishing' | 'config-published' | 'retiring';
@@ -43,22 +45,12 @@ export function runnerIdentityFromGitHubScope(githubScope: string): {
     return { runnerOwner: pathParts.join('/'), runnerType: 'Repo' };
   }
 
-  // The legacy EC2 tags do not have an enterprise discriminator. They remain
-  // informational here; exact ownership is fenced by runner config, scale-set
-  // ID, and the canonical GitHub-scope hash.
+  // The legacy EC2 tags do not have an enterprise discriminator. The runner
+  // type and owner tags remain the ownership boundary for scale-set inventory.
   return {
     runnerOwner: pathParts[0].toLowerCase() === 'enterprises' ? pathParts[1] : pathParts[0],
     runnerType: 'Org',
   };
-}
-
-export function ownershipTags(input: CreateEc2ScaleSetProviderInput): Tag[] {
-  return [
-    { Key: ENVIRONMENT_TAG, Value: input.configuration.environment },
-    { Key: EC2_RUNNER_CONFIG_TAG, Value: input.runnerConfigName },
-    { Key: EC2_SCALE_SET_ID_TAG, Value: String(input.scaleSetId) },
-    { Key: EC2_GITHUB_SCOPE_HASH_TAG, Value: githubScopeHash(input.githubScope) },
-  ];
 }
 
 export async function listOwnedRunners(
@@ -67,6 +59,7 @@ export async function listOwnedRunners(
   signal: AbortSignal,
 ): Promise<OwnedEc2Runner[]> {
   const runners: OwnedEc2Runner[] = [];
+  const runnerIdentity = runnerIdentityFromGitHubScope(input.githubScope);
   let nextToken: string | undefined;
   do {
     const response = await ec2Client.send(
@@ -76,9 +69,8 @@ export async function listOwnedRunners(
           { Name: `tag:${APPLICATION_TAG}`, Values: [APPLICATION_VALUE] },
           { Name: `tag:${CREATED_BY_TAG}`, Values: [SCALE_SET_RUNNER_SOURCE] },
           { Name: `tag:${ENVIRONMENT_TAG}`, Values: [input.configuration.environment] },
-          { Name: `tag:${EC2_RUNNER_CONFIG_TAG}`, Values: [input.runnerConfigName] },
-          { Name: `tag:${EC2_SCALE_SET_ID_TAG}`, Values: [String(input.scaleSetId)] },
-          { Name: `tag:${EC2_GITHUB_SCOPE_HASH_TAG}`, Values: [githubScopeHash(input.githubScope)] },
+          { Name: `tag:${RUNNER_TYPE_TAG}`, Values: [runnerIdentity.runnerType] },
+          { Name: `tag:${RUNNER_OWNER_TAG}`, Values: [runnerIdentity.runnerOwner] },
         ],
         NextToken: nextToken,
       }),
@@ -98,14 +90,14 @@ export async function listOwnedRunners(
 function parseOwnedRunner(instance: Instance, input: CreateEc2ScaleSetProviderInput): OwnedEc2Runner | undefined {
   if (!instance.InstanceId) return undefined;
   const tags = new Map((instance.Tags ?? []).flatMap((tag) => (tag.Key ? [[tag.Key, tag.Value]] : [])));
+  const runnerIdentity = runnerIdentityFromGitHubScope(input.githubScope);
 
   if (
     tags.get(APPLICATION_TAG) !== APPLICATION_VALUE ||
     tags.get(CREATED_BY_TAG) !== SCALE_SET_RUNNER_SOURCE ||
     tags.get(ENVIRONMENT_TAG) !== input.configuration.environment ||
-    tags.get(EC2_RUNNER_CONFIG_TAG) !== input.runnerConfigName ||
-    tags.get(EC2_SCALE_SET_ID_TAG) !== String(input.scaleSetId) ||
-    tags.get(EC2_GITHUB_SCOPE_HASH_TAG) !== githubScopeHash(input.githubScope)
+    tags.get(RUNNER_TYPE_TAG) !== runnerIdentity.runnerType ||
+    tags.get(RUNNER_OWNER_TAG) !== runnerIdentity.runnerOwner
   ) {
     return undefined;
   }
