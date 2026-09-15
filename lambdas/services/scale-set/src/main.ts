@@ -59,20 +59,46 @@ async function main(): Promise<void> {
     parameterStore: defaultParameterStore,
     createComputeProviderCredentials: (roleArn) => {
       const taskCredentials = fromNodeProviderChain();
-      return roleArn === undefined
-        ? taskCredentials
-        : fromTemporaryCredentials({
-            masterCredentials: taskCredentials,
-            params: {
-              RoleArn: roleArn,
-              RoleSessionName: 'scale-set-controller',
-              DurationSeconds: 3600,
-            },
-            clientConfig: {
-              maxAttempts: 3,
-              retryMode: 'standard',
-            },
-          });
+      if (roleArn === undefined) {
+        logger.info('scale_set_compute_provider_credentials_selected', {
+          credentialSource: 'task_role',
+        });
+        return taskCredentials;
+      }
+
+      logger.info('scale_set_compute_provider_credentials_selected', {
+        credentialSource: 'assumed_compute_role',
+        roleArn,
+      });
+      const assumedRoleCredentials = fromTemporaryCredentials({
+        masterCredentials: taskCredentials,
+        params: {
+          RoleArn: roleArn,
+          RoleSessionName: 'scale-set-controller',
+          DurationSeconds: 3600,
+        },
+        clientConfig: {
+          maxAttempts: 3,
+          retryMode: 'standard',
+        },
+      });
+      let roleAssumptionLogged = false;
+      return async () => {
+        try {
+          const credentials = await assumedRoleCredentials();
+          if (!roleAssumptionLogged) {
+            roleAssumptionLogged = true;
+            logger.info('scale_set_compute_provider_role_assumed', {
+              credentialSource: 'assumed_compute_role',
+              roleArn,
+            });
+          }
+          return credentials;
+        } catch (error) {
+          logger.error('scale_set_compute_provider_role_assume_failed', { roleArn, error });
+          throw error;
+        }
+      };
     },
     sleep: abortableSleep,
     random: Math.random,
