@@ -109,7 +109,6 @@ function validateKnownJobMessage(rawMessage: Record<string, unknown>, messageTyp
     if (rawMessage.runnerName !== undefined) {
       if (
         typeof rawMessage.runnerName !== 'string' ||
-        rawMessage.runnerName.length === 0 ||
         rawMessage.runnerName.length > 256 ||
         hasAsciiControlCharacter(rawMessage.runnerName)
       ) {
