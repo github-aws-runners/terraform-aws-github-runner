@@ -38,15 +38,15 @@ export interface JobAssigned extends JobMessageBase {
 
 export interface JobStarted extends JobMessageBase {
   messageType: typeof MESSAGE_TYPES.jobStarted;
-  runnerId: number;
-  runnerName: string;
+  runnerId?: number;
+  runnerName?: string;
 }
 
 export interface JobCompleted extends JobMessageBase {
   messageType: typeof MESSAGE_TYPES.jobCompleted;
   result: string;
-  runnerId: number;
-  runnerName: string;
+  runnerId?: number;
+  runnerName?: string;
 }
 
 export interface Label {
