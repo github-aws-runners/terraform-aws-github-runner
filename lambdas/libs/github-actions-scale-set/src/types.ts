@@ -11,7 +11,7 @@ export type MessageType = (typeof MESSAGE_TYPES)[keyof typeof MESSAGE_TYPES];
 
 export interface JobMessageBase {
   messageType: MessageType;
-  runnerRequestId: number;
+  runnerRequestId?: number;
   repositoryName: string;
   ownerName: string;
   jobId: string;
@@ -28,6 +28,7 @@ export interface JobMessageBase {
 
 export interface JobAvailable extends JobMessageBase {
   messageType: typeof MESSAGE_TYPES.jobAvailable;
+  runnerRequestId: number;
   acquireJobUrl: string;
 }
 
