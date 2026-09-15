@@ -198,14 +198,17 @@ locals {
         ])
         conditions = []
       }
-    },
-    local.ami_id_ssm_external ? {
-      read_external_ami_parameter = {
-        actions    = toset(["ssm:GetParameter"])
-        resources  = toset([local.ami_id_ssm_parameter_arn])
+      read_ami_parameter = {
+        actions = toset([
+          "ssm:GetParameter",
+          "ssm:GetParameters",
+        ])
+        resources = toset([
+          local.ami_id_ssm_module_managed ? aws_ssm_parameter.runner_ami_id[0].arn : local.ami_id_ssm_parameter_arn,
+        ])
         conditions = []
       }
-    } : {},
+    },
     local.ami_kms_key_enabled ? {
       use_ami_kms_key = {
         actions = toset([
