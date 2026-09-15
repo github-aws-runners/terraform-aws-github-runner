@@ -45,6 +45,14 @@ resource "aws_ecs_task_definition" "controller" {
             value = var.log_level
           },
           {
+            name  = "POWERTOOLS_SERVICE_NAME"
+            value = "scale-set-controller"
+          },
+          {
+            name  = "POWERTOOLS_LOG_LEVEL"
+            value = upper(var.log_level)
+          },
+          {
             name  = "SCALE_SET_CONTROLLER_MANIFEST"
             value = local.group_controller_manifests[each.key]
           },
