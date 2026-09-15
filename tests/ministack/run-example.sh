@@ -321,9 +321,6 @@ $lambda_zip"
       create_ami_fixture "ministack-scale-set-linux-x64" x86_64 >/dev/null
       create_ami_fixture "ministack-scale-set-linux-arm64" arm64 >/dev/null
       create_ami_fixture "ministack-scale-set-windows-x64" x86_64 >/dev/null
-      create_ssm_fixture \
-        "/ministack/scale-set/installation-id" \
-        "1"
       ;;
   esac
 }
