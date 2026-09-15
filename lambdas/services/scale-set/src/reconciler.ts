@@ -4,6 +4,7 @@ import {
   ScaleSetProtocolError,
   type AccessToken,
   type MessageSessionClient,
+  type RunnerScaleSet,
   type RunnerScaleSetMessage,
   type RunnerScaleSetStatistic,
 } from '@aws-github-runner/github-actions-scale-set';
@@ -24,6 +25,18 @@ import type { ScaleSetLogger } from './logger';
 
 const MAX_JIT_CONFIGURATION_BYTES = 1024 * 1024;
 
+function uniqueLabelNames(labelNames: readonly string[]): string[] {
+  return [...new Set(labelNames)];
+}
+
+function normalizedScaleSetLabelNames(labels: RunnerScaleSet['labels']): string[] {
+  return [...new Set((labels ?? []).map(({ name }) => name))].sort();
+}
+
+function desiredScaleSetLabelNames(config: ScaleSetReconcilerConfig): string[] {
+  return uniqueLabelNames([config.scaleSetName, ...config.runnerLabels]);
+}
+
 export interface ScaleSetComputeProviderFactory {
   create(type: string, input: ScaleSetComputeProviderFactoryInput): ScaleSetComputeProvider;
 }
@@ -38,6 +51,7 @@ export type ScaleSetReconcilerClient = Pick<
   | 'getRunnerByName'
   | 'removeRunner'
   | 'createRunnerScaleSet'
+  | 'updateRunnerScaleSet'
   | 'setSystemInfo'
   | 'systemInfo'
 >;
@@ -144,12 +158,13 @@ export class ScaleSetReconciler {
         ) {
           throw new ScaleSetConfigurationError('configured GitHub runner scale set identity does not match');
         }
+        const reconciledScaleSet = await this.reconcileScaleSetLabels(client, configuredScaleSet, signal);
         session = await client.createMessageSessionClient(this.scaleSetId, this.config.sessionOwner, { signal });
         status.markSessionReady();
         this.log('info', 'scale_set_session_created');
         this.log('debug', 'scale_set_session_scale_set_loaded', {
-          scaleSetName: session.session.runnerScaleSet?.name,
-          scaleSetLabels: session.session.runnerScaleSet?.labels?.map(({ name, type }) => ({ name, type })),
+          scaleSetName: reconciledScaleSet.name,
+          scaleSetLabels: reconciledScaleSet.labels?.map(({ name, type }) => ({ name, type })),
         });
         let latestStatistics = session.session.statistics ?? undefined;
         let lastMessageId = 0;
@@ -266,7 +281,7 @@ export class ScaleSetReconciler {
           {
             name: this.config.scaleSetName,
             runnerGroupId,
-            labels: this.config.runnerLabels.map((name) => ({ name })),
+            labels: desiredScaleSetLabelNames(this.config).map((name) => ({ name })),
             runnerSetting: {},
           },
           { signal },
@@ -300,6 +315,34 @@ export class ScaleSetReconciler {
       scaleSetLabels: configuredScaleSet.labels?.map(({ name, type }) => ({ name, type })),
     });
     return { scaleSetId: configuredScaleSet.id, runnerGroupId };
+  }
+
+  private async reconcileScaleSetLabels(
+    client: ScaleSetReconcilerClient,
+    configuredScaleSet: RunnerScaleSet,
+    signal: AbortSignal,
+  ): Promise<RunnerScaleSet> {
+    const desiredLabels = desiredScaleSetLabelNames(this.config);
+    const currentLabels = normalizedScaleSetLabelNames(configuredScaleSet.labels);
+    if (currentLabels.join('\u0000') === [...desiredLabels].sort().join('\u0000')) return configuredScaleSet;
+
+    this.log('info', 'scale_set_labels_updating', {
+      currentLabels,
+      desiredLabels,
+    });
+    await client.updateRunnerScaleSet(
+      this.scaleSetId,
+      {
+        labels: desiredLabels.map((name) => ({ name })),
+        runnerSetting: configuredScaleSet.runnerSetting ?? {},
+      },
+      { signal },
+    );
+    this.log('info', 'scale_set_labels_updated', {
+      scaleSetName: configuredScaleSet.name,
+      scaleSetLabels: desiredLabels,
+    });
+    return { ...configuredScaleSet, labels: desiredLabels.map((name) => ({ name })) };
   }
 
   private async loadCachedRunnerGroupId(): Promise<number | undefined> {
