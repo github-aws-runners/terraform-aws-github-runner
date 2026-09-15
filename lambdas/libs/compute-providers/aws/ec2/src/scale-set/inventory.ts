@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import { DescribeInstancesCommand, type EC2Client, type Instance, type Tag } from '@aws-sdk/client-ec2';
+import { DescribeInstancesCommand, type EC2Client, type Instance } from '@aws-sdk/client-ec2';
 
 import type { ScaleSetReconcileRequest, ScaleSetRunnerState } from '../../../../scale-set';
 import type { CreateEc2ScaleSetProviderInput } from './configuration';
