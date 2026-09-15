@@ -1,4 +1,8 @@
-import type { MessageSessionClient, RunnerScaleSetMessage } from '@aws-github-runner/github-actions-scale-set';
+import {
+  ScaleSetProtocolError,
+  type MessageSessionClient,
+  type RunnerScaleSetMessage,
+} from '@aws-github-runner/github-actions-scale-set';
 import type { ScaleSetComputeProvider, ScaleSetReconcileResult } from '@aws-github-runner/compute-providers/scale-set';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -238,7 +242,7 @@ describe('ScaleSetReconciler', () => {
     });
   });
 
-  it('acknowledges and stops when reconciliation rejects', async () => {
+  it('reconnects and retries when reconciliation rejects', async () => {
     const abort = new AbortController();
     const session = {
       session: { statistics: undefined },
@@ -247,17 +251,25 @@ describe('ScaleSetReconciler', () => {
       deleteMessage: vi.fn(),
       close: vi.fn(),
     };
-    const { dependencies } = fixture({ session, reconcile: vi.fn().mockRejectedValue(new Error('provider failed')) });
+    const reconcile = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('provider failed'))
+      .mockImplementationOnce(async () => {
+        abort.abort();
+        return result();
+      });
+    const { client, dependencies } = fixture({ session, reconcile });
+    dependencies.sleep = vi.fn().mockResolvedValue(undefined);
     const status = reporter();
 
     await new ScaleSetReconciler(config, serviceConfig, dependencies).run(abort.signal, status);
 
-    expect(session.deleteMessage).toHaveBeenCalledOnce();
-    expect(status.markFailed).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'ScaleSetProviderReconciliationError' }),
-    );
-    expect(status.markReconnecting).not.toHaveBeenCalled();
-    expect(dependencies.sleep).not.toHaveBeenCalled();
+    expect(client.createMessageSessionClient).toHaveBeenCalledTimes(2);
+    expect(session.close).toHaveBeenCalledTimes(2);
+    expect(reconcile).toHaveBeenCalledTimes(2);
+    expect(status.markReconnecting).toHaveBeenCalledWith(expect.any(Error));
+    expect(status.markFailed).not.toHaveBeenCalled();
+    expect(dependencies.sleep).toHaveBeenCalledOnce();
   });
 
   it('does not process a message when acknowledgement fails', async () => {
@@ -282,7 +294,38 @@ describe('ScaleSetReconciler', () => {
     expect(status.markReconnecting).toHaveBeenCalledOnce();
   });
 
-  it('acknowledges and stops when the provider returns an error result', async () => {
+  it('logs that retrying stopped for a fatal error', async () => {
+    const abort = new AbortController();
+    const session = {
+      session: { statistics: undefined },
+      getMessage: vi.fn(),
+      acquireJobs: vi.fn(),
+      deleteMessage: vi.fn(),
+      close: vi.fn(),
+    };
+    const { client, dependencies } = fixture({ session });
+    vi.mocked(client.createMessageSessionClient).mockRejectedValueOnce(new ScaleSetProtocolError('invalid session'));
+    const status = reporter();
+
+    await new ScaleSetReconciler(config, serviceConfig, dependencies).run(abort.signal, status);
+
+    expect(dependencies.logger.info).toHaveBeenCalledWith(
+      'scale_set_reconciler_retry_stopped',
+      expect.objectContaining({
+        retryable: false,
+        reason: 'fatal_error',
+        error: expect.objectContaining({ name: 'ScaleSetProtocolError', message: 'invalid session' }),
+      }),
+    );
+    expect(dependencies.logger.error).toHaveBeenCalledWith(
+      'scale_set_reconciler_failed',
+      expect.objectContaining({ error: expect.objectContaining({ name: 'ScaleSetProtocolError' }) }),
+    );
+    expect(status.markFailed).toHaveBeenCalledOnce();
+    expect(status.markReconnecting).not.toHaveBeenCalled();
+  });
+
+  it('reconnects and retries when the provider returns an error result', async () => {
     const abort = new AbortController();
     const order: string[] = [];
     const session = {
@@ -294,51 +337,32 @@ describe('ScaleSetReconciler', () => {
       }),
       close: vi.fn(),
     };
-    const reconcile = vi.fn(async () => {
-      order.push('reconcile');
-      return result({
-        status: 'error',
-        currentRunners: 0,
-        errors: [{ operation: 'launch', code: 'ThrottlingException' }],
+    const reconcile = vi
+      .fn()
+      .mockImplementationOnce(async () => {
+        order.push('reconcile');
+        return result({
+          status: 'error',
+          currentRunners: 0,
+          errors: [{ operation: 'launch', code: 'ThrottlingException' }],
+        });
+      })
+      .mockImplementationOnce(async () => {
+        order.push('reconcile');
+        abort.abort();
+        return result();
       });
-    });
     const { dependencies } = fixture({ session, reconcile });
+    dependencies.sleep = vi.fn().mockResolvedValue(undefined);
     const status = reporter();
 
     await new ScaleSetReconciler(config, serviceConfig, dependencies).run(abort.signal, status);
 
-    expect(order).toEqual(['delete', 'reconcile']);
-    expect(status.markFailed).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'ScaleSetProviderReconciliationError' }),
-    );
-    expect(status.markReconnecting).not.toHaveBeenCalled();
-    expect(dependencies.sleep).not.toHaveBeenCalled();
-  });
-
-  it('does not call public GitHub runner inventory after a provider error result', async () => {
-    const session = {
-      session: { statistics: undefined },
-      getMessage: vi.fn().mockResolvedValue(message()),
-      acquireJobs: vi.fn().mockResolvedValue([99]),
-      deleteMessage: vi.fn(),
-      close: vi.fn(),
-    };
-    const reconcile = vi.fn().mockResolvedValue(
-      result({
-        status: 'error',
-        currentRunners: 0,
-        errors: [{ operation: 'launch', code: 'EC2_LAUNCH_FAILED' }],
-      }),
-    );
-    const { dependencies } = fixture({ session, reconcile });
-    const status = reporter();
-
-    await new ScaleSetReconciler(config, serviceConfig, dependencies).run(new AbortController().signal, status);
-
-    expect(reconcile).toHaveBeenCalledOnce();
-    expect(status.markFailed).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'ScaleSetProviderReconciliationError' }),
-    );
+    expect(order).toEqual(['delete', 'reconcile', 'delete', 'reconcile']);
+    expect(reconcile).toHaveBeenCalledTimes(2);
+    expect(status.markReconnecting).toHaveBeenCalledOnce();
+    expect(status.markFailed).not.toHaveBeenCalled();
+    expect(dependencies.sleep).toHaveBeenCalledOnce();
   });
 
   it('uses the Actions-service identity check without public runner verification', async () => {

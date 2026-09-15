@@ -188,6 +188,11 @@ export class ScaleSetReconciler {
         if (signal.aborted) break;
         if (isFatalReconcilerError(error)) {
           status.markFailed(error);
+          this.log('info', 'scale_set_reconciler_retry_stopped', {
+            retryable: false,
+            reason: 'fatal_error',
+            error: errorLogAttributes(error),
+          });
           this.log('error', 'scale_set_reconciler_failed', {
             ...httpErrorLogAttributes(error),
             error: errorLogAttributes(error),
@@ -657,7 +662,6 @@ function hasAsciiControlCharacter(value: string): boolean {
 
 function isFatalReconcilerError(error: unknown): boolean {
   if (error instanceof ScaleSetConfigurationError || error instanceof ScaleSetProtocolError) return true;
-  if (error instanceof ScaleSetProviderReconciliationError) return true;
   if (!isScaleSetHttpError(error)) return false;
   return error.status >= 400 && error.status < 500 && ![408, 409, 425, 429].includes(error.status);
 }
