@@ -201,13 +201,20 @@ function optionalString(value: Record<string, unknown>, key: string, path: strin
   return result.trim();
 }
 
+function containsControlCharacter(value: string): boolean {
+  return [...value].some((character) => {
+    const code = character.charCodeAt(0);
+    return code <= 0x1f || code === 0x7f;
+  });
+}
+
 function parseRunnerLabels(value: unknown, path: string, fallback: string): readonly string[] {
   if (value === undefined) return [fallback];
   if (!Array.isArray(value) || value.length > 100) {
     throw new ScaleSetConfigurationError(`${path}.runnerLabels must be an array with at most 100 entries`);
   }
   const labels = value.map((label, index) => {
-    if (typeof label !== 'string' || label.length === 0 || label.length > 255 || /[\u0000-\u001f\u007f]/.test(label)) {
+    if (typeof label !== 'string' || label.length === 0 || label.length > 255 || containsControlCharacter(label)) {
       throw new ScaleSetConfigurationError(`${path}.runnerLabels[${index}] is invalid`);
     }
     return label;
