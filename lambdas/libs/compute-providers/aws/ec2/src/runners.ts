@@ -229,9 +229,7 @@ function failureDetails(error: unknown): Record<string, unknown> {
     errorMessage: error.message,
     ...(awsError.code === undefined ? {} : { errorCode: awsError.code }),
     ...(awsError.$fault === undefined ? {} : { errorFault: awsError.$fault }),
-    ...(awsError.$metadata?.httpStatusCode === undefined
-      ? {}
-      : { httpStatusCode: awsError.$metadata.httpStatusCode }),
+    ...(awsError.$metadata?.httpStatusCode === undefined ? {} : { httpStatusCode: awsError.$metadata.httpStatusCode }),
     ...(awsError.$metadata?.requestId === undefined ? {} : { requestId: awsError.$metadata.requestId }),
   };
 }
