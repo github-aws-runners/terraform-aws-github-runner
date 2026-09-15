@@ -19,6 +19,11 @@ variable "github_app" {
       arn  = string
       name = string
     }))
+    installation_id = optional(string)
+    installation_id_ssm = optional(object({
+      arn  = string
+      name = string
+    }))
     webhook_secret = optional(string)
     webhook_secret_ssm = optional(object({
       arn  = string
@@ -384,6 +389,14 @@ variable "multi_runner_config" {
             reserved_concurrent_executions = optional(number, 1)
             timeout                        = optional(number, 30)
           }), {})
+        }), {})
+      }), null)
+      scale_set = optional(object({
+        name = string
+        runner = optional(object({
+          min_runners          = optional(number, 0)
+          max_runners          = optional(number, 10)
+          boot_time_in_minutes = optional(number, 10)
         }), {})
       }), null)
     }), {})
