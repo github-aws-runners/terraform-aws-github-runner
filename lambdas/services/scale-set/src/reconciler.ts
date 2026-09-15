@@ -682,8 +682,6 @@ function errorLogAttributes(error: unknown, depth = 0): Record<string, unknown> 
     message: error.message,
     ...(typeof errorWithMetadata.code === 'string' ? { code: errorWithMetadata.code } : {}),
     ...(typeof errorWithMetadata.status === 'number' ? { status: errorWithMetadata.status } : {}),
-    ...(errorWithMetadata.cause === undefined
-      ? {}
-      : { cause: errorLogAttributes(errorWithMetadata.cause, depth + 1) }),
+    ...(errorWithMetadata.cause === undefined ? {} : { cause: errorLogAttributes(errorWithMetadata.cause, depth + 1) }),
   };
 }
