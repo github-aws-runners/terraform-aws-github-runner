@@ -59,6 +59,7 @@ locals {
           schemaVersion      = 1
           runnerConfigName   = runner_name
           runnerGroupName    = var.runner_configs[runner_name].scale_set.runner.group_name
+          runnerLabels       = var.runner_configs[runner_name].scale_set.runner.labels
           githubConfigUrl    = local.github_config_urls[runner_name]
           scaleSetName       = var.runner_configs[runner_name].scale_set.name
           minRunners         = var.runner_configs[runner_name].scale_set.runner.min_runners

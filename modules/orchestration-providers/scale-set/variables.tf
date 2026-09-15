@@ -41,6 +41,7 @@ variable "runner_configs" {
     scale_set = object({
       name = string
       runner = optional(object({
+        labels               = optional(list(string), [])
         group_name           = optional(string, "Default")
         min_runners          = optional(number, 0)
         max_runners          = optional(number, 10)
