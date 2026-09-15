@@ -437,17 +437,3 @@ resource "terraform_data" "validate_group_compute_policy" {
     }
   }
 }
-
-resource "terraform_data" "validate_group_compute_policy" {
-  for_each = local.controller_groups
-
-  lifecycle {
-    precondition {
-      condition = (
-        floor(length(base64encode(data.aws_iam_policy_document.task_compute[each.key].json)) * 3 / 4) -
-        (endswith(base64encode(data.aws_iam_policy_document.task_compute[each.key].json), "==") ? 2 : endswith(base64encode(data.aws_iam_policy_document.task_compute[each.key].json), "=") ? 1 : 0)
-      ) <= 10240
-      error_message = "Controller group ${each.key} produces a compute-provider task-role policy exceeding AWS's 10240-byte inline role-policy quota. Split the group or reduce provider IAM statements."
-    }
-  }
-}
