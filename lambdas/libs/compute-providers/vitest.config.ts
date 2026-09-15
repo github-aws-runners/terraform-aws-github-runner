@@ -16,7 +16,7 @@ export default mergeConfig(defaultConfig, {
         'core/**/*.ts',
         'aws/**/*.ts',
       ],
-      exclude: ['**/*.test.ts', '**/*.d.ts', 'templates/**/*'],
+      exclude: ['**/*.test.ts', '**/test/**/*.ts', '**/*.d.ts', 'templates/**/*'],
       thresholds: {
         statements: 96.16,
         branches: 95.32,
