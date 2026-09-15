@@ -155,6 +155,8 @@ resource "aws_iam_role_policy" "compute" {
   name   = "scale-set-compute"
   role   = aws_iam_role.compute[each.key].name
   policy = data.aws_iam_policy_document.compute[each.key].json
+
+  depends_on = [terraform_data.validate_compute_role_policy]
 }
 
 resource "aws_iam_role" "execution" {

@@ -408,7 +408,21 @@ resource "terraform_data" "validate_group_task_policy" {
         floor(length(base64encode(data.aws_iam_policy_document.task[each.key].json)) * 3 / 4) -
         (endswith(base64encode(data.aws_iam_policy_document.task[each.key].json), "==") ? 2 : endswith(base64encode(data.aws_iam_policy_document.task[each.key].json), "=") ? 1 : 0)
       ) <= 10240
-      error_message = "Controller group ${each.key} produces a task-role policy exceeding AWS's 10240-byte inline role-policy quota. Split the group or reduce provider IAM statements."
+      error_message = "Controller group ${each.key} produces a task-role policy exceeding AWS's 10240-byte inline role-policy quota. Split the group or reduce controller permissions."
+    }
+  }
+}
+
+resource "terraform_data" "validate_compute_role_policy" {
+  for_each = local.compute_role_configs
+
+  lifecycle {
+    precondition {
+      condition = (
+        floor(length(base64encode(data.aws_iam_policy_document.compute[each.key].json)) * 3 / 4) -
+        (endswith(base64encode(data.aws_iam_policy_document.compute[each.key].json), "==") ? 2 : endswith(base64encode(data.aws_iam_policy_document.compute[each.key].json), "=") ? 1 : 0)
+      ) <= 10240
+      error_message = "Compute role ${each.key} produces an inline policy exceeding AWS's 10240-byte role-policy quota. Split the group or reduce provider IAM statements."
     }
   }
 }
