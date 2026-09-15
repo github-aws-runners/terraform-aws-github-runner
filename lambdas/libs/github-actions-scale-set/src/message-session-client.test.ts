@@ -160,6 +160,13 @@ describe('MessageSessionClient', () => {
             },
             {
               messageType: 'JobCompleted',
+              runnerRequestId: 0,
+              runnerId: 0,
+              runnerName: '',
+              result: 'Canceled',
+            },
+            {
+              messageType: 'JobCompleted',
               runnerRequestId: 500,
               runnerId: 71,
               runnerName: 'runner-71',
@@ -185,6 +192,7 @@ describe('MessageSessionClient', () => {
     ]);
     expect(message?.jobCompletedMessages).toEqual([
       expect.objectContaining({ messageType: 'JobCompleted', runnerId: 0, runnerName: 'runner-0' }),
+      expect.objectContaining({ messageType: 'JobCompleted', runnerId: 0, runnerName: '' }),
       expect.objectContaining({ messageType: 'JobCompleted', runnerName: 'runner-71' }),
     ]);
     expect(message?.jobAssignedMessages).toEqual([
