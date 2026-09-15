@@ -310,7 +310,7 @@ describe('GitHubActionsScaleSetClient', () => {
       if (method === 'POST') {
         return jsonResponse({ id: 11, name: 'linux', RunnerSetting: { disableUpdate: true } });
       }
-      if (method === 'PUT') {
+      if (method === 'PATCH') {
         return jsonResponse({ id: 11, name: 'linux', RunnerSetting: { disableUpdate: false } });
       }
       if (method === 'DELETE') {
@@ -344,7 +344,7 @@ describe('GitHubActionsScaleSetClient', () => {
     expect(updateInput).toMatchObject({ labels: [{ name: 'arm64', type: 'System' }] });
 
     const createRequest = fixture.serviceRequests.find(({ init }) => init.method === 'POST');
-    const updateRequest = fixture.serviceRequests.find(({ init }) => init.method === 'PUT');
+    const updateRequest = fixture.serviceRequests.find(({ init }) => init.method === 'PATCH');
     expect(createRequest).toBeDefined();
     expect(updateRequest).toBeDefined();
 
@@ -369,7 +369,7 @@ describe('GitHubActionsScaleSetClient', () => {
       ['GET', '/tenant/123/_apis/runtime/runnerscalesets'],
       ['GET', '/tenant/123/_apis/runtime/runnerscalesets/11'],
       ['POST', '/tenant/123/_apis/runtime/runnerscalesets'],
-      ['PUT', '/tenant/123/_apis/runtime/runnerscalesets/11'],
+      ['PATCH', '/tenant/123/_apis/runtime/runnerscalesets/11'],
       ['DELETE', '/tenant/123/_apis/runtime/runnerscalesets/11'],
     ]);
     for (const { url } of fixture.serviceRequests) {
