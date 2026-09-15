@@ -510,10 +510,13 @@ export class ScaleSetReconciler {
   }
 
   private observeLifecycle(message: RunnerScaleSetMessage): void {
-    for (const runner of message.jobStartedMessages)
-      this.rememberLifecycle(runner.runnerId, runner.runnerName, 'started');
+    for (const runner of message.jobStartedMessages) {
+      if (runner.runnerId !== undefined && runner.runnerName !== undefined)
+        this.rememberLifecycle(runner.runnerId, runner.runnerName, 'started');
+    }
     for (const runner of message.jobCompletedMessages) {
-      this.rememberLifecycle(runner.runnerId, runner.runnerName, 'completed');
+      if (runner.runnerId !== undefined && runner.runnerName !== undefined)
+        this.rememberLifecycle(runner.runnerId, runner.runnerName, 'completed');
     }
   }
 
@@ -534,6 +537,7 @@ export class ScaleSetReconciler {
 
   private pruneCompletedLifecycle(message: RunnerScaleSetMessage): void {
     for (const runner of message.jobCompletedMessages) {
+      if (runner.runnerId === undefined || runner.runnerName === undefined) continue;
       const observation = this.lifecycle.get(runner.runnerName);
       if (observation?.runnerId === runner.runnerId && observation.lifecycle === 'completed') {
         this.lifecycle.delete(runner.runnerName);

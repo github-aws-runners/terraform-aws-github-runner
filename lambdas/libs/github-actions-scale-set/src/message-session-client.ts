@@ -102,14 +102,19 @@ function validateKnownJobMessage(rawMessage: Record<string, unknown>, messageTyp
     optionalNonNegativeInteger(rawMessage.runnerRequestId, `${messageType}.runnerRequestId`);
   }
   if (messageType === MESSAGE_TYPES.jobStarted || messageType === MESSAGE_TYPES.jobCompleted) {
-    positiveInteger(rawMessage.runnerId, `${messageType}.runnerId`);
-    if (
-      typeof rawMessage.runnerName !== 'string' ||
-      rawMessage.runnerName.length === 0 ||
-      rawMessage.runnerName.length > 256 ||
-      hasAsciiControlCharacter(rawMessage.runnerName)
-    ) {
-      throw new ScaleSetProtocolError(`${messageType}.runnerName is invalid`);
+    // Runner identity is only used for lifecycle correlation. GitHub can
+    // omit it or send zero in a lifecycle notification; the reconciler will
+    // safely ignore that observation when it cannot identify a runner.
+    optionalNonNegativeInteger(rawMessage.runnerId, `${messageType}.runnerId`);
+    if (rawMessage.runnerName !== undefined) {
+      if (
+        typeof rawMessage.runnerName !== 'string' ||
+        rawMessage.runnerName.length === 0 ||
+        rawMessage.runnerName.length > 256 ||
+        hasAsciiControlCharacter(rawMessage.runnerName)
+      ) {
+        throw new ScaleSetProtocolError(`${messageType}.runnerName is invalid`);
+      }
     }
   }
 }
