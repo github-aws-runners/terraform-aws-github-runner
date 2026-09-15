@@ -35,6 +35,6 @@ resource "aws_ecs_service" "controller" {
   depends_on = [
     aws_iam_role_policy.execution,
     aws_iam_role_policy.task,
-    aws_iam_role_policy.task_compute,
+    aws_iam_role_policy.compute,
   ]
 }

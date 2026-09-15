@@ -5,6 +5,13 @@ variable "prefix" {
   nullable    = false
 }
 
+variable "log_level" {
+  description = "Logging level for the scale-set controller container."
+  type        = string
+  default     = "info"
+  nullable    = false
+}
+
 variable "runner_configs" {
   description = <<-EOT
     Normalized scale-set runner configurations keyed by stable runner-config name.
@@ -52,6 +59,7 @@ variable "runner_configs" {
       type = string
       capabilities = object({
         scale_set = object({
+          role_arn              = optional(string, null)
           configuration_json    = optional(string, "{}")
           environment_variables = optional(map(string), {})
           iam_statements = optional(map(object({
