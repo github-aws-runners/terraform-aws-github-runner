@@ -37,6 +37,10 @@ function desiredScaleSetLabelNames(config: ScaleSetReconcilerConfig): string[] {
   return uniqueLabelNames([config.scaleSetName, ...config.runnerLabels]);
 }
 
+function desiredScaleSetLabels(config: ScaleSetReconcilerConfig): Array<{ name: string; type: 'System' }> {
+  return desiredScaleSetLabelNames(config).map((name) => ({ name, type: 'System' }));
+}
+
 export interface ScaleSetComputeProviderFactory {
   create(type: string, input: ScaleSetComputeProviderFactoryInput): ScaleSetComputeProvider;
 }
@@ -281,7 +285,7 @@ export class ScaleSetReconciler {
           {
             name: this.config.scaleSetName,
             runnerGroupId,
-            labels: desiredScaleSetLabelNames(this.config).map((name) => ({ name })),
+            labels: desiredScaleSetLabels(this.config),
             runnerSetting: {},
           },
           { signal },
@@ -323,6 +327,7 @@ export class ScaleSetReconciler {
     signal: AbortSignal,
   ): Promise<RunnerScaleSet> {
     const desiredLabels = desiredScaleSetLabelNames(this.config);
+    const desiredLabelsWithTypes = desiredScaleSetLabels(this.config);
     const currentLabels = normalizedScaleSetLabelNames(configuredScaleSet.labels);
     if (currentLabels.join('\u0000') === [...desiredLabels].sort().join('\u0000')) return configuredScaleSet;
 
@@ -333,7 +338,7 @@ export class ScaleSetReconciler {
     await client.updateRunnerScaleSet(
       this.scaleSetId,
       {
-        labels: desiredLabels.map((name) => ({ name })),
+        labels: desiredLabelsWithTypes,
         runnerSetting: configuredScaleSet.runnerSetting ?? {},
       },
       { signal },
@@ -342,7 +347,7 @@ export class ScaleSetReconciler {
       scaleSetName: configuredScaleSet.name,
       scaleSetLabels: desiredLabels,
     });
-    return { ...configuredScaleSet, labels: desiredLabels.map((name) => ({ name })) };
+    return { ...configuredScaleSet, labels: desiredLabelsWithTypes };
   }
 
   private async loadCachedRunnerGroupId(): Promise<number | undefined> {
