@@ -41,6 +41,12 @@ module "runners" {
       installation_id = var.github_app.installation_id
       webhook_secret  = random_id.random.hex
     }
+    enterprise_server = {
+      url        = var.github.config_url
+      ssl_verify = var.github.ssl_verify
+    }
+    runner_owner              = var.github.runner_owner
+    runner_registration_level = var.github.registration_level
   }
 
   global_config_lambda = {
@@ -150,6 +156,7 @@ module "runners" {
         scale_set = {
           name = var.scale_set.name
           runner = {
+            group_name           = var.scale_set.runner_group_name
             min_runners          = 0
             max_runners          = 10
             boot_time_in_minutes = 10
