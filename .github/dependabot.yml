@@ -100,6 +100,22 @@ updates:
     allow:
       - dependency-name: "ghcr.io/ministackorg/ministack"
 
+  - package-ecosystem: "docker"
+    directory: "/lambdas/services/scale-set"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+    labels:
+      - "dependencies"
+      - "docker"
+    commit-message:
+      prefix: "chore(scale-set)"
+    # Keep the service runtime aligned with the supported Node.js major.
+    ignore:
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
+
   - package-ecosystem: "pip"
     directory: "/.github/workflows/mkdocs"
     schedule:
