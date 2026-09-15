@@ -209,7 +209,11 @@ describe('ScaleSetReconciler', () => {
       {
         name: 'linux',
         runnerGroupId: 7,
-        labels: [{ name: 'linux' }, { name: 'self-hosted' }, { name: 'x64' }],
+        labels: [
+          { name: 'linux', type: 'System' },
+          { name: 'self-hosted', type: 'System' },
+          { name: 'x64', type: 'System' },
+        ],
         runnerSetting: {},
       },
       { signal: abort.signal },
@@ -246,7 +250,11 @@ describe('ScaleSetReconciler', () => {
     expect(client.updateRunnerScaleSet).toHaveBeenCalledWith(
       42,
       {
-        labels: [{ name: 'linux' }, { name: 'self-hosted' }, { name: 'x64' }],
+        labels: [
+          { name: 'linux', type: 'System' },
+          { name: 'self-hosted', type: 'System' },
+          { name: 'x64', type: 'System' },
+        ],
         runnerSetting: {},
       },
       { signal: abort.signal },
@@ -254,6 +262,16 @@ describe('ScaleSetReconciler', () => {
     expect(dependencies.logger.info).toHaveBeenCalledWith(
       'scale_set_labels_updating',
       expect.objectContaining({ currentLabels: ['linux'], desiredLabels: ['linux', 'self-hosted', 'x64'] }),
+    );
+    expect(dependencies.logger.debug).toHaveBeenCalledWith(
+      'scale_set_session_scale_set_loaded',
+      expect.objectContaining({
+        scaleSetLabels: [
+          { name: 'linux', type: 'System' },
+          { name: 'self-hosted', type: 'System' },
+          { name: 'x64', type: 'System' },
+        ],
+      }),
     );
   });
 
