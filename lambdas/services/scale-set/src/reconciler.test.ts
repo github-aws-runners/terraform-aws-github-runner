@@ -346,35 +346,37 @@ describe('ScaleSetReconciler', () => {
     expect(status.markReconnecting).toHaveBeenCalledOnce();
   });
 
-  it('logs that retrying stopped for a fatal error', async () => {
+  it('reconnects after a scale-set protocol error', async () => {
     const abort = new AbortController();
     const session = {
       session: { statistics: undefined },
-      getMessage: vi.fn(),
-      acquireJobs: vi.fn(),
+      getMessage: vi.fn().mockResolvedValue(message()),
+      acquireJobs: vi.fn().mockResolvedValue([99]),
       deleteMessage: vi.fn(),
       close: vi.fn(),
     };
-    const { client, dependencies } = fixture({ session });
+    const reconcile = vi.fn(async () => {
+      abort.abort();
+      return result();
+    });
+    const { client, dependencies } = fixture({ session, reconcile });
+    dependencies.sleep = vi.fn().mockResolvedValue(undefined);
     vi.mocked(client.createMessageSessionClient).mockRejectedValueOnce(new ScaleSetProtocolError('invalid session'));
+    vi.mocked(client.createMessageSessionClient).mockResolvedValueOnce(session);
     const status = reporter();
 
     await new ScaleSetReconciler(config, serviceConfig, dependencies).run(abort.signal, status);
 
-    expect(dependencies.logger.info).toHaveBeenCalledWith(
-      'scale_set_reconciler_retry_stopped',
+    expect(client.createMessageSessionClient).toHaveBeenCalledTimes(2);
+    expect(dependencies.logger.warn).toHaveBeenCalledWith(
+      'scale_set_reconciler_reconnecting',
       expect.objectContaining({
-        retryable: false,
-        reason: 'fatal_error',
         error: expect.objectContaining({ name: 'ScaleSetProtocolError', message: 'invalid session' }),
       }),
     );
-    expect(dependencies.logger.error).toHaveBeenCalledWith(
-      'scale_set_reconciler_failed',
-      expect.objectContaining({ error: expect.objectContaining({ name: 'ScaleSetProtocolError' }) }),
-    );
-    expect(status.markFailed).toHaveBeenCalledOnce();
-    expect(status.markReconnecting).not.toHaveBeenCalled();
+    expect(status.markFailed).not.toHaveBeenCalled();
+    expect(status.markReconnecting).toHaveBeenCalledWith(expect.any(ScaleSetProtocolError));
+    expect(dependencies.logger.info).not.toHaveBeenCalledWith('scale_set_reconciler_retry_stopped', expect.anything());
   });
 
   it('reconnects and retries when the provider returns an error result', async () => {

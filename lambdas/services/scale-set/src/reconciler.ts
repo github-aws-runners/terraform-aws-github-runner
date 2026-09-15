@@ -708,7 +708,7 @@ function hasAsciiControlCharacter(value: string): boolean {
 }
 
 function isFatalReconcilerError(error: unknown): boolean {
-  if (error instanceof ScaleSetConfigurationError || error instanceof ScaleSetProtocolError) return true;
+  if (error instanceof ScaleSetConfigurationError) return true;
   if (!isScaleSetHttpError(error)) return false;
   return error.status >= 400 && error.status < 500 && ![408, 409, 425, 429].includes(error.status);
 }
