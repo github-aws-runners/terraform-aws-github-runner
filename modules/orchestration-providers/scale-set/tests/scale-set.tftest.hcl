@@ -100,6 +100,10 @@ variables {
                 actions   = ["ec2:RunInstances"]
                 resources = ["arn:aws:ec2:eu-west-1:123456789012:launch-template/lt-small"]
               }
+              read_ami = {
+                actions   = ["ssm:GetParameters"]
+                resources = ["arn:aws:ssm:eu-west-1:123456789012:parameter/scale-set-test/runners/config/ami_id"]
+              }
             }
           }
         }
@@ -381,9 +385,12 @@ run "groups_by_compute_provider_and_hardens_each_task" {
       contains(jsondecode(local.group_github_kms_policy_json["ec2"]).Statement[0].Resource, "arn:aws:kms:eu-west-1:123456789012:key/11111111-1111-1111-1111-111111111111") &&
       length(jsondecode(local.group_github_kms_policy_json["microvm"]).Statement) == 0 &&
       contains(flatten([for statement in data.aws_iam_policy_document.task["ec2"].statement : statement.resources]), "arn:aws:ssm:eu-west-1:123456789012:parameter/scale-set-test/scale-set-controller/ec2/*")
-      && contains(flatten([for statement in data.aws_iam_policy_document.task["ec2"].statement : statement.actions]), "sts:AssumeRole")
+      && contains(flatten([for statement in data.aws_iam_policy_document.task["ec2"].statement : statement.actions]), "sts:AssumeRole") &&
+      !contains(flatten([for statement in data.aws_iam_policy_document.task["ec2"].statement : statement.resources]), "arn:aws:ssm:eu-west-1:123456789012:parameter/scale-set-test/runners/config/ami_id") &&
+      contains(flatten([for statement in data.aws_iam_policy_document.compute["ec2/linux-small"].statement : statement.actions]), "ssm:GetParameters") &&
+      contains(flatten([for statement in data.aws_iam_policy_document.compute["ec2/linux-small"].statement : statement.resources]), "arn:aws:ssm:eu-west-1:123456789012:parameter/scale-set-test/runners/config/ami_id")
     )
-    error_message = "Task IAM must be scoped to its group config prefix, credential parameters, KMS keys, and compute resources."
+    error_message = "Controller IAM must contain only controller permissions, while provider permissions such as AMI SSM reads must be attached to the compute role."
   }
 }
 

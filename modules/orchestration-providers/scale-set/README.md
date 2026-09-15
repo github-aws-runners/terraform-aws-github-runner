@@ -53,13 +53,13 @@ Group names and memberships become Terraform `for_each` identities and must be k
     scale_set = {
       configuration_json = local.provider_owned_runtime_configuration
       environment_variables = local.provider_owned_non_secret_environment
-      iam_statements     = local.provider_owned_task_role_statements
+      iam_statements     = local.provider_owned_compute_role_statements
     }
   }
 }
 ```
 
-The symbolic locals above represent outputs from the selected compute-provider Terraform adapter; callers should not recreate the provider payload by hand. The provider-specific adapter owns the runtime configuration schema and the complete IAM statement set. This orchestration module treats configuration JSON as an opaque, non-secret object and combines only the selected group's statements into that group's task role. Provider-owned process environment variables are also non-secret: duplicate names within a group must resolve to the same value, and reserved runtime names cannot be overridden. Runner-config-specific values stay in the SSM reconciler document, while credentials stay behind SSM references. Wildcard IAM actions are rejected. The rendered per-group policy is checked against AWS's 10,240-byte inline role-policy quota with an explicit split-the-group error; group splitting remains the escape hatch when the union is too large or too broad.
+The symbolic locals above represent outputs from the selected compute-provider Terraform adapter; callers should not recreate the provider payload by hand. The provider-specific adapter owns the runtime configuration schema and the complete IAM statement set. This orchestration module treats configuration JSON as an opaque, non-secret object and combines only the selected group's statements into the corresponding compute role. Provider-owned process environment variables are also non-secret: duplicate names within a group must resolve to the same value, and reserved runtime names cannot be overridden. Runner-config-specific values stay in the SSM reconciler document, while credentials stay behind SSM references. Wildcard IAM actions are rejected. The rendered controller and compute-role policies are each checked against AWS's 10,240-byte inline role-policy quota with an explicit split-the-group error; group splitting remains the escape hatch when the union is too large or too broad.
 
 ## Configuration delivery
 
