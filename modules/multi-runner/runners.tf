@@ -43,6 +43,7 @@ module "runners" {
   enable_on_demand_failover_for_errors = each.value.compute_provider.aws.ec2.on_demand_failover_for_errors
   scale_errors                         = each.value.compute_provider.aws.ec2.scale_errors
   enable_organization_runners          = each.value.orchestration_provider.webhook.github.organization_runners
+  enable_multi_org_runners             = each.value.orchestration_provider.webhook.github.multi_org_runners
   enable_ephemeral_runners             = each.value.orchestration_provider.webhook.runner.ephemeral
   enable_jit_config                    = each.value.orchestration_provider.webhook.runner.jit_config_enabled
   enable_job_queued_check              = each.value.orchestration_provider.webhook.lambda.scale.up.job_queued_check_enabled

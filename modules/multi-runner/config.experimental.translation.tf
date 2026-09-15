@@ -361,6 +361,7 @@ locals {
 
           github = {
             organization_runners = v.runner_config.enable_organization_runners
+            multi_org_runners    = v.runner_config.enable_multi_org_runners
           }
 
           matcherConfig = {
