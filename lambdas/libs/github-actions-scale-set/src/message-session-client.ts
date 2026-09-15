@@ -68,6 +68,14 @@ function positiveInteger(value: unknown, field: string): number {
   return value as number;
 }
 
+function optionalNonNegativeInteger(value: unknown, field: string): number | undefined {
+  if (value === undefined) return undefined;
+  if (!Number.isSafeInteger(value) || (value as number) < 0) {
+    throw new ScaleSetProtocolError(`${field} must be a non-negative integer when present`);
+  }
+  return value as number;
+}
+
 function validateStatistics(value: unknown): RunnerScaleSetStatistic | null {
   if (value === null || value === undefined) return null;
   if (typeof value !== 'object' || Array.isArray(value)) {
@@ -83,7 +91,16 @@ function validateStatistics(value: unknown): RunnerScaleSetStatistic | null {
 }
 
 function validateKnownJobMessage(rawMessage: Record<string, unknown>, messageType: string): void {
-  positiveInteger(rawMessage.runnerRequestId, `${messageType}.runnerRequestId`);
+  if (messageType === MESSAGE_TYPES.jobAvailable) {
+    // JobAvailable is the only message type whose request ID is submitted to
+    // acquirejobs, so it must identify a real acquisition request.
+    positiveInteger(rawMessage.runnerRequestId, `${messageType}.runnerRequestId`);
+  } else {
+    // GitHub may omit this correlation ID, or send zero, on lifecycle
+    // notifications. Those messages are still useful for runner state and do
+    // not participate in job acquisition.
+    optionalNonNegativeInteger(rawMessage.runnerRequestId, `${messageType}.runnerRequestId`);
+  }
   if (messageType === MESSAGE_TYPES.jobStarted || messageType === MESSAGE_TYPES.jobCompleted) {
     positiveInteger(rawMessage.runnerId, `${messageType}.runnerId`);
     if (
