@@ -325,12 +325,12 @@ export class GitHubActionsScaleSetClient {
   ): Promise<RunnerScaleSet> {
     applyDefaultLabelTypes(scaleSet);
     const path = `${SCALE_SET_ENDPOINT}/${runnerScaleSetId}`;
-    const { result, url } = await this.actionsRequest('PATCH', path, {
+    const { result, url } = await this.actionsRequest('PUT', path, {
       body: runnerScaleSetRequestBody(scaleSet),
       expectedStatuses: [200],
       signal: options.signal,
     });
-    return normalizeRunnerScaleSet(parseJsonResponse<RunnerScaleSet>(result, 'PATCH', url)) as RunnerScaleSet;
+    return normalizeRunnerScaleSet(parseJsonResponse<RunnerScaleSet>(result, 'PUT', url)) as RunnerScaleSet;
   }
 
   async deleteRunnerScaleSet(runnerScaleSetId: number, options: ScaleSetRequestOptions = {}): Promise<void> {
