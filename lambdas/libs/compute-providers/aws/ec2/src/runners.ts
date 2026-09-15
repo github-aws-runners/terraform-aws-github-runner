@@ -577,6 +577,7 @@ async function createInstances(
   const tags = [
     { Key: 'ghr:Application', Value: 'github-action-runner' },
     { Key: 'ghr:created_by', Value: runnerParameters.source },
+    { Key: 'ghr:environment', Value: runnerParameters.environment },
     { Key: 'ghr:Type', Value: runnerParameters.runnerType },
     { Key: 'ghr:Owner', Value: runnerParameters.runnerOwner },
   ];
@@ -655,6 +656,7 @@ async function createInstancesWithRunInstances(
   const tags = [
     { Key: 'ghr:Application', Value: 'github-action-runner' },
     { Key: 'ghr:created_by', Value: runnerParameters.source },
+    { Key: 'ghr:environment', Value: runnerParameters.environment },
     { Key: 'ghr:Type', Value: runnerParameters.runnerType },
     { Key: 'ghr:Owner', Value: runnerParameters.runnerOwner },
   ];
