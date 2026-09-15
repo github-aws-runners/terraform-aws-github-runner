@@ -8,8 +8,10 @@ import { DeleteParameterCommand, GetParameterCommand, PutParameterCommand } from
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  EC2_GITHUB_RUNNER_ID_TAG,
   EC2_GITHUB_SCOPE_HASH_TAG,
   EC2_RUNNER_CONFIG_TAG,
+  EC2_RUNNER_NAME_TAG,
   EC2_SCALE_SET_ID_TAG,
   EC2_SCALE_SET_STATE_TAG,
 } from './inventory';
@@ -49,13 +51,11 @@ describe('EC2 scale-set scale up', () => {
     });
     expect(ec2Mock).toHaveReceivedCommandWith(CreateTagsCommand, {
       Resources: [instanceId],
-      Tags: expect.arrayContaining([
-        { Key: 'ghr:environment', Value: 'unit-test' },
-        { Key: EC2_RUNNER_CONFIG_TAG, Value: 'linux' },
-        { Key: EC2_SCALE_SET_ID_TAG, Value: '42' },
-        { Key: EC2_GITHUB_SCOPE_HASH_TAG, Value: githubScopeHash },
+      Tags: [
+        { Key: EC2_RUNNER_NAME_TAG, Value: `runner-${instanceId}` },
+        { Key: EC2_GITHUB_RUNNER_ID_TAG, Value: '101' },
         { Key: EC2_SCALE_SET_STATE_TAG, Value: 'publishing' },
-      ]),
+      ],
     });
     expect(ssmMock).toHaveReceivedCommandWith(PutParameterCommand, {
       Name: `${config.jitConfigParameterPath}/${instanceId}`,

@@ -1,4 +1,5 @@
 import { DeleteParameterCommand, PutParameterCommand, type SSMClient, type Tag as SsmTag } from '@aws-sdk/client-ssm';
+import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 
 import type { GenerateScaleSetJitConfigurationResult, ScaleSetReconcileRequest } from '../../../../scale-set';
 import type { Ec2RunnerResourceOperations } from '../runners';
@@ -12,7 +13,6 @@ import {
   EC2_SCALE_SET_STATE_TAG,
   GITHUB_RUNNER_NAME_MAX_LENGTH,
   githubScopeHash,
-  ownershipTags,
   runnerIdentityFromGitHubScope,
   SCALE_SET_RUNNER_SOURCE,
 } from './inventory';
@@ -26,6 +26,31 @@ import {
 
 const SSM_STANDARD_TIER_THRESHOLD = 4000;
 const SSM_ADVANCED_TIER_MAX_BYTES = 8192;
+const logger = createChildLogger('ec2-scale-set');
+
+interface AwsErrorLike extends Error {
+  code?: string;
+  $fault?: 'client' | 'server';
+  $metadata?: {
+    httpStatusCode?: number;
+    requestId?: string;
+  };
+}
+
+function errorDetails(error: unknown): Record<string, unknown> {
+  if (!(error instanceof Error)) return { errorMessage: String(error) };
+  const awsError = error as AwsErrorLike;
+  return {
+    errorName: error.name,
+    errorMessage: error.message
+      .replace(/encoded authorization failure message:\s*\S+/gi, 'encoded authorization failure message: [REDACTED]')
+      .replace(/[\r\n\u2028\u2029]/g, ' '),
+    ...(awsError.code === undefined ? {} : { errorCode: awsError.code }),
+    ...(awsError.$fault === undefined ? {} : { errorFault: awsError.$fault }),
+    ...(awsError.$metadata?.httpStatusCode === undefined ? {} : { httpStatusCode: awsError.$metadata.httpStatusCode }),
+    ...(awsError.$metadata?.requestId === undefined ? {} : { requestId: awsError.$metadata.requestId }),
+  };
+}
 
 function jitParameterName(config: Ec2ScaleSetProviderConfig, instanceId: string): string {
   return `${config.jitConfigParameterPath}/${instanceId}`;
@@ -116,6 +141,10 @@ async function terminateUnpublishedRunner(
     throwIfAborted(signal, error);
     retainUnknown(state, instanceId);
     state.errors.push(safeError('terminate', error, { resourceId: instanceId }));
+    logger.error('scale_set_ec2_unpublished_runner_termination_failed', {
+      instanceId,
+      ...errorDetails(error),
+    });
   }
 }
 
@@ -134,6 +163,12 @@ async function cleanGitHubRunner(
   } catch (error) {
     throwIfAborted(request.signal, error);
     state.errors.push(safeError('remove_runner', error, { runnerName: jit.runnerName }));
+    logger.error('scale_set_ec2_github_runner_cleanup_failed', {
+      runnerName: jit.runnerName,
+      runnerId: jit.runnerId,
+      scaleSetId: jit.scaleSetId,
+      ...errorDetails(error),
+    });
   }
 }
 
@@ -163,13 +198,19 @@ async function configureLaunchedRunner(
   } catch (error) {
     throwIfAborted(request.signal, error);
     state.errors.push(safeError('generate_jit_configuration', error, { runnerName, resourceId: instanceId }));
+    logger.error('scale_set_ec2_jit_configuration_generation_failed', {
+      instanceId,
+      runnerName,
+      ...errorDetails(error),
+    });
     await terminateUnpublishedRunner(instanceId, state, runners, request.signal);
     return;
   }
 
   try {
+    // CreateFleet/RunInstances already applies the ownership tags. This call only
+    // adds the runner identity and lifecycle tags allowed by the compute policy.
     await runners.tag(instanceId, [
-      ...ownershipTags(input),
       { Key: EC2_RUNNER_NAME_TAG, Value: jit.runnerName },
       { Key: EC2_GITHUB_RUNNER_ID_TAG, Value: String(jit.runnerId) },
       { Key: EC2_SCALE_SET_STATE_TAG, Value: 'publishing' },
@@ -177,6 +218,13 @@ async function configureLaunchedRunner(
   } catch (error) {
     throwIfAborted(request.signal, error);
     state.errors.push(safeError('launch', error, { runnerName, resourceId: instanceId }));
+    logger.error('scale_set_ec2_runner_tagging_failed', {
+      instanceId,
+      runnerName,
+      tagPhase: 'publishing',
+      tagKeys: [EC2_RUNNER_NAME_TAG, EC2_GITHUB_RUNNER_ID_TAG, EC2_SCALE_SET_STATE_TAG],
+      ...errorDetails(error),
+    });
     await cleanGitHubRunner(jit, request, state);
     await terminateUnpublishedRunner(instanceId, state, runners, request.signal);
     return;
@@ -187,6 +235,11 @@ async function configureLaunchedRunner(
   } catch (error) {
     throwIfAborted(request.signal, error);
     state.errors.push(safeError('publish_jit_configuration', error, { runnerName, resourceId: instanceId }));
+    logger.error('scale_set_ec2_jit_configuration_publication_failed', {
+      instanceId,
+      runnerName,
+      ...errorDetails(error),
+    });
     await bestEffortCancelJitPublication(input, instanceId, ssmClient, request.signal);
     // Main's bootstrap reads before deleting. Even a successful controller-side
     // DeleteParameter can race after that read and cannot prove non-consumption.
@@ -203,6 +256,13 @@ async function configureLaunchedRunner(
     // Publication may already have been consumed. Preserve the instance and exact GitHub identity.
     retainUnknown(state, instanceId);
     state.errors.push(safeError('launch', error, { runnerName, resourceId: instanceId }));
+    logger.error('scale_set_ec2_runner_state_tagging_failed', {
+      instanceId,
+      runnerName,
+      tagPhase: 'config-published',
+      tagKeys: [EC2_SCALE_SET_STATE_TAG],
+      ...errorDetails(error),
+    });
   }
 }
 
