@@ -143,6 +143,15 @@ describe('MessageSessionClient', () => {
               runnerRequestId: 999,
             },
             {
+              messageType: 'JobAssigned',
+              runnerRequestId: 0,
+            },
+            {
+              messageType: 'JobStarted',
+              runnerId: 72,
+              runnerName: 'runner-72',
+            },
+            {
               messageType: 'JobCompleted',
               runnerRequestId: 500,
               runnerId: 71,
@@ -170,8 +179,12 @@ describe('MessageSessionClient', () => {
     expect(message?.jobCompletedMessages).toEqual([
       expect.objectContaining({ messageType: 'JobCompleted', runnerName: 'runner-71' }),
     ]);
-    expect(message?.jobAssignedMessages).toEqual([]);
-    expect(message?.jobStartedMessages).toEqual([]);
+    expect(message?.jobAssignedMessages).toEqual([
+      expect.objectContaining({ messageType: 'JobAssigned', runnerRequestId: 0 }),
+    ]);
+    expect(message?.jobStartedMessages).toEqual([
+      expect.objectContaining({ messageType: 'JobStarted', runnerId: 72, runnerName: 'runner-72' }),
+    ]);
 
     await expect(session.deleteMessage(19)).resolves.toBeUndefined();
     await expect(session.acquireJobs([501, 999])).resolves.toEqual([501]);
@@ -213,6 +226,15 @@ describe('MessageSessionClient', () => {
         messageType: 'RunnerScaleSetJobMessages',
         statistics,
         body: JSON.stringify([{ messageType: 'JobAvailable', runnerRequestId: 0 }]),
+      },
+    ],
+    [
+      'negative lifecycle request id',
+      {
+        messageId: 1,
+        messageType: 'RunnerScaleSetJobMessages',
+        statistics,
+        body: JSON.stringify([{ messageType: 'JobAssigned', runnerRequestId: -1 }]),
       },
     ],
     [
