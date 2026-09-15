@@ -447,3 +447,77 @@ run "v2_inputs_do_not_require_legacy_arguments" {
     error_message = "The v2 interface must work without the stable v1 GitHub App, VPC, subnet, or runner configuration inputs."
   }
 }
+
+run "v2_inputs_require_experimental_feature" {
+  command = plan
+
+  variables {
+    vpc_id     = "vpc-stable"
+    subnet_ids = ["subnet-stable"]
+
+    github_app = {
+      key_base64     = "stable-app-key"
+      id             = "stable-app-id"
+      webhook_secret = "stable-webhook-secret"
+    }
+
+    lambda_s3_bucket      = "test-lambda-artifacts"
+    runners_lambda_zip    = "README.md"
+    runners_lambda_s3_key = "runners.zip"
+    webhook_lambda_s3_key = "webhook.zip"
+    syncer_lambda_s3_key  = "runner-binaries-syncer.zip"
+
+    multi_runner_config = {
+      lane = {}
+    }
+  }
+
+  assert {
+    condition = (
+      !local.use_v2_config
+      && length(local.normalized_config.multi_runner_config) == 0
+      && length(module.runner_configs) == 0
+      && length(module.runners) == 0
+    )
+    error_message = "The v2 configuration must remain disabled unless multi-runner-v2 is explicitly enabled."
+  }
+}
+
+run "v2_inputs_reject_legacy_runner_config" {
+  command = plan
+
+  expect_failures = [terraform_data.validate_v2]
+
+  variables {
+    experimental_features = ["multi-runner-v2"]
+
+    global_config_compute_provider = {
+      aws = {
+        ec2 = {
+          vpc_id     = "vpc-v2"
+          subnet_ids = ["subnet-v2"]
+          runner_binaries = {
+            enabled = false
+          }
+        }
+      }
+    }
+
+    multi_runner_config = {
+      lane = {
+        runner_config = {
+          runner_os                     = "linux"
+          runner_architecture           = "x64"
+          instance_types                = ["m5.large"]
+          runners_maximum_count         = 1
+          enable_runner_binaries_syncer = false
+          vpc_id                        = "vpc-legacy"
+          subnet_ids                    = ["subnet-legacy"]
+        }
+        matcherConfig = {
+          labelMatchers = [["self-hosted", "linux", "x64"]]
+        }
+      }
+    }
+  }
+}

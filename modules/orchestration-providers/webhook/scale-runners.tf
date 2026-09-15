@@ -38,6 +38,7 @@ module "scale_runners" {
       }
     })
     scale_down = merge(local.resolved_config.scale_down, {
+      idle_confirmation_seconds = local.resolved_config.scale_down.idle_confirmation_seconds
       tags = {
         resources = local.scale_down_tags
         lambda    = local.scale_down_lambda_tags

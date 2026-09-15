@@ -67,6 +67,13 @@ resource "terraform_data" "validate_v2" {
 
     precondition {
       condition = alltrue([
+        for config in var.multi_runner_config : try(config.runner_config == null, true)
+      ])
+      error_message = "Experimental v2 configuration cannot use legacy runner_config entries in multi_runner_config."
+    }
+
+    precondition {
+      condition = alltrue([
         for config in local.resolved_config.multi_runner_config : (
           try(config.orchestration_provider.webhook != null, false) &&
           try(config.compute_provider.aws.ec2 != null, false) &&
