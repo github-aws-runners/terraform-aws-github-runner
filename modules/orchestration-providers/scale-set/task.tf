@@ -41,12 +41,24 @@ resource "aws_ecs_task_definition" "controller" {
       environment = concat(
         [
           {
+            name  = "LOG_LEVEL"
+            value = var.log_level
+          },
+          {
             name  = "SCALE_SET_CONTROLLER_MANIFEST"
             value = local.group_controller_manifests[each.key]
           },
           {
             name  = "AWS_XRAY_CONTEXT_MISSING"
             value = "IGNORE_ERROR"
+          },
+          {
+            name  = "AWS_REGION"
+            value = data.aws_region.current.region
+          },
+          {
+            name  = "AWS_DEFAULT_REGION"
+            value = data.aws_region.current.region
           },
           {
             name  = "SCALE_SET_HEALTH_PORT"
@@ -103,6 +115,6 @@ resource "aws_ecs_task_definition" "controller" {
   depends_on = [
     aws_iam_role_policy.execution,
     aws_iam_role_policy.task,
-    aws_iam_role_policy.task_compute,
+    aws_iam_role_policy.compute,
   ]
 }

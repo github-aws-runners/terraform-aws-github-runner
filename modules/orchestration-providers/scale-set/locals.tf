@@ -80,6 +80,7 @@ locals {
           }
           computeProvider = {
             type          = var.runner_configs[runner_name].compute_provider.type
+            roleArn       = local.compute_role_arns["${group_name}/${runner_name}"]
             configuration = jsondecode(var.runner_configs[runner_name].compute_provider.capabilities.scale_set.configuration_json)
           }
           userAgent = var.runner_configs[runner_name].github.user_agent
@@ -139,13 +140,47 @@ locals {
     })
   }
 
-  group_compute_iam_statements = {
-    for group_name, runner_names in local.controller_groups : group_name => merge([
-      for runner_name in runner_names : {
-        for statement_name, statement in var.runner_configs[runner_name].compute_provider.capabilities.scale_set.iam_statements :
-        "${runner_name}/${statement_name}" => statement
-      }
-    ]...)
+  compute_role_configs = {
+    for config_key in flatten([
+      for group_name, runner_names in local.controller_groups : [
+        for runner_name in runner_names : {
+          key         = "${group_name}/${runner_name}"
+          group_name  = group_name
+          runner_name = runner_name
+        }
+      ]
+    ]) : config_key.key => config_key
+    if var.runner_configs[config_key.runner_name].compute_provider.capabilities.scale_set.role_arn == null
+  }
+
+  compute_role_arns = {
+    for config in flatten([
+      for group_name, runner_names in local.controller_groups : [
+        for runner_name in runner_names : {
+          key         = "${group_name}/${runner_name}"
+          group_name  = group_name
+          runner_name = runner_name
+        }
+      ]
+      ]) : config.key => (
+      var.runner_configs[config.runner_name].compute_provider.capabilities.scale_set.role_arn != null
+      ? var.runner_configs[config.runner_name].compute_provider.capabilities.scale_set.role_arn
+      : format(
+        "arn:%s:iam::%s:role%s%s-compute-%s",
+        data.aws_partition.current.partition,
+        data.aws_caller_identity.current.account_id,
+        var.ecs.iam.path,
+        local.group_resource_names[config.group_name],
+        substr(sha256(config.key), 0, 8),
+      )
+    )
+  }
+
+  reconciler_compute_iam_statements = {
+    for config_key, config in local.compute_role_configs : config_key => {
+      for statement_name, statement in var.runner_configs[config.runner_name].compute_provider.capabilities.scale_set.iam_statements :
+      statement_name => statement
+    }
   }
 
   group_compute_environment_entries = {

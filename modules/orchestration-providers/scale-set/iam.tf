@@ -66,6 +66,12 @@ data "aws_iam_policy_document" "task" {
     resources = [for parameter in local.group_github_parameters[each.key] : parameter.arn]
   }
 
+  statement {
+    sid       = "AssumeComputeProviderRoles"
+    effect    = "Allow"
+    actions   = ["sts:AssumeRole"]
+    resources = [for runner_name in local.controller_groups[each.key] : local.compute_role_arns["${each.key}/${runner_name}"]]
+  }
 }
 
 resource "aws_iam_role_policy" "task" {
@@ -78,11 +84,52 @@ resource "aws_iam_role_policy" "task" {
   depends_on = [terraform_data.validate_group_task_policy]
 }
 
-data "aws_iam_policy_document" "task_compute" {
-  for_each = local.controller_groups
+data "aws_iam_policy_document" "compute_assume_role" {
+  for_each = local.compute_role_configs
+
+  statement {
+    sid     = "AllowScaleSetTask"
+    effect  = "Allow"
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type = "AWS"
+      identifiers = [format(
+        "arn:%s:iam::%s:root",
+        data.aws_partition.current.partition,
+        data.aws_caller_identity.current.account_id,
+      )]
+    }
+
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:PrincipalArn"
+      values = [format(
+        "arn:%s:iam::%s:role%s%s-task",
+        data.aws_partition.current.partition,
+        data.aws_caller_identity.current.account_id,
+        var.ecs.iam.path,
+        local.group_resource_names[each.value.group_name],
+      )]
+    }
+  }
+}
+
+resource "aws_iam_role" "compute" {
+  for_each = local.compute_role_configs
+
+  name                 = "${local.group_resource_names[each.value.group_name]}-compute-${substr(sha256(each.key), 0, 8)}"
+  path                 = var.ecs.iam.path
+  permissions_boundary = var.ecs.iam.permissions_boundary
+  assume_role_policy   = data.aws_iam_policy_document.compute_assume_role[each.key].json
+  tags                 = local.group_tags[each.value.group_name]
+}
+
+data "aws_iam_policy_document" "compute" {
+  for_each = local.compute_role_configs
 
   dynamic "statement" {
-    for_each = local.group_compute_iam_statements[each.key]
+    for_each = local.reconciler_compute_iam_statements[each.key]
 
     content {
       effect    = "Allow"
@@ -102,14 +149,12 @@ data "aws_iam_policy_document" "task_compute" {
   }
 }
 
-resource "aws_iam_role_policy" "task_compute" {
-  for_each = local.controller_groups
+resource "aws_iam_role_policy" "compute" {
+  for_each = local.compute_role_configs
 
-  name   = "scale-set-controller-compute"
-  role   = aws_iam_role.task[each.key].name
-  policy = data.aws_iam_policy_document.task_compute[each.key].json
-
-  depends_on = [terraform_data.validate_group_compute_policy]
+  name   = "scale-set-compute"
+  role   = aws_iam_role.compute[each.key].name
+  policy = data.aws_iam_policy_document.compute[each.key].json
 }
 
 resource "aws_iam_role" "execution" {
