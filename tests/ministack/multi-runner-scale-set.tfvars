@@ -1,10 +1,17 @@
 environment = "ministack-scale-set"
 aws_region  = "eu-west-1"
 
+github = {
+  config_url         = "https://mockserver:1080"
+  ssl_verify         = false
+  runner_owner       = "example"
+  registration_level = "organization"
+}
+
 github_app = {
-  id              = "0"
+  id              = "123"
   key_base64      = "ministack-invalid-key"
-  installation_id = "1"
+  installation_id = "456"
 }
 
 runner_binaries_enabled = false
@@ -41,10 +48,9 @@ ami = {
 }
 
 scale_set = {
-  config_url                = "https://github.com/example"
-  name                      = "ministack-scale-set"
-  id                        = 1
-  runner_group_id           = 1
-  runner_owner              = "example"
-  runner_registration_level = "organization"
+  name              = "medium"
+  runner_group_name = "experimental-euw1-sl-cicd-forge-emu"
+  container = {
+    image = "localhost:4566/scale-set-controller:smoke"
+  }
 }

@@ -1,0 +1,98 @@
+[
+  {
+    "httpRequest": {
+      "method": "POST",
+      "path": "/api/v3/app/installations/456/access_tokens"
+    },
+    "httpResponse": {
+      "statusCode": 201,
+      "headers": { "Content-Type": ["application/json"] },
+      "body": "{\"token\":\"fake-installation-token\",\"expires_at\":\"2099-01-01T00:00:00Z\"}"
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "POST",
+      "path": "/api/v3/orgs/example/actions/runners/registration-token"
+    },
+    "httpResponse": {
+      "statusCode": 201,
+      "headers": { "Content-Type": ["application/json"] },
+      "body": "{\"token\":\"fake-registration-token\"}"
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "POST",
+      "path": "/api/v3/actions/runner-registration"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": { "Content-Type": ["application/json"] },
+      "body": "{\"url\":\"https://mockserver:1080/tenant/123\",\"token\":\"header.eyJleHAiOjQwNzA5MDg4MDB9.signature\"}"
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "GET",
+      "path": "/tenant/123/_apis/runtime/runnergroups/"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": { "Content-Type": ["application/json"] },
+      "body": "{\"count\":1,\"value\":[{\"id\":48,\"name\":\"experimental-euw1-sl-cicd-forge-emu\"}]}"
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "GET",
+      "path": "/tenant/123/_apis/runtime/runnerscalesets"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": { "Content-Type": ["application/json"] },
+      "body": "{\"count\":1,\"value\":[{\"id\":223,\"name\":\"medium\",\"runnerGroupId\":48,\"labels\":[{\"name\":\"medium\",\"type\":\"system\"}],\"runnerSetting\":{}}]}"
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "GET",
+      "path": "/tenant/123/_apis/runtime/runnerscalesets/223"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": { "Content-Type": ["application/json"] },
+      "body": "{\"id\":223,\"name\":\"medium\",\"runnerGroupId\":48,\"labels\":[{\"name\":\"medium\",\"type\":\"system\"}],\"runnerSetting\":{}}"
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "POST",
+      "path": "/tenant/123/_apis/runtime/runnerscalesets/223/sessions"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": { "Content-Type": ["application/json"] },
+      "body": "{\"sessionId\":\"11111111-1111-1111-1111-111111111111\",\"ownerName\":\"local.medium\",\"runnerScaleSet\":{\"id\":223,\"name\":\"medium\",\"runnerGroupId\":48},\"messageQueueUrl\":\"https://mockserver:1080/messages?sessionId=11111111-1111-1111-1111-111111111111&api-version=6.0-preview\",\"messageQueueAccessToken\":\"fake-queue-token\",\"statistics\":{\"totalAvailableJobs\":0,\"totalAcquiredJobs\":0,\"totalAssignedJobs\":0,\"totalRunningJobs\":0,\"totalRegisteredRunners\":0,\"totalBusyRunners\":0,\"totalIdleRunners\":0}}"
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "GET",
+      "path": "/messages"
+    },
+    "httpResponse": {
+      "statusCode": 202,
+      "delay": { "timeUnit": "MILLISECONDS", "value": 1000 }
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "DELETE",
+      "path": "/tenant/123/_apis/runtime/runnerscalesets/223/sessions/11111111-1111-1111-1111-111111111111"
+    },
+    "httpResponse": {
+      "statusCode": 204
+    }
+  }
+]
