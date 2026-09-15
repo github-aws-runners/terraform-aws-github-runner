@@ -92,9 +92,20 @@ function fixture(options: {
     reconcile: options.reconcile ?? vi.fn().mockResolvedValue(result()),
   };
   const client: ScaleSetReconcilerClient = {
-    getRunnerScaleSetById: vi.fn().mockResolvedValue({ id: 42, name: 'linux', runnerGroupId: 7 }),
-    getRunnerScaleSet: vi.fn().mockResolvedValue({ id: 42, name: 'linux', runnerGroupId: 7 }),
+    getRunnerScaleSetById: vi.fn().mockResolvedValue({
+      id: 42,
+      name: 'linux',
+      runnerGroupId: 7,
+      labels: [{ name: 'linux' }, { name: 'self-hosted' }, { name: 'x64' }],
+    }),
+    getRunnerScaleSet: vi.fn().mockResolvedValue({
+      id: 42,
+      name: 'linux',
+      runnerGroupId: 7,
+      labels: [{ name: 'linux' }, { name: 'self-hosted' }, { name: 'x64' }],
+    }),
     createRunnerScaleSet: vi.fn().mockResolvedValue({ id: 42, name: 'linux', runnerGroupId: 7 }),
+    updateRunnerScaleSet: vi.fn().mockResolvedValue({ id: 42, name: 'linux', runnerGroupId: 7 }),
     getRunnerGroupByName: vi.fn().mockResolvedValue({
       id: 7,
       name: 'runner-group',
@@ -198,10 +209,51 @@ describe('ScaleSetReconciler', () => {
       {
         name: 'linux',
         runnerGroupId: 7,
-        labels: [{ name: 'self-hosted' }, { name: 'linux' }, { name: 'x64' }],
+        labels: [{ name: 'linux' }, { name: 'self-hosted' }, { name: 'x64' }],
         runnerSetting: {},
       },
       { signal: abort.signal },
+    );
+  });
+
+  it('updates labels on an existing scale set when configuration changes', async () => {
+    const abort = new AbortController();
+    const session = {
+      session: { statistics: undefined },
+      getMessage: vi.fn().mockResolvedValue(message()),
+      deleteMessage: vi.fn(),
+      acquireJobs: vi.fn(),
+      close: vi.fn(),
+    };
+    const { client, dependencies } = fixture({
+      session,
+      reconcile: vi.fn(async () => {
+        abort.abort();
+        return result();
+      }),
+    });
+    vi.mocked(client.getRunnerScaleSetById)
+      .mockResolvedValueOnce({
+        id: 42,
+        name: 'linux',
+        runnerGroupId: 7,
+        labels: [{ name: 'linux' }, { name: 'self-hosted' }, { name: 'x64' }],
+      })
+      .mockResolvedValueOnce({ id: 42, name: 'linux', runnerGroupId: 7, labels: [{ name: 'linux' }] });
+
+    await new ScaleSetReconciler(config, serviceConfig, dependencies).run(abort.signal, reporter());
+
+    expect(client.updateRunnerScaleSet).toHaveBeenCalledWith(
+      42,
+      {
+        labels: [{ name: 'linux' }, { name: 'self-hosted' }, { name: 'x64' }],
+        runnerSetting: {},
+      },
+      { signal: abort.signal },
+    );
+    expect(dependencies.logger.info).toHaveBeenCalledWith(
+      'scale_set_labels_updating',
+      expect.objectContaining({ currentLabels: ['linux'], desiredLabels: ['linux', 'self-hosted', 'x64'] }),
     );
   });
 
