@@ -1,29 +1,20 @@
-import { createHash } from 'node:crypto';
-
 import { CreateFleetCommand, DescribeInstancesCommand } from '@aws-sdk/client-ec2';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { EC2_GITHUB_SCOPE_HASH_TAG, EC2_RUNNER_CONFIG_TAG, EC2_SCALE_SET_ID_TAG } from './inventory';
-import { createRequest, githubScopeHash, githubState, ownedInstance } from './test/fixtures';
+import { createRequest, githubState, ownedInstance } from './test/fixtures';
 import { createTestProvider, ec2Mock, resetAwsMocks } from './test/provider-harness';
 
 beforeEach(resetAwsMocks);
 
 describe('EC2 scale-set inventory', () => {
-  it('lists only the exact runner-config and scale-set ownership boundary', async () => {
+  it('lists only the exact environment, owner, and type ownership boundary', async () => {
     ec2Mock.on(DescribeInstancesCommand).resolves({
       Reservations: [
         {
           Instances: [
             ownedInstance('i-owned', { runnerId: 101, runnerName: 'runner-i-owned' }),
-            ownedInstance('i-other', undefined, { runnerConfigName: 'other' }),
-            ownedInstance(
-              'i-other-scope',
-              { runnerId: 102, runnerName: 'runner-i-other-scope' },
-              {
-                githubScopeHash: createHash('sha256').update('https://github.com/another', 'utf8').digest('hex'),
-              },
-            ),
+            ownedInstance('i-other-environment', undefined, { environment: 'other' }),
+            ownedInstance('i-other-owner', undefined, { runnerOwner: 'another' }),
           ],
         },
       ],
@@ -37,9 +28,8 @@ describe('EC2 scale-set inventory', () => {
         { Name: 'tag:ghr:Application', Values: ['github-action-runner'] },
         { Name: 'tag:ghr:created_by', Values: ['scale-set-service'] },
         { Name: 'tag:ghr:environment', Values: ['unit-test'] },
-        { Name: `tag:${EC2_RUNNER_CONFIG_TAG}`, Values: ['linux'] },
-        { Name: `tag:${EC2_SCALE_SET_ID_TAG}`, Values: ['42'] },
-        { Name: `tag:${EC2_GITHUB_SCOPE_HASH_TAG}`, Values: [githubScopeHash] },
+        { Name: 'tag:ghr:Type', Values: ['Org'] },
+        { Name: 'tag:ghr:Owner', Values: ['example'] },
       ]),
     });
     expect(ec2Mock).not.toHaveReceivedCommand(CreateFleetCommand);

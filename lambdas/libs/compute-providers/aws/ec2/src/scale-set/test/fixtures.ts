@@ -9,14 +9,7 @@ import type {
   ScaleSetRunnerState,
 } from '../../../../../scale-set';
 import type { Ec2ScaleSetProviderConfig } from '../configuration';
-import {
-  EC2_GITHUB_SCOPE_HASH_TAG,
-  EC2_GITHUB_RUNNER_ID_TAG,
-  EC2_RUNNER_CONFIG_TAG,
-  EC2_RUNNER_NAME_TAG,
-  EC2_SCALE_SET_ID_TAG,
-  EC2_SCALE_SET_STATE_TAG,
-} from '../inventory';
+import { EC2_GITHUB_RUNNER_ID_TAG, EC2_RUNNER_NAME_TAG, EC2_SCALE_SET_STATE_TAG } from '../inventory';
 
 export const signal = new AbortController().signal;
 export const githubScope = 'https://github.com/example';
@@ -41,11 +34,11 @@ export function ownedInstance(
   instanceId: string,
   identity?: { runnerId: number; runnerName: string },
   overrides: {
-    runnerConfigName?: string;
-    scaleSetId?: number;
     scaleSetState?: string;
-    githubScopeHash?: string;
     launchTime?: Date;
+    environment?: string;
+    runnerOwner?: string;
+    runnerType?: string;
   } = {},
 ): Instance {
   return {
@@ -54,10 +47,9 @@ export function ownedInstance(
     Tags: [
       { Key: 'ghr:Application', Value: 'github-action-runner' },
       { Key: 'ghr:created_by', Value: 'scale-set-service' },
-      { Key: 'ghr:environment', Value: 'unit-test' },
-      { Key: EC2_RUNNER_CONFIG_TAG, Value: overrides.runnerConfigName ?? 'linux' },
-      { Key: EC2_SCALE_SET_ID_TAG, Value: String(overrides.scaleSetId ?? 42) },
-      { Key: EC2_GITHUB_SCOPE_HASH_TAG, Value: overrides.githubScopeHash ?? githubScopeHash },
+      { Key: 'ghr:environment', Value: overrides.environment ?? 'unit-test' },
+      { Key: 'ghr:Type', Value: overrides.runnerType ?? 'Org' },
+      { Key: 'ghr:Owner', Value: overrides.runnerOwner ?? 'example' },
       {
         Key: EC2_SCALE_SET_STATE_TAG,
         Value: overrides.scaleSetState ?? (identity ? 'config-published' : 'provisioning'),
