@@ -15,6 +15,26 @@ permissions:
 
 env:
   AWS_REGION: eu-west-1
+  MODULES: |
+    ami-housekeeper
+    download-lambda
+    lambda
+    multi-runner
+    runner-binaries-syncer
+    runners
+    setup-iam-permissions
+    ssm
+    termination-watcher
+    webhook
+    webhook-github-app
+  EXAMPLES: |
+    default
+    prebuilt
+    ephemeral
+    termination-watcher
+    multi-runner
+    multi-runner-v2
+    external-managed-ssm-secrets
 jobs:
   verify_module:
     name: Verify root module (${{ matrix.iac.name }} ${{ matrix.iac.version }})
@@ -105,7 +125,7 @@ jobs:
           tflint -c ${GITHUB_WORKSPACE}/.tflint.hcl --var-file ${GITHUB_WORKSPACE}/.github/lint/tflint.tfvars
 
   verify_modules:
-    name: Verify module ${{ matrix.module }} (${{ matrix.iac.name }} ${{ matrix.iac.version }})
+    name: Verify modules (${{ matrix.iac.name }} ${{ matrix.iac.version }})
     strategy:
       fail-fast: false
       matrix:
@@ -126,20 +146,6 @@ jobs:
             version: latest
             command: tofu
             lockfile: .terraform.lock.hcl.tofu
-        module:
-          - ami-housekeeper
-          - download-lambda
-          - lambda
-          - multi-runner
-          - runner-binaries-syncer
-          - runners
-          - setup-iam-permissions
-          - ssm
-          - termination-watcher
-          - webhook
-    defaults:
-      run:
-        working-directory: modules/${{ matrix.module }}
     runs-on: ubuntu-latest
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -168,18 +174,30 @@ jobs:
       - name: ${{ matrix.iac.name }} init
         env:
           IAC_COMMAND: ${{ matrix.iac.command }}
-        run: $IAC_COMMAND init -get -backend=false -input=false
+        run: |
+          printf '%s\n' "${MODULES}" | while IFS= read -r module; do
+            [ -z "${module}" ] && continue
+            $IAC_COMMAND -chdir="modules/${module}" init -get -backend=false -input=false
+          done
 
       - name: Check ${{ matrix.iac.name }} formatting
         env:
           IAC_COMMAND: ${{ matrix.iac.command }}
-        run: $IAC_COMMAND fmt -recursive -check=true -write=false
+        run: |
+          printf '%s\n' "${MODULES}" | while IFS= read -r module; do
+            [ -z "${module}" ] && continue
+            $IAC_COMMAND -chdir="modules/${module}" fmt -recursive -check=true -write=false
+          done
         continue-on-error: ${{ matrix.iac.version == 'latest' }}
 
       - name: Validate ${{ matrix.iac.name }}
         env:
           IAC_COMMAND: ${{ matrix.iac.command }}
-        run: $IAC_COMMAND validate
+        run: |
+          printf '%s\n' "${MODULES}" | while IFS= read -r module; do
+            [ -z "${module}" ] && continue
+            $IAC_COMMAND -chdir="modules/${module}" validate
+          done
 
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         name: Cache TFLint plugin dir
@@ -193,15 +211,15 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run TFLint
-        working-directory: ${{ github.workspace }}
-        env:
-          MODULE_NAME: ${{ matrix.module }}
         run: |
-          tflint --init -c ${GITHUB_WORKSPACE}/.tflint.hcl --chdir "modules/${MODULE_NAME}"
-          tflint -f compact -c ${GITHUB_WORKSPACE}/.tflint.hcl --var-file ${GITHUB_WORKSPACE}/.github/lint/tflint.tfvars --chdir "modules/${MODULE_NAME}"
+          tflint --init -c ${GITHUB_WORKSPACE}/.tflint.hcl
+          printf '%s\n' "${MODULES}" | while IFS= read -r module; do
+            [ -z "${module}" ] && continue
+            tflint -f compact -c ${GITHUB_WORKSPACE}/.tflint.hcl --var-file ${GITHUB_WORKSPACE}/.github/lint/tflint.tfvars --chdir "modules/${module}"
+          done
 
   verify_examples:
-    name: Verify example ${{ matrix.example }} (${{ matrix.iac.name }} ${{ matrix.iac.version }})
+    name: Verify examples (${{ matrix.iac.name }} ${{ matrix.iac.version }})
     strategy:
       fail-fast: false
       matrix:
@@ -222,19 +240,6 @@ jobs:
             version: latest
             command: tofu
             lockfile: .terraform.lock.hcl.tofu
-        example:
-          [
-            "default",
-            "prebuilt",
-            "ephemeral",
-            "termination-watcher",
-            "multi-runner",
-            "multi-runner-v2",
-            "external-managed-ssm-secrets"
-          ]
-    defaults:
-      run:
-        working-directory: examples/${{ matrix.example }}
     runs-on: ubuntu-latest
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -264,23 +269,39 @@ jobs:
         if: matrix.iac.command == 'tofu'
         env:
           IAC_LOCK_FILE: ${{ matrix.iac.lockfile }}
-        run: cp "$IAC_LOCK_FILE" .terraform.lock.hcl
+        run: |
+          printf '%s\n' "${EXAMPLES}" | while IFS= read -r example; do
+            [ -z "${example}" ] && continue
+            cp "$IAC_LOCK_FILE" "examples/${example}/.terraform.lock.hcl"
+          done
 
       - name: ${{ matrix.iac.name }} init
         env:
           IAC_COMMAND: ${{ matrix.iac.command }}
-        run: $IAC_COMMAND init -get -backend=false -input=false -lockfile=readonly
+        run: |
+          printf '%s\n' "${EXAMPLES}" | while IFS= read -r example; do
+            [ -z "${example}" ] && continue
+            $IAC_COMMAND -chdir="examples/${example}" init -get -backend=false -input=false -lockfile=readonly
+          done
 
       - name: Check ${{ matrix.iac.name }} formatting
         env:
           IAC_COMMAND: ${{ matrix.iac.command }}
-        run: $IAC_COMMAND fmt -recursive -check=true -write=false
+        run: |
+          printf '%s\n' "${EXAMPLES}" | while IFS= read -r example; do
+            [ -z "${example}" ] && continue
+            $IAC_COMMAND -chdir="examples/${example}" fmt -recursive -check=true -write=false
+          done
         continue-on-error: ${{ matrix.iac.version == 'latest' }}
 
       - name: Validate ${{ matrix.iac.name }}
         env:
           IAC_COMMAND: ${{ matrix.iac.command }}
-        run: $IAC_COMMAND validate
+        run: |
+          printf '%s\n' "${EXAMPLES}" | while IFS= read -r example; do
+            [ -z "${example}" ] && continue
+            $IAC_COMMAND -chdir="examples/${example}" validate
+          done
 
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         name: Cache TFLint plugin dir
@@ -294,12 +315,12 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run TFLint
-        working-directory: ${{ github.workspace }}
-        env:
-          EXAMPLE_NAME: ${{ matrix.example }}
         run: |
-          tflint --init -c ${GITHUB_WORKSPACE}/.tflint.hcl --chdir "examples/${EXAMPLE_NAME}"
-          tflint -f compact -c ${GITHUB_WORKSPACE}/.tflint.hcl --var-file ${GITHUB_WORKSPACE}/.github/lint/tflint.tfvars --chdir "examples/${EXAMPLE_NAME}"
+          tflint --init -c ${GITHUB_WORKSPACE}/.tflint.hcl
+          printf '%s\n' "${EXAMPLES}" | while IFS= read -r example; do
+            [ -z "${example}" ] && continue
+            tflint -f compact -c ${GITHUB_WORKSPACE}/.tflint.hcl --var-file ${GITHUB_WORKSPACE}/.github/lint/tflint.tfvars --chdir "examples/${example}"
+          done
 
   terraform_test:
     name: Terraform test
