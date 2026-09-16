@@ -50,6 +50,9 @@ env:
     multi-runner
     multi-runner-v2
     external-managed-ssm-secrets
+  TEST_MODULES: |
+    modules/runners
+    modules/multi-runner
 jobs:
   verify_modules:
     name: Verify modules (${{ matrix.iac.name }} ${{ matrix.iac.version }})
@@ -257,15 +260,6 @@ jobs:
 
   terraform_test:
     name: Terraform test
-    strategy:
-      fail-fast: false
-      matrix:
-        module:
-          - modules/runners
-          - modules/multi-runner
-    defaults:
-      run:
-        working-directory: ${{ matrix.module }}
     runs-on: ubuntu-latest
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -285,7 +279,15 @@ jobs:
           terraform_wrapper: false
 
       - name: terraform init
-        run: terraform init -backend=false -input=false
+        run: |
+          printf '%s\n' "${TEST_MODULES}" | while IFS= read -r module; do
+            [ -z "${module}" ] && continue
+            terraform -chdir="${module}" init -backend=false -input=false
+          done
 
       - name: terraform test
-        run: terraform test -test-directory=tests
+        run: |
+          printf '%s\n' "${TEST_MODULES}" | while IFS= read -r module; do
+            [ -z "${module}" ] && continue
+            terraform -chdir="${module}" test -test-directory=tests
+          done
