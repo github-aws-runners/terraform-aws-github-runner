@@ -107,5 +107,17 @@ resource "terraform_data" "validate_v2" {
       error_message = "Scale-set lanes require global_config_github.runner_registration_level to be enterprise, organization, or repository; runner_owner must be null for enterprise or set for organization and repository registration."
     }
 
+    precondition {
+      condition = alltrue([
+        for config in local.resolved_config.multi_runner_config : (
+          try(config.orchestration_provider.scale_set, null) == null ? true : (
+            try(var.global_config_github.app.installation_id, null) != null ||
+            try(var.global_config_github.app.installation_id_ssm, null) != null
+          )
+        )
+      ])
+      error_message = "Scale-set lanes require global_config_github.app.installation_id or global_config_github.app.installation_id_ssm."
+    }
+
   }
 }
