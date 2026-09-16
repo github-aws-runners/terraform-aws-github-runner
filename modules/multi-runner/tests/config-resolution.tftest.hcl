@@ -457,6 +457,17 @@ run "scale_set_only_lane_omits_webhook_queues" {
   variables {
     experimental_features = ["multi-runner-v2"]
 
+    global_config_github = {
+      app = {
+        key_base64      = "experimental-app-key"
+        id              = "experimental-app-id"
+        installation_id = "experimental-app-installation"
+        webhook_secret  = "experimental-webhook-secret"
+      }
+      runner_owner              = "example"
+      runner_registration_level = "organization"
+    }
+
     global_config_orchestration_provider = {
       webhook = {
         eventbridge = {
@@ -532,6 +543,17 @@ run "mixed_webhook_and_scale_set_lanes_create_webhook_queues_only_for_webhook" {
 
   variables {
     experimental_features = ["multi-runner-v2"]
+
+    global_config_github = {
+      app = {
+        key_base64      = "experimental-app-key"
+        id              = "experimental-app-id"
+        installation_id = "experimental-app-installation"
+        webhook_secret  = "experimental-webhook-secret"
+      }
+      runner_owner              = "example"
+      runner_registration_level = "organization"
+    }
 
     global_config_orchestration_provider = {
       webhook = {
@@ -672,6 +694,8 @@ run "scale_set_lane_requires_installation_id" {
         id             = "experimental-app-id"
         webhook_secret = "experimental-webhook-secret"
       }
+      runner_owner              = "example"
+      runner_registration_level = "organization"
     }
 
     multi_runner_config = {
