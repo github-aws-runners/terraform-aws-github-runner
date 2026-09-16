@@ -151,13 +151,13 @@ module "runners" {
       runner = {
         name_prefix  = "scale-set-"
         extra_labels = ["scale-set"]
+        group_name   = var.scale_set.runner_group_name
       }
       orchestration_provider = {
         scale_set = {
           name = var.scale_set.name
           runner = {
-            group_name           = var.scale_set.runner_group_name
-            min_runners          = 0
+            min_runners          = var.scale_set.min_runners
             max_runners          = 10
             boot_time_in_minutes = 10
           }
