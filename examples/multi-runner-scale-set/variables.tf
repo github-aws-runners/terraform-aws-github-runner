@@ -28,6 +28,7 @@ variable "scale_set" {
   type = object({
     name              = string
     runner_group_name = optional(string, "Default")
+    min_runners       = optional(number, 0)
     container = optional(object({
       image = optional(string, null)
     }), {})

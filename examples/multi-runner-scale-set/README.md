@@ -75,7 +75,7 @@ The GitHub App must be installed for the configured GitHub account.
 | <a name="input_github"></a> [github](#input\_github) | Optional GitHub endpoint and scale-set ownership settings. | <pre>object({<br/>    config_url         = optional(string, null)<br/>    ssl_verify         = optional(bool, true)<br/>    runner_owner       = optional(string, null)<br/>    registration_level = optional(string, "enterprise")<br/>  })</pre> | `{}` | no |
 | <a name="input_github_app"></a> [github\_app](#input\_github\_app) | GitHub App ID, base64-encoded private key, and installation ID. | <pre>object({<br/>    id              = string<br/>    key_base64      = string<br/>    installation_id = optional(string, null)<br/>  })</pre> | n/a | yes |
 | <a name="input_runner_binaries_enabled"></a> [runner\_binaries\_enabled](#input\_runner\_binaries\_enabled) | Whether runner binary synchronization is enabled. | `bool` | `true` | no |
-| <a name="input_scale_set"></a> [scale\_set](#input\_scale\_set) | GitHub Actions scale-set configuration. | <pre>object({<br/>    name              = string<br/>    runner_group_name = optional(string, "Default")<br/>    container = optional(object({<br/>      image = optional(string, null)<br/>    }), {})<br/>  })</pre> | n/a | yes |
+| <a name="input_scale_set"></a> [scale\_set](#input\_scale\_set) | GitHub Actions scale-set configuration. | <pre>object({<br/>    name              = string<br/>    runner_group_name = optional(string, "Default")<br/>    min_runners       = optional(number, 0)<br/>    container = optional(object({<br/>      image = optional(string, null)<br/>    }), {})<br/>  })</pre> | n/a | yes |
 
 ## Outputs
 

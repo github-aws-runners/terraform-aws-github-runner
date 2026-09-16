@@ -99,6 +99,25 @@
   },
   {
     "httpRequest": {
+      "method": "GET",
+      "path": "/tenant/123/_apis/distributedtask/pools/0/agents"
+    },
+    "httpResponseTemplate": {
+      "templateType": "MUSTACHE",
+      "template": "{\"statusCode\":200,\"headers\":{\"Content-Type\":[\"application/json\"]},\"body\":\"{\\\"count\\\":1,\\\"value\\\":[{\\\"id\\\":321,\\\"name\\\":\\\"{{ request.queryStringParameters.agentName.0 }}\\\",\\\"runnerScaleSetId\\\":223}]}\"}"
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "DELETE",
+      "path": "/tenant/123/_apis/distributedtask/pools/0/agents/321"
+    },
+    "httpResponse": {
+      "statusCode": 204
+    }
+  },
+  {
+    "httpRequest": {
       "method": "DELETE",
       "path": "/tenant/123/_apis/runtime/runnerscalesets/223/sessions/11111111-1111-1111-1111-111111111111"
     },
