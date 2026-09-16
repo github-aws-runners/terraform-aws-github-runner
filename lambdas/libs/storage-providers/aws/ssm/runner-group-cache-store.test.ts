@@ -69,6 +69,15 @@ describe('aws_ssm runner group cache store', () => {
     );
   });
 
+  it('returns undefined when the SDK nests ParameterNotFound as __type on a fresh deploy', async () => {
+    const cause = { message: 'missing', __type: 'com.amazonaws.ssm#ParameterNotFound' };
+    getParameterMock.mockRejectedValue(
+      Object.assign(new Error('failed to get parameter'), { name: 'GetParameterError', cause }),
+    );
+
+    await expect(createAwsSsmRunnerGroupCacheStore().get('Default')).resolves.toBeUndefined();
+  });
+
   it('propagates access and service errors', async () => {
     const error = Object.assign(new Error('denied'), { name: 'AccessDeniedException' });
     getParameterMock.mockRejectedValue(error);

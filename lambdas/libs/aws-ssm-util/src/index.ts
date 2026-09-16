@@ -1,4 +1,4 @@
-import { GetParametersCommand, PutParameterCommand, SSMClient, Tag } from '@aws-sdk/client-ssm';
+import { DeleteParameterCommand, GetParametersCommand, PutParameterCommand, SSMClient, Tag } from '@aws-sdk/client-ssm';
 import { getTracedAWSV3Client } from '@aws-github-runner/aws-powertools-util';
 import { SSMProvider } from '@aws-lambda-powertools/parameters/ssm';
 
@@ -125,4 +125,20 @@ export async function putParameter(
       Tier: valueSizeBytes >= SSM_ADVANCED_TIER_THRESHOLD ? 'Advanced' : 'Standard',
     }),
   );
+}
+
+/**
+ * Deletes a parameter, treating a missing parameter as success. Used to clear a stale value
+ * before retrying a create that failed with ParameterAlreadyExists (e.g. a warm-pool restart
+ * reusing an instance ID whose prior token was never consumed/deleted).
+ */
+export async function deleteParameter(parameter_name: string): Promise<void> {
+  const client = ssmClient();
+  try {
+    await client.send(new DeleteParameterCommand({ Name: parameter_name }));
+  } catch (error) {
+    if ((error as { name?: string }).name !== 'ParameterNotFound') {
+      throw error;
+    }
+  }
 }

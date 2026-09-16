@@ -19,6 +19,7 @@ it('exposes every configured provider through both capability registries', () =>
     expect(controlPlaneRegistry.capability(type, 'pool')()).toEqual({
       listRunners: expect.any(Function),
       countAvailableRunners: expect.any(Function),
+      additionalPoolCapacity: expect.any(Function),
       createRunners: expect.any(Function),
     });
     expect(controlPlaneRegistry.capability(type, 'scaleUp')()).toEqual({
@@ -34,6 +35,8 @@ it('exposes every configured provider through both capability registries', () =>
       markIdle: expect.any(Function),
       unmarkIdle: expect.any(Function),
       terminate: expect.any(Function),
+      retire: expect.any(Function),
+      maintain: expect.any(Function),
     });
     expect(webhookProviderRegistry.capability(type, 'dynamicLabels').getViolations).toEqual(expect.any(Function));
   }

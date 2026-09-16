@@ -32,6 +32,28 @@ tag_instance_with_runner_id() {
   fi
 }
 
+# Signals the control plane that this instance has registered with GitHub and reached a safe
+# checkpoint to be stopped into the warm pool. The pool lambda polls for this marker instead of
+# waiting a fixed delay. The marker carries a TTL so it self-heals if the instance is never parked.
+# No-op when the warm pool is off.
+signal_warm_pool_ready() {
+  local table_name="${warm_pool_table_name}"
+  if [[ -z "$table_name" ]]; then
+    return 0
+  fi
+  echo "Signalling warm pool readiness for $instance_id"
+  local ready_at expires_at
+  ready_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  expires_at=$(( $(date +%s) + 3600 ))
+  aws dynamodb update-item \
+    --region "$region" \
+    --table-name "$table_name" \
+    --key "{\"instanceId\":{\"S\":\"$instance_id\"}}" \
+    --update-expression "SET readyAt = :r, expiresAt = :e" \
+    --expression-attribute-values "{\":r\":{\"S\":\"$ready_at\"},\":e\":{\"N\":\"$expires_at\"}}" \
+    || echo "Warning: failed to signal warm pool readiness"
+}
+
 cleanup() {
   local exit_code="$1"
 
@@ -167,6 +189,9 @@ if [[ "$enable_jit_config" == "false" || $agent_mode != "ephemeral" ]]; then
 
   tag_instance_with_runner_id
 fi
+
+# The runner is registered and idle here — signal the warm pool it is safe to stop.
+signal_warm_pool_ready
 
 if [[ $agent_mode = "ephemeral" ]]; then
   echo "Starting the runner in ephemeral mode"

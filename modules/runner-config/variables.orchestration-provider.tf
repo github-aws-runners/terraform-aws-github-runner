@@ -119,7 +119,13 @@ variable "orchestration_provider" {
           })), [])
           include_busy_runners = optional(bool, false)
           runner_owner         = optional(string, null)
-          tags                 = optional(map(string), {})
+          warm_pool = optional(object({
+            enabled               = optional(bool, false)
+            max_instances         = optional(number, 3)
+            max_age_hours         = optional(number, 168)
+            ready_timeout_seconds = optional(number, 30)
+          }), {})
+          tags = optional(map(string), {})
         }), {})
       }), {})
       job_retry = optional(object({

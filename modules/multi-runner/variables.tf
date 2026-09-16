@@ -218,6 +218,12 @@ variable "multi_runner_config" {
         schedule_expression_timezone = optional(string)
         size                         = number
       })), [])
+      warm_pool = optional(object({
+        enabled               = optional(bool, false)
+        max_instances         = optional(number, 3)
+        max_age_hours         = optional(number, 168)
+        ready_timeout_seconds = optional(number, 30)
+      }), {})
       job_retry = optional(object({
         enable             = optional(bool, false)
         delay_in_seconds   = optional(number, 300)
@@ -370,7 +376,13 @@ variable "multi_runner_config" {
             })), null)
             include_busy_runners = optional(bool, null)
             runner_owner         = optional(string, null)
-            tags                 = optional(map(string), {})
+            warm_pool = optional(object({
+              enabled               = optional(bool, false)
+              max_instances         = optional(number, 3)
+              max_age_hours         = optional(number, 168)
+              ready_timeout_seconds = optional(number, 30)
+            }), {})
+            tags = optional(map(string), {})
           }), {})
         }), {})
         job_retry = optional(object({
@@ -638,6 +650,7 @@ variable "multi_runner_config" {
         block_device_mappings: "The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`, `throughput`, `kms_key_id`, `snapshot_id`, `volume_initialization_rate`."
         job_retry: "Experimental! Can be removed / changed without trigger a major release. Configure job retries. The configuration enables job retries (for ephemeral runners). After creating the instances a message will be published to a job retry queue. The job retry check lambda is checking after a delay if the job is queued. If not the message will be published again on the scale-up (build queue). Using this feature can impact the rate limit of the GitHub app."
         pool_config: "The configuration for updating the pool. The `pool_size` to adjust to by the events triggered by the `schedule_expression`. For example you can configure a cron expression for week days to adjust the pool to 10 and another expression for the weekend to adjust the pool to 1. Use `schedule_expression_timezone` to override the schedule time zone (defaults to UTC)."
+        warm_pool: "Warm pool configuration. When `enabled`, idle runners are stopped (hibernated) instead of terminated for 10-30s restarts. `max_instances` caps the stopped instances per owner, `max_age_hours` is the TTL, and `ready_timeout_seconds` is the max wait for a new instance's readiness signal. The proactive pool (via `pool_config`) is org-level only."
         iam_overrides: "Allows to (optionally) override the instance profile and runner role created by the module. Set `override_instance_profile` to true and provide the `instance_profile_name` to use an existing instance profile. Set `override_runner_role` to true and provide the `runner_role_arn` to use an existing role for the runner instances."
       }
       # V2 contract
@@ -678,6 +691,24 @@ variable "multi_runner_config" {
       || length([for config in var.multi_runner_config : config if !can(config.runner_config.runner_os)]) == 0
     )
     error_message = "Use one multi_runner_config shape per module invocation: provide either v1 entries with runner_config or v2 entries without runner_config, not both in the same map."
+  }
+
+  validation {
+    condition = alltrue([
+      for config in var.multi_runner_config :
+      try(config.runner_config.enable_organization_runners, true)
+      if try(config.runner_config.warm_pool.enabled, false) && length(try(config.runner_config.pool_config, [])) > 0
+    ])
+    error_message = "A warm pool with a pool_config schedule is org-level only: set `enable_organization_runners = true` (and `pool_runner_owner`) on that runner_config, otherwise scale-up (repo-level) can never find the org-level warm instances."
+  }
+
+  validation {
+    condition = alltrue(flatten([
+      for config in var.multi_runner_config : [
+        for p in try(config.runner_config.pool_config, []) : p.size <= try(config.runner_config.warm_pool.max_instances, 3)
+      ] if try(config.runner_config.warm_pool.enabled, false)
+    ]))
+    error_message = "Each `pool_config` size must be <= `warm_pool.max_instances` when the warm pool is enabled, otherwise the pool creates instances that scale-down immediately evicts."
   }
 }
 

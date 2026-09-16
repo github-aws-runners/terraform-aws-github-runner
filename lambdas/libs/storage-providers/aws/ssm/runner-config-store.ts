@@ -1,4 +1,4 @@
-import { putParameter } from '@aws-github-runner/aws-ssm-util';
+import { deleteParameter, putParameter } from '@aws-github-runner/aws-ssm-util';
 
 import type { RunnerConfigMetadata, RunnerConfigRecord, RunnerConfigStore } from '../../core';
 import type {} from './environment';
@@ -44,14 +44,41 @@ class AwsSsmRunnerConfigStore implements RunnerConfigStore {
       parameterName,
     });
 
+    const tags = [
+      ...(options.metadata ?? []).map(({ key, value }) => ({ Key: key, Value: value })),
+      ...this.config.parameterStoreTags,
+    ];
+
     try {
-      await putParameter(parameterName, record.value, true, {
-        tags: [
-          ...(options.metadata ?? []).map(({ key, value }) => ({ Key: key, Value: value })),
-          ...this.config.parameterStoreTags,
-        ],
-      });
+      await putParameter(parameterName, record.value, true, { tags });
     } catch (error) {
+      // A warm-pool restart reuses the same instance ID (and therefore the same parameter name).
+      // If the prior boot never reached its own delete-parameter step (e.g. it was stopped for the
+      // warm pool before finishing), the stale value blocks this write. Clear it and retry once.
+      if (isParameterAlreadyExistsError(error)) {
+        logger.warn('Runner configuration parameter already exists; clearing stale value and retrying', {
+          runnerId: record.runnerId,
+          parameterName,
+          errorNames: getErrorNames(error),
+        });
+        await deleteParameter(parameterName);
+        try {
+          await putParameter(parameterName, record.value, true, { tags });
+        } catch (retryError) {
+          logger.error('Failed to write runner configuration after clearing stale value', {
+            runnerId: record.runnerId,
+            parameterName,
+            errorNames: getErrorNames(retryError),
+          });
+          throw retryError;
+        }
+        logger.debug('Stored runner configuration', {
+          runnerId: record.runnerId,
+          parameterName,
+        });
+        return;
+      }
+
       logger.error('Failed to write runner configuration', {
         runnerId: record.runnerId,
         parameterName,
@@ -65,4 +92,8 @@ class AwsSsmRunnerConfigStore implements RunnerConfigStore {
       parameterName,
     });
   }
+}
+
+function isParameterAlreadyExistsError(error: unknown): boolean {
+  return getErrorNames(error).includes('ParameterAlreadyExists');
 }

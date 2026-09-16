@@ -37,6 +37,28 @@ function Tag-InstanceWithRunnerId {
     }
 }
 
+# Signals the control plane that this instance has registered with GitHub and reached a safe
+# checkpoint to be stopped into the warm pool. The pool lambda polls for this marker instead of
+# waiting a fixed delay. The marker carries a TTL so it self-heals if the instance is never parked.
+# No-op when the warm pool is off.
+function Signal-WarmPoolReady {
+    $tableName = "${warm_pool_table_name}"
+    if (-not $tableName) {
+        return
+    }
+    Write-Host "Signalling warm pool readiness for $InstanceId"
+    $readyAt = [DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
+    $expiresAt = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds() + 3600
+    $keyFile = Join-Path $env:TEMP "warm-pool-key.json"
+    $valuesFile = Join-Path $env:TEMP "warm-pool-values.json"
+    ('{"instanceId":{"S":"' + $InstanceId + '"}}') | Set-Content -Path $keyFile -Encoding ascii
+    ('{":r":{"S":"' + $readyAt + '"},":e":{"N":"' + $expiresAt + '"}}') | Set-Content -Path $valuesFile -Encoding ascii
+    aws dynamodb update-item --region "$Region" --table-name "$tableName" --key "file://$keyFile" --update-expression "SET readyAt = :r, expiresAt = :e" --expression-attribute-values "file://$valuesFile"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Warning: failed to signal warm pool readiness"
+    }
+}
+
 ## Retrieve instance metadata
 
 Write-Host  "Retrieving TOKEN from AWS API"
@@ -173,6 +195,8 @@ $jsonBody = @(
 )
 ConvertTo-Json -InputObject $jsonBody | Set-Content -Path "$pwd\.setup_info"
 
+# The runner is registered and idle here — signal the warm pool it is safe to stop.
+Signal-WarmPoolReady
 
 Write-Host "Starting the runner in $agent_mode mode"
 Write-Host "Starting runner after $(((get-date) - (gcim Win32_OperatingSystem).LastBootUpTime).tostring("hh':'mm':'ss''"))"
@@ -195,6 +219,13 @@ if ($agent_mode -eq "ephemeral") {
     }
 
     Write-Host "Terminating instance"
+    # Cancel a persistent spot request (warm pool) before self-terminating, otherwise the request
+    # stays active and the EC2 Spot service relaunches an untagged replacement instance.
+    $spotRequestId = aws ec2 describe-instances --instance-ids "$InstanceId" --region "$Region" --query "Reservations[].Instances[].SpotInstanceRequestId" --output text
+    if ($spotRequestId -and $spotRequestId -ne "None") {
+        Write-Host "Cancelling spot request $spotRequestId"
+        aws ec2 cancel-spot-instance-requests --spot-instance-request-ids "$spotRequestId" --region "$Region"
+    }
     aws ec2 terminate-instances --instance-ids "$InstanceId" --region "$Region"
 } else {
     Write-Host  "Installing the runner as a service"

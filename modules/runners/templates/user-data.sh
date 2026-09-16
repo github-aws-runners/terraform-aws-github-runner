@@ -78,4 +78,32 @@ EOF
 echo ACTIONS_RUNNER_HOOK_JOB_COMPLETED=/opt/actions-runner/hook_job_completed.sh | tee -a /opt/actions-runner/.env
 %{ endif }
 
+# Cloud-init user-data only runs on first boot. A warm-pool restart (stop/start) skips it, so the
+# runner start/registration logic is installed as a systemd oneshot unit instead, which reruns on
+# every boot and re-fetches a fresh JIT config for this instance ID from SSM.
+cat > /opt/actions-runner/start-runner.sh <<'STARTRUNNEREOF'
 ${start_runner}
+STARTRUNNEREOF
+chmod +x /opt/actions-runner/start-runner.sh
+
+cat > /etc/systemd/system/github-runner-start.service <<'SYSTEMDEOF'
+[Unit]
+Description=GitHub Actions runner start/registration
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/actions-runner/start-runner.sh
+WorkingDirectory=/opt/actions-runner
+RemainAfterExit=no
+StandardOutput=journal+console
+StandardError=journal+console
+
+[Install]
+WantedBy=multi-user.target
+SYSTEMDEOF
+
+systemctl daemon-reload
+systemctl enable --now github-runner-start.service
+
