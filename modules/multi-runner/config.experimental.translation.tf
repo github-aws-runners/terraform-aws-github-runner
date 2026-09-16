@@ -39,7 +39,7 @@ locals {
       ssl_verify = var.ghes_ssl_verify
     }
     runner_owner              = null
-    runner_registration_level = "enterprise"
+    runner_registration_level = "organization"
     user_agent                = var.user_agent
   }
 
