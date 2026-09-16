@@ -88,9 +88,9 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.terraform.d/plugin
-          key: iac-providers-${{ github.job }}-${{ hashFiles('**/.terraform.lock.hcl', '**/.terraform.lock.hcl.tofu') }}
+          key: iac-providers-verify_modules-${{ github.run_id }}
           restore-keys: |
-            iac-providers-${{ github.job }}-
+            iac-providers-verify_modules-
 
       - name: Set Terraform plugin cache
         run: echo "TF_PLUGIN_CACHE_DIR=$HOME/.terraform.d/plugin" >> "$GITHUB_ENV"
@@ -202,9 +202,9 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.terraform.d/plugin
-          key: iac-providers-${{ github.job }}-${{ hashFiles('**/.terraform.lock.hcl', '**/.terraform.lock.hcl.tofu') }}
+          key: iac-providers-verify_examples-${{ github.run_id }}
           restore-keys: |
-            iac-providers-${{ github.job }}-
+            iac-providers-verify_examples-
 
       - name: Set Terraform plugin cache
         run: echo "TF_PLUGIN_CACHE_DIR=$HOME/.terraform.d/plugin" >> "$GITHUB_ENV"
@@ -308,9 +308,9 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.terraform.d/plugin
-          key: iac-providers-${{ github.job }}-${{ hashFiles('**/.terraform.lock.hcl', '**/.terraform.lock.hcl.tofu') }}
+          key: iac-providers-terraform_test-${{ github.run_id }}
           restore-keys: |
-            iac-providers-${{ github.job }}-
+            iac-providers-terraform_test-
 
       - name: Set Terraform plugin cache
         run: echo "TF_PLUGIN_CACHE_DIR=$HOME/.terraform.d/plugin" >> "$GITHUB_ENV"
