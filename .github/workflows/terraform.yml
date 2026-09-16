@@ -24,6 +24,7 @@ env:
     orchestration-providers/webhook
     runner-binaries-syncer
     runner-config
+    runner-config/ssm-housekeeper
     runners
     setup-iam-permissions
     ssm
