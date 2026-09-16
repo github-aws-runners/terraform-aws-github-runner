@@ -726,6 +726,48 @@ run "scale_set_lane_requires_owner_for_non_enterprise_registration" {
   expect_failures = [terraform_data.validate_v2]
 }
 
+run "scale_set_lane_requires_installation_id" {
+  command = plan
+
+  variables {
+    experimental_features = ["multi-runner-v2"]
+
+    global_config_github = {
+      app = {
+        key_base64     = "experimental-app-key"
+        id             = "experimental-app-id"
+        webhook_secret = "experimental-webhook-secret"
+      }
+    }
+
+    multi_runner_config = {
+      scale = {
+        runner = {
+          os           = "linux"
+          architecture = "x64"
+        }
+        orchestration_provider = {
+          webhook = null
+          scale_set = {
+            name = "scale-missing-installation"
+          }
+        }
+        compute_provider = {
+          aws = {
+            ec2 = {
+              instance_types = ["m5.large"]
+              vpc_id         = "vpc-scale-set"
+              subnet_ids     = ["subnet-scale-set"]
+            }
+          }
+        }
+      }
+    }
+  }
+
+  expect_failures = [terraform_data.validate_v2]
+}
+
 run "scale_set_queue_for_each_keys_are_plan_known" {
   command = plan
 
