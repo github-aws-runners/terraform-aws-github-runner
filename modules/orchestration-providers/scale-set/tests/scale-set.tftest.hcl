@@ -640,9 +640,14 @@ run "rejects_duplicate_scale_set_ownership_across_groups" {
 
   variables {
     runner_configs = merge(var.runner_configs, {
+      linux-small = merge(var.runner_configs.linux-small, {
+        github = merge(var.runner_configs.linux-small.github, {
+          enterprise_server = { url = "https://mygithub.com" }
+        })
+      })
       microvm = merge(var.runner_configs.microvm, {
         github = merge(var.runner_configs.microvm.github, {
-          enterprise_server         = { url = "https://GITHUB.COM:443/" }
+          enterprise_server         = { url = "https://mygithub.com:443/" }
           runner_registration_level = "organization"
           runner_owner              = "example"
         })
