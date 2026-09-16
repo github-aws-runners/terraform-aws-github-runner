@@ -135,6 +135,75 @@ function retryAfterMs(response: Response, options: ResolvedScaleSetRetryOptions)
   return Math.min(delayMs, options.maxBackoffMs);
 }
 
+function wrapResponseBody(response: Response, signal: AbortSignal, cleanup: () => void): Response {
+  const source = response.body;
+  if (source === null) {
+    cleanup();
+    return response;
+  }
+
+  let reader!: ReadableStreamDefaultReader<Uint8Array>;
+  let stopped = false;
+  let cleaned = false;
+  let removeAbortListener: () => void = () => undefined;
+  const release = () => {
+    if (cleaned) return;
+    cleaned = true;
+    removeAbortListener();
+    cleanup();
+  };
+
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      reader = source.getReader();
+      const onAbort = () => {
+        if (stopped) return;
+        stopped = true;
+        const reason = abortReason(signal);
+        controller.error(reason);
+        void reader
+          .cancel(reason)
+          .catch(() => undefined)
+          .finally(() => {
+            release();
+          });
+      };
+      signal.addEventListener('abort', onAbort, { once: true });
+      removeAbortListener = () => signal.removeEventListener('abort', onAbort);
+      if (signal.aborted) onAbort();
+    },
+    async pull(controller) {
+      if (stopped) return;
+      try {
+        const { done, value } = await reader.read();
+        if (done) {
+          stopped = true;
+          controller.close();
+          release();
+          return;
+        }
+        controller.enqueue(value);
+      } catch (error) {
+        if (!stopped) {
+          stopped = true;
+          controller.error(error);
+        }
+        release();
+      }
+    },
+    cancel(reason) {
+      stopped = true;
+      return reader.cancel(reason).finally(release);
+    },
+  });
+
+  return new Response(body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+  });
+}
+
 async function fetchAttempt(
   fetchImplementation: ScaleSetFetch,
   input: RequestInput,
@@ -161,14 +230,24 @@ async function fetchAttempt(
     attemptController.signal.addEventListener('abort', onAttemptAbort, { once: true });
   });
 
-  try {
-    return await Promise.race([fetchImplementation(input, { ...init, signal: attemptController.signal }), aborted]);
-  } finally {
+  const cleanup = () => {
     clearTimeout(timeout);
     callerSignal?.removeEventListener('abort', forwardAbort);
     if (onAttemptAbort !== undefined) {
       attemptController.signal.removeEventListener('abort', onAttemptAbort);
     }
+  };
+
+  try {
+    const response = await Promise.race([
+      fetchImplementation(input, { ...init, signal: attemptController.signal }),
+      aborted,
+    ]);
+    void aborted.catch(() => undefined);
+    return wrapResponseBody(response, attemptController.signal, cleanup);
+  } catch (error) {
+    cleanup();
+    throw error;
   }
 }
 
@@ -247,6 +326,7 @@ export async function executeRequest(
   try {
     const contentLength = response.headers.get('content-length');
     if (contentLength !== null && /^\d+$/.test(contentLength) && Number(contentLength) > MAX_RESPONSE_BODY_BYTES) {
+      await response.body?.cancel().catch(() => undefined);
       throw new ScaleSetProtocolError(
         `response body from ${method} ${displayUrl} exceeds ${MAX_RESPONSE_BODY_BYTES} bytes`,
         {
@@ -284,6 +364,8 @@ export async function executeRequest(
     }
   } catch (error) {
     if (error instanceof ScaleSetProtocolError) throw error;
+    if (init.signal?.aborted) throw abortReason(init.signal);
+    if (error instanceof ScaleSetRequestTimeoutError) throw error;
     throw new ScaleSetProtocolError(`failed to read the response body from ${method} ${displayUrl}`, {
       method,
       url: displayUrl,

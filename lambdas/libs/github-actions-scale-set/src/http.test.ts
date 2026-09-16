@@ -13,6 +13,20 @@ function okResponse(): Response {
   return new Response('{"ok":true}', { status: 200 });
 }
 
+function stalledResponse(onCancel: (reason: unknown) => void): Response {
+  return new Response(
+    new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('{"partial":'));
+      },
+      cancel(reason) {
+        onCancel(reason);
+      },
+    }),
+    { status: 200 },
+  );
+}
+
 describe('retrying fetch', () => {
   afterEach(() => {
     vi.useRealTimers();
@@ -175,6 +189,53 @@ describe('retrying fetch', () => {
     await vi.advanceTimersByTimeAsync(50);
 
     await rejection;
+  });
+
+  it('cancels a stalled response body when the attempt timeout expires', async () => {
+    vi.useFakeTimers();
+    const cancelled = vi.fn();
+    const underlyingFetch = vi.fn<ScaleSetFetch>().mockResolvedValue(stalledResponse(cancelled));
+    const fetchWithRetry = createRetryingFetch(underlyingFetch, {
+      maxRetries: 0,
+      requestTimeoutMs: 50,
+    });
+
+    const response = await fetchWithRetry('https://actions.example/stalled');
+    const reader = response.body!.getReader();
+    await expect(reader.read()).resolves.toMatchObject({ done: false });
+    const pendingRead = reader.read();
+    const rejection = expect(pendingRead).rejects.toMatchObject({
+      name: 'ScaleSetRequestTimeoutError',
+      timeoutMs: 50,
+    });
+
+    await vi.advanceTimersByTimeAsync(50);
+
+    await rejection;
+    expect(cancelled).toHaveBeenCalledWith(expect.objectContaining({ name: 'ScaleSetRequestTimeoutError' }));
+  });
+
+  it('forwards caller shutdown cancellation while reading a response body', async () => {
+    const cancelled = vi.fn();
+    const controller = new AbortController();
+    const shutdownReason = new Error('shutdown');
+    const underlyingFetch = vi.fn<ScaleSetFetch>().mockResolvedValue(stalledResponse(cancelled));
+    const fetchWithRetry = createRetryingFetch(underlyingFetch, {
+      maxRetries: 0,
+      requestTimeoutMs: 60_000,
+    });
+
+    const response = await fetchWithRetry('https://actions.example/stalled', { signal: controller.signal });
+    const reader = response.body!.getReader();
+    await expect(reader.read()).resolves.toMatchObject({ done: false });
+    const pendingRead = reader.read();
+    const rejection = expect(pendingRead).rejects.toBe(shutdownReason);
+
+    controller.abort(shutdownReason);
+
+    await rejection;
+    expect(cancelled).toHaveBeenCalledWith(shutdownReason);
+    expect(underlyingFetch.mock.calls[0][1]?.signal?.aborted).toBe(true);
   });
 
   it('interrupts retry backoff immediately when the caller aborts', async () => {

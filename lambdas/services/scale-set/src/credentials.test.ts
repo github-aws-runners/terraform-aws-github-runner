@@ -125,6 +125,47 @@ describe('GitHub App credentials', () => {
     );
   });
 
+  it('preserves the GHES API prefix during installation discovery', async () => {
+    const store: ParameterStore = {
+      get: vi.fn().mockResolvedValue(
+        new Map([
+          ['/app/id', '123'],
+          ['/app/key', encodedKey('abc')],
+        ]),
+      ),
+      put: vi.fn(),
+    };
+    const appAuth = vi.fn().mockResolvedValue({ token: 'app-jwt' });
+    const installationAuth = vi
+      .fn()
+      .mockResolvedValue({ token: 'installation-token', expiresAt: '2099-01-01T00:00:00Z' });
+    const fetchImplementation = vi.fn<ScaleSetFetch>().mockResolvedValue(
+      new Response(JSON.stringify([{ id: 456, account: { login: 'example' } }]), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+    authMocks.createAppAuth.mockReturnValueOnce(appAuth).mockReturnValueOnce(installationAuth);
+
+    const provider = await createGitHubAppAccessTokenProvider(
+      references,
+      'https://github.example.com/example',
+      true,
+      store,
+      fetchImplementation,
+    );
+
+    await expect(provider()).resolves.toMatchObject({ token: 'installation-token' });
+    expect(fetchImplementation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        href: 'https://github.example.com/api/v3/app/installations?per_page=100&page=1',
+      }),
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: 'Bearer app-jwt' }),
+      }),
+    );
+  });
+
   it.each([
     [new Map([['/app/id', '123']]), 'was not returned'],
     [

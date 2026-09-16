@@ -101,7 +101,7 @@ async function discoverGitHubAppInstallationId(
   });
   const appAuthentication = await appAuth({ type: 'app' });
   for (let page = 1; page <= 100; page += 1) {
-    const url = new URL('/app/installations', `${apiBaseUrl}/`);
+    const url = new URL('app/installations', `${apiBaseUrl}/`);
     url.searchParams.set('per_page', '100');
     url.searchParams.set('page', String(page));
     const response = await fetchImplementation(url, {
