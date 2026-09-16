@@ -60,19 +60,15 @@ jobs:
           - name: terraform-1.5.6
             version: "1.5.6"
             command: terraform
-            lockfile: .terraform.lock.hcl
           - name: terraform-latest
             version: latest
             command: terraform
-            lockfile: .terraform.lock.hcl
           - name: tofu-1.11
             version: "1.11"
             command: tofu
-            lockfile: .terraform.lock.hcl.tofu
           - name: tofu-latest
             version: latest
             command: tofu
-            lockfile: .terraform.lock.hcl.tofu
     runs-on: ubuntu-latest
     steps:
       - name: Harden the runner (Audit all outbound calls)
