@@ -67,6 +67,17 @@
   },
   {
     "httpRequest": {
+      "method": "PATCH",
+      "path": "/tenant/123/_apis/runtime/runnerscalesets/223"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": { "Content-Type": ["application/json"] },
+      "body": "{\"id\":223,\"name\":\"medium\",\"runnerGroupId\":48,\"labels\":[{\"name\":\"medium\",\"type\":\"system\"},{\"name\":\"linux\",\"type\":\"user\"},{\"name\":\"scale-set\",\"type\":\"user\"},{\"name\":\"self-hosted\",\"type\":\"user\"},{\"name\":\"x64\",\"type\":\"user\"}],\"runnerSetting\":{}}"
+    }
+  },
+  {
+    "httpRequest": {
       "method": "POST",
       "path": "/tenant/123/_apis/runtime/runnerscalesets/223/sessions"
     },
