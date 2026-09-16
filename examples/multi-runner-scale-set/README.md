@@ -27,7 +27,7 @@ Configure the GitHub App variables before applying:
 terraform init
 terraform apply \
   -var='github_app={id="123456",key_base64="...",installation_id="123456789"}' \
-  -var='github={config_url="https://github.com",runner_owner="example",registration_level="organization"}' \
+  -var='github={runner_owner="example",registration_level="organization"}' \
   -var='scale_set={name="linux-scale-set",container={image="ghcr.io/github-aws-runners/terraform-aws-github-runner-scale-set-service@sha256:<release-digest>"}}'
 ```
 
