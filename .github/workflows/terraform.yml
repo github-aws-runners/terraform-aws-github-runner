@@ -259,7 +259,17 @@ jobs:
           done
 
   terraform_test:
-    name: Terraform test
+    name: ${{ matrix.iac.name }} test
+    strategy:
+      fail-fast: false
+      matrix:
+        iac:
+          - name: terraform-latest
+            version: latest
+            command: terraform
+          - name: tofu-latest
+            version: latest
+            command: tofu
     runs-on: ubuntu-latest
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -273,21 +283,33 @@ jobs:
           persist-credentials: false
 
       - name: Setup Terraform
+        if: matrix.iac.command == 'terraform'
         uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
-          terraform_version: latest
+          terraform_version: ${{ matrix.iac.version }}
           terraform_wrapper: false
 
-      - name: terraform init
+      - name: Setup OpenTofu
+        if: matrix.iac.command == 'tofu'
+        uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version: ${{ matrix.iac.version }}
+          tofu_wrapper: false
+
+      - name: ${{ matrix.iac.name }} init
+        env:
+          IAC_COMMAND: ${{ matrix.iac.command }}
         run: |
           printf '%s\n' "${TEST_MODULES}" | while IFS= read -r module; do
             [ -z "${module}" ] && continue
-            terraform -chdir="${module}" init -backend=false -input=false
+            $IAC_COMMAND -chdir="${module}" init -backend=false -input=false
           done
 
-      - name: terraform test
+      - name: ${{ matrix.iac.name }} test
+        env:
+          IAC_COMMAND: ${{ matrix.iac.command }}
         run: |
           printf '%s\n' "${TEST_MODULES}" | while IFS= read -r module; do
             [ -z "${module}" ] && continue
-            terraform -chdir="${module}" test -test-directory=tests
+            $IAC_COMMAND -chdir="${module}" test -test-directory=tests
           done
