@@ -17,10 +17,13 @@ env:
   AWS_REGION: eu-west-1
   MODULES: |
     ami-housekeeper
+    compute-providers/aws/ec2
     download-lambda
     lambda
     multi-runner
+    orchestration-providers/webhook
     runner-binaries-syncer
+    runner-config
     runners
     setup-iam-permissions
     ssm
