@@ -14,7 +14,7 @@ locals {
             arn         = local.primary_app_key_base64.arn
             kms_key_arn = local.effective_config.ssm.kms_key_id
           }
-          installation_id = {
+          installation_id = local.primary_app_installation_id == null ? null : {
             name        = local.primary_app_installation_id.name
             arn         = local.primary_app_installation_id.arn
             kms_key_arn = local.effective_config.ssm.kms_key_id
@@ -42,7 +42,7 @@ locals {
 
 module "orchestration_scale_set" {
   source = "../orchestration-providers/scale-set"
-  count  = length(local.scale_set_runner_configs) > 0 ? 1 : 0
+  count  = length(local.scale_set_runner_configs) > 0 && local.primary_app_installation_id != null ? 1 : 0
 
   prefix         = var.prefix
   log_level      = var.global_config_observability.logs.level
