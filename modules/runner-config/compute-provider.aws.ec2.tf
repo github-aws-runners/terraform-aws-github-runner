@@ -2,7 +2,7 @@ module "compute_aws_ec2_trust_policy" {
   count  = local.provider_key == "aws_ec2" ? 1 : 0
   source = "../compute-providers/aws/ec2/trust-policy"
 
-  additional_trust_policy_json = var.runner.iam.additional_trust_policy_json
+  additional_trust_policy_json = can(jsondecode(var.runner.iam.additional_trust_policy_json)) ? var.runner.iam.additional_trust_policy_json : null
 }
 
 module "compute_aws_ec2" {

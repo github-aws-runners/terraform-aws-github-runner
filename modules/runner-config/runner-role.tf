@@ -2,9 +2,9 @@ locals {
   # Role ownership belongs to the common runner configuration. The selected trust-policy
   # submodule supplies the assume-role document, while the full compute provider
   # supplies permissions after the role has been resolved.
-  create_runner_role = var.runner.iam.role == null
+  create_runner_role = var.runner.iam.role == null && local.provider_key != null
 
-  runner_role = {
+  runner_role = local.provider_key == null ? null : {
     arn     = local.create_runner_role ? one(aws_iam_role.runner[*].arn) : var.runner.iam.role.arn
     name    = local.create_runner_role ? one(aws_iam_role.runner[*].name) : basename(var.runner.iam.role.arn)
     managed = local.create_runner_role
@@ -20,7 +20,10 @@ locals {
     } : {},
   )
 
-  provider_runner_policies = local.provider_contract.policies.runner
+  provider_runner_policies = local.provider_key == null ? {
+    inline_policies     = {}
+    managed_policy_arns = {}
+  } : local.provider_contract.policies.runner
 }
 
 resource "aws_iam_role" "runner" {

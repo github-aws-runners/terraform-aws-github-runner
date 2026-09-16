@@ -13,17 +13,17 @@ locals {
     aws_ec2 = "ec2"
   }
 
-  provider_type = local.provider_types[local.provider_key]
+  provider_type = local.provider_key == null ? null : local.provider_types[local.provider_key]
 
   provider_assume_role_policies = {
     aws_ec2 = try(module.compute_aws_ec2_trust_policy[0].assume_role_policy, null)
   }
 
-  provider_assume_role_policy = local.provider_assume_role_policies[local.provider_key]
+  provider_assume_role_policy = local.provider_key == null ? null : local.provider_assume_role_policies[local.provider_key]
 
   provider_contracts = {
     aws_ec2 = one(module.compute_aws_ec2[*].provider)
   }
 
-  provider_contract = local.provider_contracts[local.provider_key]
+  provider_contract = local.provider_key == null ? null : local.provider_contracts[local.provider_key]
 }

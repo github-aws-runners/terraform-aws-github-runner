@@ -40,8 +40,8 @@ output "orchestration_provider" {
 output "compute_provider_contract" {
   description = "Provider-neutral compute-provider capabilities consumed by topology-level orchestration."
   value = {
-    type         = local.provider_contract.type
-    capabilities = local.provider_contract.capabilities
+    type         = try(local.provider_contract.type, null)
+    capabilities = try(local.provider_contract.capabilities, {})
   }
 }
 
