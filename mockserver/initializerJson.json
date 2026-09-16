@@ -79,6 +79,16 @@
   {
     "httpRequest": {
       "method": "POST",
+      "path": "/tenant/123/_apis/runtime/runnerscalesets/223/generatejitconfig"
+    },
+    "httpResponseTemplate": {
+      "templateType": "MUSTACHE",
+      "template": "{\"statusCode\":200,\"headers\":{\"Content-Type\":[\"application/json\"]},\"body\":\"{\\\"runner\\\":{\\\"id\\\":321,\\\"name\\\":\\\"{{#jsonPath}}$.name{{/jsonPath}}{{jsonPathResult}}\\\",\\\"runnerScaleSetId\\\":223},\\\"encodedJITConfig\\\":\\\"test-only-jit-configuration\\\"}\"}"
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "POST",
       "path": "/tenant/123/_apis/runtime/runnerscalesets/223/sessions"
     },
     "httpResponse": {

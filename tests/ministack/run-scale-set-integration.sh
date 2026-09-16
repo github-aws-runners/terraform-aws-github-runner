@@ -496,6 +496,7 @@ wait_for_mock_route GET '/tenant/123/_apis/runtime/runnergroups/'
 wait_for_mock_route GET '/tenant/123/_apis/runtime/runnerscalesets'
 wait_for_mock_route GET '/tenant/123/_apis/runtime/runnerscalesets/223'
 wait_for_mock_route PATCH '/tenant/123/_apis/runtime/runnerscalesets/223'
+wait_for_mock_route POST '/tenant/123/_apis/runtime/runnerscalesets/223/generatejitconfig'
 wait_for_mock_route POST '/tenant/123/_apis/runtime/runnerscalesets/223/sessions'
 wait_for_mock_route GET '/messages'
 
