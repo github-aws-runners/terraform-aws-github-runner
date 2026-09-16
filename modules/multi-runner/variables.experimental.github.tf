@@ -38,7 +38,7 @@ variable "global_config_github" {
       enterprise_server.url: "GitHub Enterprise Server URL."
       enterprise_server.ssl_verify: "Whether to verify the GitHub Enterprise Server TLS certificate."
       runner_owner: "GitHub organization or owner/repository path for organization- or repository-level scale-set registration."
-      runner_registration_level: "GitHub scale-set registration scope: enterprise, organization, or repository."
+      runner_registration_level: "GitHub scale-set registration scope: organization or repository."
       user_agent: "User-Agent value sent with GitHub API requests."
     }
   EOT
@@ -78,7 +78,7 @@ variable "global_config_github" {
       ssl_verify = optional(bool, true)
     }), {})
     runner_owner              = optional(string, null)
-    runner_registration_level = optional(string, "enterprise")
+    runner_registration_level = optional(string, "organization")
     user_agent                = optional(string, "github-aws-runners")
   })
   default = {}
