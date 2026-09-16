@@ -128,15 +128,30 @@ jobs:
             lockfile: .terraform.lock.hcl.tofu
         module:
           - ami-housekeeper
+          - compute-providers/aws/ec2
+          - compute-providers/aws/ec2/trust-policy
           - download-lambda
           - lambda
           - multi-runner
+          - orchestration-providers/webhook
+          - orchestration-providers/webhook/job-retry
+          - orchestration-providers/webhook/pool
+          - orchestration-providers/webhook/scale-runners
           - runner-binaries-syncer
+          - runner-config
+          - runner-config/ssm-housekeeper
           - runners
+          - runners/job-retry
+          - runners/pool
           - setup-iam-permissions
           - ssm
           - termination-watcher
+          - termination-watcher/notification
+          - termination-watcher/termination
           - webhook
+          - webhook/direct
+          - webhook/eventbridge
+          - webhook-github-app
     defaults:
       run:
         working-directory: modules/${{ matrix.module }}
@@ -307,8 +322,16 @@ jobs:
       fail-fast: false
       matrix:
         module:
-          - modules/runners
+          - modules/compute-providers/aws/ec2
+          - modules/compute-providers/aws/ec2/trust-policy
           - modules/multi-runner
+          - modules/orchestration-providers/webhook
+          - modules/orchestration-providers/webhook/job-retry
+          - modules/orchestration-providers/webhook/pool
+          - modules/orchestration-providers/webhook/scale-runners
+          - modules/runner-config
+          - modules/runner-config/ssm-housekeeper
+          - modules/runners
     defaults:
       run:
         working-directory: ${{ matrix.module }}
