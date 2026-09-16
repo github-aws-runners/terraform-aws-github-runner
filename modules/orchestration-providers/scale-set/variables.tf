@@ -16,7 +16,7 @@ variable "runner_configs" {
   description = <<-EOT
     Normalized scale-set runner configurations keyed by stable runner-config name.
 
-    Map keys must be known during planning. Credential values are never accepted: `github.app` contains only the exact GitHub App Parameter Store references used by the runtime. `github.enterprise_server` and `github.user_agent` carry the global GitHub settings needed to render each reconciler configuration. `scale_set.runner.group_name` selects the GitHub runner group. `runner_registration_level` selects the GitHub scale-set scope, and `runner_owner` supplies the organization or repository path for organization- and repository-level registration. `compute_provider` carries the provider-neutral scale-set capability contract for this runner configuration. Parameter and optional KMS ARNs, scale-set names, and other inner values may remain unknown until apply.
+    Map keys must be known during planning. Credential values are never accepted: `github.app` contains only the exact GitHub App Parameter Store references used by the runtime. `github.enterprise_server` and `github.user_agent` carry the global GitHub settings needed to render each reconciler configuration. `scale_set.runner.group_name` selects the GitHub runner group. `runner_registration_level` selects organization or repository registration, and `runner_owner` supplies the corresponding organization or owner/repository path. Enterprise-level registration is not supported by this module. `compute_provider` carries the provider-neutral scale-set capability contract for this runner configuration. Parameter and optional KMS ARNs, scale-set names, and other inner values may remain unknown until apply.
   EOT
   type = map(object({
     github = object({

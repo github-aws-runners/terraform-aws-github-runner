@@ -35,8 +35,8 @@ module "subject" {
             arn  = terraform_data.computed.output.installation_id_arn
           }
         }
-        runner_owner              = null
-        runner_registration_level = "enterprise"
+        runner_owner              = "example"
+        runner_registration_level = "organization"
         user_agent                = "scale-set-test"
       }
       scale_set = {

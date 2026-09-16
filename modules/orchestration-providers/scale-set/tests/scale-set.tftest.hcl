@@ -60,8 +60,8 @@ variables {
             arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github/linux-small/installation-id"
           }
         }
-        runner_owner              = null
-        runner_registration_level = "enterprise"
+        runner_owner              = "example"
+        runner_registration_level = "organization"
         user_agent                = "scale-set-test"
       }
       scale_set = {
@@ -128,8 +128,8 @@ variables {
             arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github/linux-large/installation-id"
           }
         }
-        runner_owner              = null
-        runner_registration_level = "enterprise"
+        runner_owner              = "example"
+        runner_registration_level = "organization"
         user_agent                = "scale-set-test"
       }
       scale_set = {
@@ -189,8 +189,8 @@ variables {
             arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github/microvm/installation-id"
           }
         }
-        runner_owner              = null
-        runner_registration_level = "enterprise"
+        runner_owner              = "example/repository"
+        runner_registration_level = "repository"
         user_agent                = "scale-set-test"
       }
       scale_set = {
@@ -364,14 +364,14 @@ run "groups_by_compute_provider_and_hardens_each_task" {
     condition = (
       jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).schemaVersion == 1 &&
       jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).runnerConfigName == "linux-small" &&
-      jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).githubConfigUrl == "https://github.com" &&
+      jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).githubConfigUrl == "https://github.com/example" &&
       jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).scaleSetName == "linux-small" &&
       jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).bootTimeoutMinutes == 10 &&
       jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).sslVerify == false &&
       jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).forceGhes == false &&
       jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).userAgent == "scale-set-test" &&
       jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value)).githubApp.privateKeyParameterName == "/github/linux-small/private-key" &&
-      jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-large"].value)).githubConfigUrl == "https://github.example.test" &&
+      jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-large"].value)).githubConfigUrl == "https://github.example.test/example" &&
       jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-large"].value)).forceGhes == true &&
       !contains(keys(jsondecode(nonsensitive(aws_ssm_parameter.reconciler_config["ec2/linux-small"].value))), "runnerConfig")
     )
@@ -642,7 +642,9 @@ run "rejects_duplicate_scale_set_ownership_across_groups" {
     runner_configs = merge(var.runner_configs, {
       microvm = merge(var.runner_configs.microvm, {
         github = merge(var.runner_configs.microvm.github, {
-          enterprise_server = { url = "https://GITHUB.COM:443/" }
+          enterprise_server         = { url = "https://GITHUB.COM:443/" }
+          runner_registration_level = "organization"
+          runner_owner              = "example"
         })
         scale_set = merge(var.runner_configs.microvm.scale_set, {
           name = "linux-small"
@@ -834,8 +836,8 @@ run "bounds_default_session_owner_for_maximum_names" {
       (join("", [for index in range(128) : "a"])) = {
         github = {
           enterprise_server         = {}
-          runner_owner              = null
-          runner_registration_level = "enterprise"
+          runner_owner              = "example"
+          runner_registration_level = "organization"
           user_agent                = "scale-set-test"
           app = {
             app_id = {
@@ -990,6 +992,27 @@ run "rejects_invalid_boot_timeout" {
           runner = merge(var.runner_configs.linux-small.scale_set.runner, {
             boot_time_in_minutes = 0
           })
+        })
+      })
+    })
+  }
+
+  expect_failures = [terraform_data.validate_contract]
+}
+
+run "rejects_enterprise_runner_registration_level" {
+  command = plan
+
+  plan_options {
+    target = [terraform_data.validate_contract]
+  }
+
+  variables {
+    runner_configs = merge(var.runner_configs, {
+      linux-small = merge(var.runner_configs.linux-small, {
+        github = merge(var.runner_configs.linux-small.github, {
+          runner_registration_level = "enterprise"
+          runner_owner              = null
         })
       })
     })

@@ -40,20 +40,17 @@ resource "terraform_data" "validate_contract" {
     precondition {
       condition = alltrue([
         for runner_config in values(var.runner_configs) : contains([
-          "enterprise",
           "organization",
           "repository",
         ], runner_config.github.runner_registration_level)
       ])
-      error_message = "runner_registration_level must be enterprise, organization, or repository."
+      error_message = "runner_registration_level must be organization or repository."
     }
 
     precondition {
       condition = alltrue([
         for runner_config in values(var.runner_configs) : (
-          runner_config.github.runner_registration_level == "enterprise"
-          ? runner_config.github.runner_owner == null
-          : runner_config.github.runner_owner != null && can(regex(
+          runner_config.github.runner_owner != null && can(regex(
             runner_config.github.runner_registration_level == "organization"
             ? "^[A-Za-z0-9_.-]+$"
             : "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$",
@@ -61,7 +58,7 @@ resource "terraform_data" "validate_contract" {
           ))
         )
       ])
-      error_message = "runner_owner must be null for enterprise registration and must be an organization or owner/repository path for the other registration levels."
+      error_message = "runner_owner must be an organization or owner/repository path for organization and repository registration levels."
     }
 
     precondition {
