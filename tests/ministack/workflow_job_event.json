@@ -1,0 +1,26 @@
+{
+  "action": "queued",
+  "workflow_job": {
+    "id": 123456,
+    "run_id": 654321,
+    "run_url": "https://github.example.invalid/test-owner/test-repo/actions/runs/654321",
+    "url": "https://github.example.invalid/test-owner/test-repo/actions/jobs/123456",
+    "html_url": "https://github.example.invalid/test-owner/test-repo/actions/jobs/123456",
+    "status": "queued",
+    "conclusion": null,
+    "name": "ministack-smoke",
+    "labels": ["self-hosted", "linux", "x64", "default", "example"]
+  },
+  "repository": {
+    "id": 1,
+    "name": "test-repo",
+    "full_name": "test-owner/test-repo",
+    "owner": {
+      "login": "test-owner",
+      "type": "Organization"
+    }
+  },
+  "installation": {
+    "id": 123
+  }
+}
