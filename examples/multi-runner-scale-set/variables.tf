@@ -16,7 +16,7 @@ variable "github" {
     config_url         = optional(string, null)
     ssl_verify         = optional(bool, true)
     runner_owner       = optional(string, null)
-    registration_level = optional(string, "enterprise")
+    registration_level = optional(string, "organization")
   })
 
   default = {}
