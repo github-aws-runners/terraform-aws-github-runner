@@ -35,7 +35,7 @@ locals {
     for group_name in keys(local.controller_groups) : group_name => format(
       "%s-ss-%s-%s",
       var.prefix,
-      substr(replace(lower(group_name), "/[^a-z0-9_-]/", "-"), 0, 20),
+      substr(replace(lower(group_name), "/[^a-z0-9_-]/", "-"), 0, 14),
       substr(sha256(group_name), 0, 8),
     )
   }
