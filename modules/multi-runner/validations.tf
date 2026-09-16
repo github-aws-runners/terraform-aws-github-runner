@@ -37,6 +37,11 @@ resource "terraform_data" "validate_v1" {
       )
       error_message = "Stable v1 configuration requires github_app, vpc_id, subnet_ids, and multi_runner_config."
     }
+
+    precondition {
+      condition     = length(local.v2_multi_runner_config) == 0
+      error_message = "Stable v1 configuration cannot use v2 runner lanes unless multi-runner-v2 is explicitly enabled."
+    }
   }
 }
 

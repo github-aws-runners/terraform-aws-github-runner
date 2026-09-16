@@ -451,6 +451,8 @@ run "v2_inputs_do_not_require_legacy_arguments" {
 run "v2_inputs_require_experimental_feature" {
   command = plan
 
+  expect_failures = [terraform_data.validate_v1]
+
   variables {
     vpc_id     = "vpc-stable"
     subnet_ids = ["subnet-stable"]
@@ -470,16 +472,6 @@ run "v2_inputs_require_experimental_feature" {
     multi_runner_config = {
       lane = {}
     }
-  }
-
-  assert {
-    condition = (
-      !local.use_v2_config
-      && length(local.normalized_config.multi_runner_config) == 0
-      && length(module.runner_configs) == 0
-      && length(module.runners) == 0
-    )
-    error_message = "The v2 configuration must remain disabled unless multi-runner-v2 is explicitly enabled."
   }
 }
 
