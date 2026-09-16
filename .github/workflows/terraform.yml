@@ -272,7 +272,7 @@ jobs:
         run: |
           printf '%s\n' "${EXAMPLES}" | while IFS= read -r example; do
             [ -z "${example}" ] && continue
-            cp "$IAC_LOCK_FILE" "examples/${example}/.terraform.lock.hcl"
+            cp "examples/${example}/${IAC_LOCK_FILE}" "examples/${example}/.terraform.lock.hcl"
           done
 
       - name: ${{ matrix.iac.name }} init
