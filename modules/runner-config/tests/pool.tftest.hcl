@@ -219,8 +219,14 @@ run "plan_with_pool_enabled" {
   }
 
   assert {
-    condition     = length(jsondecode(module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["SSM_PARAMETER_STORE_TAGS"])) == 0
-    error_message = "Runtime Parameter Store tags must remain empty when no module or SSM tags are configured; EC2 bootstrap tags must not leak into them."
+    condition = tomap({
+      for tag in jsondecode(module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["SSM_PARAMETER_STORE_TAGS"]) :
+      tag.Key => tag.Value
+      }) == tomap({
+      Name                  = "github-actions-action-runner"
+      "ghr:ssm_config_path" = "/github-runner/config"
+    })
+    error_message = "Runtime Parameter Store tags must include common generated tags without leaking EC2 bootstrap tags."
   }
 
   assert {
