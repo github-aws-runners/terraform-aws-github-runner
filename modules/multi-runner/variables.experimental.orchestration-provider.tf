@@ -143,6 +143,7 @@ variable "global_config_orchestration_provider" {
           config = optional(list(object({
             schedule_expression          = string
             schedule_expression_timezone = optional(string)
+            org                          = optional(string)
             size                         = number
           })), [])
           include_busy_runners = optional(bool, false)

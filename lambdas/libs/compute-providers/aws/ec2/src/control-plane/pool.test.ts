@@ -83,18 +83,21 @@ describe('createEc2PoolCapability.listRunners', () => {
     vi.clearAllMocks();
   });
 
-  it('lists only running instances managed for the requested pool', async () => {
+  it.each([false, true])('lists running pool instances with case-insensitive ownership=%s', async (ignoreCase) => {
+    const ownership = ignoreCase ? { runnerOwnerIgnoreCase: true } : {};
     const runners: RunnerInfo[] = [{ id: 'i-running', owner: 'owner', type: 'Org' }];
     ec2Operations.list.mockResolvedValue(runners);
 
     await expect(
       capability.listRunners({
+        ...ownership,
         environment: 'test-environment',
         runnerOwner: 'owner',
         runnerType: 'Org',
       }),
     ).resolves.toBe(runners);
     expect(ec2Operations.list).toHaveBeenCalledWith({
+      ...ownership,
       environment: 'test-environment',
       runnerOwner: 'owner',
       runnerType: 'Org',

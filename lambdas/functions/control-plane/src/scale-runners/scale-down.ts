@@ -5,6 +5,7 @@ import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import { resolveComputeProviderType } from '@aws-github-runner/compute-providers/provider-types';
 import moment from 'moment';
 
+import { multiOrgEnabled, normalizeOrganization } from '../github/multi-org';
 import {
   createGithubAppAuth,
   createGithubInstallationAuth,
@@ -39,7 +40,7 @@ async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
   const appIdx = ghAuthPre.appIndex;
 
   // Use the pre-configured installation ID when available (avoids an API call).
-  let installationId = await getStoredInstallationId(appIdx);
+  let installationId = multiOrgEnabled() ? undefined : await getStoredInstallationId(appIdx);
   if (installationId === undefined) {
     const githubClientPre = await createOctokitClient(ghAuthPre.token, ghesApiUrl, appIdx);
     installationId =
@@ -279,6 +280,12 @@ async function removeRunner(
   }
 }
 
+function idleRetentionOwner(runner: RunnerInfo): string {
+  // Legacy Repo runners share their organization's allowance after enabling multi-org.
+  // Keep the original owner and type on the runner for installation lookup and removal.
+  return multiOrgEnabled() ? normalizeOrganization(runner.owner.split('/')[0]) : runner.owner;
+}
+
 async function evaluateAndRemoveRunners(
   runners: RunnerInfo[],
   scaleDownConfigs: ScalingDownConfigList,
@@ -286,14 +293,21 @@ async function evaluateAndRemoveRunners(
 ): Promise<void> {
   let idleCounter = getIdleRunnerCount(scaleDownConfigs);
   const evictionStrategy = getEvictionStrategy(scaleDownConfigs);
-  const ownerTags = new Set(runners.map((runner) => runner.owner));
+  const retentionOwners = new Set(runners.map(idleRetentionOwner));
 
-  for (const ownerTag of ownerTags) {
+  for (const retentionOwner of retentionOwners) {
+    if (multiOrgEnabled()) {
+      idleCounter = getIdleRunnerCount(scaleDownConfigs);
+    }
     const ownerRunners = runners
-      .filter((runner) => runner.owner === ownerTag)
+      .filter((runner) => idleRetentionOwner(runner) === retentionOwner)
       .sort(evictionStrategy === 'oldest_first' ? oldestFirstStrategy : newestFirstStrategy);
-    logger.debug(`Found: '${ownerRunners.length}' active GitHub runners with owner tag: '${ownerTag}'`);
-    logger.debug(`Active GitHub runners with owner tag: '${ownerTag}': ${JSON.stringify(ownerRunners)}`);
+    logger.debug(
+      `Found: '${ownerRunners.length}' active GitHub runners with idle retention owner: '${retentionOwner}'`,
+    );
+    logger.debug(
+      `Active GitHub runners with idle retention owner: '${retentionOwner}': ${JSON.stringify(ownerRunners)}`,
+    );
     for (const runner of ownerRunners) {
       if (runner.bypassRemoval) {
         logger.debug(`Runner '${runner.id}' has bypass-removal tag set, skipping evaluation.`);
@@ -369,7 +383,7 @@ async function lastChanceCheckOrphanRunner(runner: RunnerInfo): Promise<boolean>
 
 async function terminateOrphan(environment: string, computeProvider: ScaleDownComputeProvider): Promise<void> {
   try {
-    const orphanRunners = await computeProvider.list(environment, true);
+    const orphanRunners = (await computeProvider.list(environment, true)).map(normalizeRunnerOwner);
 
     for (const runner of orphanRunners) {
       if (runner.bypassRemoval) {
@@ -408,7 +422,13 @@ export function newestFirstStrategy(a: RunnerInfo, b: RunnerInfo): number {
 }
 
 async function listRunners(environment: string, computeProvider: ScaleDownComputeProvider) {
-  return await computeProvider.list(environment);
+  return (await computeProvider.list(environment)).map(normalizeRunnerOwner);
+}
+
+function normalizeRunnerOwner(runner: RunnerInfo): RunnerInfo {
+  return multiOrgEnabled() && runner.type === 'Org' && runner.owner
+    ? { ...runner, owner: normalizeOrganization(runner.owner) }
+    : runner;
 }
 
 function filterRunners(runners: RunnerInfo[]): RunnerInfo[] {
