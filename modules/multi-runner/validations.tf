@@ -104,19 +104,14 @@ resource "terraform_data" "validate_v2" {
         for config in local.resolved_config.multi_runner_config : (
           try(config.orchestration_provider.scale_set, null) == null ? true : (
             contains([
-              "enterprise",
               "organization",
               "repository",
             ], try(var.global_config_github.runner_registration_level, null)) &&
-            (
-              var.global_config_github.runner_registration_level == "enterprise"
-              ? try(var.global_config_github.runner_owner, null) == null
-              : try(var.global_config_github.runner_owner, null) != null
-            )
+            try(var.global_config_github.runner_owner, null) != null
           )
         )
       ])
-      error_message = "Scale-set lanes require global_config_github.runner_registration_level to be enterprise, organization, or repository; runner_owner must be null for enterprise or set for organization and repository registration."
+      error_message = "Scale-set lanes require global_config_github.runner_registration_level to be organization or repository; runner_owner must be set for organization and repository registration."
     }
 
     precondition {
