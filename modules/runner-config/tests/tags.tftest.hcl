@@ -79,15 +79,14 @@ variables {
 
   github = {
     app_parameters = {
-      key_base64 = [{
+      key_base64 = {
         name = "/github-runner/key-base64"
         arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64"
-      }]
-      id = [{
+      }
+      id = {
         name = "/github-runner/app-id"
         arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id"
-      }]
-      installation_id = [null]
+      }
     }
   }
 
@@ -192,130 +191,178 @@ run "layered_component_tags" {
 
   assert {
     condition = module.orchestration_webhook[0].scale_up.lambda.tags == tomap({
-      precedence = "scale-up"
-      module     = "yes"
-      lambda     = "yes"
-      scale_up   = "yes"
+      Name                  = "github-actions-action-runner"
+      "ghr:ssm_config_path" = "/github-runner/config"
+      precedence            = "scale-up"
+      module                = "yes"
+      lambda                = "yes"
+      scale_up              = "yes"
       }) && module.orchestration_webhook[0].scale_up.log_group.tags == tomap({
-      precedence = "scale-up"
-      module     = "yes"
-      log        = "yes"
-      scale_up   = "yes"
+      Name                  = "github-actions-action-runner"
+      "ghr:ssm_config_path" = "/github-runner/config"
+      precedence            = "scale-up"
+      module                = "yes"
+      log                   = "yes"
+      scale_up              = "yes"
       }) && module.orchestration_webhook[0].scale_up.role.tags == tomap({
-      precedence = "scale-up"
-      module     = "yes"
-      scale_up   = "yes"
+      Name                  = "github-actions-action-runner"
+      "ghr:ssm_config_path" = "/github-runner/config"
+      precedence            = "scale-up"
+      module                = "yes"
+      scale_up              = "yes"
     })
     error_message = "Scale-up tags must layer module, shared resource, and component tags with the component taking precedence."
   }
 
   assert {
     condition = module.orchestration_webhook[0].scale_down.lambda.tags == tomap({
-      precedence = "scale-down"
-      module     = "yes"
-      lambda     = "yes"
-      scale_down = "yes"
+      Name                  = "github-actions-action-runner"
+      "ghr:ssm_config_path" = "/github-runner/config"
+      precedence            = "scale-down"
+      module                = "yes"
+      lambda                = "yes"
+      scale_down            = "yes"
       }) && module.orchestration_webhook[0].scale_down.log_group.tags == tomap({
-      precedence = "scale-down"
-      module     = "yes"
-      log        = "yes"
-      scale_down = "yes"
+      Name                  = "github-actions-action-runner"
+      "ghr:ssm_config_path" = "/github-runner/config"
+      precedence            = "scale-down"
+      module                = "yes"
+      log                   = "yes"
+      scale_down            = "yes"
       }) && module.orchestration_webhook[0].scale_down.role.tags == tomap({
-      precedence = "scale-down"
-      module     = "yes"
-      scale_down = "yes"
+      Name                  = "github-actions-action-runner"
+      "ghr:ssm_config_path" = "/github-runner/config"
+      precedence            = "scale-down"
+      module                = "yes"
+      scale_down            = "yes"
     })
     error_message = "Scale-down tags must layer module, shared resource, and component tags with the component taking precedence."
   }
 
   assert {
     condition = aws_iam_role.runner[0].tags == tomap({
-      precedence = "runner"
-      module     = "yes"
-      runner     = "yes"
+      Name                  = "github-actions-action-runner"
+      "ghr:ssm_config_path" = "/github-runner/config"
+      precedence            = "runner"
+      module                = "yes"
+      runner                = "yes"
     })
     error_message = "Runner tags must override module tags on the common runner role."
   }
 
   assert {
     condition = aws_ssm_parameter.runner_agent_mode.tags == tomap({
-      precedence = "ssm-parameter"
-      module     = "yes"
-      ssm        = "yes"
-      parameter  = "yes"
+      Name                  = "github-actions-action-runner"
+      "ghr:ssm_config_path" = "/github-runner/config"
+      precedence            = "ssm-parameter"
+      module                = "yes"
+      ssm                   = "yes"
+      parameter             = "yes"
       }) && tomap({
       for tag in jsondecode(module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["SSM_PARAMETER_STORE_TAGS"]) :
       tag.Key => tag.Value
       }) == tomap({
-      precedence = "ssm-parameter"
-      module     = "yes"
-      ssm        = "yes"
-      parameter  = "yes"
+      Name                  = "github-actions-action-runner"
+      "ghr:ssm_config_path" = "/github-runner/config"
+      precedence            = "ssm-parameter"
+      module                = "yes"
+      ssm                   = "yes"
+      parameter             = "yes"
     })
     error_message = "Terraform-managed and runtime-created SSM parameters must use the same layered parameter tags."
   }
 
   assert {
-    condition = local.ssm_housekeeper_lambda_tags == tomap({
-      precedence  = "ssm-housekeeper"
-      module      = "yes"
-      lambda      = "yes"
-      ssm         = "yes"
-      housekeeper = "yes"
-      }) && local.ssm_housekeeper_log_tags == tomap({
-      precedence  = "ssm-housekeeper"
-      module      = "yes"
-      log         = "yes"
-      ssm         = "yes"
-      housekeeper = "yes"
-      }) && local.ssm_housekeeper_tags == tomap({
-      precedence  = "ssm-housekeeper"
-      module      = "yes"
-      ssm         = "yes"
-      housekeeper = "yes"
+    condition = tomap(local.ssm_housekeeper_lambda_tags) == tomap({
+      Name                  = "github-actions-action-runner"
+      "ghr:ssm_config_path" = "/github-runner/config"
+      precedence            = "ssm-housekeeper"
+      module                = "yes"
+      lambda                = "yes"
+      ssm                   = "yes"
+      housekeeper           = "yes"
     })
-    error_message = "SSM housekeeper tags must layer module, SSM, shared resource, and housekeeper tags."
+    error_message = "SSM housekeeper Lambda tags must include generated and layered tags."
+  }
+
+  assert {
+    condition = tomap(local.ssm_housekeeper_log_tags) == tomap({
+      Name                  = "github-actions-action-runner"
+      "ghr:ssm_config_path" = "/github-runner/config"
+      precedence            = "ssm-housekeeper"
+      module                = "yes"
+      log                   = "yes"
+      ssm                   = "yes"
+      housekeeper           = "yes"
+    })
+    error_message = "SSM housekeeper log tags must include generated and layered tags."
+  }
+
+  assert {
+    condition = tomap(local.ssm_housekeeper_tags) == tomap({
+      Name                  = "github-actions-action-runner"
+      "ghr:ssm_config_path" = "/github-runner/config"
+      precedence            = "ssm-housekeeper"
+      module                = "yes"
+      ssm                   = "yes"
+      housekeeper           = "yes"
+    })
+    error_message = "SSM housekeeper resource tags must include generated and layered tags."
   }
 
   assert {
     condition = module.orchestration_webhook[0].pool.lambda.tags == tomap({
-      precedence = "pool"
-      module     = "yes"
-      lambda     = "yes"
-      pool       = "yes"
+      Name                  = "github-actions-action-runner"
+      "ghr:ssm_config_path" = "/github-runner/config"
+      precedence            = "pool"
+      module                = "yes"
+      lambda                = "yes"
+      pool                  = "yes"
       }) && module.orchestration_webhook[0].pool.log_group.tags == tomap({
-      precedence = "pool"
-      module     = "yes"
-      log        = "yes"
-      pool       = "yes"
+      Name                  = "github-actions-action-runner"
+      "ghr:ssm_config_path" = "/github-runner/config"
+      precedence            = "pool"
+      module                = "yes"
+      log                   = "yes"
+      pool                  = "yes"
       }) && module.orchestration_webhook[0].pool.role.tags == tomap({
-      precedence = "pool"
-      module     = "yes"
-      pool       = "yes"
+      Name                  = "github-actions-action-runner"
+      "ghr:ssm_config_path" = "/github-runner/config"
+      precedence            = "pool"
+      module                = "yes"
+      pool                  = "yes"
     })
     error_message = "Pool tags must layer module, shared resource, and component tags with the component taking precedence."
   }
 
   assert {
     condition = module.orchestration_webhook[0].job_retry.lambda.function.tags == tomap({
-      precedence = "job-retry"
-      module     = "yes"
-      lambda     = "yes"
-      job_retry  = "yes"
+      Name                  = "github-actions-action-runner"
+      "ghr:ssm_config_path" = "/github-runner/config"
+      precedence            = "job-retry"
+      module                = "yes"
+      lambda                = "yes"
+      job_retry             = "yes"
       }) && module.orchestration_webhook[0].job_retry.lambda.log_group.tags == tomap({
-      precedence = "job-retry"
-      module     = "yes"
-      log        = "yes"
-      job_retry  = "yes"
+      Name                  = "github-actions-action-runner"
+      "ghr:ssm_config_path" = "/github-runner/config"
+      precedence            = "job-retry"
+      module                = "yes"
+      log                   = "yes"
+      job_retry             = "yes"
       }) && module.orchestration_webhook[0].job_retry.lambda.role.tags == tomap({
-      precedence = "job-retry"
-      module     = "yes"
-      job_retry  = "yes"
+      Name                  = "github-actions-action-runner"
+      "ghr:ssm_config_path" = "/github-runner/config"
+      precedence            = "job-retry"
+      module                = "yes"
+      job_retry             = "yes"
       }) && module.orchestration_webhook[0].job_retry.queue.tags == tomap({
-      precedence = "job-retry"
-      module     = "yes"
-      queue      = "yes"
-      job_retry  = "yes"
+      Name                  = "github-actions-action-runner"
+      "ghr:ssm_config_path" = "/github-runner/config"
+      precedence            = "job-retry"
+      module                = "yes"
+      queue                 = "yes"
+      job_retry             = "yes"
     })
     error_message = "Job-retry tags must layer module, shared resource, and component tags with the component taking precedence."
   }
