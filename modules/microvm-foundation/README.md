@@ -58,7 +58,7 @@ example. Apply it before following the direct Packer build instructions in
 
 | Name | Version |
 |------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.4.0 |
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.5.6 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 6.61 |
 | <a name="requirement_time"></a> [time](#requirement\_time) | >= 0.13 |
 
