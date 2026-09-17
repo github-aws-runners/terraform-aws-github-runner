@@ -285,7 +285,7 @@ print("  [PASS] SSM manifest has the expected MockServer and GitHub App settings
 PY
 
 task_definition=$(ministack_aws ecs list-task-definitions \
-  --family-prefix ministack-scale-set-ss-linux-scale-set- \
+  --family-prefix ministack-scale-set-ss-linux-scale-se- \
   --sort DESC \
   --query 'taskDefinitionArns[0]' \
   --output text)
@@ -315,7 +315,7 @@ fi
 printf '%s\n' '  [PASS] ECS task definition requests the awslogs driver'
 
 log_group=$(ministack_aws logs describe-log-groups \
-  --log-group-name-prefix "/aws/ecs/ministack-scale-set-ss-linux-scale-set-" \
+  --log-group-name-prefix "/aws/ecs/ministack-scale-set-ss-linux-scale-se-" \
   --query 'logGroups[0].logGroupName' \
   --output text)
 if [ -z "$log_group" ] || [ "$log_group" = "None" ]; then
