@@ -137,8 +137,6 @@ jobs:
           - orchestration-providers/webhook/job-retry
           - orchestration-providers/webhook/pool
           - orchestration-providers/webhook/scale-runners
-          - compute-providers/aws/microvm
-          - compute-providers/aws/microvm/trust-policy
           - runner-binaries-syncer
           - runner-config
           - runner-config/ssm-housekeeper
