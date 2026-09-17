@@ -11,7 +11,8 @@ and uses the configuration checked into the example itself. No override files,
 setup module, or Terraform fixture configuration is checked in. The helper
 creates and removes a temporary AMI override for `default` and
 `ephemeral`, temporary SSM parameters for `multi-runner`, and temporary AMI
-fixtures plus an override for `multi-runner-v2` and `multi-runner-scale-set`.
+fixtures for `multi-runner-v2` and `multi-runner-scale-set`. The migration test
+uses its dedicated `run-migration-test.sh` lifecycle script.
 
 Start MiniStack, set the AWS endpoint and test credentials, then run:
 
@@ -37,7 +38,7 @@ The script also supports `init`, `plan`, and `destroy`. It creates inert Lambda
 ZIP fixtures in the paths expected by the modules when they are absent, and
 removes only the files it created. For `prebuilt`, it seeds AMI metadata through
 MiniStack's AWS-compatible EC2 API, then removes only the resources it created
-during cleanup. MiniStack v1.5.10 provides the EC2 image behavior needed by the
+during cleanup. MiniStack v1.5.11 provides the EC2 image behavior needed by the
 `default`, `ephemeral`, `multi-runner`, and `multi-runner-scale-set` examples,
 so they are included in the same lifecycle matrix.
 
@@ -88,9 +89,3 @@ override the hostname with `MINISTACK_GITHUB_MOCK_HOST` when using a different
 container runtime. When MiniStack is exposed on a non-default local port, use a
 host address reachable from its container for `AWS_ENDPOINT_URL`, for example
 `AWS_ENDPOINT_URL=http://<host-ip>:14568`, instead of `127.0.0.1`.
-
-The workflow also runs `run-scale-set-integration.sh`. It applies the
-`multi-runner-scale-set` example and verifies the managed ECS controller,
-Fargate task hardening, scale-set environment contract, and reconciler SSM
-parameter through MiniStack's AWS-compatible APIs. It does not send webhook
-events or exercise webhook scale-up, scale-down, or pool handlers.
