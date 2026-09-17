@@ -218,7 +218,6 @@ No modules.
 | [terraform_data.validate_compute_role_policy](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/resources/data) | resource |
 | [terraform_data.validate_config_store](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/resources/data) | resource |
 | [terraform_data.validate_contract](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/resources/data) | resource |
-| [terraform_data.validate_group_compute_policy](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/resources/data) | resource |
 | [terraform_data.validate_group_task_policy](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/resources/data) | resource |
 | [terraform_data.validate_grouping](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/resources/data) | resource |
 | [terraform_data.validate_runtime](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/resources/data) | resource |
