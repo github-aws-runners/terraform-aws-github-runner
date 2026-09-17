@@ -1,5 +1,5 @@
 locals {
-  environment = var.environment != null ? var.environment : "multi-runner-v2"
+  environment = var.environment
   aws_region  = var.aws_region
 }
 

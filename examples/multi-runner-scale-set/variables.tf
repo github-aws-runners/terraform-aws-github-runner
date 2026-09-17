@@ -32,8 +32,7 @@ variable "scale_set" {
 variable "environment" {
   description = "Environment name, used as prefix."
 
-  type    = string
-  default = null
+  type = string
 }
 
 variable "aws_region" {
