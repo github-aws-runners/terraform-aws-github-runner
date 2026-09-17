@@ -23,6 +23,7 @@ env:
     modules/download-lambda
     modules/lambda
     modules/multi-runner
+    modules/orchestration-providers/scale-set
     modules/orchestration-providers/webhook
     modules/orchestration-providers/webhook/job-retry
     modules/orchestration-providers/webhook/pool
