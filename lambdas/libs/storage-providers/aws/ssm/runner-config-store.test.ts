@@ -1,7 +1,7 @@
 import { putParameter } from '@aws-github-runner/aws-ssm-util';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createAwsSsmRunnerConfigStore } from './runner-config-store';
+import { createAwsSsmRunnerConfigStore, resolveMaxWritesPerSecond } from './runner-config-store';
 
 vi.mock('@aws-github-runner/aws-ssm-util', () => ({
   putParameter: vi.fn(),
@@ -91,6 +91,34 @@ describe('aws_ssm runner config store', () => {
     expect(putParameterMock).toHaveBeenCalledWith('/runner/tokens/runner-1', 'jit-config', true, { tags: [] });
   });
 
+  it('uses SSM_PARAMETER_STORE_MAX_WRITES_PER_SECOND when set, e.g. after enabling higher throughput', () => {
+    process.env.SSM_PARAMETER_STORE_MAX_WRITES_PER_SECOND = '10000';
+    const store = createAwsSsmRunnerConfigStore();
+    expect(store.maxWritesPerSecond).toBe(10000);
+  });
+
+  it.each([undefined, '', '0', '-5', 'not-a-number'])(
+    'falls back to the standard-tier default of 40 for an invalid value (%j)',
+    (value) => {
+      if (value === undefined) {
+        delete process.env.SSM_PARAMETER_STORE_MAX_WRITES_PER_SECOND;
+      } else {
+        process.env.SSM_PARAMETER_STORE_MAX_WRITES_PER_SECOND = value;
+      }
+      const store = createAwsSsmRunnerConfigStore();
+      expect(store.maxWritesPerSecond).toBe(40);
+    },
+  );
+
+  it('honors an explicitly configured maxWritesPerSecond over the default', () => {
+    const store = createAwsSsmRunnerConfigStore({
+      tokenPath: '/runner/tokens',
+      parameterStoreTags: [],
+      maxWritesPerSecond: 1000,
+    });
+    expect(store.maxWritesPerSecond).toBe(1000);
+  });
+
   it('logs safe context when a runner configuration write fails', async () => {
     const error = Object.assign(new Error('encoded-jit-secret'), { name: 'ThrottlingException' });
     putParameterMock.mockRejectedValue(error);
@@ -105,6 +133,20 @@ describe('aws_ssm runner config store', () => {
       errorNames: ['ThrottlingException'],
     });
     expect(JSON.stringify(loggerMock.error.mock.calls)).not.toContain('encoded-jit-secret');
+  });
+});
+
+describe('resolveMaxWritesPerSecond', () => {
+  it.each([
+    ['10000', 10000],
+    ['1', 1],
+    [undefined, 40],
+    ['', 40],
+    ['0', 40],
+    ['-1', 40],
+    ['not-a-number', 40],
+  ])('resolves %j to %i', (rawValue, expected) => {
+    expect(resolveMaxWritesPerSecond(rawValue)).toBe(expected);
   });
 });
 

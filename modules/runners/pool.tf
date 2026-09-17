@@ -57,14 +57,16 @@ module "pool" {
       role                                 = { arn = var.iam_overrides["override_runner_role"] ? var.iam_overrides["runner_role_arn"] : aws_iam_role.runner[0].arn }
       use_dedicated_host                   = var.use_dedicated_host
     }
-    subnet_ids                           = var.subnet_ids
-    ssm_token_path                       = "${var.ssm_paths.root}/${var.ssm_paths.tokens}"
-    ssm_config_path                      = "${var.ssm_paths.root}/${var.ssm_paths.config}"
-    ami_id_ssm_parameter_name            = local.ami_id_ssm_parameter_name
-    ami_id_ssm_parameter_read_policy_arn = local.ami_id_ssm_parameter_name != null ? aws_iam_policy.ami_id_ssm_parameter_read[0].arn : null
-    tags                                 = local.tags
-    lambda_tags                          = var.lambda_tags
-    arn_ssm_parameters_path_config       = local.arn_ssm_parameters_path_config
+    subnet_ids                                     = var.subnet_ids
+    ssm_token_path                                 = "${var.ssm_paths.root}/${var.ssm_paths.tokens}"
+    ssm_config_path                                = "${var.ssm_paths.root}/${var.ssm_paths.config}"
+    ssm_parameter_store_max_concurrent_invocations = var.ssm_parameter_store_max_concurrent_invocations
+    ssm_parameter_store_max_writes_per_second      = var.ssm_parameter_store_max_writes_per_second
+    ami_id_ssm_parameter_name                      = local.ami_id_ssm_parameter_name
+    ami_id_ssm_parameter_read_policy_arn           = local.ami_id_ssm_parameter_name != null ? aws_iam_policy.ami_id_ssm_parameter_read[0].arn : null
+    tags                                           = local.tags
+    lambda_tags                                    = var.lambda_tags
+    arn_ssm_parameters_path_config                 = local.arn_ssm_parameters_path_config
   }
 
   aws_partition  = var.aws_partition

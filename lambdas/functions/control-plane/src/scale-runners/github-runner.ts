@@ -215,11 +215,16 @@ export async function createStartRunnerConfig(
   }
 }
 
-function addDelay(runnerIds: string[], runnerConfigStore: RunnerConfigStore) {
+// maxWritesPerSecond is account-wide, so the per-write delay is spread across the configured
+// number of concurrent invocations rather than sized off this invocation's batch alone.
+export function addDelay(runnerIds: string[], runnerConfigStore: RunnerConfigStore) {
   const delay = async (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
   const maxWritesPerSecond = runnerConfigStore.maxWritesPerSecond;
-  const isDelay = maxWritesPerSecond !== undefined && runnerIds.length >= maxWritesPerSecond;
-  const delayMilliseconds = maxWritesPerSecond === undefined ? 0 : 1000 / maxWritesPerSecond;
+  const isDelay = maxWritesPerSecond !== undefined && runnerIds.length > 0;
+  const configuredConcurrency = parseInt(process.env.SSM_PARAMETER_STORE_MAX_CONCURRENT_INVOCATIONS ?? '', 10);
+  const maxConcurrentInvocations = configuredConcurrency > 0 ? configuredConcurrency : 1;
+  const delayMilliseconds =
+    maxWritesPerSecond === undefined ? 0 : (1000 / maxWritesPerSecond) * maxConcurrentInvocations;
   return { isDelay, delay, delayMilliseconds };
 }
 
