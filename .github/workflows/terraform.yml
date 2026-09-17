@@ -17,31 +17,31 @@ env:
   AWS_REGION: eu-west-1
   MODULES: |
     .
-    ami-housekeeper
-    compute-providers/aws/ec2
-    compute-providers/aws/ec2/trust-policy
-    download-lambda
-    lambda
-    multi-runner
-    orchestration-providers/webhook
-    orchestration-providers/webhook/job-retry
-    orchestration-providers/webhook/pool
-    orchestration-providers/webhook/scale-runners
-    runner-binaries-syncer
-    runner-config
-    runner-config/ssm-housekeeper
-    runners
-    runners/job-retry
-    runners/pool
-    setup-iam-permissions
-    ssm
-    termination-watcher
-    termination-watcher/notification
-    termination-watcher/termination
-    webhook
-    webhook/direct
-    webhook/eventbridge
-    webhook-github-app
+    modules/ami-housekeeper
+    modules/compute-providers/aws/ec2
+    modules/compute-providers/aws/ec2/trust-policy
+    modules/download-lambda
+    modules/lambda
+    modules/multi-runner
+    modules/orchestration-providers/webhook
+    modules/orchestration-providers/webhook/job-retry
+    modules/orchestration-providers/webhook/pool
+    modules/orchestration-providers/webhook/scale-runners
+    modules/runner-binaries-syncer
+    modules/runner-config
+    modules/runner-config/ssm-housekeeper
+    modules/runners
+    modules/runners/job-retry
+    modules/runners/pool
+    modules/setup-iam-permissions
+    modules/ssm
+    modules/termination-watcher
+    modules/termination-watcher/notification
+    modules/termination-watcher/termination
+    modules/webhook
+    modules/webhook/direct
+    modules/webhook/eventbridge
+    modules/webhook-github-app
   EXAMPLES: |
     default
     prebuilt
@@ -93,7 +93,9 @@ jobs:
             iac-providers-verify_modules-
 
       - name: Set Terraform plugin cache
-        run: echo "TF_PLUGIN_CACHE_DIR=$HOME/.terraform.d/plugin" >> "$GITHUB_ENV"
+        run: |
+          mkdir -p "$HOME/.terraform.d/plugin"
+          echo "TF_PLUGIN_CACHE_DIR=$HOME/.terraform.d/plugin" >> "$GITHUB_ENV"
 
       - name: "Fake zip files" # Validate will fail if it cannot find the zip files
         run: |
@@ -207,7 +209,9 @@ jobs:
             iac-providers-verify_examples-
 
       - name: Set Terraform plugin cache
-        run: echo "TF_PLUGIN_CACHE_DIR=$HOME/.terraform.d/plugin" >> "$GITHUB_ENV"
+        run: |
+          mkdir -p "$HOME/.terraform.d/plugin"
+          echo "TF_PLUGIN_CACHE_DIR=$HOME/.terraform.d/plugin" >> "$GITHUB_ENV"
 
       - name: Setup Terraform
         if: matrix.iac.command == 'terraform'
@@ -313,7 +317,9 @@ jobs:
             iac-providers-terraform_test-
 
       - name: Set Terraform plugin cache
-        run: echo "TF_PLUGIN_CACHE_DIR=$HOME/.terraform.d/plugin" >> "$GITHUB_ENV"
+        run: |
+          mkdir -p "$HOME/.terraform.d/plugin"
+          echo "TF_PLUGIN_CACHE_DIR=$HOME/.terraform.d/plugin" >> "$GITHUB_ENV"
 
       - name: Setup Terraform
         if: matrix.iac.command == 'terraform'
