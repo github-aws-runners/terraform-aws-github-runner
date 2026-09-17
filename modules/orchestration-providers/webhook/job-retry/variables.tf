@@ -24,9 +24,10 @@ variable "config" {
     - `github.enterprise_server.url`: Optional GitHub Enterprise Server URL.
     - `github.enterprise_server.ssl_verify`: Enables TLS certificate verification for GitHub Enterprise Server requests.
     - `github.user_agent`: Optional User-Agent sent to GitHub.
-    - `github.app_parameters.key_base64`: Ordered Parameter Store references for GitHub App private keys.
-    - `github.app_parameters.id`: Ordered Parameter Store references for GitHub App IDs.
-    - `github.app_parameters.installation_id`: Ordered optional Parameter Store references for GitHub App installation IDs.
+    - `github.app_parameters.key_base64`: Parameter Store reference for the primary GitHub App private key.
+    - `github.app_parameters.id`: Parameter Store reference for the primary GitHub App ID.
+    - `github.app_parameters.additional_apps_manifest`: Optional Parameter Store reference containing the additional GitHub App manifest.
+    - `github.app_parameters.additional_app_parameter_arns`: ARNs of the additional GitHub App credential parameters.
     - `queue.build`: URL and ARN of the build queue to which retry messages are published.
     - `queue.kms_key_id`: Optional KMS key ARN used to encrypt the build queue. This is distinct from the Parameter Store key.
     - `queue.event_source_mapping.batch_size`: Maximum records delivered per job-retry invocation.
@@ -85,9 +86,13 @@ variable "config" {
       })
       user_agent = optional(string, null)
       app_parameters = object({
-        key_base64      = list(map(string))
-        id              = list(map(string))
-        installation_id = list(object({ name = string, arn = string }))
+        key_base64 = map(string)
+        id         = map(string)
+        additional_apps_manifest = optional(object({
+          name = string
+          arn  = string
+        }), null)
+        additional_app_parameter_arns = optional(list(string), [])
       })
     })
     queue = object({
