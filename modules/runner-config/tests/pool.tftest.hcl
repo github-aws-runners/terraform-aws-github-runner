@@ -81,9 +81,8 @@ variables {
 
   github = {
     app_parameters = {
-      key_base64      = [{ name = "/github-runner/key-base64", arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64" }]
-      id              = [{ name = "/github-runner/app-id", arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id" }]
-      installation_id = [null]
+      key_base64 = { name = "/github-runner/key-base64", arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64" }
+      id         = { name = "/github-runner/app-id", arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id" }
     }
   }
 
@@ -220,8 +219,14 @@ run "plan_with_pool_enabled" {
   }
 
   assert {
-    condition     = length(jsondecode(module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["SSM_PARAMETER_STORE_TAGS"])) == 0
-    error_message = "Runtime Parameter Store tags must remain empty when no module or SSM tags are configured; EC2 bootstrap tags must not leak into them."
+    condition = tomap({
+      for tag in jsondecode(module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["SSM_PARAMETER_STORE_TAGS"]) :
+      tag.Key => tag.Value
+      }) == tomap({
+      Name                  = "github-actions-action-runner"
+      "ghr:ssm_config_path" = "/github-runner/config"
+    })
+    error_message = "Runtime Parameter Store tags must include common generated tags without leaking EC2 bootstrap tags."
   }
 
   assert {
