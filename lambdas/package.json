@@ -19,15 +19,16 @@
   },
   "resolutions": {
     "@octokit/types": "^13.0.0",
-    "brace-expansion": "^2.0.2",
+    "nx/brace-expansion": "^5.0.9",
+    "nx/smol-toml": "^1.7.1",
     "@babel/helpers": "^7.26.10",
     "@babel/runtime": "^7.26.10"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
-    "@nx/eslint": "22.4.3",
-    "@nx/js": "^22.4.3",
-    "@nx/vite": "^22.4.3",
+    "@nx/eslint": "22.7.11",
+    "@nx/js": "^22.7.11",
+    "@nx/vite": "^22.7.11",
     "@swc-node/register": "~1.11.1",
     "@swc/core": "~1.15.8",
     "@swc/helpers": "~0.5.18",
@@ -38,13 +39,13 @@
     "chalk": "^5.6.2",
     "eslint": "^9.39.2",
     "eslint-plugin-prettier": "5.5.4",
-    "nx": "22.3.3",
+    "nx": "22.7.11",
     "prettier": "^3.6.2",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.9.3",
-    "vite": "^7.3.0",
-    "vitest": "^4.0.16"
+    "vite": "^7.3.5",
+    "vitest": "^4.1.0"
   },
-  "packageManager": "yarn@4.3.1"
+  "packageManager": "yarn@4.16.0"
 }

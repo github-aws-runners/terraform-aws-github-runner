@@ -37,7 +37,7 @@ resource "aws_lambda_function" "dispatcher" {
   environment {
     variables = {
       for k, v in {
-        LOG_LEVEL                                = var.config.log_level
+        LOG_LEVEL                                = upper(var.config.log_level)
         POWERTOOLS_LOGGER_LOG_EVENT              = var.config.log_level == "debug" ? "true" : "false"
         POWERTOOLS_SERVICE_NAME                  = "${var.config.prefix}-dispatcher"
         POWERTOOLS_TRACE_ENABLED                 = var.config.tracing_config.mode != null ? true : false
@@ -47,6 +47,7 @@ resource "aws_lambda_function" "dispatcher" {
         PARAMETER_RUNNER_MATCHER_CONFIG_PATH = join(":", [for p in var.config.ssm_parameter_runner_matcher_config : p.name])
         PARAMETER_RUNNER_MATCHER_VERSION     = join(":", [for p in var.config.ssm_parameter_runner_matcher_config : p.version]) # enforce cold start after Changes in SSM parameter
         REPOSITORY_ALLOW_LIST                = jsonencode(var.config.repository_white_list)
+        QUEUE_SELECTION_STRATEGY             = var.config.queue_selection_strategy
       } : k => v if v != null
     }
   }
@@ -73,6 +74,7 @@ resource "aws_cloudwatch_log_group" "dispatcher" {
   name              = "/aws/lambda/${aws_lambda_function.dispatcher.function_name}"
   retention_in_days = var.config.logging_retention_in_days
   kms_key_id        = var.config.logging_kms_key_id
+  log_group_class   = var.config.log_class
   tags              = var.config.tags
 }
 

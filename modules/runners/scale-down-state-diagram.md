@@ -117,7 +117,7 @@ stateDiagram-v2
 
     note right of CheckMinimumTime
         Minimum running time in minutes
-        (Linux: 5min, Windows: 15min)
+        (Linux: 5min, Windows: 15min, OSX: 20min)
     end note
 
     note right of CheckBootTime
@@ -145,6 +145,6 @@ stateDiagram-v2
 ## Configuration Parameters
 
 - **Cron Schedule**: `cron(*/5 * * * ? *)` (every 5 minutes)
-- **Minimum Runtime**: Linux 5min, Windows 15min
+- **Minimum Runtime**: Linux 5min, Windows 15min, OSX 20min
 - **Boot Timeout**: Configurable via `runner_boot_time_in_minutes`
 - **Idle Config**: Per-environment configuration for desired idle runners

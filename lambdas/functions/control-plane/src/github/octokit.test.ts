@@ -1,7 +1,8 @@
 import { Octokit } from '@octokit/rest';
-import { ActionRequestMessage } from '../scale-runners/scale-up';
+import type { ActionRequestMessage } from '../scale-runners/types';
 import { getOctokit } from './octokit';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi, Mock } from 'vitest';
+import { createGithubAppAuth, createGithubInstallationAuth, getStoredInstallationId } from '../github/auth';
 
 const mockOctokit = {
   apps: {
@@ -11,11 +12,13 @@ const mockOctokit = {
 };
 
 vi.mock('../github/auth', async () => ({
-  createGithubInstallationAuth: vi.fn().mockImplementation(async (installationId) => {
+  createGithubInstallationAuth: vi.fn().mockImplementation(async (installationId: number) => {
     return { token: 'token', type: 'installation', installationId: installationId };
   }),
   createOctokitClient: vi.fn().mockImplementation(() => new Octokit()),
-  createGithubAppAuth: vi.fn().mockResolvedValue({ token: 'token' }),
+  createGithubAppAuth: vi.fn().mockResolvedValue({ token: 'token', appIndex: 0 }),
+  getAppCount: vi.fn().mockResolvedValue(1),
+  getStoredInstallationId: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@octokit/rest', async () => ({
@@ -27,7 +30,11 @@ vi.mock('@octokit/rest', async () => ({
 // We've already mocked '../github/auth' above
 
 describe('Test getOctokit', () => {
-  const data = [
+  const data: Array<{
+    description: string;
+    input: { orgLevelRunner: boolean; installationId: number };
+    output: { callReposInstallation: boolean; callOrgInstallation: boolean };
+  }> = [
     {
       description: 'Should look-up org installation if installationId is 0.',
       input: { orgLevelRunner: false, installationId: 0 },
@@ -49,7 +56,7 @@ describe('Test getOctokit', () => {
     vi.clearAllMocks();
   });
 
-  it.each(data)(`$description`, async ({ input, output }) => {
+  it.each(data)(`$description`, async ({ input, output }: (typeof data)[number]) => {
     const payload = {
       eventType: 'workflow_job',
       id: 0,
@@ -74,6 +81,112 @@ describe('Test getOctokit', () => {
     } else if (output.callReposInstallation) {
       expect(mockOctokit.apps.getRepoInstallation).toHaveBeenCalled();
       expect(mockOctokit.apps.getOrgInstallation).not.toHaveBeenCalled();
+    } else {
+      expect(mockOctokit.apps.getOrgInstallation).not.toHaveBeenCalled();
+      expect(mockOctokit.apps.getRepoInstallation).not.toHaveBeenCalled();
     }
+  });
+});
+
+describe('Test getOctokit installation ID resolution (Fix B: index-0 payload reuse in multi-app)', () => {
+  const basePayload = {
+    eventType: 'workflow_job',
+    id: 0,
+    repositoryOwner: 'owner',
+    repositoryName: 'repo',
+  } as Omit<ActionRequestMessage, 'installationId'>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockOctokit.apps.getOrgInstallation.mockResolvedValue({ data: { id: 99 } });
+    mockOctokit.apps.getRepoInstallation.mockResolvedValue({ data: { id: 99 } });
+  });
+
+  it('primary app (appIndex 0) reuses webhook installationId even in multi-app deployment', async () => {
+    // Multi-app deployment: primary app selected (index 0), no stored installation id
+    (createGithubAppAuth as Mock).mockResolvedValue({ token: 'token', appIndex: 0 });
+    (getStoredInstallationId as Mock).mockResolvedValue(undefined);
+    const payload = { ...basePayload, installationId: 5 } as ActionRequestMessage;
+
+    await expect(getOctokit('', true, payload)).resolves.toBeDefined();
+
+    // Primary app must NOT do an API lookup — it reuses the webhook payload installationId
+    expect(mockOctokit.apps.getOrgInstallation).not.toHaveBeenCalled();
+    expect(mockOctokit.apps.getRepoInstallation).not.toHaveBeenCalled();
+  });
+
+  it('additional app (appIndex 1) does API lookup even when webhook has installationId', async () => {
+    // Multi-app deployment: additional app selected (index 1), no stored installation id
+    (createGithubAppAuth as Mock).mockResolvedValue({ token: 'token', appIndex: 1 });
+    (getStoredInstallationId as Mock).mockResolvedValue(undefined);
+    const payload = { ...basePayload, installationId: 5 } as ActionRequestMessage;
+
+    await expect(getOctokit('', true, payload)).resolves.toBeDefined();
+
+    // Additional app must do an API lookup (it cannot reuse the webhook payload)
+    expect(mockOctokit.apps.getOrgInstallation).toHaveBeenCalled();
+  });
+
+  it('stored installation id takes precedence over payload for additional app', async () => {
+    // Additional app with a pre-configured installation id stored
+    (createGithubAppAuth as Mock).mockResolvedValue({ token: 'token', appIndex: 1 });
+    (getStoredInstallationId as Mock).mockResolvedValue(77);
+    const payload = { ...basePayload, installationId: 5 } as ActionRequestMessage;
+
+    await expect(getOctokit('', true, payload)).resolves.toBeDefined();
+
+    // Stored id wins: no API lookup needed
+    expect(mockOctokit.apps.getOrgInstallation).not.toHaveBeenCalled();
+    expect(mockOctokit.apps.getRepoInstallation).not.toHaveBeenCalled();
+  });
+});
+
+describe('Test getOctokit stale installation fallback', () => {
+  const basePayload = {
+    eventType: 'workflow_job',
+    id: 0,
+    repositoryOwner: 'owner',
+    repositoryName: 'repo',
+  } as Omit<ActionRequestMessage, 'installationId'>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (createGithubAppAuth as Mock).mockResolvedValue({ token: 'token', appIndex: 0 });
+    (getStoredInstallationId as Mock).mockResolvedValue(undefined);
+    mockOctokit.apps.getOrgInstallation.mockResolvedValue({ data: { id: 99 } });
+  });
+
+  it('re-resolves the installation and retries with the same app when the payload id is stale (404)', async () => {
+    const notFound = Object.assign(new Error('Not Found'), { status: 404 });
+    (createGithubInstallationAuth as Mock)
+      .mockRejectedValueOnce(notFound)
+      .mockResolvedValueOnce({ token: 'fresh-token', type: 'installation', installationId: 99 });
+
+    const payload = { ...basePayload, installationId: 5 } as ActionRequestMessage;
+    await expect(getOctokit('', true, payload)).resolves.toBeDefined();
+
+    expect(createGithubInstallationAuth).toHaveBeenNthCalledWith(1, 5, '', 0);
+    expect(createGithubInstallationAuth).toHaveBeenNthCalledWith(2, 99, '', 0);
+    expect(mockOctokit.apps.getOrgInstallation).toHaveBeenCalledWith({ org: 'owner' });
+  });
+
+  it('rethrows when re-resolution returns the same installation id', async () => {
+    const notFound = Object.assign(new Error('Not Found'), { status: 404 });
+    mockOctokit.apps.getOrgInstallation.mockResolvedValue({ data: { id: 5 } });
+    (createGithubInstallationAuth as Mock).mockRejectedValueOnce(notFound);
+
+    const payload = { ...basePayload, installationId: 5 } as ActionRequestMessage;
+    await expect(getOctokit('', true, payload)).rejects.toThrow('Not Found');
+    expect(createGithubInstallationAuth).toHaveBeenCalledTimes(1);
+  });
+
+  it('rethrows non-404 errors without re-resolving', async () => {
+    const serverError = Object.assign(new Error('Server Error'), { status: 500 });
+    (createGithubInstallationAuth as Mock).mockRejectedValueOnce(serverError);
+
+    const payload = { ...basePayload, installationId: 5 } as ActionRequestMessage;
+    await expect(getOctokit('', true, payload)).rejects.toThrow('Server Error');
+    expect(mockOctokit.apps.getOrgInstallation).not.toHaveBeenCalled();
+    expect(createGithubInstallationAuth).toHaveBeenCalledTimes(1);
   });
 });

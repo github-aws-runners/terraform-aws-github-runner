@@ -1,6 +1,11 @@
 locals {
   # config with combined key and order
-  runner_matcher_config = { for k, v in var.runner_matcher_config : format("%03d-%s", v.matcherConfig.priority, k) => merge(v, { key = k }) }
+  runner_matcher_config = {
+    for k, v in var.runner_matcher_config : format("%03d-%s", v.matcherConfig.priority, k) => merge(v, {
+      key             = k
+      computeProvider = lower(trimspace(v.computeProvider))
+    })
+  }
 
   # sorted list
   runner_matcher_config_sorted = [for k in sort(keys(local.runner_matcher_config)) : local.runner_matcher_config[k]]
@@ -64,11 +69,13 @@ module "direct" {
     role_path                             = local.role_path,
     logging_retention_in_days             = var.logging_retention_in_days,
     logging_kms_key_id                    = var.logging_kms_key_id,
+    log_class                             = var.log_class,
     lambda_s3_bucket                      = var.lambda_s3_bucket,
     lambda_s3_key                         = var.webhook_lambda_s3_key,
     lambda_s3_object_version              = var.webhook_lambda_s3_object_version,
     lambda_apigateway_access_log_settings = var.webhook_lambda_apigateway_access_log_settings,
     repository_white_list                 = var.repository_white_list,
+    queue_selection_strategy              = var.queue_selection_strategy,
     kms_key_arn                           = var.kms_key_arn,
     log_level                             = var.log_level,
     lambda_runtime                        = var.lambda_runtime,
@@ -105,11 +112,13 @@ module "eventbridge" {
     role_path                             = local.role_path,
     logging_retention_in_days             = var.logging_retention_in_days,
     logging_kms_key_id                    = var.logging_kms_key_id,
+    log_class                             = var.log_class,
     lambda_s3_bucket                      = var.lambda_s3_bucket,
     lambda_s3_key                         = var.webhook_lambda_s3_key,
     lambda_s3_object_version              = var.webhook_lambda_s3_object_version,
     lambda_apigateway_access_log_settings = var.webhook_lambda_apigateway_access_log_settings,
     repository_white_list                 = var.repository_white_list,
+    queue_selection_strategy              = var.queue_selection_strategy,
     kms_key_arn                           = var.kms_key_arn,
     log_level                             = var.log_level,
     lambda_runtime                        = var.lambda_runtime,

@@ -1,267 +1,74 @@
-import { Octokit } from '@octokit/rest';
 import { addPersistentContextToChildLogger, createChildLogger } from '@aws-github-runner/aws-powertools-util';
-import { getParameter, putParameter } from '@aws-github-runner/aws-ssm-util';
+import { resolveComputeProviderType } from '@aws-github-runner/compute-providers/provider-types';
+import { Octokit } from '@octokit/rest';
 import yn from 'yn';
 
 import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
-import { createRunner, listEC2Runners, tag } from './../aws/runners';
-import { RunnerInputParameters } from './../aws/runners.d';
-import { metricGitHubAppRateLimit } from '../github/rate-limit';
+import { controlPlaneProviderRegistry } from '../control-plane-providers';
+import {
+  getGitHubEnterpriseApiUrl,
+  getInstallationId,
+  resolveInstallationId,
+  isJobQueued,
+  UnsupportedEventError,
+  validateSsmParameterStoreTags,
+} from './github-runner';
 import { publishRetryMessage } from './job-retry';
+import type {
+  ActionRequestMessage,
+  ActionRequestMessageRetry,
+  ActionRequestMessageSQS,
+  CreateGitHubRunnerConfig,
+  CreateRunnerResult,
+} from './types';
 
 const logger = createChildLogger('scale-up');
 
-export interface RunnerGroup {
-  name: string;
-  id: number;
-}
-
-interface EphemeralRunnerConfig {
-  runnerName: string;
-  runnerGroupId: number;
-  runnerLabels: string[];
-}
-
-export interface ActionRequestMessage {
-  id: number;
-  eventType: 'check_run' | 'workflow_job';
-  repositoryName: string;
-  repositoryOwner: string;
-  installationId: number;
-  repoOwnerType: string;
-  retryCounter?: number;
-}
-
-export interface ActionRequestMessageSQS extends ActionRequestMessage {
-  messageId: string;
-}
-
-export interface ActionRequestMessageRetry extends ActionRequestMessage {
-  retryCounter: number;
-}
-
-interface CreateGitHubRunnerConfig {
-  ephemeral: boolean;
-  ghesBaseUrl: string;
-  enableJitConfig: boolean;
-  runnerLabels: string;
-  runnerGroup: string;
-  runnerNamePrefix: string;
-  runnerOwner: string;
-  runnerType: 'Org' | 'Repo';
-  disableAutoUpdate: boolean;
-  ssmTokenPath: string;
-  ssmConfigPath: string;
-  ssmParameterStoreTags: { Key: string; Value: string }[];
-}
-
-interface CreateEC2RunnerConfig {
-  environment: string;
-  subnets: string[];
-  launchTemplateName: string;
-  ec2instanceCriteria: RunnerInputParameters['ec2instanceCriteria'];
-  numberOfRunners?: number;
-  amiIdSsmParameterName?: string;
-  tracingEnabled?: boolean;
-  onDemandFailoverOnError?: string[];
-  scaleErrors: string[];
-}
-
-function generateRunnerServiceConfig(githubRunnerConfig: CreateGitHubRunnerConfig, token: string) {
-  const config = [
-    `--url ${githubRunnerConfig.ghesBaseUrl ?? 'https://github.com'}/${githubRunnerConfig.runnerOwner}`,
-    `--token ${token}`,
-  ];
-
-  if (githubRunnerConfig.runnerLabels) {
-    config.push(`--labels ${githubRunnerConfig.runnerLabels}`.trim());
+function getErrorStatus(error: unknown): number | undefined {
+  if (typeof error !== 'object' || error === null) {
+    return undefined;
   }
 
-  if (githubRunnerConfig.disableAutoUpdate) {
-    config.push('--disableupdate');
-  }
-
-  if (githubRunnerConfig.runnerType === 'Org' && githubRunnerConfig.runnerGroup !== undefined) {
-    config.push(`--runnergroup ${githubRunnerConfig.runnerGroup}`);
-  }
-
-  if (githubRunnerConfig.ephemeral) {
-    config.push(`--ephemeral`);
-  }
-
-  return config;
+  const errorWithStatus = error as { status?: number; response?: { status?: number } };
+  return errorWithStatus.status ?? errorWithStatus.response?.status;
 }
 
-export function validateSsmParameterStoreTags(tagsJson: string): { Key: string; Value: string }[] {
-  try {
-    const tags = JSON.parse(tagsJson);
-
-    if (!Array.isArray(tags)) {
-      throw new Error('Tags must be an array');
-    }
-
-    if (tags.length === 0) {
-      return [];
-    }
-
-    tags.forEach((tag, index) => {
-      if (typeof tag !== 'object' || tag === null) {
-        throw new Error(`Tag at index ${index} must be an object`);
-      }
-      if (!tag.Key || typeof tag.Key !== 'string' || tag.Key.trim() === '') {
-        throw new Error(`Tag at index ${index} has missing or invalid 'Key' property`);
-      }
-      if (!Object.prototype.hasOwnProperty.call(tag, 'Value') || typeof tag.Value !== 'string') {
-        throw new Error(`Tag at index ${index} has missing or invalid 'Value' property`);
-      }
-    });
-
-    return tags;
-  } catch (err) {
-    logger.error('Invalid SSM_PARAMETER_STORE_TAGS format', { error: err });
-    throw new Error(`Failed to parse SSM_PARAMETER_STORE_TAGS: ${(err as Error).message}`);
-  }
-}
-
-async function getGithubRunnerRegistrationToken(githubRunnerConfig: CreateGitHubRunnerConfig, ghClient: Octokit) {
-  const registrationToken =
-    githubRunnerConfig.runnerType === 'Org'
-      ? await ghClient.actions.createRegistrationTokenForOrg({ org: githubRunnerConfig.runnerOwner })
-      : await ghClient.actions.createRegistrationTokenForRepo({
-          owner: githubRunnerConfig.runnerOwner.split('/')[0],
-          repo: githubRunnerConfig.runnerOwner.split('/')[1],
-        });
-
-  const appId = parseInt(await getParameter(process.env.PARAMETER_GITHUB_APP_ID_NAME));
-  logger.info('App id from SSM', { appId: appId });
-  return registrationToken.data.token;
-}
-
-function removeTokenFromLogging(config: string[]): string[] {
-  const result: string[] = [];
-  config.forEach((e) => {
-    if (e.startsWith('--token')) {
-      result.push('--token <REDACTED>');
-    } else {
-      result.push(e);
-    }
-  });
-  return result;
-}
-
-export async function getInstallationId(
+async function createGithubInstallationClient(
   githubAppClient: Octokit,
   enableOrgLevel: boolean,
   payload: ActionRequestMessage,
-): Promise<number> {
-  if (payload.installationId !== 0) {
-    return payload.installationId;
-  }
+  ghesApiUrl: string,
+  appIndex?: number,
+): Promise<Octokit> {
+  const installationId = await getInstallationId(githubAppClient, enableOrgLevel, payload, appIndex);
 
-  return enableOrgLevel
-    ? (
-        await githubAppClient.apps.getOrgInstallation({
-          org: payload.repositoryOwner,
-        })
-      ).data.id
-    : (
-        await githubAppClient.apps.getRepoInstallation({
-          owner: payload.repositoryOwner,
-          repo: payload.repositoryName,
-        })
-      ).data.id;
-}
+  try {
+    const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl, appIndex);
+    return await createOctokitClient(ghAuth.token, ghesApiUrl);
+  } catch (error) {
+    // The installation id can be stale when it was reused from the webhook payload or from the
+    // pre-configured per-app value while the app was uninstalled and reinstalled. Re-resolve the
+    // installation via the API once and retry with the same app before giving up.
+    if (getErrorStatus(error) !== 404) {
+      throw error;
+    }
 
-export async function isJobQueued(githubInstallationClient: Octokit, payload: ActionRequestMessage): Promise<boolean> {
-  let isQueued = false;
-  if (payload.eventType === 'workflow_job') {
-    const jobForWorkflowRun = await githubInstallationClient.actions.getJobForWorkflowRun({
-      job_id: payload.id,
-      owner: payload.repositoryOwner,
-      repo: payload.repositoryName,
+    const resolvedInstallationId = await resolveInstallationId(githubAppClient, enableOrgLevel, payload);
+    if (resolvedInstallationId === installationId) {
+      throw error;
+    }
+
+    logger.warn('Retrying GitHub installation auth with installation resolved for the selected app', {
+      staleInstallationId: installationId,
+      resolvedInstallationId,
+      appIndex,
+      repositoryOwner: payload.repositoryOwner,
+      repositoryName: payload.repositoryName,
     });
-    metricGitHubAppRateLimit(jobForWorkflowRun.headers);
-    isQueued = jobForWorkflowRun.data.status === 'queued';
-    logger.debug(`The job ${payload.id} is${isQueued ? ' ' : 'not'} queued`);
-  } else {
-    throw Error(`Event ${payload.eventType} is not supported`);
+
+    const ghAuth = await createGithubInstallationAuth(resolvedInstallationId, ghesApiUrl, appIndex);
+    return await createOctokitClient(ghAuth.token, ghesApiUrl);
   }
-  return isQueued;
-}
-
-async function getRunnerGroupId(githubRunnerConfig: CreateGitHubRunnerConfig, ghClient: Octokit): Promise<number> {
-  // if the runnerType is Repo, then runnerGroupId is default to 1
-  let runnerGroupId: number | undefined = 1;
-  if (githubRunnerConfig.runnerType === 'Org' && githubRunnerConfig.runnerGroup !== undefined) {
-    let runnerGroup: string | undefined;
-    // check if runner group id is already stored in SSM Parameter Store and
-    // use it if it exists to avoid API call to GitHub
-    try {
-      runnerGroup = await getParameter(
-        `${githubRunnerConfig.ssmConfigPath}/runner-group/${githubRunnerConfig.runnerGroup}`,
-      );
-    } catch (err) {
-      logger.debug('Handling error:', err as Error);
-      logger.warn(
-        `SSM Parameter "${githubRunnerConfig.ssmConfigPath}/runner-group/${githubRunnerConfig.runnerGroup}"
-         for Runner group ${githubRunnerConfig.runnerGroup} does not exist`,
-      );
-    }
-    if (runnerGroup === undefined) {
-      // get runner group id from GitHub
-      runnerGroupId = await getRunnerGroupByName(ghClient, githubRunnerConfig);
-      // store runner group id in SSM
-      try {
-        await putParameter(
-          `${githubRunnerConfig.ssmConfigPath}/runner-group/${githubRunnerConfig.runnerGroup}`,
-          runnerGroupId.toString(),
-          false,
-          {
-            tags: githubRunnerConfig.ssmParameterStoreTags,
-          },
-        );
-      } catch (err) {
-        logger.debug('Error storing runner group id in SSM Parameter Store', err as Error);
-        throw err;
-      }
-    } else {
-      runnerGroupId = parseInt(runnerGroup);
-    }
-  }
-  return runnerGroupId;
-}
-
-async function getRunnerGroupByName(ghClient: Octokit, githubRunnerConfig: CreateGitHubRunnerConfig): Promise<number> {
-  const runnerGroups: RunnerGroup[] = await ghClient.paginate(`GET /orgs/{org}/actions/runner-groups`, {
-    org: githubRunnerConfig.runnerOwner,
-    per_page: 100,
-  });
-  const runnerGroupId = runnerGroups.find((runnerGroup) => runnerGroup.name === githubRunnerConfig.runnerGroup)?.id;
-
-  if (runnerGroupId === undefined) {
-    throw new Error(`Runner group ${githubRunnerConfig.runnerGroup} does not exist`);
-  }
-
-  return runnerGroupId;
-}
-
-export async function createRunners(
-  githubRunnerConfig: CreateGitHubRunnerConfig,
-  ec2RunnerConfig: CreateEC2RunnerConfig,
-  numberOfRunners: number,
-  ghClient: Octokit,
-): Promise<string[]> {
-  const instances = await createRunner({
-    runnerType: githubRunnerConfig.runnerType,
-    runnerOwner: githubRunnerConfig.runnerOwner,
-    numberOfRunners,
-    ...ec2RunnerConfig,
-  });
-  if (instances.length !== 0) {
-    await createStartRunnerConfig(githubRunnerConfig, instances, ghClient);
-  }
-
-  return instances;
 }
 
 export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<string[]> {
@@ -273,34 +80,29 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
   const maximumRunners = parseInt(process.env.RUNNERS_MAXIMUM_COUNT || '3');
   const runnerLabels = process.env.RUNNER_LABELS || '';
   const runnerGroup = process.env.RUNNER_GROUP_NAME || 'Default';
-  const environment = process.env.ENVIRONMENT;
   const ssmTokenPath = process.env.SSM_TOKEN_PATH;
-  const subnets = process.env.SUBNET_IDS.split(',');
-  const instanceTypes = process.env.INSTANCE_TYPES.split(',');
-  const instanceTargetCapacityType = process.env.INSTANCE_TARGET_CAPACITY_TYPE;
   const ephemeralEnabled = yn(process.env.ENABLE_EPHEMERAL_RUNNERS, { default: false });
   const enableJitConfig = yn(process.env.ENABLE_JIT_CONFIG, { default: ephemeralEnabled });
   const disableAutoUpdate = yn(process.env.DISABLE_RUNNER_AUTOUPDATE, { default: false });
-  const launchTemplateName = process.env.LAUNCH_TEMPLATE_NAME;
-  const instanceMaxSpotPrice = process.env.INSTANCE_MAX_SPOT_PRICE;
-  const instanceAllocationStrategy = process.env.INSTANCE_ALLOCATION_STRATEGY || 'lowest-price'; // same as AWS default
   const enableJobQueuedCheck = yn(process.env.ENABLE_JOB_QUEUED_CHECK, { default: true });
-  const amiIdSsmParameterName = process.env.AMI_ID_SSM_PARAMETER_NAME;
   const runnerNamePrefix = process.env.RUNNER_NAME_PREFIX || '';
   const ssmConfigPath = process.env.SSM_CONFIG_PATH || '';
-  const tracingEnabled = yn(process.env.POWERTOOLS_TRACE_ENABLED, { default: false });
-  const onDemandFailoverOnError = process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS
-    ? (JSON.parse(process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS) as [string])
-    : [];
   const ssmParameterStoreTags: { Key: string; Value: string }[] =
     process.env.SSM_PARAMETER_STORE_TAGS && process.env.SSM_PARAMETER_STORE_TAGS.trim() !== ''
       ? validateSsmParameterStoreTags(process.env.SSM_PARAMETER_STORE_TAGS)
       : [];
-  const scaleErrors = JSON.parse(process.env.SCALE_ERRORS) as [string];
+  const computeProviderType = resolveComputeProviderType(process.env.COMPUTE_PROVIDER_TYPE);
+  const computeProvider = {
+    ...controlPlaneProviderRegistry.capability(computeProviderType, 'scaleUp')(),
+    type: computeProviderType,
+  };
 
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
 
+  // Select one GitHub App for this entire invocation so every API call in the
+  // batch draws from the same rate-limit bucket.
   const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl);
+  const appIdx = ghAuth.appIndex;
   const githubAppClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
 
   // A map of either owner or owner/repo name to Octokit client, so we use a
@@ -313,19 +115,20 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
   type MessagesWithClient = {
     messages: ActionRequestMessageSQS[];
     githubInstallationClient: Octokit;
+    runnerOwner: string;
   };
 
   const validMessages = new Map<string, MessagesWithClient>();
-  const rejectedMessageIds = new Set<string>();
+  const retryMessageIds = new Set<string>();
   for (const payload of payloads) {
-    const { eventType, messageId, repositoryName, repositoryOwner } = payload;
+    const { eventType, messageId, repositoryName, repositoryOwner, labels } = payload;
     if (ephemeralEnabled && eventType !== 'workflow_job') {
       logger.warn(
         'Event is not supported in combination with ephemeral runners. Please ensure you have enabled workflow_job events.',
         { eventType, messageId },
       );
 
-      rejectedMessageIds.add(messageId);
+      retryMessageIds.add(messageId);
 
       continue;
     }
@@ -342,20 +145,33 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       continue;
     }
 
-    const key = enableOrgLevel ? payload.repositoryOwner : `${payload.repositoryOwner}/${payload.repositoryName}`;
+    const runnerOwner = enableOrgLevel
+      ? payload.repositoryOwner
+      : `${payload.repositoryOwner}/${payload.repositoryName}`;
+
+    let key = runnerOwner;
+    if (labels?.some((l) => l.startsWith('ghr-'))) {
+      const dynamicLabelsHash = labelsHash(labels);
+      key = `${key}/${dynamicLabelsHash}`;
+    }
 
     let entry = validMessages.get(key);
 
     // If we've not seen this owner/repo before, we'll need to create a GitHub
     // client for it.
     if (entry === undefined) {
-      const installationId = await getInstallationId(githubAppClient, enableOrgLevel, payload);
-      const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
-      const githubInstallationClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
+      const githubInstallationClient = await createGithubInstallationClient(
+        githubAppClient,
+        enableOrgLevel,
+        payload,
+        ghesApiUrl,
+        appIdx,
+      );
 
       entry = {
         messages: [],
         githubInstallationClient,
+        runnerOwner: runnerOwner,
       };
 
       validMessages.set(key, entry);
@@ -377,10 +193,25 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
 
   logger.info(`Received events`);
 
-  for (const [group, { githubInstallationClient, messages }] of validMessages.entries()) {
+  for (const [group, { githubInstallationClient, messages, runnerOwner }] of validMessages.entries()) {
     // Work out how much we want to scale up by.
     let scaleUp = 0;
     const queuedMessages: ActionRequestMessageSQS[] = [];
+
+    // Reset per group to avoid accumulating labels across iterations
+    let groupRunnerLabels = runnerLabels;
+
+    const messageLabels = messages.length > 0 ? (messages[0].labels ?? []) : [];
+    const runnerLabelResolution = await computeProvider.resolveLabelsForRunners(messageLabels);
+    const resolvedRunnerLabels = runnerLabelResolution.runnerLabels;
+
+    if (resolvedRunnerLabels.length > 0) {
+      logger.debug('Dynamic labels present on message', { labels: resolvedRunnerLabels });
+      groupRunnerLabels = groupRunnerLabels
+        ? `${groupRunnerLabels},${resolvedRunnerLabels.join(',')}`
+        : resolvedRunnerLabels.join(',');
+      logger.debug('Updated runner labels', { runnerLabels: groupRunnerLabels });
+    }
 
     for (const message of messages) {
       const messageLogger = logger.createChild({
@@ -389,13 +220,30 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
           group,
           messageId: message.messageId,
           repository: `${message.repositoryOwner}/${message.repositoryName}`,
+          labels: message.labels,
         },
       });
 
-      if (enableJobQueuedCheck && !(await isJobQueued(githubInstallationClient, message))) {
-        messageLogger.info('No runner will be created, job is not queued.');
-
-        continue;
+      if (enableJobQueuedCheck) {
+        let jobQueued = true;
+        try {
+          jobQueued = await isJobQueued(githubInstallationClient, message, appIdx);
+        } catch (e) {
+          // An unsupported event type is not a transient fault — the check can never
+          // succeed for it, so lets skip
+          if (e instanceof UnsupportedEventError) {
+            continue;
+          }
+          const err = e as Error & { status?: number };
+          messageLogger.warn('isJobQueued check failed, assuming job is still queued (fail-open)', {
+            error: err.message,
+            status: err.status,
+          });
+        }
+        if (!jobQueued) {
+          messageLogger.info('No runner will be created, job is not queued.');
+          continue;
+        }
       }
 
       scaleUp++;
@@ -408,9 +256,11 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       continue;
     }
 
-    // Don't call the EC2 API if we can create an unlimited number of runners.
+    // Don't query the provider if we can create an unlimited number of runners.
     const currentRunners =
-      maximumRunners === -1 ? 0 : (await listEC2Runners({ environment, runnerType, runnerOwner: group })).length;
+      maximumRunners === -1
+        ? 0
+        : await computeProvider.getCurrentRunners(runnerLabelResolution.state, { runnerType, runnerOwner });
 
     logger.info('Current runners', {
       currentRunners,
@@ -418,32 +268,34 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
     });
 
     // Calculate how many runners we want to create.
+    // Use Math.max(0, ...) to ensure we never attempt to create a negative number of runners,
+    // which can happen when currentRunners exceeds maximumRunners due to pool/scale-up race conditions.
     const newRunners =
       maximumRunners === -1
         ? // If we don't have an upper limit, scale up by the number of new jobs.
           scaleUp
         : // Otherwise, we do have a limit, so work out if `scaleUp` would exceed it.
-          Math.min(scaleUp, maximumRunners - currentRunners);
+          Math.max(0, Math.min(scaleUp, maximumRunners - currentRunners));
 
-    const missingInstanceCount = Math.max(0, scaleUp - newRunners);
+    const skippedRunnerCount = Math.max(0, scaleUp - newRunners);
 
-    if (missingInstanceCount > 0) {
+    if (skippedRunnerCount > 0) {
       logger.info('Not all runners will be created for this group, maximum number of runners reached.', {
         desiredNewRunners: scaleUp,
       });
 
       if (ephemeralEnabled) {
-        // This removes `missingInstanceCount` items from the start of the array
+        // This removes `skippedRunnerCount` items from the start of the array
         // so that, if we retry more messages later, we pick fresh ones.
-        const removedMessages = messages.splice(0, missingInstanceCount);
-        removedMessages.forEach(({ messageId }) => rejectedMessageIds.add(messageId));
+        const removedMessages = messages.splice(0, skippedRunnerCount);
+        removedMessages.forEach(({ messageId }) => retryMessageIds.add(messageId));
       }
 
-      // No runners will be created, so skip calling the EC2 API.
+      // No runners will be created, so skip calling the provider.
       if (newRunners <= 0) {
-        // Publish retry messages for messages that are not rejected
+        // Publish retry messages for messages not already scheduled for SQS batch retry.
         for (const message of queuedMessages) {
-          if (!rejectedMessageIds.has(message.messageId)) {
+          if (!retryMessageIds.has(message.messageId)) {
             await publishRetryMessage(message as ActionRequestMessageRetry);
           }
         }
@@ -455,185 +307,89 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       newRunners,
     });
 
-    const instances = await createRunners(
-      {
-        ephemeral: ephemeralEnabled,
-        enableJitConfig,
-        ghesBaseUrl,
-        runnerLabels,
-        runnerGroup,
-        runnerNamePrefix,
-        runnerOwner: group,
-        runnerType,
-        disableAutoUpdate,
-        ssmTokenPath,
-        ssmConfigPath,
-        ssmParameterStoreTags,
-      },
-      {
-        ec2instanceCriteria: {
-          instanceTypes,
-          targetCapacityType: instanceTargetCapacityType,
-          maxSpotPrice: instanceMaxSpotPrice,
-          instanceAllocationStrategy: instanceAllocationStrategy,
-        },
-        environment,
-        launchTemplateName,
-        subnets,
-        amiIdSsmParameterName,
-        tracingEnabled,
-        onDemandFailoverOnError,
-        scaleErrors,
-      },
-      newRunners,
-      githubInstallationClient,
-    );
+    const githubRunnerConfig: CreateGitHubRunnerConfig = {
+      appIndex: appIdx,
+      ephemeral: ephemeralEnabled,
+      enableJitConfig,
+      ghesBaseUrl,
+      runnerLabels: groupRunnerLabels,
+      runnerGroup,
+      runnerNamePrefix,
+      runnerOwner: runnerOwner,
+      runnerType,
+      disableAutoUpdate,
+      ssmTokenPath,
+      ssmConfigPath,
+      ssmParameterStoreTags,
+    };
 
-    // Not all runners we wanted were created, let's reject enough items so that
-    // number of entries will be retried.
-    if (instances.length !== newRunners) {
-      const failedInstanceCount = newRunners - instances.length;
-
-      logger.warn('Some runners failed to be created, rejecting some messages so the requests are retried', {
-        wanted: newRunners,
-        got: instances.length,
-        failedInstanceCount,
+    let createRunnersResult: CreateRunnerResult;
+    try {
+      createRunnersResult = await computeProvider.createRunners({
+        githubRunnerConfig,
+        numberOfRunners: newRunners,
+        githubInstallationClient,
+        state: runnerLabelResolution.state,
       });
-
-      const failedMessages = messages.slice(0, failedInstanceCount);
-      failedMessages.forEach(({ messageId }) => rejectedMessageIds.add(messageId));
+    } catch (error) {
+      logger.error('Compute provider threw an unexpected error.', {
+        error,
+        retryable: true,
+        failedMessageCount: newRunners,
+      });
+      createRunnersResult = {
+        instances: [],
+        retryableErrorCount: newRunners,
+        nonRetryableErrorCount: 0,
+      };
     }
 
-    // Publish retry messages for messages that are not rejected
+    logger.info('Runner creation summary.', {
+      requestedMessageCount: newRunners,
+      successfulRunnerCount: createRunnersResult.instances.length,
+      retryableErrorCount: createRunnersResult.retryableErrorCount,
+      nonRetryableErrorCount: createRunnersResult.nonRetryableErrorCount,
+    });
+
+    if (createRunnersResult.nonRetryableErrorCount > 0) {
+      logger.warn('Some runner creation messages will not be retried through the current SQS batch.', {
+        nonRetryableErrorCount: createRunnersResult.nonRetryableErrorCount,
+      });
+    }
+
+    if (createRunnersResult.retryableErrorCount > 0) {
+      const failedMessages = messages.slice(0, createRunnersResult.retryableErrorCount);
+      failedMessages.forEach(({ messageId }) => retryMessageIds.add(messageId));
+    }
+
+    // Publish retry messages for messages not already scheduled for SQS batch retry.
     for (const message of queuedMessages) {
-      if (!rejectedMessageIds.has(message.messageId)) {
+      if (!retryMessageIds.has(message.messageId)) {
         await publishRetryMessage(message as ActionRequestMessageRetry);
       }
     }
   }
 
-  return Array.from(rejectedMessageIds);
-}
-
-export function getGitHubEnterpriseApiUrl() {
-  const ghesBaseUrl = process.env.GHES_URL;
-  let ghesApiUrl = '';
-  if (ghesBaseUrl) {
-    const url = new URL(ghesBaseUrl);
-    const domain = url.hostname;
-    if (domain.endsWith('.ghe.com')) {
-      // Data residency: Prepend 'api.'
-      ghesApiUrl = `https://api.${domain}`;
-    } else {
-      // GitHub Enterprise Server: Append '/api/v3'
-      ghesApiUrl = `${ghesBaseUrl}/api/v3`;
-    }
-  }
-  logger.debug(`Github Enterprise URLs: api_url - ${ghesApiUrl}; base_url - ${ghesBaseUrl}`);
-  return { ghesApiUrl, ghesBaseUrl };
-}
-
-async function createStartRunnerConfig(
-  githubRunnerConfig: CreateGitHubRunnerConfig,
-  instances: string[],
-  ghClient: Octokit,
-) {
-  if (githubRunnerConfig.enableJitConfig && githubRunnerConfig.ephemeral) {
-    await createJitConfig(githubRunnerConfig, instances, ghClient);
-  } else {
-    await createRegistrationTokenConfig(githubRunnerConfig, instances, ghClient);
-  }
+  return Array.from(retryMessageIds);
 }
 
 function isValidRepoOwnerTypeIfOrgLevelEnabled(payload: ActionRequestMessage, enableOrgLevel: boolean): boolean {
   return !(enableOrgLevel && payload.repoOwnerType !== 'Organization');
 }
 
-function addDelay(instances: string[]) {
-  const delay = async (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-  const ssmParameterStoreMaxThroughput = 40;
-  const isDelay = instances.length >= ssmParameterStoreMaxThroughput;
-  return { isDelay, delay };
-}
+function labelsHash(labels: string[]): string {
+  const prefix = 'ghr-';
 
-async function createRegistrationTokenConfig(
-  githubRunnerConfig: CreateGitHubRunnerConfig,
-  instances: string[],
-  ghClient: Octokit,
-) {
-  const { isDelay, delay } = addDelay(instances);
-  const token = await getGithubRunnerRegistrationToken(githubRunnerConfig, ghClient);
-  const runnerServiceConfig = generateRunnerServiceConfig(githubRunnerConfig, token);
+  const input = labels
+    .filter((l) => l.startsWith(prefix))
+    .sort() // ensure deterministic hash
+    .join('|');
 
-  logger.debug('Runner service config for non-ephemeral runners', {
-    runner_service_config: removeTokenFromLogging(runnerServiceConfig),
-  });
-
-  for (const instance of instances) {
-    await putParameter(`${githubRunnerConfig.ssmTokenPath}/${instance}`, runnerServiceConfig.join(' '), true, {
-      tags: [{ Key: 'InstanceId', Value: instance }, ...githubRunnerConfig.ssmParameterStoreTags],
-    });
-    if (isDelay) {
-      // Delay to prevent AWS ssm rate limits by being within the max throughput limit
-      await delay(25);
-    }
+  let hash = 0;
+  for (let i = 0; i < input.length; i++) {
+    hash = (hash << 5) - hash + input.charCodeAt(i);
+    hash |= 0; // force 32-bit integer
   }
-}
 
-async function tagRunnerId(instanceId: string, runnerId: string): Promise<void> {
-  try {
-    await tag(instanceId, [{ Key: 'ghr:github_runner_id', Value: runnerId }]);
-  } catch (e) {
-    logger.error(`Failed to mark runner '${instanceId}' with ${runnerId}.`, { error: e });
-  }
-}
-
-async function createJitConfig(githubRunnerConfig: CreateGitHubRunnerConfig, instances: string[], ghClient: Octokit) {
-  const runnerGroupId = await getRunnerGroupId(githubRunnerConfig, ghClient);
-  const { isDelay, delay } = addDelay(instances);
-  const runnerLabels = githubRunnerConfig.runnerLabels.split(',');
-
-  logger.debug(`Runner group id: ${runnerGroupId}`);
-  logger.debug(`Runner labels: ${runnerLabels}`);
-  for (const instance of instances) {
-    // generate jit config for runner registration
-    const ephemeralRunnerConfig: EphemeralRunnerConfig = {
-      runnerName: `${githubRunnerConfig.runnerNamePrefix}${instance}`,
-      runnerGroupId: runnerGroupId,
-      runnerLabels: runnerLabels,
-    };
-    logger.debug(`Runner name: ${ephemeralRunnerConfig.runnerName}`);
-    const runnerConfig =
-      githubRunnerConfig.runnerType === 'Org'
-        ? await ghClient.actions.generateRunnerJitconfigForOrg({
-            org: githubRunnerConfig.runnerOwner,
-            name: ephemeralRunnerConfig.runnerName,
-            runner_group_id: ephemeralRunnerConfig.runnerGroupId,
-            labels: ephemeralRunnerConfig.runnerLabels,
-          })
-        : await ghClient.actions.generateRunnerJitconfigForRepo({
-            owner: githubRunnerConfig.runnerOwner.split('/')[0],
-            repo: githubRunnerConfig.runnerOwner.split('/')[1],
-            name: ephemeralRunnerConfig.runnerName,
-            runner_group_id: ephemeralRunnerConfig.runnerGroupId,
-            labels: ephemeralRunnerConfig.runnerLabels,
-          });
-
-    metricGitHubAppRateLimit(runnerConfig.headers);
-
-    // tag the EC2 instance with the Github runner id
-    await tagRunnerId(instance, runnerConfig.data.runner.id.toString());
-
-    // store jit config in ssm parameter store
-    logger.debug('Runner JIT config for ephemeral runner generated.', {
-      instance: instance,
-    });
-    await putParameter(`${githubRunnerConfig.ssmTokenPath}/${instance}`, runnerConfig.data.encoded_jit_config, true, {
-      tags: [{ Key: 'InstanceId', Value: instance }, ...githubRunnerConfig.ssmParameterStoreTags],
-    });
-    if (isDelay) {
-      // Delay to prevent AWS ssm rate limits by being within the max throughput limit
-      await delay(25);
-    }
-  }
+  return Math.abs(hash).toString(36);
 }

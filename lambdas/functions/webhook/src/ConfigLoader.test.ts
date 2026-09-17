@@ -1,4 +1,4 @@
-import { getParameter } from '@aws-github-runner/aws-ssm-util';
+import { getParameter, getParameters } from '@aws-github-runner/aws-ssm-util';
 import { ConfigWebhook, ConfigWebhookEventBridge, ConfigDispatcher } from './ConfigLoader';
 
 import { logger } from '@aws-github-runner/aws-powertools-util';
@@ -165,7 +165,7 @@ describe('ConfigLoader Tests', () => {
       });
 
       await expect(ConfigWebhook.load()).rejects.toThrow(
-        'Failed to load config: Failed to load parameter for matcherConfig from path /path/to/matcher/config: Failed to load matcher config', // eslint-disable-line max-len
+        'Failed to load config: Failed to load parameter for matcherConfig from path /path/to/matcher/config: Failed to load matcher config',
       );
     });
 
@@ -183,9 +183,15 @@ describe('ConfigLoader Tests', () => {
         { id: '2', arn: 'arn:aws:sqs:queue2', matcherConfig: { labelMatchers: [['b']], exactMatch: true } },
       ];
 
+      // Mock getParameters for batch fetching multiple paths
+      vi.mocked(getParameters).mockResolvedValue(
+        new Map([
+          ['/path/to/matcher/config-1', partialMatcher1],
+          ['/path/to/matcher/config-2', partialMatcher2],
+        ]),
+      );
+
       vi.mocked(getParameter).mockImplementation(async (paramPath: string) => {
-        if (paramPath === '/path/to/matcher/config-1') return partialMatcher1;
-        if (paramPath === '/path/to/matcher/config-2') return partialMatcher2;
         if (paramPath === '/path/to/webhook/secret') return 'secret';
         return '';
       });
@@ -205,15 +211,21 @@ describe('ConfigLoader Tests', () => {
       const partialMatcher2 =
         ',{"id":"2","arn":"arn:aws:sqs:queue2","matcherConfig":{"labelMatchers":[["b"]],"exactMatch":true}}';
 
+      // Mock getParameters for batch fetching - returns incomplete JSON that will fail to parse
+      vi.mocked(getParameters).mockResolvedValue(
+        new Map([
+          ['/path/to/matcher/config-1', partialMatcher1],
+          ['/path/to/matcher/config-2', partialMatcher2],
+        ]),
+      );
+
       vi.mocked(getParameter).mockImplementation(async (paramPath: string) => {
-        if (paramPath === '/path/to/matcher/config-1') return partialMatcher1;
-        if (paramPath === '/path/to/matcher/config-2') return partialMatcher2;
         if (paramPath === '/path/to/webhook/secret') return 'secret';
         return '';
       });
 
       await expect(ConfigWebhook.load()).rejects.toThrow(
-        "Failed to load config: Failed to parse combined matcher config: Expected ',' or ']' after array element in JSON at position 196", // eslint-disable-line max-len
+        "Failed to load config: Failed to load/parse combined matcher config: Expected ',' or ']' after array element in JSON at position 196",
       );
     });
   });
@@ -244,7 +256,7 @@ describe('ConfigLoader Tests', () => {
       });
 
       await expect(ConfigWebhookEventBridge.load()).rejects.toThrow(
-        'Failed to load config: Environment variable for eventBusName is not set and no default value provided., Failed to load parameter for webhookSecret from path undefined: Parameter undefined not found', // eslint-disable-line max-len
+        'Failed to load config: Environment variable for eventBusName is not set and no default value provided., Failed to load parameter for webhookSecret from path undefined: Parameter undefined not found',
       );
     });
   });
@@ -291,11 +303,13 @@ describe('ConfigLoader Tests', () => {
         { id: '2', arn: 'arn:aws:sqs:queue2', matcherConfig: { labelMatchers: [['y']], exactMatch: true } },
       ];
 
-      vi.mocked(getParameter).mockImplementation(async (paramPath: string) => {
-        if (paramPath === '/path/to/matcher/config-1') return partial1;
-        if (paramPath === '/path/to/matcher/config-2') return partial2;
-        return '';
-      });
+      // Mock getParameters for batch fetching multiple paths
+      vi.mocked(getParameters).mockResolvedValue(
+        new Map([
+          ['/path/to/matcher/config-1', partial1],
+          ['/path/to/matcher/config-2', partial2],
+        ]),
+      );
 
       const config: ConfigDispatcher = await ConfigDispatcher.load();
 
@@ -309,7 +323,7 @@ describe('ConfigLoader Tests', () => {
       });
 
       await expect(ConfigDispatcher.load()).rejects.toThrow(
-        'Failed to load config: Failed to load parameter for matcherConfig from path undefined: Parameter undefined not found', // eslint-disable-line max-len
+        'Failed to load config: Failed to load parameter for matcherConfig from path undefined: Parameter undefined not found',
       );
     });
 

@@ -19,7 +19,7 @@ resource "aws_lambda_function" "ami_housekeeper" {
 
   environment {
     variables = {
-      LOG_LEVEL                                = var.log_level
+      LOG_LEVEL                                = upper(var.log_level)
       POWERTOOLS_LOGGER_LOG_EVENT              = var.log_level == "debug" ? "true" : "false"
       AMI_CLEANUP_OPTIONS                      = jsonencode(var.cleanup_config)
       POWERTOOLS_SERVICE_NAME                  = "${var.prefix}-ami-housekeeper"
@@ -51,6 +51,7 @@ resource "aws_cloudwatch_log_group" "ami_housekeeper" {
   name              = "/aws/lambda/${aws_lambda_function.ami_housekeeper.function_name}"
   retention_in_days = var.logging_retention_in_days
   kms_key_id        = var.logging_kms_key_id
+  log_group_class   = var.log_class
   tags              = var.tags
 }
 
