@@ -70,7 +70,7 @@ The GitHub App must be installed for the configured GitHub account.
 |------|-------------|------|---------|:--------:|
 | <a name="input_ami"></a> [ami](#input\_ami) | Optional AMI configuration keyed by runner lane. | <pre>map(object({<br/>    filter = optional(map(list(string)), { state = ["available"] })<br/>    owners = optional(list(string), ["amazon"])<br/>    id_ssm_parameter = optional(object({<br/>      arn = string<br/>    }), null)<br/>    kms_key = optional(object({<br/>      arn = string<br/>    }), null)<br/>  }))</pre> | `{}` | no |
 | <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS region to deploy to. | `string` | `"eu-west-1"` | no |
-| <a name="input_environment"></a> [environment](#input\_environment) | Environment name, used as prefix. | `string` | `null` | no |
+| <a name="input_environment"></a> [environment](#input\_environment) | Environment name, used as prefix. | `string` | n/a | yes |
 | <a name="input_github_app"></a> [github\_app](#input\_github\_app) | GitHub App ID, base64-encoded private key, and installation ID. | <pre>object({<br/>    id              = string<br/>    key_base64      = string<br/>    installation_id = optional(string, null)<br/>  })</pre> | n/a | yes |
 | <a name="input_github_config"></a> [github\_config](#input\_github\_config) | GitHub configuration for runner registration. | <pre>object({<br/>    runner_registration_level = optional(string, null)<br/>    runner_owner              = optional(string, null)<br/>  })</pre> | n/a | yes |
 | <a name="input_runner_binaries_enabled"></a> [runner\_binaries\_enabled](#input\_runner\_binaries\_enabled) | Whether runner binary synchronization is enabled. | `bool` | `true` | no |
