@@ -60,32 +60,22 @@ variables {
       }
       user_agent = "scale-runners-test"
       app_parameters = {
-        key_base64 = [
-          {
-            name = "/github-runner/key-base64"
-            arn  = "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/key-base64"
-          },
-          {
-            name = "/github-runner/key-base64-2"
-            arn  = "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/key-base64-2"
-          },
-        ]
-        id = [
-          {
-            name = "/github-runner/app-id"
-            arn  = "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/app-id"
-          },
-          {
-            name = "/github-runner/app-id-2"
-            arn  = "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/app-id-2"
-          },
-        ]
-        installation_id = [
-          null,
-          {
-            name = "/github-runner/installation-id-2"
-            arn  = "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/installation-id-2"
-          },
+        key_base64 = {
+          name = "/github-runner/key-base64"
+          arn  = "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/key-base64"
+        }
+        id = {
+          name = "/github-runner/app-id"
+          arn  = "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/app-id"
+        }
+        additional_apps_manifest = {
+          name = "/github-runner/additional-apps-manifest"
+          arn  = "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/additional-apps-manifest"
+        }
+        additional_app_parameter_arns = [
+          "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/app-id-2",
+          "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/key-base64-2",
+          "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/installation-id-2",
         ]
       }
     }
@@ -261,14 +251,15 @@ run "assembles_provider_neutral_scaling_control_plane" {
 
   assert {
     condition = (
-      aws_lambda_function.scale_up.environment[0].variables["PARAMETER_GITHUB_APP_ID_NAME"] == "/github-runner/app-id:/github-runner/app-id-2"
-      && aws_lambda_function.scale_down.environment[0].variables["PARAMETER_GITHUB_APP_KEY_BASE64_NAME"] == "/github-runner/key-base64:/github-runner/key-base64-2"
-      && aws_lambda_function.scale_up.environment[0].variables["PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME"] == ":/github-runner/installation-id-2"
+      aws_lambda_function.scale_up.environment[0].variables["PARAMETER_GITHUB_APP_ID_NAME"] == "/github-runner/app-id"
+      && aws_lambda_function.scale_down.environment[0].variables["PARAMETER_GITHUB_APP_KEY_BASE64_NAME"] == "/github-runner/key-base64"
+      && aws_lambda_function.scale_up.environment[0].variables["PARAMETER_GITHUB_APPS_MANIFEST_NAME"] == "/github-runner/additional-apps-manifest"
       && contains(data.aws_iam_policy_document.scale_up_common.statement[1].resources, "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/app-id-2")
       && contains(data.aws_iam_policy_document.scale_down_common.statement[0].resources, "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/key-base64-2")
       && contains(data.aws_iam_policy_document.scale_down_common.statement[0].resources, "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/installation-id-2")
+      && contains(data.aws_iam_policy_document.scale_up_common.statement[1].resources, "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/additional-apps-manifest")
     )
-    error_message = "Scale-up and scale-down must pass every GitHub App parameter and grant access to every corresponding SSM ARN."
+    error_message = "Scale-up and scale-down must receive the new GitHub App parameter format and grant access to every corresponding SSM ARN."
   }
 
   assert {
