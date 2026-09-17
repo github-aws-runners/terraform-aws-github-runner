@@ -41,6 +41,8 @@ module "runners" {
       installation_id = var.github_app.installation_id
       webhook_secret  = random_id.random.hex
     }
+    runner_registration_level = var.github_config.runner_registration_level
+    runner_owner              = var.github_config.runner_owner
   }
 
   global_config_lambda = {

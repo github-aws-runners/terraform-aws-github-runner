@@ -7,6 +7,11 @@ github_app = {
   installation_id = "1"
 }
 
+github_config = {
+  runner_registration_level = "organization"
+  runner_owner              = "example"
+}
+
 runner_binaries_enabled = false
 
 ami = {

@@ -9,6 +9,15 @@ variable "github_app" {
   sensitive = true
 }
 
+variable "github_config" {
+  description = "GitHub configuration for runner registration."
+
+  type = object({
+    runner_registration_level = optional(string, null)
+    runner_owner              = optional(string, null)
+  })
+}
+
 variable "scale_set" {
   description = "GitHub Actions scale-set configuration."
 
