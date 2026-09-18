@@ -148,6 +148,26 @@ run "creates_two_shared_scoped_tables" {
       && !contains(jsondecode(output.capabilities.entries["linux"].pool.iam_policy_json).Statement[3].Action, "dynamodb:DeleteItem")
       && jsondecode(output.capabilities.entries["linux"].runner.iam_policy_json).Statement[0].Condition["ForAllValues:StringEquals"]["dynamodb:LeadingKeys"] == ["entry#linux#bootstrap"]
       && jsondecode(output.capabilities.entries["linux"].runner.iam_policy_json).Statement[1].Condition["ForAllValues:StringEquals"]["dynamodb:LeadingKeys"] == ["$${ec2:SourceInstanceARN}"]
+      && anytrue([
+        for statement in jsondecode(output.capabilities.webhook.direct.iam_policy_json).Statement :
+        statement.Action == ["kms:Decrypt"] && statement.Resource == ["arn:aws:kms:eu-west-1:123456789012:key/config"]
+      ])
+      && anytrue([
+        for statement in jsondecode(output.capabilities.entries["linux"].scale_up.iam_policy_json).Statement :
+        statement.Action == ["kms:Decrypt"] && statement.Resource == ["arn:aws:kms:eu-west-1:123456789012:key/config"]
+      ])
+      && anytrue([
+        for statement in jsondecode(output.capabilities.entries["linux"].scale_up.iam_policy_json).Statement :
+        statement.Action == ["kms:Decrypt"] && statement.Resource == ["arn:aws:kms:eu-west-1:123456789012:key/runner-state"]
+      ])
+      && anytrue([
+        for statement in jsondecode(output.capabilities.entries["linux"].runner.iam_policy_json).Statement :
+        statement.Action == ["kms:Decrypt"] && statement.Resource == ["arn:aws:kms:eu-west-1:123456789012:key/config"]
+      ])
+      && anytrue([
+        for statement in jsondecode(output.capabilities.entries["linux"].runner.iam_policy_json).Statement :
+        statement.Action == ["kms:Decrypt"] && statement.Resource == ["arn:aws:kms:eu-west-1:123456789012:key/runner-state"]
+      ])
     )
     error_message = "Provider IAM capabilities must restrict global and entry operations with DynamoDB leading-key conditions."
   }

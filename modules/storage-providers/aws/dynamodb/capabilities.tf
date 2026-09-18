@@ -97,19 +97,40 @@ locals {
     }
   }
 
+  config_kms_decrypt_statements = var.config.config.kms_key_arn == null ? [] : [{
+    Effect   = "Allow"
+    Action   = ["kms:Decrypt"]
+    Resource = [var.config.config.kms_key_arn]
+  }]
+
+  runner_state_kms_decrypt_statements = var.config.runner_state.kms_key_arn == null ? [] : [{
+    Effect   = "Allow"
+    Action   = ["kms:Decrypt"]
+    Resource = [var.config.runner_state.kms_key_arn]
+  }]
+
   direct_webhook_iam_policy_json = jsonencode({
-    Version   = "2012-10-17"
-    Statement = [local.direct_webhook_read_statement]
+    Version = "2012-10-17"
+    Statement = concat(
+      [local.direct_webhook_read_statement],
+      local.config_kms_decrypt_statements,
+    )
   })
 
   eventbridge_webhook_iam_policy_json = jsonencode({
-    Version   = "2012-10-17"
-    Statement = [local.eventbridge_webhook_read_statement]
+    Version = "2012-10-17"
+    Statement = concat(
+      [local.eventbridge_webhook_read_statement],
+      local.config_kms_decrypt_statements,
+    )
   })
 
   dispatcher_iam_policy_json = jsonencode({
-    Version   = "2012-10-17"
-    Statement = [local.dispatcher_read_statement]
+    Version = "2012-10-17"
+    Statement = concat(
+      [local.dispatcher_read_statement],
+      local.config_kms_decrypt_statements,
+    )
   })
 
   entry_runner_group_statements = {
@@ -175,69 +196,88 @@ locals {
   scale_up_iam_policy_json = {
     for entry_id in var.entry_ids : entry_id => jsonencode({
       Version = "2012-10-17"
-      Statement = [
-        local.github_app_read_statement,
-        local.entry_runner_group_statements[entry_id],
-        local.runner_config_write_statements[entry_id],
-        local.runner_state_write_statements[entry_id],
-      ]
+      Statement = concat(
+        [
+          local.github_app_read_statement,
+          local.entry_runner_group_statements[entry_id],
+          local.runner_config_write_statements[entry_id],
+          local.runner_state_write_statements[entry_id],
+        ],
+        local.config_kms_decrypt_statements,
+        local.runner_state_kms_decrypt_statements,
+      )
     })
   }
 
   scale_down_iam_policy_json = {
     for entry_id in var.entry_ids : entry_id => jsonencode({
-      Version   = "2012-10-17"
-      Statement = [local.github_app_read_statement, local.runner_state_reconcile_statements[entry_id]]
+      Version = "2012-10-17"
+      Statement = concat(
+        [local.github_app_read_statement, local.runner_state_reconcile_statements[entry_id]],
+        local.config_kms_decrypt_statements,
+        local.runner_state_kms_decrypt_statements,
+      )
     })
   }
 
   pool_iam_policy_json = {
     for entry_id in var.entry_ids : entry_id => jsonencode({
       Version = "2012-10-17"
-      Statement = [
-        local.github_app_read_statement,
-        local.entry_runner_group_statements[entry_id],
-        local.runner_config_write_statements[entry_id],
-        local.runner_state_write_statements[entry_id],
-      ]
+      Statement = concat(
+        [
+          local.github_app_read_statement,
+          local.entry_runner_group_statements[entry_id],
+          local.runner_config_write_statements[entry_id],
+          local.runner_state_write_statements[entry_id],
+        ],
+        local.config_kms_decrypt_statements,
+        local.runner_state_kms_decrypt_statements,
+      )
     })
   }
 
   job_retry_iam_policy_json = {
     for entry_id in var.entry_ids : entry_id => jsonencode({
-      Version   = "2012-10-17"
-      Statement = [local.github_app_read_statement]
+      Version = "2012-10-17"
+      Statement = concat(
+        [local.github_app_read_statement],
+        local.config_kms_decrypt_statements,
+      )
     })
   }
 
   runner_iam_policy_json = {
     for entry_id, scopes in local.entry_scopes : entry_id => jsonencode({
       Version = "2012-10-17"
-      Statement = [
-        {
-          Effect   = "Allow"
-          Action   = ["dynamodb:GetItem"]
-          Resource = [aws_dynamodb_table.config.arn]
-          Condition = {
-            "ForAllValues:StringEquals" = {
-              "dynamodb:LeadingKeys" = [scopes.bootstrap]
+      Statement = concat(
+        [
+          {
+            Effect   = "Allow"
+            Action   = ["dynamodb:GetItem"]
+            Resource = [aws_dynamodb_table.config.arn]
+            Condition = {
+              "ForAllValues:StringEquals" = {
+                "dynamodb:LeadingKeys" = [scopes.bootstrap]
+              }
             }
-          }
-        },
-        {
-          Effect = "Allow"
-          Action = [
-            "dynamodb:DeleteItem",
-            "dynamodb:GetItem",
-          ]
-          Resource = [aws_dynamodb_table.runner_state.arn]
-          Condition = {
-            "ForAllValues:StringEquals" = {
-              "dynamodb:LeadingKeys" = ["$${ec2:SourceInstanceARN}"]
+          },
+          {
+            Effect = "Allow"
+            Action = [
+              "dynamodb:DeleteItem",
+              "dynamodb:GetItem",
+            ]
+            Resource = [aws_dynamodb_table.runner_state.arn]
+            Condition = {
+              "ForAllValues:StringEquals" = {
+                "dynamodb:LeadingKeys" = ["$${ec2:SourceInstanceARN}"]
+              }
             }
-          }
-        },
-      ]
+          },
+        ],
+        local.config_kms_decrypt_statements,
+        local.runner_state_kms_decrypt_statements,
+      )
     })
   }
 }
