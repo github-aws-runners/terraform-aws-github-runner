@@ -135,6 +135,7 @@ jobs:
           IAC_BINARY: ${{ matrix.iac.binary }}
           IAC_LOCK_FILE: ${{ matrix.iac.lockfile }}
         run: tests/ministack/run-example.sh destroy "$EXAMPLE"
+
   integration_smoke:
     name: Run webhook and pool lifecycle smoke test against MiniStack
     runs-on: ubuntu-latest
