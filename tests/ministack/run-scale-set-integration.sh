@@ -174,7 +174,7 @@ while ! curl -fsS --max-time 2 -X PUT "$mockserver_url/mockserver/status" >/dev/
   sleep 1
 done
 curl -fsS -X PUT "$mockserver_url/mockserver/reset" >/dev/null
-CONTROLLER_MOCK_URL="$controller_mock_url" python3 - "$source_root/mockserver/initializerJson.json" "$initializer_file" <<'PY'
+CONTROLLER_MOCK_URL="$controller_mock_url" python3 - "$source_root/tests/ministack/initializerJson.json" "$initializer_file" <<'PY'
 import os
 import sys
 
