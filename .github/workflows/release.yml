@@ -37,11 +37,17 @@ jobs:
           persist-credentials: false
       - name: Build dist
         working-directory: lambdas
-        run: yarn install --frozen-lockfile && yarn run test && yarn dist
+        run: yarn install --immutable --mode=skip-build && yarn run test && yarn dist
 
       - name: Build MicroVM lifecycle hook
         working-directory: lambdas
         run: yarn workspace @aws-github-runner/microvm-lifecycle-hooks build
+
+      - name: Verify MicroVM lifecycle hook distribution
+        working-directory: lambdas
+        run: |
+          test -s services/microvm-lifecycle-hooks/dist/server.js
+          test -f services/microvm-lifecycle-hooks/dist/package.json
 
       - name: Package MicroVM lifecycle hook
         working-directory: lambdas/services/microvm-lifecycle-hooks

@@ -33,7 +33,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: yarn install --immutable --mode=skip-build
       - name: Run prettier
         run: yarn format-check
       - name: Run linter
@@ -71,7 +71,7 @@ jobs:
           persist-credentials: false
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: yarn install --immutable --mode=skip-build
 
       - name: Run prettier
         run: yarn prettier --check "services/microvm-lifecycle-hooks/**/*.{ts,json,md}"
@@ -84,3 +84,8 @@ jobs:
 
       - name: Build distribution
         run: yarn workspace @aws-github-runner/microvm-lifecycle-hooks build
+
+      - name: Verify server distribution
+        run: |
+          test -s services/microvm-lifecycle-hooks/dist/server.js
+          test -f services/microvm-lifecycle-hooks/dist/package.json

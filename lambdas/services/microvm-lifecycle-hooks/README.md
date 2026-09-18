@@ -12,7 +12,7 @@ yarn workspace @aws-github-runner/microvm-lifecycle-hooks build
 yarn workspace @aws-github-runner/microvm-lifecycle-hooks start
 ```
 
-`build` uses NCC to create a self-contained `dist/`. It also writes `dist/package.json` with `type: module`, so the artifact runs after it is copied outside the Yarn workspace. Copy the **entire** directory; do not copy only `index.js`.
+`build` uses esbuild to create the self-contained CommonJS server bundle `dist/server.js`. It also writes `dist/package.json` with `type: commonjs` so the bundle remains executable after it is copied outside the Yarn workspace.
 
 To build before invoking Docker, run the workspace build above. In the existing MicroVM runner Dockerfile, which already installs s6-overlay and the GitHub runner's Node 24 runtime, copy the complete artifact and replace the old hook command with:
 
@@ -20,7 +20,7 @@ To build before invoking Docker, run the workspace build above. In the existing 
 COPY lambdas/services/microvm-lifecycle-hooks/dist/ /opt/microvm-lifecycle-hooks/
 ENV RUNNER_ENTRYPOINT=/opt/microvm/entrypoint.sh
 ENTRYPOINT ["/init"]
-CMD ["/command/with-contenv", "/opt/actions-runner/externals/node24/bin/node", "/opt/microvm-lifecycle-hooks/index.js"]
+CMD ["/command/with-contenv", "/opt/actions-runner/externals/node24/bin/node", "/opt/microvm-lifecycle-hooks/server.js"]
 ```
 
 Alternatively, build the service inside Docker with the repository root as the build context. Add this pinned builder stage:
@@ -46,10 +46,10 @@ COPY --from=lifecycle-build \
     /opt/microvm-lifecycle-hooks/
 ENV RUNNER_ENTRYPOINT=/opt/microvm/entrypoint.sh
 ENTRYPOINT ["/init"]
-CMD ["/command/with-contenv", "/opt/actions-runner/externals/node24/bin/node", "/opt/microvm-lifecycle-hooks/index.js"]
+CMD ["/command/with-contenv", "/opt/actions-runner/externals/node24/bin/node", "/opt/microvm-lifecycle-hooks/server.js"]
 ```
 
-For an image without s6-overlay, start the artifact with `node /opt/microvm-lifecycle-hooks/index.js` under that image's process supervisor. The hook binds to `0.0.0.0:8080` by default. Restrict the port to the Lambda MicroVM lifecycle network; the protocol does not add a separate application authentication layer.
+For an image without s6-overlay, start the artifact with `node /opt/microvm-lifecycle-hooks/server.js` under that image's process supervisor. The hook binds to `0.0.0.0:8080` by default. Restrict the port to the Lambda MicroVM lifecycle network; the protocol does not add a separate application authentication layer.
 
 ## Run payloads
 

@@ -13,18 +13,18 @@
     "node": ">=24"
   },
   "scripts": {
-    "start": "node dist/index.js",
+    "start": "node dist/server.js",
     "test": "NODE_ENV=test nx test",
     "test:watch": "NODE_ENV=test nx test --watch",
     "lint": "eslint src",
-    "build": "ncc build src/index.ts -o dist && cp runtime-package.json dist/package.json",
+    "build": "node build.mjs",
     "format": "prettier --write \"**/*.{ts,json,md}\"",
     "format-check": "prettier --check \"**/*.{ts,json,md}\"",
     "all": "yarn build && yarn format && yarn lint && yarn test"
   },
   "devDependencies": {
     "@types/node": "^22.19.3",
-    "@vercel/ncc": "^0.38.4"
+    "esbuild": "^0.27.0"
   },
   "dependencies": {
     "@aws-github-runner/storage-providers": "*"
