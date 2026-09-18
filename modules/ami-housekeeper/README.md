@@ -132,5 +132,5 @@ No modules.
 |------|-------------|
 | <a name="output_lambda"></a> [lambda](#output\_lambda) | n/a |
 | <a name="output_lambda_log_group"></a> [lambda\_log\_group](#output\_lambda\_log\_group) | n/a |
-| <a name="output_lambda_role"></a> [lambda\_role](#output\_lambda\_role) | n/a |
+| <a name="output_lambda_role"></a> [lambda\_role](#output\_lambda\_role) | Export explicit attributes, not the whole resource, to avoid deprecated-source warnings (#5159). |
 <!-- END_TF_DOCS -->

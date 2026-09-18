@@ -257,7 +257,7 @@ yarn run dist
 | <a name="output_launch_template"></a> [launch\_template](#output\_launch\_template) | n/a |
 | <a name="output_logfiles"></a> [logfiles](#output\_logfiles) | List of logfiles to send to CloudWatch. Object description: `log_group_name`: Name of the log group, `file_path`: path to the log file, `log_stream_name`: name of the log stream. |
 | <a name="output_role_pool"></a> [role\_pool](#output\_role\_pool) | n/a |
-| <a name="output_role_runner"></a> [role\_runner](#output\_role\_runner) | n/a |
+| <a name="output_role_runner"></a> [role\_runner](#output\_role\_runner) | Export explicit attributes, not the whole resource, to avoid deprecated-source warnings (#5159). |
 | <a name="output_role_scale_down"></a> [role\_scale\_down](#output\_role\_scale\_down) | n/a |
 | <a name="output_role_scale_up"></a> [role\_scale\_up](#output\_role\_scale\_up) | n/a |
 | <a name="output_runners_log_groups"></a> [runners\_log\_groups](#output\_runners\_log\_groups) | List of log groups from different log files of runner machine. |
