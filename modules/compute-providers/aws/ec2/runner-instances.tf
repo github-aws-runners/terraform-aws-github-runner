@@ -90,7 +90,12 @@ locals {
     hook_job_started   = var.runner.hooks.job_started
     hook_job_completed = var.runner.hooks.job_completed
     start_runner = templatefile(local.userdata_start_runner[var.runner.os], {
-      metadata_tags = var.config.metadata_options != null ? var.config.metadata_options.instance_metadata_tags : "enabled"
+      metadata_tags                     = var.config.metadata_options != null ? var.config.metadata_options.instance_metadata_tags : "enabled"
+      storage_provider_type             = var.storage_provider.type
+      dynamodb_config_table_name_base64 = var.storage_provider.type == "aws_dynamodb" ? base64encode(var.storage_provider.runner.config_table_name) : ""
+      dynamodb_scope_base64             = var.storage_provider.type == "aws_dynamodb" ? base64encode(var.storage_provider.runner.scope) : ""
+      ec2_instance_arn_prefix_base64    = var.storage_provider.type == "aws_dynamodb" ? base64encode(local.ec2_instance_arn_prefix) : ""
+      enable_cloudwatch_agent           = var.config.cloudwatch_agent.enabled
     })
     ghes_url        = var.github.enterprise_server.url
     ghes_ssl_verify = var.github.enterprise_server.ssl_verify

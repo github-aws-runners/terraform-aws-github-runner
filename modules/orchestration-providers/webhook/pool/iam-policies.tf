@@ -1,59 +1,71 @@
 # IAM policies attached to the pool Lambda role.
 data "aws_iam_policy_document" "pool_common" {
-  statement {
-    sid    = "WebhookPoolWriteRuntimeParameters"
-    effect = "Allow"
+  dynamic "statement" {
+    for_each = var.storage_provider.type == "aws_ssm" ? [true] : []
 
-    actions = [
-      "ssm:AddTagsToResource",
-      "ssm:PutParameter",
-    ]
+    content {
+      sid    = "WebhookPoolWriteRuntimeParameters"
+      effect = "Allow"
 
-    resources = [
-      var.config.ssm_token_path_arn,
-      "${var.config.ssm_token_path_arn}/*",
-      var.config.arn_ssm_parameters_path_config,
-      "${var.config.arn_ssm_parameters_path_config}/*",
-    ]
-  }
+      actions = [
+        "ssm:AddTagsToResource",
+        "ssm:PutParameter",
+      ]
 
-  statement {
-    sid    = "WebhookPoolReadRunnerConfigParameters"
-    effect = "Allow"
-
-    actions = [
-      "ssm:GetParameter",
-      "ssm:GetParameters",
-      "ssm:GetParametersByPath",
-    ]
-
-    resources = [
-      var.config.arn_ssm_parameters_path_config,
-      "${var.config.arn_ssm_parameters_path_config}/*",
-    ]
-  }
-
-  statement {
-    sid    = "WebhookPoolReadGitHubAppParameters"
-    effect = "Allow"
-
-    actions = [
-      "ssm:GetParameter",
-      "ssm:GetParameters",
-    ]
-
-    resources = concat(
-      [
-        var.config.github_app_parameters.id.arn,
-        var.config.github_app_parameters.key_base64.arn,
-      ],
-      var.config.github_app_parameters.additional_app_parameter_arns,
-      var.config.github_app_parameters.additional_apps_manifest != null ? [var.config.github_app_parameters.additional_apps_manifest.arn] : [],
-    )
+      resources = [
+        var.config.ssm_token_path_arn,
+        "${var.config.ssm_token_path_arn}/*",
+        var.config.arn_ssm_parameters_path_config,
+        "${var.config.arn_ssm_parameters_path_config}/*",
+      ]
+    }
   }
 
   dynamic "statement" {
-    for_each = var.config.kms_key_id == null ? [] : [var.config.kms_key_id]
+    for_each = var.storage_provider.type == "aws_ssm" ? [true] : []
+
+    content {
+      sid    = "WebhookPoolReadRunnerConfigParameters"
+      effect = "Allow"
+
+      actions = [
+        "ssm:GetParameter",
+        "ssm:GetParameters",
+        "ssm:GetParametersByPath",
+      ]
+
+      resources = [
+        var.config.arn_ssm_parameters_path_config,
+        "${var.config.arn_ssm_parameters_path_config}/*",
+      ]
+    }
+  }
+
+  dynamic "statement" {
+    for_each = var.storage_provider.type == "aws_ssm" ? [true] : []
+
+    content {
+      sid    = "WebhookPoolReadGitHubAppParameters"
+      effect = "Allow"
+
+      actions = [
+        "ssm:GetParameter",
+        "ssm:GetParameters",
+      ]
+
+      resources = concat(
+        [
+          var.config.github_app_parameters.id.arn,
+          var.config.github_app_parameters.key_base64.arn,
+        ],
+        var.config.github_app_parameters.additional_app_parameter_arns,
+        var.config.github_app_parameters.additional_apps_manifest != null ? [var.config.github_app_parameters.additional_apps_manifest.arn] : [],
+      )
+    }
+  }
+
+  dynamic "statement" {
+    for_each = var.storage_provider.type == "aws_ssm" && var.config.kms_key_id != null ? [var.config.kms_key_id] : []
     iterator = kms_key
 
     content {

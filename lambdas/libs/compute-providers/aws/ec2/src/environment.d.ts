@@ -16,6 +16,7 @@ declare global {
         | 'capacity-optimized'
         | 'capacity-optimized-prioritized'
         | 'prioritized';
+      EC2_INSTANCE_ARN_PREFIX: string | undefined;
       SCALE_ERRORS: string;
     }
   }
