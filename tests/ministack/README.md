@@ -89,3 +89,9 @@ override the hostname with `MINISTACK_GITHUB_MOCK_HOST` when using a different
 container runtime. When MiniStack is exposed on a non-default local port, use a
 host address reachable from its container for `AWS_ENDPOINT_URL`, for example
 `AWS_ENDPOINT_URL=http://<host-ip>:14568`, instead of `127.0.0.1`.
+
+The workflow also runs `run-scale-set-integration.sh`. It applies the
+`multi-runner-scale-set` example and verifies the managed ECS controller,
+Fargate task hardening, scale-set environment contract, and reconciler SSM
+parameter through MiniStack's AWS-compatible APIs. It does not send webhook
+events or exercise webhook scale-up, scale-down, or pool handlers.
