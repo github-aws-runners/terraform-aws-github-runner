@@ -3,18 +3,8 @@ aws_region  = "eu-west-1"
 environment = "microvm-ministack"
 
 github_app = {
-  key_base64_ssm = {
-    name = "/ministack/microvm/github-app-key"
-    arn  = "arn:aws:ssm:eu-west-1:000000000000:parameter/ministack/microvm/github-app-key"
-  }
-  id_ssm = {
-    name = "/ministack/microvm/github-app-id"
-    arn  = "arn:aws:ssm:eu-west-1:000000000000:parameter/ministack/microvm/github-app-id"
-  }
-  webhook_secret_ssm = {
-    name = "/ministack/microvm/webhook-secret"
-    arn  = "arn:aws:ssm:eu-west-1:000000000000:parameter/ministack/microvm/webhook-secret"
-  }
+  id         = "your-github-app-id"
+  key_base64 = "your-github-app-key-base64"
 }
 
 lambda_artifact_bucket       = "github-actions-runner-microvm-ministack"

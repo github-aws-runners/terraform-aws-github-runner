@@ -11,37 +11,14 @@ variable "environment" {
 }
 
 variable "github_app" {
-  description = "Pre-created SSM parameter references for the GitHub App credentials."
-  type = object({
-    key_base64 = optional(string)
-    key_base64_ssm = optional(object({
-      arn  = string
-      name = string
-    }))
-    id = optional(string)
-    id_ssm = optional(object({
-      arn  = string
-      name = string
-    }))
-    webhook_secret = optional(string)
-    webhook_secret_ssm = optional(object({
-      arn  = string
-      name = string
-    }))
-  })
+  description = "GitHub for API usages."
 
-  validation {
-    condition = (
-      var.github_app.key_base64 == null &&
-      var.github_app.id == null &&
-      var.github_app.webhook_secret == null &&
-      var.github_app.key_base64_ssm != null &&
-      var.github_app.id_ssm != null &&
-      var.github_app.webhook_secret_ssm != null
-    )
-    error_message = "github_app must use pre-created SSM parameters for the key, app ID, and webhook secret."
-  }
+  type = object({
+    id         = string
+    key_base64 = string
+  })
 }
+
 
 variable "lambda_artifact_bucket" {
   description = "S3 bucket containing the runner-control Lambda artifacts."

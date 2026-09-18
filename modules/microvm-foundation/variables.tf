@@ -88,7 +88,7 @@ variable "network_connectors" {
   type = map(object({
     name             = string
     vpc_id           = string
-    subnet_ids       = set(string)
+    subnet_ids       = list(string)
     network_protocol = optional(string, "IPv4")
   }))
   description = "Regional Lambda MicroVM Network Connectors keyed by a stable consumer-defined identity."
@@ -96,6 +96,15 @@ variable "network_connectors" {
   validation {
     condition     = length(var.network_connectors) > 0
     error_message = "network_connectors must contain at least one connector."
+  }
+
+  validation {
+    condition = alltrue([
+      for connector in values(var.network_connectors) : (
+        length(distinct(connector.subnet_ids)) == length(connector.subnet_ids)
+      )
+    ])
+    error_message = "Each network connector must contain distinct subnet IDs."
   }
 
   validation {

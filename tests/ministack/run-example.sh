@@ -75,7 +75,7 @@ lockfile_backup=""
 lockfile_existed=false
 
 if [ "$use_tfvars" = true ]; then
-  if [ -z "$tfvars_file" ] && [ "$example" != microvm-foundation ]; then
+  if [ -z "$tfvars_file" ]; then
     tfvars_file="$script_dir/$example.tfvars"
   fi
 
@@ -99,7 +99,6 @@ ami_created_ids=""
 ssm_created_names=""
 s3_created_buckets=""
 override_created_paths=""
-tfvars_created_paths=""
 lambda_zip_paths="
 $source_root/lambdas/functions/ami-housekeeper/ami-housekeeper.zip
 $source_root/lambdas/functions/control-plane/runners.zip
@@ -115,10 +114,6 @@ cleanup() {
 
   for override_file in $override_created_paths; do
     rm -f "$override_file"
-  done
-
-  for fixture_file in $tfvars_created_paths; do
-    rm -f "$fixture_file"
   done
 
   for name in $ssm_created_names; do
@@ -236,48 +231,6 @@ create_ssm_fixture() {
     --overwrite >/dev/null
   ssm_created_names="$ssm_created_names
 $name"
-}
-
-create_microvm_foundation_fixture() {
-  vpc_id=$(ministack_aws ec2 describe-vpcs \
-    --filters Name=is-default,Values=true \
-    --query 'Vpcs[0].VpcId' \
-    --output text)
-  subnet_id=$(ministack_aws ec2 describe-subnets \
-    --filters "Name=vpc-id,Values=$vpc_id" "Name=state,Values=available" \
-    --query 'Subnets[0].SubnetId' \
-    --output text)
-
-  case "$vpc_id" in
-    vpc-[0-9a-f]*) ;;
-    *)
-      echo "MiniStack default VPC fixture was not found." >&2
-      exit 70
-      ;;
-  esac
-
-  case "$subnet_id" in
-    subnet-[0-9a-f]*) ;;
-    *)
-      echo "MiniStack default subnet fixture was not found." >&2
-      exit 70
-      ;;
-  esac
-
-  fixture_tfvars=$(mktemp "${TMPDIR:-/tmp}/terraform-aws-github-runner-microvm-foundation.XXXXXX")
-  printf '%s\n' \
-    "aws_region = \"$AWS_DEFAULT_REGION\"" \
-    '' \
-    'network_connectors = {' \
-    '  ministack = {' \
-    '    name        = "ministack"' \
-    "    vpc_id      = \"$vpc_id\"" \
-    "    subnet_ids  = [\"$subnet_id\"]" \
-    '  }' \
-    '}' > "$fixture_tfvars"
-  tfvars_created_paths="$tfvars_created_paths
-$fixture_tfvars"
-  tfvars_file="$fixture_tfvars"
 }
 
 create_s3_fixture() {
@@ -398,11 +351,6 @@ $lambda_zip"
       create_ami_fixture "ministack-v2-linux-arm64" arm64 >/dev/null
       create_ami_fixture "ministack-v2-linux-x64" x86_64 >/dev/null
       create_ami_fixture "ministack-v2-windows-x64" x86_64 >/dev/null
-      ;;
-    microvm-foundation)
-      if [ -z "$tfvars_file" ]; then
-        create_microvm_foundation_fixture
-      fi
       ;;
     microvm)
       create_ssm_fixture \

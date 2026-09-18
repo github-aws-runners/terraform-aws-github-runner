@@ -65,13 +65,3 @@ variable "ecr_repository_arns" {
   description = "Optional private ECR repository ARNs used by the image build."
   default     = []
 }
-
-variable "network_connectors" {
-  type = map(object({
-    name             = string
-    vpc_id           = string
-    subnet_ids       = set(string)
-    network_protocol = optional(string, "IPv4")
-  }))
-  description = "VPC and subnet configuration for regional Lambda MicroVM egress connectors."
-}

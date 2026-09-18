@@ -1,7 +1,27 @@
+locals {
+  environment = "microvm-foundation"
+  aws_region  = var.aws_region
+
+  network_connectors = {
+    ministack = {
+      name       = "ministack"
+      vpc_id     = module.base.vpc.vpc_id
+      subnet_ids = module.base.vpc.private_subnets
+    }
+  }
+}
+
+module "base" {
+  source = "../base"
+
+  prefix     = local.environment
+  aws_region = local.aws_region
+}
+
 module "microvm_foundation" {
   source = "../../modules/microvm-foundation"
 
-  aws_region                                  = var.aws_region
+  aws_region                                  = local.aws_region
   tags                                        = var.tags
   build_policy_name_prefix                    = var.build_policy_name_prefix
   build_role_name_prefix                      = var.build_role_name_prefix
@@ -11,5 +31,5 @@ module "microvm_foundation" {
   artifact_retention_days                     = var.artifact_retention_days
   image_name_prefix                           = var.image_name_prefix
   ecr_repository_arns                         = var.ecr_repository_arns
-  network_connectors                          = var.network_connectors
+  network_connectors                          = local.network_connectors
 }
