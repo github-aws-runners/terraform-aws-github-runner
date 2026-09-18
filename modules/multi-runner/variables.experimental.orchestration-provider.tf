@@ -28,6 +28,7 @@ variable "global_config_orchestration_provider" {
         lambda.scale.down.timeout: "Timeout in seconds for the scale-down Lambda."
         lambda.scale.down.schedule_expression: "Schedule expression for scale-down processing."
         lambda.scale.down.minimum_running_time_in_minutes: "Minimum runner lifetime before scale-down."
+        lambda.scale.down.idle_confirmation_seconds: "Seconds a runner must consistently report not-busy before scale-down terminates it; 0 disables the confirmation window."
         lambda.scale.down.idle_config: "Scheduled minimum idle-runner pool settings."
         lambda.scale.down.idle_config.cron: "Cron expression defining when the idle-runner count applies."
         lambda.scale.down.idle_config.timeZone: "Time zone used to evaluate the idle-runner schedule."
@@ -109,6 +110,7 @@ variable "global_config_orchestration_provider" {
             timeout                         = optional(number, 60)
             schedule_expression             = optional(string, "cron(*/5 * * * ? *)")
             minimum_running_time_in_minutes = optional(number, null)
+            idle_confirmation_seconds       = optional(number, 0)
             idle_config = optional(list(object({
               cron             = string
               timeZone         = string

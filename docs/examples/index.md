@@ -5,6 +5,7 @@ Examples are located in the [examples](https://github.com/github-aws-runners/ter
 - _[Default](default.md)_: The default example of the module
 - _[Ephemeral](ephemeral.md)_: Example usages of ephemeral runners based on the default example.
 - _[Multi Runner](multi-runner.md)_ : Example usage of creating a multi runner which creates multiple runners/ configurations with a single deployment. The examples including: "arm64", "windows", and "ubuntu" runners.
+- _[Multi Runner v2](multi-runner-v2.md)_ : Example usage of the experimental v2 multi-runner configuration interface with shared defaults and per-lane overrides.
 - _[Permissions boundary](permissions-boundary.md)_: Example usages of permissions boundaries.
 - _[Prebuilt Images](prebuilt.md)_: Example usages of deploying runners with a custom prebuilt image.
 - _[Termination watcher](termination-watcher.md)_: Example usages of termination watcher.

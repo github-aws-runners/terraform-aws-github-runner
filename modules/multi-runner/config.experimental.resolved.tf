@@ -44,7 +44,7 @@ locals {
     multi_runner_config    = local.stable_to_v2_multi_runner_config
   }
 
-  use_v2_config = length(local.v2_multi_runner_config) > 0
+  use_v2_config = contains(var.experimental_features, "multi-runner-v2")
 
   normalized_config = local.use_v2_config ? local.v2_config : local.stable_to_v2
 }
@@ -229,6 +229,10 @@ locals {
                   idle_config = coalesce(
                     v.orchestration_provider.webhook.lambda.scale.down.idle_config,
                     local.normalized_config.orchestration_provider.webhook.lambda.scale.down.idle_config,
+                  )
+                  idle_confirmation_seconds = coalesce(
+                    v.orchestration_provider.webhook.lambda.scale.down.idle_confirmation_seconds,
+                    local.normalized_config.orchestration_provider.webhook.lambda.scale.down.idle_confirmation_seconds,
                   )
                   tags = merge(local.normalized_config.orchestration_provider.webhook.lambda.scale.down.tags, v.orchestration_provider.webhook.lambda.scale.down.tags)
                 })

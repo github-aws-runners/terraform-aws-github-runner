@@ -146,6 +146,18 @@ Cron expressions are parsed by [cron-parser](https://github.com/harrisiirak/cron
 
 For time zones please check [TZ database name column](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) for the supported values.
 
+### Idle confirmation window <!-- omit in toc -->
+
+Before terminating a runner, the scale-down lambda asks GitHub whether the runner is busy. That busy flag can be stale: it can read `false` for a runner that was assigned a job a few seconds earlier, and in rare cases for a runner that has been executing a job for several minutes. When that happens the lambda terminates an instance mid-job and the job fails with "The runner has received a shutdown signal".
+
+Set `scale_down_idle_confirmation_seconds` to require not-busy readings that span at least the given window before a runner is terminated. On the first not-busy reading the lambda tags the instance with `ghr:idle_detected_at` and defers termination. It terminates only when a later evaluation still reads not-busy and the window has elapsed. Any busy reading in between removes the tag and restarts the window. Use at least one scale-down schedule interval, for example `300` for the default five minute schedule, so that two consecutive evaluations must agree. The trade-off is that a genuinely idle runner lives one extra interval before it is removed.
+
+```hcl
+scale_down_idle_confirmation_seconds = 300
+```
+
+The default of `0` keeps the previous single-reading behaviour. The `multi_runner_config` equivalent is `runner_config.scale_down_idle_confirmation_seconds`.
+
 ## Ephemeral runners
 
 You can configure runners to be ephemeral, in which case runners will be used only for one job. The feature should be used in conjunction with listening for the workflow job event. Please consider the following:

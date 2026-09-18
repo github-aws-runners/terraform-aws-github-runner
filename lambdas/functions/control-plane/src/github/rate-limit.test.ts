@@ -3,11 +3,12 @@ import { createSingleMetric } from '@aws-github-runner/aws-powertools-util';
 import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { getAppId } from './auth';
+import { getAppId, reportAppRateLimit } from './auth';
 import { metricGitHubAppRateLimit } from './rate-limit';
 
 vi.mock('./auth', () => ({
   getAppId: vi.fn(),
+  reportAppRateLimit: vi.fn(),
 }));
 vi.mock('@aws-github-runner/aws-powertools-util', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -60,5 +61,11 @@ describe('metricGitHubAppRateLimit', () => {
 
     expect(mockedGetAppId).toHaveBeenNthCalledWith(1, 0);
     expect(mockedGetAppId).toHaveBeenNthCalledWith(2, 1);
+  });
+  it('feeds the app selector even when metrics are disabled', async () => {
+    process.env.ENABLE_METRIC_GITHUB_APP_RATE_LIMIT = 'false';
+    await metricGitHubAppRateLimit({ 'x-ratelimit-remaining': '4200', 'x-ratelimit-limit': '5000' }, 1);
+    expect(reportAppRateLimit).toHaveBeenCalledWith(1, 4200);
+    expect(createSingleMetric).not.toHaveBeenCalled();
   });
 });

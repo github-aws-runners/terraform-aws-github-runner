@@ -58,7 +58,7 @@ async function createGithubInstallationClient(
       appIndex,
       storage?.githubAppCredentials,
     );
-    return await createOctokitClient(ghAuth.token, ghesApiUrl);
+    return await createOctokitClient(ghAuth.token, ghesApiUrl, appIndex);
   } catch (error) {
     // The installation id can be stale when it was reused from the webhook payload or from the
     // pre-configured per-app value while the app was uninstalled and reinstalled. Re-resolve the
@@ -86,7 +86,7 @@ async function createGithubInstallationClient(
       appIndex,
       storage?.githubAppCredentials,
     );
-    return await createOctokitClient(ghAuth.token, ghesApiUrl);
+    return await createOctokitClient(ghAuth.token, ghesApiUrl, appIndex);
   }
 }
 
@@ -117,7 +117,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
   // batch draws from the same rate-limit bucket.
   const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl, undefined, storage.githubAppCredentials);
   const appIdx = ghAuth.appIndex;
-  const githubAppClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
+  const githubAppClient = await createOctokitClient(ghAuth.token, ghesApiUrl, appIdx);
 
   // A map of either owner or owner/repo name to Octokit client, so we use a
   // single client per installation (set of messages), depending on how the app
