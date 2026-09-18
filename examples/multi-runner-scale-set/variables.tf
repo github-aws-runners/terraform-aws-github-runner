@@ -9,20 +9,26 @@ variable "github_app" {
   sensitive = true
 }
 
-variable "github_config" {
-  description = "GitHub configuration for runner registration."
+variable "github" {
+  description = "Optional GitHub endpoint and scale-set ownership settings."
 
   type = object({
-    runner_registration_level = optional(string, null)
-    runner_owner              = optional(string, null)
+    url                = optional(string, null)
+    ssl_verify         = optional(bool, true)
+    runner_owner       = optional(string, null)
+    registration_level = optional(string, "organization")
   })
+
+  default = {}
 }
 
 variable "scale_set" {
   description = "GitHub Actions scale-set configuration."
 
   type = object({
-    name = string
+    name              = string
+    runner_group_name = optional(string, "Default")
+    min_runners       = optional(number, 0)
     container = optional(object({
       image = optional(string, null)
     }), {})
