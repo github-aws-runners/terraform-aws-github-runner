@@ -95,6 +95,7 @@ fi
 lambda_fixture_dir=""
 lambda_created_paths=""
 ami_created_ids=""
+packer_created_image_file=""
 ssm_created_names=""
 override_created_paths=""
 lambda_zip_paths="
@@ -121,6 +122,16 @@ cleanup() {
   for image_id in $ami_created_ids; do
     ministack_aws ec2 deregister-image --image-id "$image_id" >/dev/null 2>&1 || true
   done
+
+  if [ -n "$packer_created_image_file" ] && [ -s "$packer_created_image_file" ]; then
+    while IFS= read -r image_id; do
+      ministack_aws ec2 deregister-image --image-id "$image_id" >/dev/null 2>&1 || true
+    done < "$packer_created_image_file"
+  fi
+
+  if [ -n "$packer_created_image_file" ]; then
+    rm -f "$packer_created_image_file"
+  fi
 
   for lambda_zip in $lambda_created_paths; do
     rm -f "$lambda_zip"
@@ -307,9 +318,28 @@ $lambda_zip"
       create_ami_override
       ;;
     prebuilt)
-      create_ami_fixture \
-        "amzn2-ami-hvm-2.0.20231116.0-x86_64-gp2" \
-        x86_64 >/dev/null
+      if ! command -v packer >/dev/null 2>&1; then
+        echo "Packer is required to create the prebuilt MiniStack AMI fixture." >&2
+        exit 69
+      fi
+
+      packer_created_image_file=$(mktemp "${TMPDIR:-/tmp}/terraform-aws-github-runner-ministack-packer.XXXXXX")
+      (
+        CDPATH='' cd -- "$script_dir/packer"
+        packer init .
+        packer validate -evaluate-datasources \
+          -var='image_name=amzn2-ami-hvm-2.0.20231116.0-x86_64-gp2' \
+          -var="endpoint_url=$AWS_ENDPOINT_URL" \
+          -var="region=$AWS_DEFAULT_REGION" \
+          -var="created_image_id_file=$packer_created_image_file" \
+          .
+        packer build -color=false \
+          -var='image_name=amzn2-ami-hvm-2.0.20231116.0-x86_64-gp2' \
+          -var="endpoint_url=$AWS_ENDPOINT_URL" \
+          -var="region=$AWS_DEFAULT_REGION" \
+          -var="created_image_id_file=$packer_created_image_file" \
+          .
+      )
       ;;
     multi-runner)
       create_multi_runner_override

@@ -107,6 +107,12 @@ jobs:
           tofu_version: ${{ matrix.iac.version }}
           tofu_wrapper: false
 
+      - name: Setup Packer
+        if: matrix.example == 'prebuilt'
+        uses: hashicorp/setup-packer@ce93c3c08a6c2ff2275bf4b54ff0d9a75f6c9789 # v3.4.0
+        with:
+          version: 1.11.2
+
       - name: Mark repository as safe
         shell: sh
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"

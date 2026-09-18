@@ -33,11 +33,20 @@ tests/ministack/run-example.sh apply termination-watcher
 
 The script also supports `init`, `plan`, and `destroy`. It creates inert Lambda
 ZIP fixtures in the paths expected by the modules when they are absent, and
-removes only the files it created. For `prebuilt`, it seeds AMI metadata through
-MiniStack's AWS-compatible EC2 API, then removes only the resources it created
-during cleanup. MiniStack v1.5.11 provides the EC2 image behavior needed by the
+removes only the files it created. For `prebuilt`, it runs the test-only Packer
+target in `tests/ministack/packer`, which registers AMI metadata through
+MiniStack's AWS-compatible EC2 API, then removes only the image created by that
+Packer build during cleanup. This target uses Packer's null builder because
+MiniStack does not provide a guest/SSH environment for a real `amazon-ebs`
+build; it verifies the Packer-to-AMI-fixture boundary, not an AWS image build.
+MiniStack v1.5.11 provides the EC2 image behavior needed by the
 `default`, `ephemeral`, and `multi-runner` examples, so they are included in
 the same lifecycle matrix.
+
+The `prebuilt` lane requires Packer and the AWS CLI. Its Packer fixture uses
+test-only credentials inherited from the harness and the configured
+`AWS_ENDPOINT_URL`; it never needs AWS credentials or contacts AWS when
+MiniStack is running locally.
 
 ## Webhook and runner lifecycle smoke test
 
