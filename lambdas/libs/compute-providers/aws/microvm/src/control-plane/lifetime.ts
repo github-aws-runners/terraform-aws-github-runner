@@ -1,0 +1,1 @@
+export const MICROVM_LIFETIME_IN_SECONDS = 28_800;

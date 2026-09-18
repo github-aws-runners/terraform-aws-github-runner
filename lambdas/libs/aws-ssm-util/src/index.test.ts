@@ -1,6 +1,9 @@
 import {
+  AddTagsToResourceCommand,
+  DeleteParameterCommand,
   GetParameterCommand,
   GetParameterCommandOutput,
+  GetParametersByPathCommand,
   GetParametersCommand,
   PutParameterCommand,
   PutParameterCommandOutput,
@@ -10,7 +13,17 @@ import 'aws-sdk-client-mock-jest/vitest';
 import { mockClient } from 'aws-sdk-client-mock';
 import nock from 'nock';
 
-import { getParameter, getParameters, putParameter, resetSSMClient, ssmClient, SSM_ADVANCED_TIER_THRESHOLD } from '.';
+import {
+  addParameterTags,
+  deleteParameter,
+  getParameter,
+  getParameters,
+  getParametersByPath,
+  putParameter,
+  resetSSMClient,
+  ssmClient,
+  SSM_ADVANCED_TIER_THRESHOLD,
+} from '.';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 const mockSSMClient = mockClient(SSMClient);
@@ -102,6 +115,30 @@ describe('Test getParameter and putParameter', () => {
       Value: parameterValue,
       Type: 'String',
     });
+  });
+
+  it('overwrites a parameter only when explicitly requested', async () => {
+    mockSSMClient.on(PutParameterCommand).resolves({});
+
+    await putParameter('testParam', 'updated', false, { overwrite: true });
+
+    expect(mockSSMClient).toHaveReceivedCommandWith(PutParameterCommand, {
+      Name: 'testParam',
+      Value: 'updated',
+      Type: 'String',
+      Overwrite: true,
+    });
+  });
+
+  it('rejects tags when overwriting an existing parameter', async () => {
+    mockSSMClient.resetHistory();
+    await expect(
+      putParameter('testParam', 'updated', false, {
+        overwrite: true,
+        tags: [{ Key: 'owner', Value: 'runner' }],
+      } as never),
+    ).rejects.toThrow('tags cannot be supplied when overwriting');
+    expect(mockSSMClient).not.toHaveReceivedCommand(PutParameterCommand);
   });
 
   it('Puts parameters as SecureString', async () => {
@@ -253,6 +290,70 @@ describe('Test getParameters (batch)', () => {
     const result = await getParameters(['/app/missing']);
 
     expect(result).toEqual(new Map());
+  });
+});
+
+describe('Test direct parameter path operations', () => {
+  beforeEach(() => {
+    mockSSMClient.reset();
+  });
+
+  it('paginates direct, non-secret children of a parameter path', async () => {
+    mockSSMClient
+      .on(GetParametersByPathCommand, {
+        Path: '/metadata',
+        Recursive: false,
+        WithDecryption: false,
+        NextToken: undefined,
+      })
+      .resolves({ Parameters: [{ Name: '/metadata/one', Value: '1' }], NextToken: 'page-2' })
+      .on(GetParametersByPathCommand, {
+        Path: '/metadata',
+        Recursive: false,
+        WithDecryption: false,
+        NextToken: 'page-2',
+      })
+      .resolves({ Parameters: [{ Name: '/metadata/two', Value: '2' }] });
+
+    await expect(getParametersByPath('/metadata')).resolves.toEqual(
+      new Map([
+        ['/metadata/one', '1'],
+        ['/metadata/two', '2'],
+      ]),
+    );
+    expect(mockSSMClient).toHaveReceivedCommandTimes(GetParametersByPathCommand, 2);
+  });
+
+  it('deletes an exact parameter name', async () => {
+    mockSSMClient.on(DeleteParameterCommand).resolves({});
+
+    await deleteParameter('/metadata/one');
+
+    expect(mockSSMClient).toHaveReceivedCommandWith(DeleteParameterCommand, { Name: '/metadata/one' });
+  });
+
+  it('adds tags to an exact parameter name', async () => {
+    mockSSMClient.on(AddTagsToResourceCommand).resolves({});
+
+    await addParameterTags('/metadata/one', [{ Key: 'ghr:environment', Value: 'unit-test' }]);
+
+    expect(mockSSMClient).toHaveReceivedCommandWith(AddTagsToResourceCommand, {
+      ResourceType: 'Parameter',
+      ResourceId: '/metadata/one',
+      Tags: [{ Key: 'ghr:environment', Value: 'unit-test' }],
+    });
+  });
+
+  it('does not call SSM when there are no parameter tags to add', async () => {
+    await addParameterTags('/metadata/one', []);
+
+    expect(mockSSMClient).not.toHaveReceivedCommand(AddTagsToResourceCommand);
+  });
+
+  it('propagates failures when adding parameter tags', async () => {
+    mockSSMClient.on(AddTagsToResourceCommand).rejects(new Error('AccessDenied'));
+
+    await expect(addParameterTags('/metadata/one', [{ Key: 'Name', Value: 'runner' }])).rejects.toThrow('AccessDenied');
   });
 });
 
