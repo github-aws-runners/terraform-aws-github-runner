@@ -28,7 +28,14 @@ jobs:
       image: index.docker.io/hashicorp/packer@sha256:12c441b8a3994e7df9f0e2692d9298f14c387e70bcc06139420977dbf80a137b # 1.11.2
     strategy:
       matrix:
-        image: ["linux-al2023", "windows-core-2019", "windows-core-2022", "ubuntu-focal", "ubuntu-jammy", "ubuntu-jammy-arm64", "microvm-ubuntu"]
+        image: 
+          - linux-al2023
+          - windows-core-2019
+          - windows-core-2022
+          - ubuntu-focal
+          - ubuntu-jammy
+          - ubuntu-jammy-arm64
+          - microvm-ubuntu
     defaults:
       run:
         working-directory: images/${{ matrix.image }}
@@ -42,9 +49,12 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      
       - name: packer init
         run: packer init .
+
       - name: check packer formatting
         run: packer fmt -recursive -check=true .
+
       - name: packer validate
         run: packer validate -evaluate-datasources .
