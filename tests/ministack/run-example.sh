@@ -77,9 +77,6 @@ lockfile_existed=false
 if [ "$use_tfvars" = true ]; then
   if [ -z "$tfvars_file" ] && [ "$example" != microvm-foundation ]; then
     tfvars_file="$script_dir/$example.tfvars"
-    if [ "$example" = microvm-foundation ]; then
-      microvm_foundation_default_tfvars=true
-    fi
   fi
 
   if [ -n "$tfvars_file" ]; then
@@ -94,7 +91,6 @@ if [ "$use_tfvars" = true ]; then
       exit 66
     fi
   fi
-
 fi
 
 lambda_fixture_dir=""
@@ -365,10 +361,6 @@ create_ministack_fixtures() {
   fi
 
   wait_for_ministack
-
-  if [ "$microvm_foundation_default_tfvars" = true ]; then
-    create_microvm_foundation_fixture
-  fi
 
   lambda_fixture_dir=$(mktemp -d "${TMPDIR:-/tmp}/terraform-aws-github-runner-ministack-lambda.XXXXXX")
   printf '%s\n' 'exports.handler = async () => ({ statusCode: 200, body: "ministack" });' > "$lambda_fixture_dir/index.js"
