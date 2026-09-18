@@ -16,8 +16,8 @@ locals {
 
   network_connector_subnets = merge({}, [
     for connector_key, connector in var.network_connectors : {
-      for subnet_id in connector.subnet_ids :
-      "${connector_key}/${subnet_id}" => {
+      for subnet_index, subnet_id in connector.subnet_ids :
+      "${connector_key}/${subnet_index}" => {
         connector_key = connector_key
         subnet_id     = subnet_id
       }

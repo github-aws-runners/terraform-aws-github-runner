@@ -10,6 +10,10 @@ module "base" {
   aws_region = local.aws_region
 }
 
+resource "random_id" "random" {
+  byte_length = 20
+}
+
 module "runners" {
   source = "../../modules/multi-runner"
 
@@ -19,7 +23,11 @@ module "runners" {
   experimental_features = ["multi-runner-v2"]
 
   global_config_github = {
-    app = var.github_app
+    app = {
+      key_base64     = var.github_app.key_base64
+      id             = var.github_app.id
+      webhook_secret = random_id.random.hex
+    }
   }
 
   global_config_lambda = {

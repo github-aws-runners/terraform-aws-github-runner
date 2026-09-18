@@ -63,7 +63,9 @@ tables and network ACLs configured by the helper module.
 
 ## Providers
 
-No providers.
+| Name | Version |
+|------|---------|
+| <a name="provider_random"></a> [random](#provider\_random) | 3.9.0 |
 
 ## Modules
 
@@ -74,7 +76,9 @@ No providers.
 
 ## Resources
 
-No resources.
+| Name | Type |
+|------|------|
+| [random_id.random](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/id) | resource |
 
 ## Inputs
 
@@ -83,7 +87,7 @@ No resources.
 | <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS Region where the runner control plane and MicroVM resources are deployed. | `string` | `"eu-west-1"` | no |
 | <a name="input_egress_network_connector_arn"></a> [egress\_network\_connector\_arn](#input\_egress\_network\_connector\_arn) | Regional Lambda Network Connector ARN used by MicroVMs and the image build. | `string` | n/a | yes |
 | <a name="input_environment"></a> [environment](#input\_environment) | Name prefix for the example resources. | `string` | `null` | no |
-| <a name="input_github_app"></a> [github\_app](#input\_github\_app) | Pre-created SSM parameter references for the GitHub App credentials. | <pre>object({<br/>    key_base64 = optional(string)<br/>    key_base64_ssm = optional(object({<br/>      arn  = string<br/>      name = string<br/>    }))<br/>    id = optional(string)<br/>    id_ssm = optional(object({<br/>      arn  = string<br/>      name = string<br/>    }))<br/>    webhook_secret = optional(string)<br/>    webhook_secret_ssm = optional(object({<br/>      arn  = string<br/>      name = string<br/>    }))<br/>  })</pre> | n/a | yes |
+| <a name="input_github_app"></a> [github\_app](#input\_github\_app) | GitHub for API usages. | <pre>object({<br/>    id         = string<br/>    key_base64 = string<br/>  })</pre> | n/a | yes |
 | <a name="input_ingress_network_connector_arns"></a> [ingress\_network\_connector\_arns](#input\_ingress\_network\_connector\_arns) | Optional regional Lambda Network Connector ARNs exposed to MicroVMs. | `list(string)` | `[]` | no |
 | <a name="input_lambda_artifact_bucket"></a> [lambda\_artifact\_bucket](#input\_lambda\_artifact\_bucket) | S3 bucket containing the runner-control Lambda artifacts. | `string` | n/a | yes |
 | <a name="input_microvm_image_arn"></a> [microvm\_image\_arn](#input\_microvm\_image\_arn) | Lambda MicroVM image ARN produced by the MicroVM image build. | `string` | n/a | yes |
