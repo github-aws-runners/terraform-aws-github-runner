@@ -94,7 +94,7 @@ updates:
         update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "docker-compose"
-    directory: "/"
+    directory: ".github/workflows"
     schedule:
       interval: "weekly"
     allow:
