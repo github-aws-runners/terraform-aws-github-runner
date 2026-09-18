@@ -232,6 +232,14 @@ variables {
   }
 }
 
+run "base_runner_configs" {
+  command = apply
+
+  module {
+    source = "./tests/fixtures/base-runner-configs"
+  }
+}
+
 run "groups_by_compute_provider_and_hardens_each_task" {
   command = plan
 
@@ -549,15 +557,23 @@ run "rejects_oversized_standard_parameter" {
   }
 
   variables {
-    runner_configs = merge(var.runner_configs, {
-      linux-small = merge(var.runner_configs.linux-small, {
-        compute_provider = merge(var.runner_configs.linux-small.compute_provider, {
-          capabilities = {
-            scale_set = merge(var.runner_configs.linux-small.compute_provider.capabilities.scale_set, {
-              configuration_json = jsonencode({ payload = join("", [for index in range(1000) : "xxxxxx"]) })
-            })
+    runner_configs = merge(run.base_runner_configs.runner_configs, {
+      linux-small = merge(run.base_runner_configs.runner_configs.linux-small, {
+        compute_provider = merge(
+          run.base_runner_configs.runner_configs.linux-small.compute_provider,
+          {
+            capabilities = {
+              scale_set = merge(
+                run.base_runner_configs.runner_configs.linux-small.compute_provider.capabilities.scale_set,
+                {
+                  configuration_json = jsonencode({
+                    payload = join("", [for index in range(1000) : "xxxxxx"])
+                  })
+                }
+              )
+            }
           }
-        })
+        )
       })
     })
   }
@@ -576,21 +592,33 @@ run "accepts_advanced_parameter_within_eight_kib" {
     config_store = {
       tier = "Advanced"
     }
-    runner_configs = merge(var.runner_configs, {
-      linux-small = merge(var.runner_configs.linux-small, {
-        compute_provider = merge(var.runner_configs.linux-small.compute_provider, {
-          capabilities = {
-            scale_set = merge(var.runner_configs.linux-small.compute_provider.capabilities.scale_set, {
-              configuration_json = jsonencode({ payload = join("", [for index in range(800) : "xxxxxx"]) })
-            })
+
+    runner_configs = merge(run.base_runner_configs.runner_configs, {
+      linux-small = merge(run.base_runner_configs.runner_configs.linux-small, {
+        compute_provider = merge(
+          run.base_runner_configs.runner_configs.linux-small.compute_provider,
+          {
+            capabilities = {
+              scale_set = merge(
+                run.base_runner_configs.runner_configs.linux-small.compute_provider.capabilities.scale_set,
+                {
+                  configuration_json = jsonencode({
+                    payload = join("", [for index in range(800) : "xxxxxx"])
+                  })
+                }
+              )
+            }
           }
-        })
+        )
       })
     })
   }
 
   assert {
-    condition     = local.reconciler_config_bytes["ec2/linux-small"] > 4096 && local.reconciler_config_bytes["ec2/linux-small"] <= 8192
+    condition = (
+      local.reconciler_config_bytes["ec2/linux-small"] > 4096 &&
+      local.reconciler_config_bytes["ec2/linux-small"] <= 8192
+    )
     error_message = "Advanced Parameter Store tier must accept reconciler JSON between four and eight KiB."
   }
 }
@@ -599,21 +627,21 @@ run "assembles_github_config_url_from_registration_scope_and_owner" {
   command = apply
 
   variables {
-    runner_configs = merge(var.runner_configs, {
-      linux-small = merge(var.runner_configs.linux-small, {
-        github = merge(var.runner_configs.linux-small.github, {
+    runner_configs = merge(run.base_runner_configs.runner_configs, {
+      linux-small = merge(run.base_runner_configs.runner_configs.linux-small, {
+        github = merge(run.base_runner_configs.runner_configs.linux-small.github, {
           runner_registration_level = "organization"
           runner_owner              = "example"
         })
       })
-      linux-large = merge(var.runner_configs.linux-large, {
-        github = merge(var.runner_configs.linux-large.github, {
+      linux-large = merge(run.base_runner_configs.runner_configs.linux-large, {
+        github = merge(run.base_runner_configs.runner_configs.linux-large.github, {
           runner_registration_level = "organization"
           runner_owner              = "example"
         })
       })
-      microvm = merge(var.runner_configs.microvm, {
-        github = merge(var.runner_configs.microvm.github, {
+      microvm = merge(run.base_runner_configs.runner_configs.microvm, {
+        github = merge(run.base_runner_configs.runner_configs.microvm.github, {
           runner_registration_level = "repository"
           runner_owner              = "example/repository"
         })
@@ -639,19 +667,19 @@ run "rejects_duplicate_scale_set_ownership_across_groups" {
   }
 
   variables {
-    runner_configs = merge(var.runner_configs, {
-      linux-small = merge(var.runner_configs.linux-small, {
-        github = merge(var.runner_configs.linux-small.github, {
+    runner_configs = merge(run.base_runner_configs.runner_configs, {
+      linux-small = merge(run.base_runner_configs.runner_configs.linux-small, {
+        github = merge(run.base_runner_configs.runner_configs.linux-small.github, {
           enterprise_server = { url = "https://mygithub.com" }
         })
       })
-      microvm = merge(var.runner_configs.microvm, {
-        github = merge(var.runner_configs.microvm.github, {
+      microvm = merge(run.base_runner_configs.runner_configs.microvm, {
+        github = merge(run.base_runner_configs.runner_configs.microvm.github, {
           enterprise_server         = { url = "https://mygithub.com:443/" }
           runner_registration_level = "organization"
           runner_owner              = "example"
         })
-        scale_set = merge(var.runner_configs.microvm.scale_set, {
+        scale_set = merge(run.base_runner_configs.runner_configs.microvm.scale_set, {
           name = "linux-small"
         })
       })
@@ -669,12 +697,12 @@ run "rejects_leading_zero_default_port_spelling" {
   }
 
   variables {
-    runner_configs = merge(var.runner_configs, {
-      microvm = merge(var.runner_configs.microvm, {
-        github = merge(var.runner_configs.microvm.github, {
+    runner_configs = merge(run.base_runner_configs.runner_configs, {
+      microvm = merge(run.base_runner_configs.runner_configs.microvm, {
+        github = merge(run.base_runner_configs.runner_configs.microvm.github, {
           enterprise_server = { url = "https://github.com:0443/" }
         })
-        scale_set = merge(var.runner_configs.microvm.scale_set, {
+        scale_set = merge(run.base_runner_configs.runner_configs.microvm.scale_set, {
           name = "linux-small"
         })
       })
@@ -692,9 +720,9 @@ run "rejects_port_above_url_maximum" {
   }
 
   variables {
-    runner_configs = merge(var.runner_configs, {
-      microvm = merge(var.runner_configs.microvm, {
-        github = merge(var.runner_configs.microvm.github, {
+    runner_configs = merge(run.base_runner_configs.runner_configs, {
+      microvm = merge(run.base_runner_configs.runner_configs.microvm, {
+        github = merge(run.base_runner_configs.runner_configs.microvm.github, {
           enterprise_server = { url = "https://github.com:65536/" }
         })
       })
@@ -712,9 +740,9 @@ run "rejects_non_ascii_scale_set_name" {
   }
 
   variables {
-    runner_configs = merge(var.runner_configs, {
-      microvm = merge(var.runner_configs.microvm, {
-        scale_set = merge(var.runner_configs.microvm.scale_set, {
+    runner_configs = merge(run.base_runner_configs.runner_configs, {
+      microvm = merge(run.base_runner_configs.runner_configs.microvm, {
+        scale_set = merge(run.base_runner_configs.runner_configs.microvm.scale_set, {
           name = "microvm-☃"
         })
       })
@@ -732,9 +760,9 @@ run "rejects_invalid_compute_provider_type_identifier" {
   }
 
   variables {
-    runner_configs = merge(var.runner_configs, {
-      microvm = merge(var.runner_configs.microvm, {
-        compute_provider = merge(var.runner_configs.microvm.compute_provider, {
+    runner_configs = merge(run.base_runner_configs.runner_configs, {
+      microvm = merge(run.base_runner_configs.runner_configs.microvm, {
+        compute_provider = merge(run.base_runner_configs.runner_configs.microvm.compute_provider, {
           type = "AWS.MicroVM"
         })
       })
@@ -752,11 +780,11 @@ run "rejects_credential_arn_name_mismatch" {
   }
 
   variables {
-    runner_configs = merge(var.runner_configs, {
-      microvm = merge(var.runner_configs.microvm, {
-        github = merge(var.runner_configs.microvm.github, {
-          app = merge(var.runner_configs.microvm.github.app, {
-            app_id = merge(var.runner_configs.microvm.github.app.app_id, {
+    runner_configs = merge(run.base_runner_configs.runner_configs, {
+      microvm = merge(run.base_runner_configs.runner_configs.microvm, {
+        github = merge(run.base_runner_configs.runner_configs.microvm.github, {
+          app = merge(run.base_runner_configs.runner_configs.microvm.github.app, {
+            app_id = merge(run.base_runner_configs.runner_configs.microvm.github.app.app_id, {
               arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github/another/app-id"
             })
           })
@@ -776,11 +804,11 @@ run "rejects_cross_account_credential_parameter" {
   }
 
   variables {
-    runner_configs = merge(var.runner_configs, {
-      microvm = merge(var.runner_configs.microvm, {
-        github = merge(var.runner_configs.microvm.github, {
-          app = merge(var.runner_configs.microvm.github.app, {
-            app_id = merge(var.runner_configs.microvm.github.app.app_id, {
+    runner_configs = merge(run.base_runner_configs.runner_configs, {
+      microvm = merge(run.base_runner_configs.runner_configs.microvm, {
+        github = merge(run.base_runner_configs.runner_configs.microvm.github, {
+          app = merge(run.base_runner_configs.runner_configs.microvm.github.app, {
+            app_id = merge(run.base_runner_configs.runner_configs.microvm.github.app.app_id, {
               arn = "arn:aws:ssm:eu-west-1:210987654321:parameter/github/microvm/app-id"
             })
           })
@@ -800,12 +828,12 @@ run "allows_same_scale_set_name_in_another_github_scope" {
   }
 
   variables {
-    runner_configs = merge(var.runner_configs, {
-      microvm = merge(var.runner_configs.microvm, {
-        github = merge(var.runner_configs.microvm.github, {
+    runner_configs = merge(run.base_runner_configs.runner_configs, {
+      microvm = merge(run.base_runner_configs.runner_configs.microvm, {
+        github = merge(run.base_runner_configs.runner_configs.microvm.github, {
           enterprise_server = { url = "https://github.example.test" }
         })
-        scale_set = merge(var.runner_configs.microvm.scale_set, {
+        scale_set = merge(run.base_runner_configs.runner_configs.microvm.scale_set, {
           name = "linux-small"
         })
       })
@@ -910,11 +938,11 @@ run "rejects_conflicting_group_environment_variables" {
   }
 
   variables {
-    runner_configs = merge(var.runner_configs, {
-      linux-large = merge(var.runner_configs.linux-large, {
-        compute_provider = merge(var.runner_configs.linux-large.compute_provider, {
+    runner_configs = merge(run.base_runner_configs.runner_configs, {
+      linux-large = merge(run.base_runner_configs.runner_configs.linux-large, {
+        compute_provider = merge(run.base_runner_configs.runner_configs.linux-large.compute_provider, {
           capabilities = {
-            scale_set = merge(var.runner_configs.linux-large.compute_provider.capabilities.scale_set, {
+            scale_set = merge(run.base_runner_configs.runner_configs.linux-large.compute_provider.capabilities.scale_set, {
               environment_variables = {
                 EC2_CONTROLLER_MODE = "isolated"
               }
@@ -936,13 +964,13 @@ run "rejects_controller_group_environment_above_task_definition_budget" {
   }
 
   variables {
-    runner_configs = merge(var.runner_configs, {
-      linux-small = merge(var.runner_configs.linux-small, {
-        compute_provider = merge(var.runner_configs.linux-small.compute_provider, {
+    runner_configs = merge(run.base_runner_configs.runner_configs, {
+      linux-small = merge(run.base_runner_configs.runner_configs.linux-small, {
+        compute_provider = merge(run.base_runner_configs.runner_configs.linux-small.compute_provider, {
           capabilities = {
-            scale_set = merge(var.runner_configs.linux-small.compute_provider.capabilities.scale_set, {
+            scale_set = merge(run.base_runner_configs.runner_configs.linux-small.compute_provider.capabilities.scale_set, {
               environment_variables = merge(
-                var.runner_configs.linux-small.compute_provider.capabilities.scale_set.environment_variables,
+                run.base_runner_configs.runner_configs.linux-small.compute_provider.capabilities.scale_set.environment_variables,
                 {
                   for index in range(16) : format("EC2_QUOTA_%02d", index) => join("", [for part in range(1024) : "xxxx"])
                 },
@@ -965,11 +993,11 @@ run "rejects_reserved_provider_environment_variables" {
   }
 
   variables {
-    runner_configs = merge(var.runner_configs, {
-      linux-small = merge(var.runner_configs.linux-small, {
-        compute_provider = merge(var.runner_configs.linux-small.compute_provider, {
+    runner_configs = merge(run.base_runner_configs.runner_configs, {
+      linux-small = merge(run.base_runner_configs.runner_configs.linux-small, {
+        compute_provider = merge(run.base_runner_configs.runner_configs.linux-small.compute_provider, {
           capabilities = {
-            scale_set = merge(var.runner_configs.linux-small.compute_provider.capabilities.scale_set, {
+            scale_set = merge(run.base_runner_configs.runner_configs.linux-small.compute_provider.capabilities.scale_set, {
               environment_variables = {
                 SCALE_SET_OVERRIDE = "unsafe"
               }
@@ -991,10 +1019,10 @@ run "rejects_invalid_boot_timeout" {
   }
 
   variables {
-    runner_configs = merge(var.runner_configs, {
-      linux-small = merge(var.runner_configs.linux-small, {
-        scale_set = merge(var.runner_configs.linux-small.scale_set, {
-          runner = merge(var.runner_configs.linux-small.scale_set.runner, {
+    runner_configs = merge(run.base_runner_configs.runner_configs, {
+      linux-small = merge(run.base_runner_configs.runner_configs.linux-small, {
+        scale_set = merge(run.base_runner_configs.runner_configs.linux-small.scale_set, {
+          runner = merge(run.base_runner_configs.runner_configs.linux-small.scale_set.runner, {
             boot_time_in_minutes = 0
           })
         })
@@ -1013,9 +1041,9 @@ run "rejects_enterprise_runner_registration_level" {
   }
 
   variables {
-    runner_configs = merge(var.runner_configs, {
-      linux-small = merge(var.runner_configs.linux-small, {
-        github = merge(var.runner_configs.linux-small.github, {
+    runner_configs = merge(run.base_runner_configs.runner_configs, {
+      linux-small = merge(run.base_runner_configs.runner_configs.linux-small, {
+        github = merge(run.base_runner_configs.runner_configs.linux-small.github, {
           runner_registration_level = "enterprise"
           runner_owner              = null
         })
@@ -1034,9 +1062,9 @@ run "rejects_invalid_runner_registration_level" {
   }
 
   variables {
-    runner_configs = merge(var.runner_configs, {
-      linux-small = merge(var.runner_configs.linux-small, {
-        github = merge(var.runner_configs.linux-small.github, {
+    runner_configs = merge(run.base_runner_configs.runner_configs, {
+      linux-small = merge(run.base_runner_configs.runner_configs.linux-small, {
+        github = merge(run.base_runner_configs.runner_configs.linux-small.github, {
           runner_registration_level = "invalid"
         })
       })
@@ -1055,7 +1083,7 @@ run "rejects_controller_group_above_runtime_reconciler_limit" {
 
   variables {
     runner_configs = {
-      for index in range(1001) : format("runner-%04d", index) => var.runner_configs.linux-small
+      for index in range(1001) : format("runner-%04d", index) => run.base_runner_configs.runner_configs.linux-small
     }
     grouping = {
       strategy = "custom"
@@ -1084,10 +1112,10 @@ run "rejects_controller_group_above_runtime_config_bytes" {
       tier = "Advanced"
     }
     runner_configs = {
-      for index in range(900) : format("runner-%04d", index) => merge(var.runner_configs.linux-small, {
-        compute_provider = merge(var.runner_configs.linux-small.compute_provider, {
+      for index in range(900) : format("runner-%04d", index) => merge(run.base_runner_configs.runner_configs.linux-small, {
+        compute_provider = merge(run.base_runner_configs.runner_configs.linux-small.compute_provider, {
           capabilities = {
-            scale_set = merge(var.runner_configs.linux-small.compute_provider.capabilities.scale_set, {
+            scale_set = merge(run.base_runner_configs.runner_configs.linux-small.compute_provider.capabilities.scale_set, {
               configuration_json = jsonencode({
                 payload = join("", [for part in range(1000) : "xxxxx"])
               })
@@ -1119,10 +1147,10 @@ run "rejects_runtime_invalid_credential_parameter_name" {
   }
 
   variables {
-    runner_configs = merge(var.runner_configs, {
-      microvm = merge(var.runner_configs.microvm, {
-        github = merge(var.runner_configs.microvm.github, {
-          app = merge(var.runner_configs.microvm.github.app, {
+    runner_configs = merge(run.base_runner_configs.runner_configs, {
+      microvm = merge(run.base_runner_configs.runner_configs.microvm, {
+        github = merge(run.base_runner_configs.runner_configs.microvm.github, {
+          app = merge(run.base_runner_configs.runner_configs.microvm.github.app, {
             app_id = {
               name = "/github/microvm/bad app-id"
               arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github/microvm/bad app-id"

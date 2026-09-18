@@ -39,7 +39,7 @@ The GitHub App must be installed for the configured GitHub account.
 ## Requirements
 
 | Name | Version |
-|------|---------|
+| ---- | ------- |
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.5.6 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 6.33 |
 | <a name="requirement_local"></a> [local](#requirement\_local) | ~> 2.0 |
@@ -48,13 +48,13 @@ The GitHub App must be installed for the configured GitHub account.
 ## Providers
 
 | Name | Version |
-|------|---------|
+| ---- | ------- |
 | <a name="provider_random"></a> [random](#provider\_random) | 3.9.0 |
 
 ## Modules
 
 | Name | Source | Version |
-|------|--------|---------|
+| ---- | ------ | ------- |
 | <a name="module_base"></a> [base](#module\_base) | ../base | n/a |
 | <a name="module_runners"></a> [runners](#module\_runners) | ../../modules/multi-runner | n/a |
 | <a name="module_webhook_github_app"></a> [webhook\_github\_app](#module\_webhook\_github\_app) | ../../modules/webhook-github-app | n/a |
@@ -62,17 +62,17 @@ The GitHub App must be installed for the configured GitHub account.
 ## Resources
 
 | Name | Type |
-|------|------|
+| ---- | ---- |
 | [random_id.random](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/id) | resource |
 
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
+| ---- | ----------- | ---- | ------- | :------: |
 | <a name="input_ami"></a> [ami](#input\_ami) | Optional AMI configuration keyed by runner lane. | <pre>map(object({<br/>    filter = optional(map(list(string)), { state = ["available"] })<br/>    owners = optional(list(string), ["amazon"])<br/>    id_ssm_parameter = optional(object({<br/>      arn = string<br/>    }), null)<br/>    kms_key = optional(object({<br/>      arn = string<br/>    }), null)<br/>  }))</pre> | `{}` | no |
 | <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS region to deploy to. | `string` | `"eu-west-1"` | no |
-| <a name="input_environment"></a> [environment](#input\_environment) | Environment name, used as prefix. | `string` | `null` | no |
-| <a name="input_github"></a> [github](#input\_github) | Optional GitHub endpoint and scale-set ownership settings. | <pre>object({<br/>    config_url         = optional(string, null)<br/>    ssl_verify         = optional(bool, true)<br/>    runner_owner       = optional(string, null)<br/>    registration_level = optional(string, "organization")<br/>  })</pre> | `{}` | no |
+| <a name="input_environment"></a> [environment](#input\_environment) | Environment name, used as prefix. | `string` | n/a | yes |
+| <a name="input_github"></a> [github](#input\_github) | Optional GitHub endpoint and scale-set ownership settings. | <pre>object({<br/>    url                = optional(string, null)<br/>    ssl_verify         = optional(bool, true)<br/>    runner_owner       = optional(string, null)<br/>    registration_level = optional(string, "organization")<br/>  })</pre> | `{}` | no |
 | <a name="input_github_app"></a> [github\_app](#input\_github\_app) | GitHub App ID, base64-encoded private key, and installation ID. | <pre>object({<br/>    id              = string<br/>    key_base64      = string<br/>    installation_id = optional(string, null)<br/>  })</pre> | n/a | yes |
 | <a name="input_runner_binaries_enabled"></a> [runner\_binaries\_enabled](#input\_runner\_binaries\_enabled) | Whether runner binary synchronization is enabled. | `bool` | `true` | no |
 | <a name="input_scale_set"></a> [scale\_set](#input\_scale\_set) | GitHub Actions scale-set configuration. | <pre>object({<br/>    name              = string<br/>    runner_group_name = optional(string, "Default")<br/>    min_runners       = optional(number, 0)<br/>    container = optional(object({<br/>      image = optional(string, null)<br/>    }), {})<br/>  })</pre> | n/a | yes |
@@ -80,7 +80,7 @@ The GitHub App must be installed for the configured GitHub account.
 ## Outputs
 
 | Name | Description |
-|------|-------------|
+| ---- | ----------- |
 | <a name="output_webhook_endpoint"></a> [webhook\_endpoint](#output\_webhook\_endpoint) | n/a |
 | <a name="output_webhook_secret"></a> [webhook\_secret](#output\_webhook\_secret) | n/a |
 <!-- END_TF_DOCS -->

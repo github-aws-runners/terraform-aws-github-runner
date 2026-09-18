@@ -532,6 +532,27 @@ run "v2_inputs_reject_legacy_runner_config" {
 run "scale_set_only_lane_omits_webhook_queues" {
   command = plan
 
+  override_resource {
+    target = module.ssm.aws_ssm_parameter.github_app_id
+    values = {
+      arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/test/app/github_app_id"
+    }
+  }
+
+  override_resource {
+    target = module.ssm.aws_ssm_parameter.github_app_key_base64
+    values = {
+      arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/test/app/github_app_key_base64"
+    }
+  }
+
+  override_resource {
+    target = module.ssm.aws_ssm_parameter.github_app_installation_id
+    values = {
+      arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/test/app/github_app_installation_id"
+    }
+  }
+
   variables {
     experimental_features = ["multi-runner-v2"]
 
@@ -618,6 +639,27 @@ run "scale_set_only_lane_omits_webhook_queues" {
 
 run "mixed_webhook_and_scale_set_lanes_create_webhook_queues_only_for_webhook" {
   command = plan
+
+  override_resource {
+    target = module.ssm.aws_ssm_parameter.github_app_id
+    values = {
+      arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/test/app/github_app_id"
+    }
+  }
+
+  override_resource {
+    target = module.ssm.aws_ssm_parameter.github_app_key_base64
+    values = {
+      arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/test/app/github_app_key_base64"
+    }
+  }
+
+  override_resource {
+    target = module.ssm.aws_ssm_parameter.github_app_installation_id
+    values = {
+      arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/test/app/github_app_installation_id"
+    }
+  }
 
   variables {
     experimental_features = ["multi-runner-v2"]
