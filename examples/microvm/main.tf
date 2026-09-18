@@ -16,6 +16,8 @@ module "runners" {
   aws_region = local.aws_region
   prefix     = local.environment
 
+  experimental_features = ["multi-runner-v2"]
+
   global_config_github = {
     app = var.github_app
   }
