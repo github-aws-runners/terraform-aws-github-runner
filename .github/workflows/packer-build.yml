@@ -26,19 +26,6 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: index.docker.io/hashicorp/packer@sha256:12c441b8a3994e7df9f0e2692d9298f14c387e70bcc06139420977dbf80a137b # 1.11.2
-    strategy:
-      matrix:
-        image: 
-          - linux-al2023
-          - windows-core-2019
-          - windows-core-2022
-          - ubuntu-focal
-          - ubuntu-jammy
-          - ubuntu-jammy-arm64
-          - microvm-ubuntu
-    defaults:
-      run:
-        working-directory: images/${{ matrix.image }}
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
@@ -49,12 +36,29 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      
-      - name: packer init
-        run: packer init .
 
-      - name: check packer formatting
-        run: packer fmt -recursive -check=true .
+      - name: Verify images
+        run: |
+          set -- "${GITHUB_WORKSPACE}"/images/*
+          found_image=false
 
-      - name: packer validate
-        run: packer validate -evaluate-datasources .
+          while [ "$#" -gt 0 ]; do
+            image_dir="$1"
+            shift
+            [ -d "${image_dir}" ] || continue
+
+            found_image=true
+            image="${image_dir##*/}"
+
+            echo "::group::Verifying ${image}"
+            cd "${image_dir}"
+            packer init .
+            packer fmt -recursive -check=true .
+            packer validate -evaluate-datasources .
+            echo "::endgroup::"
+          done
+
+          [ "${found_image}" = true ] || {
+            echo "No image directories found under ${GITHUB_WORKSPACE}/images"
+            exit 1
+          }

@@ -56,14 +56,14 @@ No resources.
 | <a name="input_artifact_retention_days"></a> [artifact\_retention\_days](#input\_artifact\_retention\_days) | Number of days to retain current and noncurrent build artifacts. | `number` | `30` | no |
 | <a name="input_aws_profile"></a> [aws\_profile](#input\_aws\_profile) | Optional local AWS CLI profile. Leave null when credentials are provided by the environment or role. | `string` | `null` | no |
 | <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS region in which to create the MicroVM foundation. | `string` | `"eu-west-1"` | no |
-| <a name="input_build_policy_name_prefix"></a> [build\_policy\_name\_prefix](#input\_build\_policy\_name\_prefix) | Name prefix for the Lambda MicroVM build policy. | `string` | `"github-actions-runner-microvm-build-policy-"` | no |
-| <a name="input_build_role_name_prefix"></a> [build\_role\_name\_prefix](#input\_build\_role\_name\_prefix) | Name prefix for the Lambda MicroVM build role. | `string` | `"github-actions-runner-microvm-build-"` | no |
+| <a name="input_build_policy_name_prefix"></a> [build\_policy\_name\_prefix](#input\_build\_policy\_name\_prefix) | Name prefix for the Lambda MicroVM build policy. | `string` | `"gha-microvm-build-policy-"` | no |
+| <a name="input_build_role_name_prefix"></a> [build\_role\_name\_prefix](#input\_build\_role\_name\_prefix) | Name prefix for the Lambda MicroVM build role. | `string` | `"gha-microvm-build-"` | no |
 | <a name="input_ecr_repository_arns"></a> [ecr\_repository\_arns](#input\_ecr\_repository\_arns) | Optional private ECR repository ARNs used by the image build. | `set(string)` | `[]` | no |
-| <a name="input_image_name_prefix"></a> [image\_name\_prefix](#input\_image\_name\_prefix) | Reserved Lambda MicroVM image-name namespace used by the runtime policy. | `string` | `"github-actions-runner-ubuntu-arm64"` | no |
-| <a name="input_network_connector_operator_role_name_prefix"></a> [network\_connector\_operator\_role\_name\_prefix](#input\_network\_connector\_operator\_role\_name\_prefix) | Name prefix for the Lambda Network Connector operator role. | `string` | `"github-actions-runner-microvm-network-operator-"` | no |
+| <a name="input_image_name_prefix"></a> [image\_name\_prefix](#input\_image\_name\_prefix) | Reserved Lambda MicroVM image-name namespace used by the runtime policy. | `string` | `"gha-ubuntu-arm64"` | no |
+| <a name="input_network_connector_operator_role_name_prefix"></a> [network\_connector\_operator\_role\_name\_prefix](#input\_network\_connector\_operator\_role\_name\_prefix) | Name prefix for the Lambda Network Connector operator role. | `string` | `"gha-microvm-network-operator-"` | no |
 | <a name="input_network_connectors"></a> [network\_connectors](#input\_network\_connectors) | VPC and subnet configuration for regional Lambda MicroVM egress connectors. | <pre>map(object({<br/>    name             = string<br/>    vpc_id           = string<br/>    subnet_ids       = set(string)<br/>    network_protocol = optional(string, "IPv4")<br/>  }))</pre> | n/a | yes |
 | <a name="input_tags"></a> [tags](#input\_tags) | Additional tags applied by the foundation module. | `map(string)` | <pre>{<br/>  "Component": "microvm-foundation"<br/>}</pre> | no |
-| <a name="input_usage_policy_name_prefix"></a> [usage\_policy\_name\_prefix](#input\_usage\_policy\_name\_prefix) | Name prefix for the Lambda MicroVM runtime usage policy. | `string` | `"github-actions-runner-microvm-runtime-usage-policy-"` | no |
+| <a name="input_usage_policy_name_prefix"></a> [usage\_policy\_name\_prefix](#input\_usage\_policy\_name\_prefix) | Name prefix for the Lambda MicroVM runtime usage policy. | `string` | `"gha-microvm-runtime-usage-policy-"` | no |
 
 ## Outputs
 

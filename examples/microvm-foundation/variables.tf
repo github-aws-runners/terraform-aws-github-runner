@@ -22,25 +22,25 @@ variable "tags" {
 variable "build_policy_name_prefix" {
   type        = string
   description = "Name prefix for the Lambda MicroVM build policy."
-  default     = "github-actions-runner-microvm-build-policy-"
+  default     = "gha-microvm-build-policy-"
 }
 
 variable "usage_policy_name_prefix" {
   type        = string
   description = "Name prefix for the Lambda MicroVM runtime usage policy."
-  default     = "github-actions-runner-microvm-runtime-usage-policy-"
+  default     = "gha-microvm-runtime-usage-policy-"
 }
 
 variable "build_role_name_prefix" {
   type        = string
   description = "Name prefix for the Lambda MicroVM build role."
-  default     = "github-actions-runner-microvm-build-"
+  default     = "gha-microvm-build-"
 }
 
 variable "network_connector_operator_role_name_prefix" {
   type        = string
   description = "Name prefix for the Lambda Network Connector operator role."
-  default     = "github-actions-runner-microvm-network-operator-"
+  default     = "gha-microvm-network-operator-"
 }
 
 variable "artifact_bucket_name" {
@@ -59,7 +59,7 @@ variable "artifact_retention_days" {
 variable "image_name_prefix" {
   type        = string
   description = "Reserved Lambda MicroVM image-name namespace used by the runtime policy."
-  default     = "github-actions-runner-ubuntu-arm64"
+  default     = "gha-ubuntu-arm64"
 }
 
 variable "ecr_repository_arns" {
