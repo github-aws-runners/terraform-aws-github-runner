@@ -2,7 +2,14 @@ import { captureLambdaHandler, logger } from '@aws-github-runner/aws-powertools-
 import { createRunnerConfigHousekeeper } from '@aws-github-runner/storage-providers';
 import { Context, SQSEvent, SQSRecord } from 'aws-lambda';
 
-import { addMiddleware, adjustPool, scaleDownHandler, scaleUpHandler, runnerConfigHousekeeper, jobRetryCheck } from './lambda';
+import {
+  addMiddleware,
+  adjustPool,
+  scaleDownHandler,
+  scaleUpHandler,
+  runnerConfigHousekeeper,
+  jobRetryCheck,
+} from './lambda';
 import { adjust } from './pool/pool';
 import { scaleDown } from './scale-runners/scale-down';
 import { scaleUp } from './scale-runners/scale-up';
