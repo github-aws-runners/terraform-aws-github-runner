@@ -21,8 +21,6 @@ case "$iac_binary" in
     exit 64
     ;;
 esac
-microvm_foundation_default_tfvars=false
-
 case "$example" in
   base | prebuilt | default | ephemeral | multi-runner | multi-runner-v2 | microvm-foundation | microvm)
     use_tfvars=true
@@ -77,22 +75,24 @@ lockfile_backup=""
 lockfile_existed=false
 
 if [ "$use_tfvars" = true ]; then
-  if [ -z "$tfvars_file" ]; then
+  if [ -z "$tfvars_file" ] && [ "$example" != microvm-foundation ]; then
     tfvars_file="$script_dir/$example.tfvars"
     if [ "$example" = microvm-foundation ]; then
       microvm_foundation_default_tfvars=true
     fi
   fi
 
-  case "$tfvars_file" in
-    /*) ;;
-    *) tfvars_file="$PWD/$tfvars_file" ;;
-  esac
+  if [ -n "$tfvars_file" ]; then
+    case "$tfvars_file" in
+      /*) ;;
+      *) tfvars_file="$PWD/$tfvars_file" ;;
+    esac
 
-  if [ ! -f "$tfvars_file" ] && [ "$microvm_foundation_default_tfvars" != true ]; then
-    echo "Terraform variables file not found: $tfvars_file" >&2
-    echo "Pass it as the third argument or set MINISTACK_TFVARS_FILE." >&2
-    exit 66
+    if [ ! -f "$tfvars_file" ]; then
+      echo "Terraform variables file not found: $tfvars_file" >&2
+      echo "Pass it as the third argument or set MINISTACK_TFVARS_FILE." >&2
+      exit 66
+    fi
   fi
 
 fi
@@ -406,6 +406,11 @@ $lambda_zip"
       create_ami_fixture "ministack-v2-linux-arm64" arm64 >/dev/null
       create_ami_fixture "ministack-v2-linux-x64" x86_64 >/dev/null
       create_ami_fixture "ministack-v2-windows-x64" x86_64 >/dev/null
+      ;;
+    microvm-foundation)
+      if [ -z "$tfvars_file" ]; then
+        create_microvm_foundation_fixture
+      fi
       ;;
     microvm)
       create_ssm_fixture \
