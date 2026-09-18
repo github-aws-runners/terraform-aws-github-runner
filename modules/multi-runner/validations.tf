@@ -80,14 +80,51 @@ resource "terraform_data" "validate_v2" {
     precondition {
       condition = alltrue([
         for config in local.resolved_config.multi_runner_config : (
-          try(config.orchestration_provider.webhook != null, false) &&
           try(config.compute_provider.aws.ec2 != null, false) &&
           try(length(config.compute_provider.aws.ec2.instance_types) > 0, false) &&
           try(config.compute_provider.aws.ec2.vpc_id != null, false) &&
           try(length(config.compute_provider.aws.ec2.subnet_ids) > 0, false)
         )
       ])
-      error_message = "Each experimental v2 runner lane requires a webhook provider, EC2 instance_types, vpc_id, and at least one subnet."
+      error_message = "Each experimental v2 runner lane requires the supported aws.ec2 compute provider with instance_types, vpc_id, and at least one subnet."
     }
+
+    precondition {
+      condition = alltrue([
+        for config in local.resolved_config.multi_runner_config : (
+          try(config.orchestration_provider.webhook != null, false) !=
+          try(config.orchestration_provider.scale_set != null, false)
+        )
+      ])
+      error_message = "Each experimental v2 runner lane requires exactly one orchestration provider: webhook or scale_set."
+    }
+
+    precondition {
+      condition = alltrue([
+        for config in local.resolved_config.multi_runner_config : (
+          try(config.orchestration_provider.scale_set, null) == null ? true : (
+            contains([
+              "organization",
+              "repository",
+            ], try(var.global_config_github.runner_registration_level, null)) &&
+            try(var.global_config_github.runner_owner, null) != null
+          )
+        )
+      ])
+      error_message = "Scale-set lanes require global_config_github.runner_registration_level to be organization or repository; runner_owner must be set for organization and repository registration."
+    }
+
+    precondition {
+      condition = alltrue([
+        for config in local.resolved_config.multi_runner_config : (
+          try(config.orchestration_provider.scale_set, null) == null ? true : (
+            try(var.global_config_github.app.installation_id, null) != null ||
+            try(var.global_config_github.app.installation_id_ssm, null) != null
+          )
+        )
+      ])
+      error_message = "Scale-set lanes require global_config_github.app.installation_id or global_config_github.app.installation_id_ssm."
+    }
+
   }
 }
