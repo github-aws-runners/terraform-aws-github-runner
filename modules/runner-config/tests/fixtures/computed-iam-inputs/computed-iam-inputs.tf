@@ -256,15 +256,14 @@ module "computed_microvm" {
 
   github = {
     app_parameters = {
-      key_base64 = [{
+      key_base64 = {
         name = "/github-runner/key-base64"
         arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64"
-      }]
-      id = [{
+      }
+      id = {
         name = "/github-runner/app-id"
         arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id"
-      }]
-      installation_id = [null]
+      }
     }
   }
 
