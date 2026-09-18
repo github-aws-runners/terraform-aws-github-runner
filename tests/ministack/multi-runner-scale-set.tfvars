@@ -2,7 +2,7 @@ environment = "ministack-scale-set"
 aws_region  = "eu-west-1"
 
 github = {
-  config_url         = "https://mockserver:1080"
+  url                = "https://mockserver:1080"
   ssl_verify         = false
   runner_owner       = "example"
   registration_level = "organization"

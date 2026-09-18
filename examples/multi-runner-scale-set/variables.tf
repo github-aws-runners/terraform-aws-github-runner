@@ -13,7 +13,7 @@ variable "github" {
   description = "Optional GitHub endpoint and scale-set ownership settings."
 
   type = object({
-    config_url         = optional(string, null)
+    url                = optional(string, null)
     ssl_verify         = optional(bool, true)
     runner_owner       = optional(string, null)
     registration_level = optional(string, "organization")
@@ -38,8 +38,7 @@ variable "scale_set" {
 variable "environment" {
   description = "Environment name, used as prefix."
 
-  type    = string
-  default = null
+  type = string
 }
 
 variable "aws_region" {

@@ -1,4 +1,5 @@
 name: "Terraform checks"
+
 on:
   push:
     branches:
@@ -50,15 +51,19 @@ env:
     termination-watcher
     multi-runner
     multi-runner-v2
+    multi-runner-scale-set
     external-managed-ssm-secrets
   TEST_MODULES: |
     modules/runners
     modules/multi-runner
+    modules/orchestration-providers/scale-set
+
 jobs:
   verify_modules:
     name: Verify modules (${{ matrix.iac.name }} ${{ matrix.iac.version }})
     strategy:
-      fail-fast: false
+      fail-fast: true
+      max-parallel: 1
       matrix:
         iac:
           - name: terraform
@@ -73,7 +78,9 @@ jobs:
           - name: tofu-latest
             version: latest
             command: tofu
+
     runs-on: ubuntu-latest
+
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
@@ -98,7 +105,7 @@ jobs:
           mkdir -p "$HOME/.terraform.d/plugin"
           echo "TF_PLUGIN_CACHE_DIR=$HOME/.terraform.d/plugin" >> "$GITHUB_ENV"
 
-      - name: "Fake zip files" # Validate will fail if it cannot find the zip files
+      - name: Fake zip files
         run: |
           touch lambdas/functions/webhook/webhook.zip
           touch lambdas/functions/control-plane/runners.zip
@@ -126,7 +133,10 @@ jobs:
         run: |
           printf '%s\n' "${MODULES}" | while IFS= read -r module; do
             [ -z "${module}" ] && continue
+
+            echo "::group::Running $IAC_COMMAND init for module: ${module}"
             $IAC_COMMAND -chdir="${module}" init -get -backend=false -input=false
+            echo "::endgroup::"
           done
 
       - name: Check ${{ matrix.iac.name }} formatting
@@ -135,7 +145,10 @@ jobs:
         run: |
           printf '%s\n' "${MODULES}" | while IFS= read -r module; do
             [ -z "${module}" ] && continue
+
+            echo "::group::Checking $IAC_COMMAND formatting for module: ${module}"
             $IAC_COMMAND -chdir="${module}" fmt -recursive -check=true -write=false
+            echo "::endgroup::"
           done
         continue-on-error: ${{ matrix.iac.version == 'latest' }}
 
@@ -145,7 +158,10 @@ jobs:
         run: |
           printf '%s\n' "${MODULES}" | while IFS= read -r module; do
             [ -z "${module}" ] && continue
+
+            echo "::group::Validating module: ${module}"
             $IAC_COMMAND -chdir="${module}" validate
+            echo "::endgroup::"
           done
 
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -162,15 +178,23 @@ jobs:
       - name: Run TFLint
         run: |
           tflint --init -c ${GITHUB_WORKSPACE}/.tflint.hcl
+
           printf '%s\n' "${MODULES}" | while IFS= read -r module; do
             [ -z "${module}" ] && continue
-            tflint -f compact -c ${GITHUB_WORKSPACE}/.tflint.hcl --var-file ${GITHUB_WORKSPACE}/.github/lint/tflint.tfvars --chdir "${module}"
+
+            echo "::group::Running TFLint for module: ${module}"
+            tflint -f compact \
+              -c ${GITHUB_WORKSPACE}/.tflint.hcl \
+              --var-file ${GITHUB_WORKSPACE}/.github/lint/tflint.tfvars \
+              --chdir "${module}"
+            echo "::endgroup::"
           done
 
   verify_examples:
     name: Verify examples (${{ matrix.iac.name }} ${{ matrix.iac.version }})
     strategy:
-      fail-fast: false
+      fail-fast: true
+      max-parallel: 1
       matrix:
         iac:
           - name: terraform
@@ -189,7 +213,9 @@ jobs:
             version: latest
             command: tofu
             lockfile: .terraform.lock.hcl.tofu
+
     runs-on: ubuntu-latest
+
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
@@ -235,7 +261,11 @@ jobs:
         run: |
           printf '%s\n' "${EXAMPLES}" | while IFS= read -r example; do
             [ -z "${example}" ] && continue
-            cp "examples/${example}/${IAC_LOCK_FILE}" "examples/${example}/.terraform.lock.hcl"
+
+            echo "::group::Selecting lockfile for example: ${example}"
+            cp "examples/${example}/${IAC_LOCK_FILE}" \
+              "examples/${example}/.terraform.lock.hcl"
+            echo "::endgroup::"
           done
 
       - name: ${{ matrix.iac.name }} init
@@ -244,7 +274,11 @@ jobs:
         run: |
           printf '%s\n' "${EXAMPLES}" | while IFS= read -r example; do
             [ -z "${example}" ] && continue
-            $IAC_COMMAND -chdir="examples/${example}" init -get -backend=false -input=false -lockfile=readonly
+
+            echo "::group::Running $IAC_COMMAND init for example: ${example}"
+            $IAC_COMMAND -chdir="examples/${example}" init \
+              -get -backend=false -input=false -lockfile=readonly
+            echo "::endgroup::"
           done
 
       - name: Check ${{ matrix.iac.name }} formatting
@@ -253,7 +287,11 @@ jobs:
         run: |
           printf '%s\n' "${EXAMPLES}" | while IFS= read -r example; do
             [ -z "${example}" ] && continue
-            $IAC_COMMAND -chdir="examples/${example}" fmt -recursive -check=true -write=false
+
+            echo "::group::Checking $IAC_COMMAND formatting for example: ${example}"
+            $IAC_COMMAND -chdir="examples/${example}" fmt \
+              -recursive -check=true -write=false
+            echo "::endgroup::"
           done
         continue-on-error: ${{ matrix.iac.version == 'latest' }}
 
@@ -263,7 +301,10 @@ jobs:
         run: |
           printf '%s\n' "${EXAMPLES}" | while IFS= read -r example; do
             [ -z "${example}" ] && continue
+
+            echo "::group::Validating example: ${example}"
             $IAC_COMMAND -chdir="examples/${example}" validate
+            echo "::endgroup::"
           done
 
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -280,15 +321,23 @@ jobs:
       - name: Run TFLint
         run: |
           tflint --init -c ${GITHUB_WORKSPACE}/.tflint.hcl
+
           printf '%s\n' "${EXAMPLES}" | while IFS= read -r example; do
             [ -z "${example}" ] && continue
-            tflint -f compact -c ${GITHUB_WORKSPACE}/.tflint.hcl --var-file ${GITHUB_WORKSPACE}/.github/lint/tflint.tfvars --chdir "examples/${example}"
+
+            echo "::group::Running TFLint for example: ${example}"
+            tflint -f compact \
+              -c ${GITHUB_WORKSPACE}/.tflint.hcl \
+              --var-file ${GITHUB_WORKSPACE}/.github/lint/tflint.tfvars \
+              --chdir "examples/${example}"
+            echo "::endgroup::"
           done
 
   terraform_test:
     name: ${{ matrix.iac.name }} test
     strategy:
-      fail-fast: false
+      fail-fast: true
+      max-parallel: 1
       matrix:
         iac:
           - name: terraform
@@ -297,7 +346,9 @@ jobs:
           - name: tofu
             version: latest
             command: tofu
+
     runs-on: ubuntu-latest
+
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
@@ -342,7 +393,11 @@ jobs:
         run: |
           printf '%s\n' "${TEST_MODULES}" | while IFS= read -r module; do
             [ -z "${module}" ] && continue
-            $IAC_COMMAND -chdir="${module}" init -backend=false -input=false
+
+            echo "::group::Running $IAC_COMMAND init for test module: ${module}"
+            $IAC_COMMAND -chdir="${module}" init \
+              -backend=false -input=false
+            echo "::endgroup::"
           done
 
       - name: ${{ matrix.iac.name }} test
@@ -351,5 +406,8 @@ jobs:
         run: |
           printf '%s\n' "${TEST_MODULES}" | while IFS= read -r module; do
             [ -z "${module}" ] && continue
-            $IAC_COMMAND -chdir="${module}" test -test-directory=tests
+
+            echo "::group::Running $IAC_COMMAND test for module: ${module}"
+            $IAC_COMMAND -chdir="${module}" test -test-directory=tests -compact-warnings
+            echo "::endgroup::"
           done

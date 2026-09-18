@@ -1,5 +1,5 @@
 locals {
-  environment = var.environment != null ? var.environment : "multi-runner-v2"
+  environment = var.environment
   aws_region  = var.aws_region
 }
 
@@ -42,7 +42,7 @@ module "runners" {
       webhook_secret  = random_id.random.hex
     }
     enterprise_server = {
-      url        = var.github.config_url
+      url        = var.github.url
       ssl_verify = var.github.ssl_verify
     }
     runner_owner              = var.github.runner_owner
