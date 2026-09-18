@@ -72,10 +72,11 @@ jobs:
           - ephemeral
           - multi-runner
           - multi-runner-v2
+          - migration-test
           - termination-watcher
     services:
       ministack:
-        image: ghcr.io/ministackorg/ministack:1.5.10@sha256:706b2b83c6be7e4f4dbb6a0dc28ffdebb500c6c80b64cf7938f45040fb2158e8
+        image: ghcr.io/ministackorg/ministack:1.5.11@sha256:ce3c906f2866ff953ce4c56f06b1fa3e453bc32e41c00de17b5f5a8672c5a42c
         ports:
           - 4566:4566
         env:
