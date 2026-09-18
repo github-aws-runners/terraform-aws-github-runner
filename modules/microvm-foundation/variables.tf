@@ -50,14 +50,7 @@ variable "network_connector_operator_role_name_prefix" {
 
 variable "artifact_bucket_name" {
   type        = string
-  description = "Optional name for the regional MicroVM build-artifact bucket. When null, AWS generates the bucket name."
-  default     = null
-  nullable    = true
-
-  validation {
-    condition     = var.artifact_bucket_name == null || length(var.artifact_bucket_name) > 0
-    error_message = "artifact_bucket_name must be null or a non-empty string."
-  }
+  description = "Name for the regional MicroVM build-artifact bucket."
 }
 
 variable "artifact_retention_days" {
@@ -95,7 +88,7 @@ variable "network_connectors" {
   type = map(object({
     name             = string
     vpc_id           = string
-    subnet_ids       = set(string)
+    subnet_ids       = list(string)
     network_protocol = optional(string, "IPv4")
   }))
   description = "Regional Lambda MicroVM Network Connectors keyed by a stable consumer-defined identity."
@@ -103,6 +96,15 @@ variable "network_connectors" {
   validation {
     condition     = length(var.network_connectors) > 0
     error_message = "network_connectors must contain at least one connector."
+  }
+
+  validation {
+    condition = alltrue([
+      for connector in values(var.network_connectors) : (
+        length(distinct(connector.subnet_ids)) == length(connector.subnet_ids)
+      )
+    ])
+    error_message = "Each network connector must contain distinct subnet IDs."
   }
 
   validation {

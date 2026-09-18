@@ -45,9 +45,7 @@ variable "network_connector_operator_role_name_prefix" {
 
 variable "artifact_bucket_name" {
   type        = string
-  description = "Optional globally unique S3 bucket name. When null, AWS generates the bucket name."
-  default     = null
-  nullable    = true
+  description = "Name for the regional MicroVM build-artifact bucket."
 }
 
 variable "artifact_retention_days" {
@@ -66,14 +64,4 @@ variable "ecr_repository_arns" {
   type        = set(string)
   description = "Optional private ECR repository ARNs used by the image build."
   default     = []
-}
-
-variable "network_connectors" {
-  type = map(object({
-    name             = string
-    vpc_id           = string
-    subnet_ids       = set(string)
-    network_protocol = optional(string, "IPv4")
-  }))
-  description = "VPC and subnet configuration for regional Lambda MicroVM egress connectors."
 }

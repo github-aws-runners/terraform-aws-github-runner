@@ -108,7 +108,7 @@ No modules.
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_artifact_bucket_name"></a> [artifact\_bucket\_name](#input\_artifact\_bucket\_name) | Optional name for the regional MicroVM build-artifact bucket. When null, AWS generates the bucket name. | `string` | `null` | no |
+| <a name="input_artifact_bucket_name"></a> [artifact\_bucket\_name](#input\_artifact\_bucket\_name) | Name for the regional MicroVM build-artifact bucket. | `string` | n/a | yes |
 | <a name="input_artifact_retention_days"></a> [artifact\_retention\_days](#input\_artifact\_retention\_days) | Number of days to retain current and noncurrent MicroVM build artifacts. | `number` | `30` | no |
 | <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS region in which to create the Lambda MicroVM prerequisites. | `string` | n/a | yes |
 | <a name="input_build_policy_name_prefix"></a> [build\_policy\_name\_prefix](#input\_build\_policy\_name\_prefix) | Name prefix for the Lambda MicroVM build policy. | `string` | n/a | yes |
@@ -116,7 +116,7 @@ No modules.
 | <a name="input_ecr_repository_arns"></a> [ecr\_repository\_arns](#input\_ecr\_repository\_arns) | Optional regional ECR repository ARNs from which MicroVM image builds can pull runner base images. | `set(string)` | `[]` | no |
 | <a name="input_image_name_prefix"></a> [image\_name\_prefix](#input\_image\_name\_prefix) | IAM namespace prefix reserved for externally published Lambda MicroVM image names. This module does not create or enumerate images. | `string` | n/a | yes |
 | <a name="input_network_connector_operator_role_name_prefix"></a> [network\_connector\_operator\_role\_name\_prefix](#input\_network\_connector\_operator\_role\_name\_prefix) | Name prefix for the Lambda Network Connector operator role. | `string` | n/a | yes |
-| <a name="input_network_connectors"></a> [network\_connectors](#input\_network\_connectors) | Regional Lambda MicroVM Network Connectors keyed by a stable consumer-defined identity. | <pre>map(object({<br/>    name             = string<br/>    vpc_id           = string<br/>    subnet_ids       = set(string)<br/>    network_protocol = optional(string, "IPv4")<br/>  }))</pre> | n/a | yes |
+| <a name="input_network_connectors"></a> [network\_connectors](#input\_network\_connectors) | Regional Lambda MicroVM Network Connectors keyed by a stable consumer-defined identity. | <pre>map(object({<br/>    name             = string<br/>    vpc_id           = string<br/>    subnet_ids       = list(string)<br/>    network_protocol = optional(string, "IPv4")<br/>  }))</pre> | n/a | yes |
 | <a name="input_tags"></a> [tags](#input\_tags) | A map of module-specific tags to apply to resources. | `map(string)` | n/a | yes |
 | <a name="input_usage_policy_name_prefix"></a> [usage\_policy\_name\_prefix](#input\_usage\_policy\_name\_prefix) | Name prefix for the Lambda MicroVM runtime usage policy. | `string` | n/a | yes |
 

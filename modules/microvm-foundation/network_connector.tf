@@ -16,8 +16,8 @@ resource "aws_lambdacore_network_connector" "connector" {
   lifecycle {
     precondition {
       condition = alltrue([
-        for subnet_id in each.value.subnet_ids :
-        data.aws_subnet.selected["${each.key}/${subnet_id}"].vpc_id == each.value.vpc_id
+        for subnet_index, subnet_id in each.value.subnet_ids :
+        data.aws_subnet.selected["${each.key}/${subnet_index}"].vpc_id == each.value.vpc_id
       ])
       error_message = "Every subnet in network_connectors[${each.key}] must belong to its configured vpc_id."
     }
