@@ -50,14 +50,7 @@ variable "network_connector_operator_role_name_prefix" {
 
 variable "artifact_bucket_name" {
   type        = string
-  description = "Optional name for the regional MicroVM build-artifact bucket. When null, AWS generates the bucket name."
-  default     = null
-  nullable    = true
-
-  validation {
-    condition     = var.artifact_bucket_name == null || length(var.artifact_bucket_name) > 0
-    error_message = "artifact_bucket_name must be null or a non-empty string."
-  }
+  description = "Name for the regional MicroVM build-artifact bucket."
 }
 
 variable "artifact_retention_days" {
