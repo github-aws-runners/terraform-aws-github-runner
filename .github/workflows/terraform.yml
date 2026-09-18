@@ -20,6 +20,8 @@ env:
     modules/ami-housekeeper
     modules/compute-providers/aws/ec2
     modules/compute-providers/aws/ec2/trust-policy
+    modules/compute-providers/aws/microvm
+    modules/compute-providers/aws/microvm/trust-policy
     modules/download-lambda
     modules/lambda
     modules/multi-runner
@@ -47,6 +49,8 @@ env:
     prebuilt
     ephemeral
     termination-watcher
+    microvm
+    microvm-foundation
     multi-runner
     multi-runner-v2
     external-managed-ssm-secrets
