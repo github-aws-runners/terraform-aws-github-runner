@@ -2,6 +2,7 @@ environment = "ms-multi"
 aws_region  = "eu-west-1"
 
 github_app = {
-  id         = "0"
-  key_base64 = "ministack-invalid-key"
+  id             = "0"
+  key_base64     = "ministack-invalid-key"
+  webhook_secret = "ministack-invalid-webhook-secret"
 }
