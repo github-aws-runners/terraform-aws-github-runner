@@ -78,13 +78,6 @@ resource "terraform_data" "validate_config" {
     }
 
     precondition {
-      condition = var.compute_provider.aws.microvm == null ? true : (
-        var.runner.os == "linux" && var.runner.architecture == "arm64"
-      )
-      error_message = "compute_provider.aws.microvm requires runner.os = linux and runner.architecture = arm64."
-    }
-
-    precondition {
       condition = var.compute_provider_key == null || try(
         local.compute_providers[var.compute_provider_key] != null,
         false,
@@ -98,17 +91,6 @@ resource "terraform_data" "validate_config" {
         if provider_config != null
       ]) == 1
       error_message = "Exactly one orchestration provider must be configured. Supported providers: webhook."
-    }
-
-    precondition {
-      condition = var.compute_provider.aws.microvm == null ? true : (
-        try(var.orchestration_provider.webhook.runner.ephemeral, false) &&
-        try(coalesce(
-          var.orchestration_provider.webhook.runner.jit_config_enabled,
-          var.orchestration_provider.webhook.runner.ephemeral,
-        ), false)
-      )
-      error_message = "compute_provider.aws.microvm requires webhook orchestration with ephemeral and JIT runner configuration enabled."
     }
 
     precondition {
