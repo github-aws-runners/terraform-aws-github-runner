@@ -751,6 +751,10 @@ run "scale_set_lane_requires_owner_for_non_enterprise_registration" {
 run "scale_set_lane_requires_installation_id" {
   command = plan
 
+  plan_options {
+    target = [terraform_data.validate_v2]
+  }
+
   variables {
     experimental_features = ["multi-runner-v2"]
 
