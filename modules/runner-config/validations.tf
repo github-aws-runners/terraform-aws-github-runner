@@ -74,7 +74,7 @@ resource "terraform_data" "validate_config" {
         for provider_key, provider_config in local.compute_providers : provider_key
         if provider_config != null
       ]) == 1
-      error_message = "Exactly one compute-provider block must be set. Supported compute-provider blocks: aws.ec2."
+      error_message = "Exactly one compute-provider block must be set. Supported compute-provider blocks: aws.ec2, aws.microvm."
     }
 
     precondition {

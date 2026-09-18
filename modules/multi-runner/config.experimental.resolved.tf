@@ -484,6 +484,74 @@ locals {
               }
               tags = merge(local.normalized_config.compute_provider.aws.ec2.tags, v.compute_provider.aws.ec2.tags)
             })
+            microvm = try(v.compute_provider.aws.microvm, null) == null ? null : merge(
+              v.compute_provider.aws.microvm,
+              {
+                image_arn = try(coalesce(
+                  v.compute_provider.aws.microvm.image_arn,
+                  try(local.normalized_config.compute_provider.aws.microvm.image_arn, null),
+                ), null)
+
+                image_version = try(coalesce(
+                  v.compute_provider.aws.microvm.image_version,
+                  try(local.normalized_config.compute_provider.aws.microvm.image_version, null),
+                ), null)
+
+                ingress_network_connectors = v.compute_provider.aws.microvm.ingress_network_connectors != null ? (
+                  v.compute_provider.aws.microvm.ingress_network_connectors
+                ) : try(local.normalized_config.compute_provider.aws.microvm.ingress_network_connectors, null)
+
+                egress_network_connectors = v.compute_provider.aws.microvm.egress_network_connectors != null ? (
+                  v.compute_provider.aws.microvm.egress_network_connectors
+                ) : try(local.normalized_config.compute_provider.aws.microvm.egress_network_connectors, null)
+
+                cloudwatch_agent = {
+                  enabled = coalesce(
+                    v.compute_provider.aws.microvm.cloudwatch_agent.enabled,
+                    try(local.normalized_config.compute_provider.aws.microvm.cloudwatch_agent.enabled, null),
+                  )
+
+                  config = try(coalesce(
+                    v.compute_provider.aws.microvm.cloudwatch_agent.config,
+                    try(local.normalized_config.compute_provider.aws.microvm.cloudwatch_agent.config, null),
+                  ), null)
+                }
+
+                log_files = v.compute_provider.aws.microvm.log_files != null ? (
+                  v.compute_provider.aws.microvm.log_files
+                ) : try(local.normalized_config.compute_provider.aws.microvm.log_files, null)
+
+                environment_variables = merge(
+                  try(local.normalized_config.compute_provider.aws.microvm.environment_variables, {}),
+                  v.compute_provider.aws.microvm.environment_variables,
+                )
+
+                iam = {
+                  resource_arns = {
+                    images = v.compute_provider.aws.microvm.iam.resource_arns.images != null ? (
+                      v.compute_provider.aws.microvm.iam.resource_arns.images
+                    ) : try(local.normalized_config.compute_provider.aws.microvm.iam.resource_arns.images, null)
+                  }
+
+                  additional_policy_json = {
+                    scale_up = try(coalesce(
+                      v.compute_provider.aws.microvm.iam.additional_policy_json.scale_up,
+                      try(local.normalized_config.compute_provider.aws.microvm.iam.additional_policy_json.scale_up, null),
+                    ), null)
+                  }
+
+                  managed_policies = {
+                    scale_up = v.compute_provider.aws.microvm.iam.managed_policies.scale_up != null ? (
+                      v.compute_provider.aws.microvm.iam.managed_policies.scale_up
+                    ) : try(local.normalized_config.compute_provider.aws.microvm.iam.managed_policies.scale_up, null)
+
+                    pool = v.compute_provider.aws.microvm.iam.managed_policies.pool != null ? (
+                      v.compute_provider.aws.microvm.iam.managed_policies.pool
+                    ) : try(local.normalized_config.compute_provider.aws.microvm.iam.managed_policies.pool, null)
+                  }
+                }
+              },
+            )
           }
         }
       })
