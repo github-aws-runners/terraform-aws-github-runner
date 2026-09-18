@@ -21,9 +21,10 @@ case "$iac_binary" in
     exit 64
     ;;
 esac
+microvm_foundation_default_tfvars=false
 
 case "$example" in
-  base | prebuilt | default | ephemeral | multi-runner | multi-runner-v2)
+  base | prebuilt | default | ephemeral | multi-runner | multi-runner-v2 | microvm-foundation | microvm)
     use_tfvars=true
     ;;
   migration-test)
@@ -33,7 +34,7 @@ case "$example" in
     use_tfvars=false
     ;;
   *)
-  echo "Supported examples for the runner are: base, prebuilt, default, ephemeral, multi-runner, multi-runner-v2, migration-test, termination-watcher" >&2
+  echo "Supported examples for the runner are: base, prebuilt, default, ephemeral, multi-runner, multi-runner-v2, microvm-foundation, microvm, migration-test, termination-watcher" >&2
   exit 64
   ;;
 esac
@@ -41,7 +42,7 @@ esac
 case "$action" in
   init | plan | apply | destroy) ;;
   *)
-    echo "Usage: $0 {init|plan|apply|destroy} {base|prebuilt|default|ephemeral|multi-runner|multi-runner-v2|migration-test|termination-watcher} [TFVARS_FILE]" >&2
+    echo "Usage: $0 {init|plan|apply|destroy} {base|prebuilt|default|ephemeral|multi-runner|multi-runner-v2|microvm-foundation|microvm|migration-test|termination-watcher} [TFVARS_FILE]" >&2
     exit 64
     ;;
 esac
@@ -78,6 +79,9 @@ lockfile_existed=false
 if [ "$use_tfvars" = true ]; then
   if [ -z "$tfvars_file" ]; then
     tfvars_file="$script_dir/$example.tfvars"
+    if [ "$example" = microvm-foundation ]; then
+      microvm_foundation_default_tfvars=true
+    fi
   fi
 
   case "$tfvars_file" in
@@ -85,18 +89,21 @@ if [ "$use_tfvars" = true ]; then
     *) tfvars_file="$PWD/$tfvars_file" ;;
   esac
 
-  if [ ! -f "$tfvars_file" ]; then
+  if [ ! -f "$tfvars_file" ] && [ "$microvm_foundation_default_tfvars" != true ]; then
     echo "Terraform variables file not found: $tfvars_file" >&2
     echo "Pass it as the third argument or set MINISTACK_TFVARS_FILE." >&2
     exit 66
   fi
+
 fi
 
 lambda_fixture_dir=""
 lambda_created_paths=""
 ami_created_ids=""
 ssm_created_names=""
+s3_created_buckets=""
 override_created_paths=""
+tfvars_created_paths=""
 lambda_zip_paths="
 $source_root/lambdas/functions/ami-housekeeper/ami-housekeeper.zip
 $source_root/lambdas/functions/control-plane/runners.zip
@@ -114,8 +121,18 @@ cleanup() {
     rm -f "$override_file"
   done
 
+  for fixture_file in $tfvars_created_paths; do
+    rm -f "$fixture_file"
+  done
+
   for name in $ssm_created_names; do
     ministack_aws ssm delete-parameter --name "$name" >/dev/null 2>&1 || true
+  done
+
+  for bucket in $s3_created_buckets; do
+    ministack_aws s3api delete-object --bucket "$bucket" --key runners.zip >/dev/null 2>&1 || true
+    ministack_aws s3api delete-object --bucket "$bucket" --key webhook.zip >/dev/null 2>&1 || true
+    ministack_aws s3api delete-bucket --bucket "$bucket" >/dev/null 2>&1 || true
   done
 
   for image_id in $ami_created_ids; do
@@ -225,6 +242,67 @@ create_ssm_fixture() {
 $name"
 }
 
+create_microvm_foundation_fixture() {
+  vpc_id=$(ministack_aws ec2 describe-vpcs \
+    --filters Name=is-default,Values=true \
+    --query 'Vpcs[0].VpcId' \
+    --output text)
+  subnet_id=$(ministack_aws ec2 describe-subnets \
+    --filters "Name=vpc-id,Values=$vpc_id" "Name=state,Values=available" \
+    --query 'Subnets[0].SubnetId' \
+    --output text)
+
+  case "$vpc_id" in
+    vpc-[0-9a-f]*) ;;
+    *)
+      echo "MiniStack default VPC fixture was not found." >&2
+      exit 70
+      ;;
+  esac
+
+  case "$subnet_id" in
+    subnet-[0-9a-f]*) ;;
+    *)
+      echo "MiniStack default subnet fixture was not found." >&2
+      exit 70
+      ;;
+  esac
+
+  fixture_tfvars=$(mktemp "${TMPDIR:-/tmp}/terraform-aws-github-runner-microvm-foundation.XXXXXX")
+  printf '%s\n' \
+    "aws_region = \"$AWS_DEFAULT_REGION\"" \
+    '' \
+    'network_connectors = {' \
+    '  ministack = {' \
+    '    name        = "ministack"' \
+    "    vpc_id      = \"$vpc_id\"" \
+    "    subnet_ids  = [\"$subnet_id\"]" \
+    '  }' \
+    '}' > "$fixture_tfvars"
+  tfvars_created_paths="$tfvars_created_paths
+$fixture_tfvars"
+  tfvars_file="$fixture_tfvars"
+}
+
+create_s3_fixture() {
+  bucket="$1"
+  key="$2"
+  file="$3"
+
+  if ! ministack_aws s3api head-bucket --bucket "$bucket" >/dev/null 2>&1; then
+    ministack_aws s3api create-bucket \
+      --bucket "$bucket" \
+      --create-bucket-configuration LocationConstraint="$AWS_DEFAULT_REGION" >/dev/null
+    s3_created_buckets="$s3_created_buckets
+$bucket"
+  fi
+
+  ministack_aws s3api put-object \
+    --bucket "$bucket" \
+    --key "$key" \
+    --body "$file" >/dev/null
+}
+
 create_ami_override() {
   override_file="$example_root/zz_ministack_ami_override.tf"
   printf '%s\n' \
@@ -288,6 +366,10 @@ create_ministack_fixtures() {
 
   wait_for_ministack
 
+  if [ "$microvm_foundation_default_tfvars" = true ]; then
+    create_microvm_foundation_fixture
+  fi
+
   lambda_fixture_dir=$(mktemp -d "${TMPDIR:-/tmp}/terraform-aws-github-runner-ministack-lambda.XXXXXX")
   printf '%s\n' 'exports.handler = async () => ({ statusCode: 200, body: "ministack" });' > "$lambda_fixture_dir/index.js"
   (CDPATH='' cd -- "$lambda_fixture_dir" && zip -q ministack-lambda.zip index.js)
@@ -324,6 +406,25 @@ $lambda_zip"
       create_ami_fixture "ministack-v2-linux-arm64" arm64 >/dev/null
       create_ami_fixture "ministack-v2-linux-x64" x86_64 >/dev/null
       create_ami_fixture "ministack-v2-windows-x64" x86_64 >/dev/null
+      ;;
+    microvm)
+      create_ssm_fixture \
+        "/ministack/microvm/github-app-key" \
+        "test-only"
+      create_ssm_fixture \
+        "/ministack/microvm/github-app-id" \
+        "123456"
+      create_ssm_fixture \
+        "/ministack/microvm/webhook-secret" \
+        "test-only"
+      create_s3_fixture \
+        "github-actions-runner-microvm-ministack" \
+        "runners.zip" \
+        "$lambda_fixture_dir/ministack-lambda.zip"
+      create_s3_fixture \
+        "github-actions-runner-microvm-ministack" \
+        "webhook.zip" \
+        "$lambda_fixture_dir/ministack-lambda.zip"
       ;;
   esac
 }
