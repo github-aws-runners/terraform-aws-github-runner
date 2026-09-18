@@ -115,11 +115,15 @@ resource "terraform_data" "validate_v2" {
     }
 
     precondition {
-      condition = (
-        length(local.scale_set_runner_configs) == 0 ||
-        local.primary_app_installation_id != null
-      )
-      error_message = "Scale-set runner configurations require a resolved primary GitHub App installation ID."
+      condition = alltrue([
+        for config in local.resolved_config.multi_runner_config : (
+          try(config.orchestration_provider.scale_set, null) == null ? true : (
+            try(var.global_config_github.app.installation_id, null) != null ||
+            try(var.global_config_github.app.installation_id_ssm, null) != null
+          )
+        )
+      ])
+      error_message = "Scale-set lanes require global_config_github.app.installation_id or global_config_github.app.installation_id_ssm."
     }
 
   }
