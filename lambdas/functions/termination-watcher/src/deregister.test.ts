@@ -1,13 +1,17 @@
 import { Instance } from '@aws-sdk/client-ec2';
+import { createCommonStorage, type GitHubAppCredentialsStore } from '@aws-github-runner/storage-providers';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { deregisterRunner, createThrottleOptions } from './deregister';
+import { deregisterRunner, createThrottleOptions, resetAppCredentialsCache } from './deregister';
 import { Config } from './ConfigResolver';
 import type { EndpointDefaults } from '@octokit/types';
 
-const mockGetParameter = vi.fn();
-vi.mock('@aws-github-runner/aws-ssm-util', () => ({
-  getParameter: (...args: unknown[]) => mockGetParameter(...args),
+vi.mock('@aws-github-runner/storage-providers', () => ({
+  createCommonStorage: vi.fn(),
 }));
+
+const mockedCreateCommonStorage = vi.mocked(createCommonStorage);
+const mockGetCredentials = vi.fn<GitHubAppCredentialsStore['get']>();
+const credentialsStore = { get: mockGetCredentials } satisfies GitHubAppCredentialsStore;
 
 const mockCreateAppAuth = vi.fn();
 vi.mock('@octokit/auth-app', () => ({
@@ -89,12 +93,7 @@ const repoInstance: Instance = {
 };
 
 function setupAuthMocks() {
-  const appPrivateKey = Buffer.from('fake-private-key').toString('base64');
-  mockGetParameter.mockImplementation((name: string) => {
-    if (name === 'github-app-id') return Promise.resolve('12345');
-    if (name === 'github-app-key') return Promise.resolve(appPrivateKey);
-    return Promise.reject(new Error(`Unknown parameter: ${name}`));
-  });
+  mockGetCredentials.mockResolvedValue([{ appId: 12345, privateKey: 'fake-private-key' }]);
 
   // App auth returns app token
   const mockAuth = vi.fn();
@@ -110,20 +109,20 @@ function setupAuthMocks() {
 describe('deregisterRunner', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.PARAMETER_GITHUB_APP_ID_NAME = 'github-app-id';
-    process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME = 'github-app-key';
+    resetAppCredentialsCache();
+    mockedCreateCommonStorage.mockReturnValue({ githubAppCredentials: credentialsStore });
     setupAuthMocks();
   });
 
   it('should skip deregistration when disabled', async () => {
     await deregisterRunner(orgInstance, { ...baseConfig, enableRunnerDeregistration: false });
-    expect(mockGetParameter).not.toHaveBeenCalled();
+    expect(mockGetCredentials).not.toHaveBeenCalled();
   });
 
   it('should skip deregistration when instance ID is missing', async () => {
     const instance: Instance = { ...orgInstance, InstanceId: undefined };
     await deregisterRunner(instance, baseConfig);
-    expect(mockGetParameter).not.toHaveBeenCalled();
+    expect(mockGetCredentials).not.toHaveBeenCalled();
   });
 
   it('should skip deregistration when ghr:Owner tag is missing', async () => {
