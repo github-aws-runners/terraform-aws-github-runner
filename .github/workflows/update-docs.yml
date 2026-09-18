@@ -20,6 +20,7 @@ jobs:
     permissions:
       contents: write # for terraform-docs/gh-actions to commit documentation updates
       pull-requests: write # for peter-evans/create-pull-request to create PRs with doc updates
+      id-token: write # for AWS OIDC role assumption to fetch the SSH signing key (forks)
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
@@ -82,8 +83,48 @@ jobs:
         uses: terraform-docs/gh-actions@6de6da0cefcc6b4b7a5cbea4d79d97060733093c # v1.4.1
         with:
           find-dir: .
-          git-commit-message: "docs: auto update terraform docs"
-          git-push: ${{ github.ref != 'refs/heads/main' || github.repository_owner != 'github-aws-runners' }}
+          git-push: false
+
+      - name: Configure AWS credentials (forks)
+        if: github.repository_owner != 'github-aws-runners'
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: arn:aws:iam::127071149305:role/github-actions-infra
+          role-session-name: github-ssh-signing
+          aws-region: us-east-1
+
+      - name: Get SSH signing key from AWS Secrets Manager (forks)
+        if: github.repository_owner != 'github-aws-runners'
+        uses: aws-actions/aws-secretsmanager-get-secrets@2297f9a879480a9e3af9b293ed15c70caf8e1c88 # v3.0.2
+        with:
+          parse-json-secrets: true
+          secret-ids: |
+            SSH_SIGNING, lemoncash_prd_gh_signing_key
+
+      - name: Commit and push docs changes with SSH signing (forks)
+        if: github.repository_owner != 'github-aws-runners'
+        run: |
+          if git diff --quiet; then
+            echo "No documentation changes to commit."
+            exit 0
+          fi
+
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          echo "${{ env.SSH_SIGNING_PRIVATE_KEY }}" > ~/.ssh/signing_key
+          chmod 600 ~/.ssh/signing_key
+          echo "${{ env.SSH_SIGNING_PUBLIC_KEY }}" > ~/.ssh/signing_key.pub
+          chmod 644 ~/.ssh/signing_key.pub
+
+          git config --global gpg.format ssh
+          git config --global user.signingkey ~/.ssh/signing_key.pub
+          git config --global commit.gpgsign true
+          git config --global user.name "${{ env.SSH_SIGNING_USER_NAME }}"
+          git config --global user.email "${{ env.SSH_SIGNING_USER_EMAIL }}"
+
+          git add -A
+          git commit -S -m "docs: auto update terraform docs"
+          git push origin "HEAD:${{ github.ref_name }}"
 
       # change docs via PR in case of locked main branch
       - name: Create Pull Request (main branch only)
