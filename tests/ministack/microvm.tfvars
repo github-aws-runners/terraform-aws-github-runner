@@ -3,8 +3,9 @@ aws_region  = "eu-west-1"
 environment = "microvm-ministack"
 
 github_app = {
-  id         = "your-github-app-id"
-  key_base64 = "your-github-app-key-base64"
+  id             = "2"
+  key_base64     = "ministack-invalid-key"
+  webhook_secret = "ministack-invalid-webhook-secret"
 }
 
 lambda_artifact_bucket       = "github-actions-runner-microvm-ministack"
