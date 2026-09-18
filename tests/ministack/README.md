@@ -69,6 +69,12 @@ verifies the GitHub API calls and EC2 termination.
 The pool schedule is configured for a far-future date because the test invokes
 the Lambda directly.
 
+The MicroVM smoke job runs the same webhook and pool lifecycle chains against
+the `microvm` example. It sends the exact `self-hosted`, `linux`, `arm64`, and
+`microvm` matcher labels, verifies `RunMicrovm` resources and durable SSM
+ownership metadata, and confirms scale-down reaches `TerminateMicrovm` for
+both webhook- and pool-created runners.
+
 Build the two real Lambda distributions, start MiniStack, and run:
 
 ```sh
@@ -76,6 +82,8 @@ Build the two real Lambda distributions, start MiniStack, and run:
 (cd lambdas && yarn workspace @aws-github-runner/webhook dist)
 (cd lambdas && yarn workspace @aws-github-runner/control-plane dist)
 sh tests/ministack/run-smoke.sh
+# In CI, the MicroVM-specific job runs:
+sh tests/ministack/run-microvm-smoke.sh
 ```
 
 The smoke script generates a temporary RSA key and Terraform variables file,

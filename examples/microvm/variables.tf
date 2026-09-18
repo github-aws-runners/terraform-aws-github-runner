@@ -14,8 +14,9 @@ variable "github_app" {
   description = "GitHub for API usages."
 
   type = object({
-    id         = string
-    key_base64 = string
+    id             = string
+    key_base64     = string
+    webhook_secret = string
   })
 }
 

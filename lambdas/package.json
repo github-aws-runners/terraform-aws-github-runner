@@ -3,7 +3,8 @@
   "private": true,
   "workspaces": [
     "functions/*",
-    "libs/*"
+    "libs/*",
+    "services/*"
   ],
   "scripts": {
     "build": "nx run-many --target=build --all",
