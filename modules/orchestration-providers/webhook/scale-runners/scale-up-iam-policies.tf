@@ -7,10 +7,10 @@ data "aws_iam_policy_document" "scale_up_common" {
       "ssm:AddTagsToResource",
     ]
     resources = [
-      var.config.ssm.token_path_arn,
-      "${var.config.ssm.token_path_arn}/*",
-      var.config.ssm.config_path_arn,
-      "${var.config.ssm.config_path_arn}/*",
+      var.storage_provider.aws.ssm.token_path_arn,
+      "${var.storage_provider.aws.ssm.token_path_arn}/*",
+      var.storage_provider.aws.ssm.config_path_arn,
+      "${var.storage_provider.aws.ssm.config_path_arn}/*",
     ]
   }
 
@@ -29,11 +29,13 @@ data "aws_iam_policy_document" "scale_up_common" {
       var.config.github.app_parameters.additional_app_parameter_arns,
       var.config.github.app_parameters.additional_apps_manifest != null ? [var.config.github.app_parameters.additional_apps_manifest.arn] : [],
       [
-        var.config.ssm.config_path_arn,
-        "${var.config.ssm.config_path_arn}/*",
+        var.storage_provider.aws.ssm.config_path_arn,
+        "${var.storage_provider.aws.ssm.config_path_arn}/*",
       ],
     )
   }
+
+
 
   statement {
     sid    = "WebhookScaleUpConsumeBuildQueue"
@@ -47,7 +49,7 @@ data "aws_iam_policy_document" "scale_up_common" {
   }
 
   dynamic "statement" {
-    for_each = var.config.ssm.kms_key_id == null ? [] : [var.config.ssm.kms_key_id]
+    for_each = var.storage_provider.aws.ssm.kms_key_id != null ? [var.storage_provider.aws.ssm.kms_key_id] : []
     iterator = kms_key
 
     content {
@@ -72,10 +74,11 @@ data "aws_iam_policy_document" "scale_up_common" {
 }
 
 data "aws_iam_policy_document" "scale_up" {
-  source_policy_documents = [
+  source_policy_documents = compact([
     data.aws_iam_policy_document.scale_up_common.json,
     var.runner_provider.scale_up.iam_policy_json,
-  ]
+    var.storage_provider.scale_up.iam_policy_json,
+  ])
 }
 
 data "aws_iam_policy_document" "scale_up_logging" {

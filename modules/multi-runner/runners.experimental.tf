@@ -38,7 +38,7 @@ module "runner_configs" {
       job_retry = each.value.orchestration_provider.webhook.job_retry
     }
   }
-  ssm              = each.value.ssm
+  storage_provider = each.value.storage_provider
   observability    = each.value.observability
   compute_provider = each.value.compute_provider
 }
