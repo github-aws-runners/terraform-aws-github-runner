@@ -42,7 +42,7 @@ locals {
 
 module "orchestration_scale_set" {
   source = "../orchestration-providers/scale-set"
-  count  = length(local.scale_set_runner_configs) > 0 && local.primary_app_installation_id != null ? 1 : 0
+  count  = length(local.scale_set_runner_configs) > 0 ? 1 : 0
 
   prefix         = var.prefix
   log_level      = var.global_config_observability.logs.level
