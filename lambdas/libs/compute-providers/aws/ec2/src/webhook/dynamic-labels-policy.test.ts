@@ -118,4 +118,33 @@ describe('violationsAgainstPolicy', () => {
     expect(v[0].label).toBe('ghr-ec2-instance-type:r5.large');
     expect(v[1].label).toBe('ghr-ec2-image-id:ami-x');
   });
+
+  it('unset or empty allowed_keys does not gate any key', () => {
+    expect(violationsAgainstPolicy(['ghr-ec2-instance-type:m5.large'], {})).toEqual([]);
+    expect(violationsAgainstPolicy(['ghr-ec2-instance-type:m5.large'], { allowed_keys: [] })).toEqual([]);
+  });
+
+  it('flags keys not in a non-empty allowed_keys', () => {
+    const policy: Ec2DynamicLabelsPolicy = { allowed_keys: ['instance-type'] };
+    const v = violationsAgainstPolicy(['ghr-ec2-instance-type:m5.large', 'ghr-ec2-image-id:ami-1'], policy);
+    expect(v).toHaveLength(1);
+    expect(v[0].label).toBe('ghr-ec2-image-id:ami-1');
+  });
+
+  it('fails closed when both allowed_keys and blocked_keys are set', () => {
+    const policy: Ec2DynamicLabelsPolicy = { allowed_keys: ['image-id'], blocked_keys: ['instance-type'] };
+    const v = violationsAgainstPolicy(['ghr-ec2-image-id:ami-1', 'ghr-ec2-instance-type:m5.large'], policy);
+    expect(v).toHaveLength(2);
+    expect(v.every((violation) => violation.reason === 'policy sets both allowed_keys and blocked_keys')).toBe(true);
+  });
+
+  it('a key allowed by allowed_keys is still subject to restricted_keys', () => {
+    const policy: Ec2DynamicLabelsPolicy = {
+      allowed_keys: ['instance-type'],
+      restricted_keys: { 'instance-type': { allowed: ['m5.*'] } },
+    };
+    const v = violationsAgainstPolicy(['ghr-ec2-instance-type:r5.large'], policy);
+    expect(v).toHaveLength(1);
+    expect(v[0].label).toBe('ghr-ec2-instance-type:r5.large');
+  });
 });
