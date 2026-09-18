@@ -52,7 +52,7 @@ No resources.
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_artifact_bucket_name"></a> [artifact\_bucket\_name](#input\_artifact\_bucket\_name) | Optional globally unique S3 bucket name. When null, AWS generates the bucket name. | `string` | `null` | no |
+| <a name="input_artifact_bucket_name"></a> [artifact\_bucket\_name](#input\_artifact\_bucket\_name) | Name for the regional MicroVM build-artifact bucket. | `string` | n/a | yes |
 | <a name="input_artifact_retention_days"></a> [artifact\_retention\_days](#input\_artifact\_retention\_days) | Number of days to retain current and noncurrent build artifacts. | `number` | `30` | no |
 | <a name="input_aws_profile"></a> [aws\_profile](#input\_aws\_profile) | Optional local AWS CLI profile. Leave null when credentials are provided by the environment or role. | `string` | `null` | no |
 | <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS region in which to create the MicroVM foundation. | `string` | `"eu-west-1"` | no |
