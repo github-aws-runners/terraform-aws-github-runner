@@ -146,26 +146,30 @@ variables {
     }
   }
 
-  ssm = {
-    paths = {
-      root   = "/github-runner"
-      tokens = "tokens"
-      config = "config"
-    }
-    tags = {
-      precedence = "ssm"
-      ssm        = "yes"
-    }
-    parameters = {
-      tags = {
-        precedence = "ssm-parameter"
-        parameter  = "yes"
-      }
-    }
-    housekeeper = {
-      tags = {
-        precedence  = "ssm-housekeeper"
-        housekeeper = "yes"
+  storage_provider = {
+    aws = {
+      ssm = {
+        paths = {
+          root   = "/github-runner"
+          tokens = "tokens"
+          config = "config"
+        }
+        tags = {
+          precedence = "ssm"
+          ssm        = "yes"
+        }
+        parameters = {
+          tags = {
+            precedence = "ssm-parameter"
+            parameter  = "yes"
+          }
+        }
+        housekeeper = {
+          tags = {
+            precedence  = "ssm-housekeeper"
+            housekeeper = "yes"
+          }
+        }
       }
     }
   }

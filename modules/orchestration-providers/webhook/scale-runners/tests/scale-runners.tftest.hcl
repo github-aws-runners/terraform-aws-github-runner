@@ -15,6 +15,22 @@ mock_provider "aws" {
 variables {
   aws_partition = "aws-us-gov"
 
+  storage_provider = {
+    aws = {
+      ssm = {
+        token_path      = "/github-runner/tokens"
+        token_path_arn  = "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/tokens"
+        config_path     = "/github-runner/config"
+        config_path_arn = "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/config"
+        parameter_store_tags = jsonencode([{
+          Key   = "Environment"
+          Value = "test"
+        }])
+        kms_key_id = "arn:aws-us-gov:kms:us-gov-west-1:123456789012:key/scale-runners-test"
+      }
+    }
+  }
+
   config = {
     prefix = "scale-runners-test"
     lambda = {
@@ -88,17 +104,6 @@ variables {
         batch_size                         = 25
         maximum_batching_window_in_seconds = 5
       }
-    }
-    ssm = {
-      token_path      = "/github-runner/tokens"
-      token_path_arn  = "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/tokens"
-      config_path     = "/github-runner/config"
-      config_path_arn = "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/config"
-      parameter_store_tags = jsonencode([{
-        Key   = "Environment"
-        Value = "test"
-      }])
-      kms_key_id = "arn:aws-us-gov:kms:us-gov-west-1:123456789012:key/scale-runners-test"
     }
     observability = {
       logs = {
@@ -408,8 +413,12 @@ run "omits_optional_kms_statements" {
       queue = merge(var.config.queue, {
         kms_key_id = null
       })
-      ssm = merge(var.config.ssm, {
-        kms_key_id = null
+    })
+    storage_provider = merge(var.storage_provider, {
+      aws = merge(var.storage_provider.aws, {
+        ssm = merge(var.storage_provider.aws.ssm, {
+          kms_key_id = null
+        })
       })
     })
   }

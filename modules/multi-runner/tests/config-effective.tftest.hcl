@@ -200,13 +200,17 @@ run "v2_effective_config_contains_derived_values" {
       }
     }
 
-    global_config_ssm = {
-      kms_key_id = "kms-global-ssm"
-      housekeeper = {
-        lambda = {
-          artifact = {
-            s3 = {
-              key = "global-housekeeper.zip"
+    global_storage_provider = {
+      aws = {
+        ssm = {
+          kms_key_id = "kms-global-ssm"
+          housekeeper = {
+            lambda = {
+              artifact = {
+                s3 = {
+                  key = "global-housekeeper.zip"
+                }
+              }
             }
           }
         }
@@ -270,7 +274,7 @@ run "v2_effective_config_contains_derived_values" {
       && local.effective_config.multi_runner_config["lane"].lambda.artifact.s3.bucket == "global-lambda-artifacts"
       && local.effective_config.multi_runner_config["lane"].orchestration_provider.webhook.lambda.artifact.s3.key == "global-runners.zip"
       && local.effective_config.multi_runner_config["lane"].orchestration_provider.webhook.queue.kms_key_id == "kms-global-queue"
-      && local.effective_config.multi_runner_config["lane"].ssm.kms_key_id == "kms-global-ssm"
+      && local.effective_config.multi_runner_config["lane"].storage_provider.aws.ssm.kms_key_id == "kms-global-ssm"
       && toset(keys(local.resolved_runner_binary_targets_by_key)) == toset(["linux_x64"])
     )
     error_message = "The effective v2 configuration must contain global values, derived labels, and the resolved runner-binary target map."

@@ -121,12 +121,16 @@ variables {
     }
   }
 
-  global_config_ssm = {
-    housekeeper = {
-      lambda = {
-        artifact = {
-          s3 = {
-            key = "runners.zip"
+  global_storage_provider = {
+    aws = {
+      ssm = {
+        housekeeper = {
+          lambda = {
+            artifact = {
+              s3 = {
+                key = "runners.zip"
+              }
+            }
           }
         }
       }
@@ -392,11 +396,11 @@ run "empty_v2_map_translates_stable_inputs" {
       && local.normalized_config.orchestration_provider.webhook.lambda.webhook.memory_size == var.webhook_lambda_memory_size
       && local.normalized_config.orchestration_provider.webhook.lambda.pool.timeout == var.pool_lambda_timeout
       && jsonencode(local.normalized_config.orchestration_provider.webhook.queue.encryption) == jsonencode(var.queue_encryption)
-      && local.normalized_config.ssm.paths.root == "/${var.ssm_paths.root}/${var.prefix}"
-      && local.normalized_config.ssm.paths.tokens == "${var.ssm_paths.runners}/tokens"
-      && local.normalized_config.ssm.kms_key_id == var.kms_key_arn
-      && local.normalized_config.ssm.housekeeper.state == "DISABLED"
-      && local.normalized_config.ssm.housekeeper.config.minimumDaysOld == var.runners_ssm_housekeeper.config.minimumDaysOld
+      && local.normalized_config.storage_provider.aws.ssm.paths.root == "/${var.ssm_paths.root}/${var.prefix}"
+      && local.normalized_config.storage_provider.aws.ssm.paths.tokens == "${var.ssm_paths.runners}/tokens"
+      && local.normalized_config.storage_provider.aws.ssm.kms_key_id == var.kms_key_arn
+      && local.normalized_config.storage_provider.aws.ssm.housekeeper.state == "DISABLED"
+      && local.normalized_config.storage_provider.aws.ssm.housekeeper.config.minimumDaysOld == var.runners_ssm_housekeeper.config.minimumDaysOld
       && local.normalized_config.observability.logs.level == var.log_level
       && local.normalized_config.observability.logs.retention_in_days == var.logging_retention_in_days
       && local.normalized_config.observability.logs.kms_key_id == var.logging_kms_key_id
@@ -423,8 +427,8 @@ run "empty_v2_map_translates_stable_inputs" {
       && local.stable_to_v2.lambda.artifact.s3.bucket == var.lambda_s3_bucket
       && local.stable_to_v2.orchestration_provider.webhook.lambda.scale.up.event_source_mapping.batch_size == var.lambda_event_source_mapping_batch_size
       && local.stable_to_v2.orchestration_provider.webhook.lambda.scale.down.idle_config == []
-      && local.stable_to_v2.ssm.parameters.tags.owner == var.parameter_store_tags.owner
-      && local.stable_to_v2.ssm.housekeeper.lambda.memory_size == var.runners_ssm_housekeeper.lambda_memory_size
+      && local.stable_to_v2.storage_provider.aws.ssm.parameters.tags.owner == var.parameter_store_tags.owner
+      && local.stable_to_v2.storage_provider.aws.ssm.housekeeper.lambda.memory_size == var.runners_ssm_housekeeper.lambda_memory_size
       && local.stable_to_v2.compute_provider.aws.ec2.runner_binaries.s3.encryption.sse_algorithm == "aws:kms"
       && local.stable_to_v2.compute_provider.aws.ec2.runner_binaries.s3.encryption.kms_master_key_id == "arn:aws:kms:eu-west-1:123456789012:key/binaries"
       && local.stable_to_v2.compute_provider.aws.ec2.instance_termination_watcher.enabled == var.instance_termination_watcher.enable
@@ -624,12 +628,16 @@ run "lane_values_override_experimental_globals" {
       }
     }
 
-    global_config_ssm = {
-      housekeeper = {
-        lambda = {
-          artifact = {
-            s3 = {
-              key = "global-housekeeper.zip"
+    global_storage_provider = {
+      aws = {
+        ssm = {
+          housekeeper = {
+            lambda = {
+              artifact = {
+                s3 = {
+                  key = "global-housekeeper.zip"
+                }
+              }
             }
           }
         }
@@ -687,12 +695,16 @@ run "lane_values_override_experimental_globals" {
             level = "warn"
           }
         }
-        ssm = {
-          housekeeper = {
-            lambda = {
-              artifact = {
-                s3 = {
-                  key = "lane-housekeeper.zip"
+        storage_provider = {
+          aws = {
+            ssm = {
+              housekeeper = {
+                lambda = {
+                  artifact = {
+                    s3 = {
+                      key = "lane-housekeeper.zip"
+                    }
+                  }
                 }
               }
             }
@@ -725,8 +737,8 @@ run "lane_values_override_experimental_globals" {
       && local.resolved_config.multi_runner_config["lane"].orchestration_provider.webhook.runner.maximum_count == 7
       && local.resolved_config.multi_runner_config["lane"].observability.logs.level == "warn"
       && local.resolved_config.multi_runner_config["lane"].observability.logs.retention_in_days == 30
-      && local.resolved_config.multi_runner_config["lane"].ssm.housekeeper.lambda.artifact.zip == null
-      && local.resolved_config.multi_runner_config["lane"].ssm.housekeeper.lambda.artifact.s3.key == "lane-housekeeper.zip"
+      && local.resolved_config.multi_runner_config["lane"].storage_provider.aws.ssm.housekeeper.lambda.artifact.zip == null
+      && local.resolved_config.multi_runner_config["lane"].storage_provider.aws.ssm.housekeeper.lambda.artifact.s3.key == "lane-housekeeper.zip"
     )
     error_message = "Lane values must override v2 globals while omitted values inherit their global defaults."
   }

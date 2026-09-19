@@ -18,7 +18,6 @@ variable "config" {
     - `lambda.timeout`: Pool Lambda timeout in seconds.
     - `lambda.zip`: Local path to the pool Lambda deployment package when S3 is not used.
     - `lambda.subnet_ids`: Subnet IDs in which the pool Lambda runs.
-    - `lambda.parameter_store_tags`: JSON-encoded tags supplied to the pool Lambda for SSM parameters it creates.
     - `lambda.principals`: Additional principals allowed to assume the pool Lambda role.
     - `tags`: Common tags added to pool resources.
     - `ghes`: GitHub Enterprise Server connection configuration.
@@ -46,12 +45,7 @@ variable "config" {
     - `pool[*].size`: Desired runner count for the scheduled pool target.
     - `include_busy_runners`: Whether busy runners count toward the desired pool size.
     - `role_permissions_boundary`: Permissions boundary applied to IAM roles created for the pool.
-    - `kms_key_id`: Optional customer-managed KMS key ARN that the pool Lambda may use to decrypt encrypted parameters.
     - `role_path`: IAM path applied to roles created for the pool.
-    - `ssm_token_path`: SSM path under which runner registration tokens are stored.
-    - `ssm_token_path_arn`: ARN matching the runner registration-token SSM path.
-    - `ssm_config_path`: SSM path under which runner configuration is stored.
-    - `arn_ssm_parameters_path_config`: ARN matching the runner configuration SSM path.
     - `lambda_tags`: Tags added specifically to the pool Lambda function, overriding common tags with the same key.
     - `log_group_tags`: Tags added specifically to the pool Lambda log group, overriding common tags with the same key.
     - `user_agent`: User-Agent header used for GitHub API requests.
@@ -73,7 +67,6 @@ variable "config" {
       timeout                        = number
       zip                            = string
       subnet_ids                     = list(string)
-      parameter_store_tags           = string
       principals = optional(list(object({
         type        = string
         identifiers = list(string)
@@ -110,17 +103,12 @@ variable "config" {
       schedule_expression_timezone = string
       size                         = number
     }))
-    include_busy_runners           = bool
-    role_permissions_boundary      = string
-    kms_key_id                     = optional(string, null)
-    role_path                      = string
-    ssm_token_path                 = string
-    ssm_token_path_arn             = string
-    ssm_config_path                = string
-    arn_ssm_parameters_path_config = string
-    lambda_tags                    = map(string)
-    log_group_tags                 = optional(map(string), {})
-    user_agent                     = string
+    include_busy_runners      = bool
+    role_permissions_boundary = string
+    role_path                 = string
+    lambda_tags               = map(string)
+    log_group_tags            = optional(map(string), {})
+    user_agent                = string
   })
 }
 
@@ -141,6 +129,25 @@ variable "runner_provider" {
     managed_policy_enabled = bool
     managed_policy_arn     = optional(string, null)
   })
+}
+
+variable "storage_provider" {
+  description = "Resolved storage-provider configuration and capability used by the pool Lambda."
+  type = object({
+    aws = object({
+      ssm = object({
+        token_path           = string
+        token_path_arn       = string
+        config_path          = string
+        config_path_arn      = string
+        kms_key_id           = optional(string, null)
+        parameter_store_tags = string
+      })
+    })
+    environment_variables = optional(map(string), {})
+    iam_policy_json       = optional(string, null)
+  })
+  nullable = false
 }
 
 variable "aws_partition" {
