@@ -86,7 +86,7 @@ Join our discord community via [this invite link](https://discord.gg/bxgXW8jJGh)
 | <a name="module_instance_termination_watcher"></a> [instance\_termination\_watcher](#module\_instance\_termination\_watcher) | ./modules/termination-watcher | n/a |
 | <a name="module_runner_binaries"></a> [runner\_binaries](#module\_runner\_binaries) | ./modules/runner-binaries-syncer | n/a |
 | <a name="module_runners"></a> [runners](#module\_runners) | ./modules/runners | n/a |
-| <a name="module_ssm"></a> [ssm](#module\_ssm) | ./modules/ssm | n/a |
+| <a name="module_ssm"></a> [ssm](#module\_ssm) | ./modules/storage-providers/aws/ssm | n/a |
 | <a name="module_webhook"></a> [webhook](#module\_webhook) | ./modules/webhook | n/a |
 
 ## Resources
