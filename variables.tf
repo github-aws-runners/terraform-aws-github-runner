@@ -1048,7 +1048,7 @@ variable "associate_public_ipv4_address" {
   default     = false
 }
 
-variable "network_interfaces" {
+variable "runner_network_interfaces" {
   description = "Advanced network interface configuration for the runner launch template. See https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#network-interfaces for details. Leave unset (default) to keep using associate_public_ipv4_address for a simple single-interface setup; set this to fully control one or more interfaces."
   type = list(object({
     associate_carrier_ip_address = optional(bool)
