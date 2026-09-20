@@ -263,6 +263,7 @@ module "runners" {
   ssm_parameter_store_max_writes_per_second      = var.ssm_parameter_store_max_writes_per_second
 
   associate_public_ipv4_address = var.associate_public_ipv4_address
+  network_interfaces            = var.runner_network_interfaces
 
   instance_profile_path     = var.instance_profile_path
   role_path                 = var.role_path

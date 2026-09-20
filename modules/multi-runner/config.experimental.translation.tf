@@ -548,6 +548,7 @@ locals {
             subnet_ids                    = v.runner_config.subnet_ids
             vpc_id                        = v.runner_config.vpc_id
             cpu_options                   = v.runner_config.cpu_options
+            network_interfaces            = v.runner_config.network_interfaces
             placement                     = v.runner_config.placement
             license_specifications        = v.runner_config.license_specifications
             use_dedicated_host            = v.runner_config.use_dedicated_host
