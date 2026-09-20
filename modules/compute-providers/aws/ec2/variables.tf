@@ -117,6 +117,7 @@ variable "config" {
     - `license_specifications`: License Manager configurations added to the launch template.
     - `license_specifications[].license_configuration_arn`: ARN of an AWS License Manager license configuration.
     - `associate_public_ipv4_address`: Associates a public IPv4 address with runner network interfaces.
+    - `network_interfaces`: Advanced network interface configuration for the launch template. Leave empty to keep using `associate_public_ipv4_address` for a simple single-interface setup.
     - `on_demand_failover_for_errors`: EC2 errors that trigger on-demand fallback after a Spot failure.
     - `scale_errors`: EC2 errors treated as retryable scale-up failures.
     - `use_dedicated_host`: Enables the dedicated-host launch path.
@@ -244,6 +245,39 @@ variable "config" {
       license_configuration_arn = string
     })), [])
     associate_public_ipv4_address = optional(bool, false)
+    network_interfaces = optional(list(object({
+      associate_carrier_ip_address = optional(bool)
+      associate_public_ip_address  = optional(bool)
+      delete_on_termination        = optional(bool)
+      description                  = optional(string)
+      device_index                 = optional(number)
+      interface_type               = optional(string)
+      ipv4_address_count           = optional(number)
+      ipv4_addresses               = optional(list(string))
+      ipv4_prefix_count            = optional(number)
+      ipv4_prefixes                = optional(list(string))
+      ipv6_address_count           = optional(number)
+      ipv6_addresses               = optional(list(string))
+      ipv6_prefix_count            = optional(number)
+      ipv6_prefixes                = optional(list(string))
+      network_card_index           = optional(number)
+      network_interface_id         = optional(string)
+      primary_ipv6                 = optional(bool)
+      private_ip_address           = optional(string)
+      security_groups              = optional(list(string))
+      subnet_id                    = optional(string)
+      connection_tracking_specification = optional(object({
+        tcp_established_timeout = optional(number)
+        udp_stream_timeout      = optional(number)
+        udp_timeout             = optional(number)
+      }))
+      ena_srd_specification = optional(object({
+        ena_srd_enabled = optional(bool)
+        ena_srd_udp_specification = optional(object({
+          ena_srd_udp_enabled = optional(bool)
+        }))
+      }))
+    })), [])
     on_demand_failover_for_errors = optional(list(string), [])
     scale_errors = optional(list(string), [
       "UnfulfillableCapacity",

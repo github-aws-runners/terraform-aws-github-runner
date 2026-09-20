@@ -402,6 +402,68 @@ run "separates_provider_runner_and_ssm_tags" {
   }
 }
 
+run "network_interfaces_default_matches_associate_public_ipv4_address" {
+  command = plan
+
+  variables {
+    config = {
+      vpc_id                         = "vpc-12345678"
+      subnet_ids                     = ["subnet-12345678"]
+      instance_types                 = ["m5.large"]
+      associate_public_ipv4_address  = true
+      managed_security_group_enabled = true
+      binaries_syncer = {
+        enabled = false
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      length(aws_launch_template.runner.network_interfaces) == 1
+      && aws_launch_template.runner.network_interfaces[0].associate_public_ip_address
+    )
+    error_message = "Leaving network_interfaces unset must keep deriving a single interface from associate_public_ipv4_address."
+  }
+}
+
+run "network_interfaces_accepts_explicit_configuration" {
+  command = plan
+
+  variables {
+    config = {
+      vpc_id         = "vpc-12345678"
+      subnet_ids     = ["subnet-12345678"]
+      instance_types = ["m5.large"]
+      binaries_syncer = {
+        enabled = false
+      }
+      network_interfaces = [
+        {
+          device_index       = 0
+          network_card_index = 0
+          interface_type     = "interface"
+          ipv4_prefix_count  = 1
+        },
+        {
+          device_index       = 1
+          network_card_index = 1
+          interface_type     = "interface"
+        },
+      ]
+    }
+  }
+
+  assert {
+    condition = (
+      length(aws_launch_template.runner.network_interfaces) == 2
+      && aws_launch_template.runner.network_interfaces[0].ipv4_prefix_count == 1
+      && aws_launch_template.runner.network_interfaces[1].network_card_index == 1
+    )
+    error_message = "Setting network_interfaces must render every configured interface on the launch template."
+  }
+}
+
 run "rejects_external_instance_profile_with_managed_role" {
   command = plan
 
