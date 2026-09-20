@@ -1005,8 +1005,8 @@ variable "runner_cpu_options" {
 
   validation {
     condition = var.runner_cpu_options == null ? true : (
-      (var.runner_cpu_options.amd_sev_snp == null || contains(["enabled", "disabled"], var.runner_cpu_options.amd_sev_snp)) &&
-      (var.runner_cpu_options.nested_virtualization == null || contains(["enabled", "disabled"], var.runner_cpu_options.nested_virtualization))
+      (var.runner_cpu_options.amd_sev_snp == null ? true : contains(["enabled", "disabled"], var.runner_cpu_options.amd_sev_snp)) &&
+      (var.runner_cpu_options.nested_virtualization == null ? true : contains(["enabled", "disabled"], var.runner_cpu_options.nested_virtualization))
     )
     error_message = "When set, runner_cpu_options.amd_sev_snp and runner_cpu_options.nested_virtualization must be one of: enabled, disabled."
   }
