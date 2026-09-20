@@ -358,7 +358,25 @@ run "empty_v2_map_translates_stable_inputs" {
       && local.normalized_config.github.app.id_ssm == var.github_app.id_ssm
       && local.normalized_config.github.app.webhook_secret_ssm == var.github_app.webhook_secret_ssm
       && local.normalized_config.github.user_agent == var.user_agent
-      && jsonencode(local.normalized_config.github.additional_apps) == jsonencode(var.additional_github_apps)
+      && jsonencode([
+        for app in local.normalized_config.github.additional_apps : {
+          key_base64          = try(app.key_base64, null)
+          key_base64_ssm      = try(app.key_base64_ssm, null)
+          id                  = try(app.id, null)
+          id_ssm              = try(app.id_ssm, null)
+          installation_id     = try(app.installation_id, null)
+          installation_id_ssm = try(app.installation_id_ssm, null)
+        }
+        ]) == jsonencode([
+        for app in var.additional_github_apps : {
+          key_base64          = try(app.key_base64, null)
+          key_base64_ssm      = try(app.key_base64_ssm, null)
+          id                  = try(app.id, null)
+          id_ssm              = try(app.id_ssm, null)
+          installation_id     = try(app.installation_id, null)
+          installation_id_ssm = try(app.installation_id_ssm, null)
+        }
+      ])
       && local.normalized_config.github.enterprise_server.url == var.ghes_url
       && local.normalized_config.github.enterprise_server.ssl_verify == var.ghes_ssl_verify
       && local.normalized_config.lambda.runtime == var.lambda_runtime

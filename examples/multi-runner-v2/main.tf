@@ -20,6 +20,8 @@ module "runners" {
   prefix     = local.environment
   aws_region = local.aws_region
 
+  experimental_features = ["multi-runner-v2"]
+
   global_config = {
     tags = {
       Example = local.environment
