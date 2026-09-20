@@ -680,18 +680,6 @@ variable "multi_runner_config" {
     error_message = "Use one multi_runner_config shape per module invocation: provide either v1 entries with runner_config or v2 entries without runner_config, not both in the same map."
   }
 
-  validation {
-    condition = alltrue([
-      for config in var.multi_runner_config : !(
-        try(length(config.matcherConfig.awsDynamicLabelsPolicy.allowed_keys), 0) > 0 &&
-        try(length(config.matcherConfig.awsDynamicLabelsPolicy.blocked_keys), 0) > 0
-        ) && !(
-        try(length(config.orchestration_provider.webhook.matcherConfig.awsDynamicLabelsPolicy.allowed_keys), 0) > 0 &&
-        try(length(config.orchestration_provider.webhook.matcherConfig.awsDynamicLabelsPolicy.blocked_keys), 0) > 0
-      )
-    ])
-    error_message = "multi_runner_config: allowed_keys and blocked_keys cannot both be set in awsDynamicLabelsPolicy."
-  }
 }
 
 variable "scale_up_lambda_memory_size" {
