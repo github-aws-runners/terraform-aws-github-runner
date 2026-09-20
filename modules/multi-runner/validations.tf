@@ -37,6 +37,11 @@ resource "terraform_data" "validate_v1" {
       )
       error_message = "Stable v1 configuration requires github_app, vpc_id, subnet_ids, and multi_runner_config."
     }
+
+    precondition {
+      condition     = length(local.v2_multi_runner_config) == 0
+      error_message = "Stable v1 configuration cannot use v2 runner lanes unless multi-runner-v2 is explicitly enabled."
+    }
   }
 }
 
@@ -63,6 +68,13 @@ resource "terraform_data" "validate_v2" {
         )
       )
       error_message = "Experimental v2 configuration requires a complete GitHub App under global_config_github.app."
+    }
+
+    precondition {
+      condition = alltrue([
+        for config in var.multi_runner_config : try(config.runner_config == null, true)
+      ])
+      error_message = "Experimental v2 configuration cannot use legacy runner_config entries in multi_runner_config."
     }
 
     precondition {
