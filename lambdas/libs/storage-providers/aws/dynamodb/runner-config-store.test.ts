@@ -15,8 +15,8 @@ describe('aws_dynamodb runner config store', () => {
     resetDynamoDbClient();
     process.env = { ...cleanEnv };
     process.env.AWS_REGION = 'eu-west-1';
-    process.env.RUNNER_CONFIG_DYNAMODB_TABLE_NAME = 'runner-config';
-    process.env.RUNNER_CONFIG_DYNAMODB_TOKEN_KEY_PREFIX = 'tokens#';
+    process.env.RUNNER_CONFIG_DYNAMODB_RUNNER_STATE_TABLE_NAME = 'runner-state';
+    delete process.env.RUNNER_CONFIG_DYNAMODB_ENTRY_ID;
     process.env.RUNNER_CONFIG_DYNAMODB_TTL_SECONDS = '3600';
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2025-01-01T00:00:00.000Z'));
@@ -29,18 +29,24 @@ describe('aws_dynamodb runner config store', () => {
   it('creates an expiring runner config without overwriting an existing record', async () => {
     const store = createAwsDynamoDbRunnerConfigStore();
 
-    await store.create({ runnerId: 'runner-123', value: 'encoded-jit-config' });
+    await store.create({
+      runnerId: 'runner-123',
+      value: 'encoded-jit-config',
+      accessScope: 'arn:aws:ec2:eu-west-1:123456789012:instance/i-123',
+    });
 
     expect(store.maxWritesPerSecond).toBeUndefined();
     expect(mockDynamoDbClient).toHaveReceivedCommandWith(PutItemCommand, {
-      TableName: 'runner-config',
+      TableName: 'runner-state',
       Item: {
-        id: { S: 'tokens#runner-123' },
+        scope: { S: 'arn:aws:ec2:eu-west-1:123456789012:instance/i-123' },
+        id: { S: 'config' },
         value: { S: 'encoded-jit-config' },
         expires_at: { N: '1735693200' },
       },
-      ConditionExpression: 'attribute_not_exists(#id)',
+      ConditionExpression: 'attribute_not_exists(#scope) AND attribute_not_exists(#id)',
       ExpressionAttributeNames: {
+        '#scope': 'scope',
         '#id': 'id',
       },
     });
@@ -50,7 +56,11 @@ describe('aws_dynamodb runner config store', () => {
     const store = createAwsDynamoDbRunnerConfigStore();
 
     await store.create(
-      { runnerId: 'runner-123', value: 'registration-config' },
+      {
+        runnerId: 'runner-123',
+        value: 'registration-config',
+        accessScope: 'arn:aws:ec2:eu-west-1:123456789012:instance/i-123',
+      },
       {
         metadata: [
           { key: 'InstanceId', value: 'i-123' },
@@ -71,7 +81,14 @@ describe('aws_dynamodb runner config store', () => {
   it('does not write metadata for an empty metadata list', async () => {
     const store = createAwsDynamoDbRunnerConfigStore();
 
-    await store.create({ runnerId: 'runner-123', value: 'registration-config' }, { metadata: [] });
+    await store.create(
+      {
+        runnerId: 'runner-123',
+        value: 'registration-config',
+        accessScope: 'arn:aws:ec2:eu-west-1:123456789012:instance/i-123',
+      },
+      { metadata: [] },
+    );
 
     const command = mockDynamoDbClient.commandCalls(PutItemCommand)[0].args[0];
     expect(command.input.Item).not.toHaveProperty('metadata');
@@ -85,18 +102,17 @@ describe('aws_dynamodb runner config store', () => {
     expect(mockDynamoDbClient.calls()).toHaveLength(0);
   });
 
-  it.each([
-    'RUNNER_CONFIG_DYNAMODB_TABLE_NAME',
-    'RUNNER_CONFIG_DYNAMODB_TOKEN_KEY_PREFIX',
-    'RUNNER_CONFIG_DYNAMODB_TTL_SECONDS',
-  ] as const)('rejects a missing or blank %s', (name) => {
-    delete process.env[name];
-    expect(() => createAwsDynamoDbRunnerConfigStore()).toThrow(`Environment variable ${name} is not set`);
+  it.each(['RUNNER_CONFIG_DYNAMODB_RUNNER_STATE_TABLE_NAME', 'RUNNER_CONFIG_DYNAMODB_TTL_SECONDS'] as const)(
+    'rejects a missing or blank %s',
+    (name) => {
+      delete process.env[name];
+      expect(() => createAwsDynamoDbRunnerConfigStore()).toThrow(`Environment variable ${name} is not set`);
 
-    process.env[name] = '   ';
-    expect(() => createAwsDynamoDbRunnerConfigStore()).toThrow(`Environment variable ${name} is not set`);
-    expect(mockDynamoDbClient.calls()).toHaveLength(0);
-  });
+      process.env[name] = '   ';
+      expect(() => createAwsDynamoDbRunnerConfigStore()).toThrow(`Environment variable ${name} is not set`);
+      expect(mockDynamoDbClient.calls()).toHaveLength(0);
+    },
+  );
 
   it.each(['0', '-1', '1.5', 'not-a-number', '9007199254740992'])('rejects invalid TTL seconds %j', (ttlSeconds) => {
     process.env.RUNNER_CONFIG_DYNAMODB_TTL_SECONDS = ttlSeconds;
@@ -107,11 +123,26 @@ describe('aws_dynamodb runner config store', () => {
     expect(mockDynamoDbClient.calls()).toHaveLength(0);
   });
 
+  it.each([undefined, '', '   '])('rejects invalid access scope %j before writing', async (accessScope) => {
+    const store = createAwsDynamoDbRunnerConfigStore();
+
+    await expect(store.create({ runnerId: 'runner-123', value: 'sensitive-config', accessScope })).rejects.toThrow(
+      "Runner config field 'accessScope' must be a non-empty string for aws_dynamodb",
+    );
+    expect(mockDynamoDbClient.calls()).toHaveLength(0);
+  });
+
   it('propagates DynamoDB write errors without handling the stored value', async () => {
     const error = new Error('conditional request failed');
     mockDynamoDbClient.on(PutItemCommand).rejects(error);
     const store = createAwsDynamoDbRunnerConfigStore();
 
-    await expect(store.create({ runnerId: 'runner-123', value: 'sensitive-config' })).rejects.toBe(error);
+    await expect(
+      store.create({
+        runnerId: 'runner-123',
+        value: 'sensitive-config',
+        accessScope: 'arn:aws:ec2:eu-west-1:123456789012:instance/i-123',
+      }),
+    ).rejects.toBe(error);
   });
 });
