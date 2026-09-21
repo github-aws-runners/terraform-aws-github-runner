@@ -1,35 +1,36 @@
+import { InvalidRunnerLabelsError } from '../../../../core';
 import type { CreateGitHubRunnerConfig, CreateStartRunnerConfig, RunnerType } from '../../../../core';
 import type { Octokit } from '@octokit/rest';
-import { DescribeLaunchTemplateVersionsCommand, EC2Client } from '@aws-sdk/client-ec2';
-import { mockClient } from 'aws-sdk-client-mock';
-import 'aws-sdk-client-mock-jest/vitest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { parseEc2OverrideConfig } from './dynamic-labels';
-import { EC2_TAG_VALUE_MAX_LENGTH, RUNNER_LABELS_TAG_MAX_COUNT } from './runner-config';
-import { createRunner, listEC2Runners, tag, terminateRunner } from './runners';
-import type { RunnerInputParameters } from './runners.d';
-import { createEc2ScaleUpProvider } from './scale-up';
+import { parseEc2OverrideConfig, validateEc2OverrideConfig } from './dynamic-labels';
+import { EC2_TAG_VALUE_MAX_LENGTH, RUNNER_LABELS_TAG_MAX_COUNT } from './runner-creation';
+import type { Ec2RunnerProvisioningOperations } from '../runners';
+import type { RunnerInputParameters } from '../runners.d';
+import { createEc2ScaleUpCapability } from './scale-up';
 
-vi.mock('./runners', () => ({
-  createRunner: vi.fn(),
-  listEC2Runners: vi.fn(),
-  tag: vi.fn(),
-  terminateRunner: vi.fn(),
-}));
-
-const mockCreateRunner = vi.mocked(createRunner);
-const mockListRunners = vi.mocked(listEC2Runners);
-const mockTag = vi.mocked(tag);
-const mockTerminateRunner = vi.mocked(terminateRunner);
-const mockEC2Client = mockClient(EC2Client);
+const mockCreateRunner = vi.fn<Ec2RunnerProvisioningOperations['create']>();
+const mockListRunners = vi.fn<Ec2RunnerProvisioningOperations['list']>();
+const mockTag = vi.fn<Ec2RunnerProvisioningOperations['tag']>();
+const mockTerminateRunner = vi.fn<Ec2RunnerProvisioningOperations['terminate']>();
+const mockUntag = vi.fn<Ec2RunnerProvisioningOperations['untag']>();
 const mockCreateStartRunnerConfig = vi.fn<CreateStartRunnerConfig>();
+const mockGetDefaultBlockDeviceNameFromLaunchTemplate =
+  vi.fn<Ec2RunnerProvisioningOperations['getDefaultBlockDeviceNameFromLaunchTemplate']>();
 
 const githubClient = {} as Octokit;
 const runnerOwner = 'Codertocat';
 const repositoryRunnerOwner = 'Codertocat/hello-world';
 const cleanEnv = process.env;
-const provider = createEc2ScaleUpProvider(mockCreateStartRunnerConfig);
+const ec2Operations: Ec2RunnerProvisioningOperations = {
+  list: mockListRunners,
+  create: mockCreateRunner,
+  terminate: mockTerminateRunner,
+  tag: mockTag,
+  untag: mockUntag,
+  getDefaultBlockDeviceNameFromLaunchTemplate: mockGetDefaultBlockDeviceNameFromLaunchTemplate,
+};
+const capability = createEc2ScaleUpCapability(ec2Operations, mockCreateStartRunnerConfig);
 
 interface CreateProviderRunnersOptions {
   labels?: string[];
@@ -37,8 +38,8 @@ interface CreateProviderRunnersOptions {
   githubRunnerConfig?: Partial<CreateGitHubRunnerConfig>;
 }
 
-function createRunnerResult(instances: string[], retryableErrorCount = 0, nonRetryableErrorCount = 0) {
-  return { instances, retryableErrorCount, nonRetryableErrorCount };
+function createRunnerResult(instances: string[], failedInstanceCount = 0, failureCodes: string[] = []) {
+  return { instances, failedInstanceCount, failureCodes };
 }
 
 function runnerConfig(overrides: Partial<CreateGitHubRunnerConfig> = {}): CreateGitHubRunnerConfig {
@@ -51,9 +52,6 @@ function runnerConfig(overrides: Partial<CreateGitHubRunnerConfig> = {}): Create
     runnerOwner,
     runnerType: 'Org',
     disableAutoUpdate: false,
-    ssmTokenPath: '/github-action-runners/default/runners/config',
-    ssmConfigPath: '/github-action-runners/default/runners/config',
-    ssmParameterStoreTags: [],
     ...overrides,
   };
 }
@@ -77,7 +75,6 @@ function expectedRunnerParams(
     subnets: ['subnet-123'],
     tracingEnabled: false,
     onDemandFailoverOnError: [],
-    scaleErrors: ['UnfulfillableCapacity', 'MaxSpotInstanceCountExceeded', 'TargetCapacityLimitExceededException'],
     source: 'scale-up-lambda',
     useDedicatedHost: false,
     ec2OverrideConfig: undefined,
@@ -86,14 +83,14 @@ function expectedRunnerParams(
 }
 
 async function createProviderRunners(options: CreateProviderRunnersOptions = {}) {
-  const runnerLabelResolution = await provider.resolveLabelsForRunners(options.labels ?? []);
+  const runnerLabelResolution = await capability.resolveLabelsForRunners(options.labels ?? []);
   const baseRunnerLabels = options.baseRunnerLabels ?? 'label1,label2';
   const githubRunnerConfig = runnerConfig({
     runnerLabels: [baseRunnerLabels, ...runnerLabelResolution.runnerLabels].filter(Boolean).join(','),
     ...options.githubRunnerConfig,
   });
 
-  return await provider.createRunners({
+  return await capability.createRunners({
     githubRunnerConfig,
     numberOfRunners: 1,
     githubInstallationClient: githubClient,
@@ -102,10 +99,13 @@ async function createProviderRunners(options: CreateProviderRunnersOptions = {})
 }
 
 async function expectCurrentRunners(runnerType: RunnerType, owner: string) {
-  const runnerLabelResolution = await provider.resolveLabelsForRunners([]);
+  const runnerLabelResolution = await capability.resolveLabelsForRunners([]);
 
   await expect(
-    provider.getCurrentRunners(runnerLabelResolution.state, { runnerType, runnerOwner: owner }),
+    capability.getCurrentRunners(runnerLabelResolution.state, {
+      runnerType,
+      runnerOwner: owner,
+    }),
   ).resolves.toBe(1);
   expect(mockListRunners).toHaveBeenCalledWith({
     environment: 'unit-test-environment',
@@ -132,16 +132,7 @@ beforeEach(() => {
   delete process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS;
   delete process.env.USE_DEDICATED_HOST;
 
-  mockEC2Client.reset();
-  mockEC2Client.on(DescribeLaunchTemplateVersionsCommand).resolves({
-    LaunchTemplateVersions: [
-      {
-        LaunchTemplateData: {
-          BlockDeviceMappings: [{ DeviceName: '/dev/sda1', Ebs: {} }],
-        },
-      },
-    ],
-  });
+  mockGetDefaultBlockDeviceNameFromLaunchTemplate.mockResolvedValue('/dev/sda1');
 
   mockCreateRunner.mockResolvedValue(createRunnerResult(['i-12345']));
   mockListRunners.mockResolvedValue([
@@ -182,7 +173,7 @@ describe('scaleUp with GHES', () => {
         { Key: 'ghr:runner_labels', Value: 'label1,label2' },
       ]);
       const [, , , options] = mockCreateStartRunnerConfig.mock.calls[0];
-      expect(options?.getSsmParameterTags?.('i-12345')).toEqual([{ Key: 'InstanceId', Value: 'i-12345' }]);
+      expect(options?.getRunnerConfigMetadata?.('i-12345')).toEqual([{ key: 'InstanceId', value: 'i-12345' }]);
     });
 
     it('chunks comma-joined GitHub runner labels by the EC2 tag value max length', async () => {
@@ -277,26 +268,12 @@ describe('scaleUp with GHES', () => {
     });
 
     it('loads the launch template block device name for dynamic EBS labels without DeviceName', async () => {
-      mockEC2Client.on(DescribeLaunchTemplateVersionsCommand).resolves({
-        LaunchTemplateVersions: [
-          {
-            LaunchTemplateData: {
-              BlockDeviceMappings: [
-                { DeviceName: '/dev/sdb', VirtualName: 'ephemeral0' },
-                { DeviceName: '/dev/sdf', Ebs: {} },
-              ],
-            },
-          },
-        ],
-      });
+      mockGetDefaultBlockDeviceNameFromLaunchTemplate.mockResolvedValueOnce('/dev/sdf');
       await createProviderRunners({
         baseRunnerLabels: 'base-label',
         labels: ['ghr-ec2-ebs-volume-size:100', 'ghr-ec2-ebs-volume-type:gp3'],
       });
-      expect(mockEC2Client).toHaveReceivedCommandWith(DescribeLaunchTemplateVersionsCommand, {
-        LaunchTemplateName: 'lt-1',
-        Versions: ['$Default'],
-      });
+      expect(mockGetDefaultBlockDeviceNameFromLaunchTemplate).toHaveBeenCalledWith('lt-1');
       expect(mockCreateRunner).toHaveBeenCalledWith(
         expect.objectContaining({
           ec2OverrideConfig: expect.objectContaining({
@@ -311,7 +288,7 @@ describe('scaleUp with GHES', () => {
         baseRunnerLabels: 'base-label',
         labels: ['ghr-ec2-block-device-name:/dev/sdg', 'ghr-ec2-ebs-volume-size:100', 'ghr-ec2-ebs-volume-type:gp3'],
       });
-      expect(mockEC2Client).not.toHaveReceivedCommand(DescribeLaunchTemplateVersionsCommand);
+      expect(mockGetDefaultBlockDeviceNameFromLaunchTemplate).not.toHaveBeenCalled();
       expect(mockCreateRunner).toHaveBeenCalledWith(
         expect.objectContaining({
           ec2OverrideConfig: expect.objectContaining({
@@ -475,20 +452,40 @@ describe('scaleUp with GHES', () => {
       );
     });
 
-    it('includes both instance type and ec2OverrideConfig when both specified', async () => {
-      await createProviderRunners({
-        baseRunnerLabels: 'base-label',
-        labels: ['self-hosted', 'ghr-ec2-instance-type:c5.xlarge', 'ghr-ec2-vcpu-count-min:4'],
-      });
-      expect(mockCreateRunner).toHaveBeenCalledWith(
-        expect.objectContaining({
-          ec2instanceCriteria: expect.objectContaining({ instanceTypes: ['t3.medium', 't3.large'] }),
-          ec2OverrideConfig: expect.objectContaining({
-            InstanceType: 'c5.xlarge',
-            InstanceRequirements: expect.objectContaining({ VCpuCount: { Min: 4 } }),
-          }),
+    it('rejects instance type and instance requirements before runner creation', async () => {
+      await expect(
+        createProviderRunners({
+          baseRunnerLabels: 'base-label',
+          labels: ['self-hosted', 'ghr-ec2-instance-type:c5.xlarge', 'ghr-ec2-vcpu-count-min:4'],
         }),
-      );
+      ).rejects.toThrow(InvalidRunnerLabelsError);
+
+      expect(mockCreateRunner).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('validateEc2OverrideConfig', () => {
+    it('accepts instance requirements without an instance type', () => {
+      expect(() =>
+        validateEc2OverrideConfig({
+          InstanceRequirements: {
+            VCpuCount: { Min: 4 },
+            MemoryMiB: { Min: 8192 },
+          },
+        }),
+      ).not.toThrow();
+    });
+
+    it('rejects instance type with instance requirements', () => {
+      expect(() =>
+        validateEc2OverrideConfig({
+          InstanceType: 'c5.xlarge',
+          InstanceRequirements: {
+            VCpuCount: { Min: 4 },
+            MemoryMiB: { Min: 8192 },
+          },
+        }),
+      ).toThrow(InvalidRunnerLabelsError);
     });
   });
 
@@ -552,14 +549,15 @@ describe('scaleUp with public GH', () => {
       );
     });
 
-    it('creates a runner with correct config and labels and custom scale errors enabled.', async () => {
+    it('converts configured EC2 failures to the control-plane create result', async () => {
       process.env.SCALE_ERRORS = '["RequestLimitExceeded"]';
-      await createProviderRunners({
-        githubRunnerConfig: { runnerType: 'Repo', runnerOwner: repositoryRunnerOwner },
-      });
-      expect(mockCreateRunner).toHaveBeenCalledWith(
-        expectedRunnerParams('Repo', repositoryRunnerOwner, { scaleErrors: ['RequestLimitExceeded'] }),
-      );
+      mockCreateRunner.mockResolvedValueOnce(createRunnerResult([], 1, ['aws-name:RequestLimitExceeded']));
+      await expect(
+        createProviderRunners({
+          githubRunnerConfig: { runnerType: 'Repo', runnerOwner: repositoryRunnerOwner },
+        }),
+      ).resolves.toEqual({ instances: [], retryableErrorCount: 1, nonRetryableErrorCount: 0 });
+      expect(mockCreateRunner).toHaveBeenCalledWith(expectedRunnerParams('Repo', repositoryRunnerOwner));
     });
   });
 });

@@ -34,6 +34,8 @@ export function defineScaleDownContractTests<TType extends string>({
         vi.mocked(provider.bootTimeExceeded).mockReturnValue(false);
         vi.mocked(provider.markOrphan).mockResolvedValue();
         vi.mocked(provider.unmarkOrphan).mockResolvedValue();
+        vi.mocked(provider.markIdle).mockResolvedValue();
+        vi.mocked(provider.unmarkIdle).mockResolvedValue();
         vi.mocked(provider.terminate).mockResolvedValue();
       });
 

@@ -9,7 +9,7 @@ This module is used for storing configuration of runners, registration tokens an
 
 | Name | Version |
 |------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.3.0 |
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.5.6 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 6.21 |
 
 ## Providers
@@ -29,6 +29,7 @@ No modules.
 | [aws_ssm_parameter.additional_github_app_id](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
 | [aws_ssm_parameter.additional_github_app_installation_id](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
 | [aws_ssm_parameter.additional_github_app_key_base64](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
+| [aws_ssm_parameter.additional_github_apps_manifest](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
 | [aws_ssm_parameter.github_app_id](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
 | [aws_ssm_parameter.github_app_key_base64](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
 | [aws_ssm_parameter.github_app_webhook_secret](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
@@ -48,5 +49,6 @@ No modules.
 | Name | Description |
 |------|-------------|
 | <a name="output_additional_app_parameters"></a> [additional\_app\_parameters](#output\_additional\_app\_parameters) | n/a |
+| <a name="output_additional_apps_manifest"></a> [additional\_apps\_manifest](#output\_additional\_apps\_manifest) | n/a |
 | <a name="output_parameters"></a> [parameters](#output\_parameters) | n/a |
 <!-- END_TF_DOCS -->

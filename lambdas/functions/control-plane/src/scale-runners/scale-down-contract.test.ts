@@ -18,6 +18,8 @@ const computeProviders = providerTypes.map((type) => ({
     bootTimeExceeded: vi.fn(),
     markOrphan: vi.fn(),
     unmarkOrphan: vi.fn(),
+    markIdle: vi.fn(),
+    unmarkIdle: vi.fn(),
     terminate: vi.fn(),
   } satisfies ScaleDownComputeProvider,
 }));

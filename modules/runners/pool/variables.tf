@@ -25,9 +25,13 @@ variable "config" {
       ssl_verify = string
     })
     github_app_parameters = object({
-      key_base64      = list(map(string))
-      id              = list(map(string))
-      installation_id = list(object({ name = string, arn = string }))
+      key_base64 = map(string)
+      id         = map(string)
+      additional_apps_manifest = optional(object({
+        name = string
+        arn  = string
+      }), null)
+      additional_app_parameter_arns = optional(list(string), [])
     })
     subnet_ids = list(string)
     runner = object({

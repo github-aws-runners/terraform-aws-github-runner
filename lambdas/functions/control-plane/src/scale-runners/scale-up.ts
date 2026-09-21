@@ -1,5 +1,7 @@
 import { addPersistentContextToChildLogger, createChildLogger } from '@aws-github-runner/aws-powertools-util';
+import { InvalidRunnerLabelsError } from '@aws-github-runner/compute-providers/core';
 import { resolveComputeProviderType } from '@aws-github-runner/compute-providers/provider-types';
+import { createStorageProviders, type StorageProviders } from '@aws-github-runner/storage-providers';
 import { Octokit } from '@octokit/rest';
 import yn from 'yn';
 
@@ -11,7 +13,6 @@ import {
   resolveInstallationId,
   isJobQueued,
   UnsupportedEventError,
-  validateSsmParameterStoreTags,
 } from './github-runner';
 import { publishRetryMessage } from './job-retry';
 import type {
@@ -20,6 +21,7 @@ import type {
   ActionRequestMessageSQS,
   CreateGitHubRunnerConfig,
   CreateRunnerResult,
+  RunnerLabelResolution,
 } from './types';
 
 const logger = createChildLogger('scale-up');
@@ -39,12 +41,24 @@ async function createGithubInstallationClient(
   payload: ActionRequestMessage,
   ghesApiUrl: string,
   appIndex?: number,
+  storage?: StorageProviders,
 ): Promise<Octokit> {
-  const installationId = await getInstallationId(githubAppClient, enableOrgLevel, payload, appIndex);
+  const installationId = await getInstallationId(
+    githubAppClient,
+    enableOrgLevel,
+    payload,
+    appIndex,
+    storage?.githubAppCredentials,
+  );
 
   try {
-    const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl, appIndex);
-    return await createOctokitClient(ghAuth.token, ghesApiUrl);
+    const ghAuth = await createGithubInstallationAuth(
+      installationId,
+      ghesApiUrl,
+      appIndex,
+      storage?.githubAppCredentials,
+    );
+    return await createOctokitClient(ghAuth.token, ghesApiUrl, appIndex);
   } catch (error) {
     // The installation id can be stale when it was reused from the webhook payload or from the
     // pre-configured per-app value while the app was uninstalled and reinstalled. Re-resolve the
@@ -66,12 +80,18 @@ async function createGithubInstallationClient(
       repositoryName: payload.repositoryName,
     });
 
-    const ghAuth = await createGithubInstallationAuth(resolvedInstallationId, ghesApiUrl, appIndex);
-    return await createOctokitClient(ghAuth.token, ghesApiUrl);
+    const ghAuth = await createGithubInstallationAuth(
+      resolvedInstallationId,
+      ghesApiUrl,
+      appIndex,
+      storage?.githubAppCredentials,
+    );
+    return await createOctokitClient(ghAuth.token, ghesApiUrl, appIndex);
   }
 }
 
 export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<string[]> {
+  const storage = createStorageProviders();
   logger.info('Received scale up requests', {
     n_requests: payloads.length,
   });
@@ -80,17 +100,11 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
   const maximumRunners = parseInt(process.env.RUNNERS_MAXIMUM_COUNT || '3');
   const runnerLabels = process.env.RUNNER_LABELS || '';
   const runnerGroup = process.env.RUNNER_GROUP_NAME || 'Default';
-  const ssmTokenPath = process.env.SSM_TOKEN_PATH;
   const ephemeralEnabled = yn(process.env.ENABLE_EPHEMERAL_RUNNERS, { default: false });
   const enableJitConfig = yn(process.env.ENABLE_JIT_CONFIG, { default: ephemeralEnabled });
   const disableAutoUpdate = yn(process.env.DISABLE_RUNNER_AUTOUPDATE, { default: false });
   const enableJobQueuedCheck = yn(process.env.ENABLE_JOB_QUEUED_CHECK, { default: true });
   const runnerNamePrefix = process.env.RUNNER_NAME_PREFIX || '';
-  const ssmConfigPath = process.env.SSM_CONFIG_PATH || '';
-  const ssmParameterStoreTags: { Key: string; Value: string }[] =
-    process.env.SSM_PARAMETER_STORE_TAGS && process.env.SSM_PARAMETER_STORE_TAGS.trim() !== ''
-      ? validateSsmParameterStoreTags(process.env.SSM_PARAMETER_STORE_TAGS)
-      : [];
   const computeProviderType = resolveComputeProviderType(process.env.COMPUTE_PROVIDER_TYPE);
   const computeProvider = {
     ...controlPlaneProviderRegistry.capability(computeProviderType, 'scaleUp')(),
@@ -101,9 +115,9 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
 
   // Select one GitHub App for this entire invocation so every API call in the
   // batch draws from the same rate-limit bucket.
-  const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl);
+  const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl, undefined, storage.githubAppCredentials);
   const appIdx = ghAuth.appIndex;
-  const githubAppClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
+  const githubAppClient = await createOctokitClient(ghAuth.token, ghesApiUrl, appIdx);
 
   // A map of either owner or owner/repo name to Octokit client, so we use a
   // single client per installation (set of messages), depending on how the app
@@ -166,6 +180,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
         payload,
         ghesApiUrl,
         appIdx,
+        storage,
       );
 
       entry = {
@@ -202,7 +217,21 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
     let groupRunnerLabels = runnerLabels;
 
     const messageLabels = messages.length > 0 ? (messages[0].labels ?? []) : [];
-    const runnerLabelResolution = await computeProvider.resolveLabelsForRunners(messageLabels);
+    let runnerLabelResolution: RunnerLabelResolution;
+    try {
+      runnerLabelResolution = await computeProvider.resolveLabelsForRunners(messageLabels);
+    } catch (error) {
+      if (!(error instanceof InvalidRunnerLabelsError)) {
+        throw error;
+      }
+
+      logger.warn('Invalid runner labels; messages will not be retried.', {
+        error,
+        labels: messageLabels,
+        messageIds: messages.map(({ messageId }) => messageId),
+      });
+      continue;
+    }
     const resolvedRunnerLabels = runnerLabelResolution.runnerLabels;
 
     if (resolvedRunnerLabels.length > 0) {
@@ -318,9 +347,6 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       runnerOwner: runnerOwner,
       runnerType,
       disableAutoUpdate,
-      ssmTokenPath,
-      ssmConfigPath,
-      ssmParameterStoreTags,
     };
 
     let createRunnersResult: CreateRunnerResult;
@@ -330,6 +356,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
         numberOfRunners: newRunners,
         githubInstallationClient,
         state: runnerLabelResolution.state,
+        storage,
       });
     } catch (error) {
       logger.error('Compute provider threw an unexpected error.', {

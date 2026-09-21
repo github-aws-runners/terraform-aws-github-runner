@@ -100,6 +100,12 @@ variable "minimum_running_time_in_minutes" {
   default     = null
 }
 
+variable "scale_down_idle_confirmation_seconds" {
+  description = "Number of seconds a runner must consistently report not-busy before scale-down terminates it. GitHub's busy flag can be stale (it can read false for a runner that is actively executing a job), so a single not-busy reading is not sufficient evidence a runner is idle. Set to at least one scale-down schedule interval to require two consecutive not-busy evaluations; a busy reading resets the window. 0 keeps the previous single-reading behaviour."
+  type        = number
+  default     = 0
+}
+
 variable "runner_boot_time_in_minutes" {
   description = "The minimum time for an EC2 runner to boot and register as a runner."
   type        = number
@@ -761,11 +767,15 @@ variable "aws_dynamic_labels_policy" {
     override labels using the `ghr-ec2-*` prefix.
 
     Evaluation:
-      1. Keys in `blocked_keys` are always rejected.
-      2. Keys in `restricted_keys` are allowed only when their value passes the rule.
-      3. Keys not listed in `blocked_keys` or `restricted_keys` are allowed.
+      1. If `allowed_keys` is set (non-empty), any key not listed in it is rejected;
+         everything else in the policy still applies to the keys it does allow.
+      2. Keys in `blocked_keys` are always rejected. Cannot be used together with
+         `allowed_keys` — see `docs/configuration.md` for why.
+      3. Keys in `restricted_keys` are allowed only when their value passes the rule.
+      4. A key not listed anywhere above is allowed.
 
     Schema:
+      - `allowed_keys`: only these keys are accepted; every other key is rejected.
       - `blocked_keys`: keys to reject outright.
       - `restricted_keys`: map of key to value rule:
           `{ allowed = [globs], denied = [globs], max = number|string }`.
@@ -775,6 +785,17 @@ variable "aws_dynamic_labels_policy" {
   EOT
   type        = any
   default     = null
+
+  validation {
+    condition = (
+      var.aws_dynamic_labels_policy == null ||
+      !(
+        try(length(var.aws_dynamic_labels_policy.allowed_keys), 0) > 0 &&
+        try(length(var.aws_dynamic_labels_policy.blocked_keys), 0) > 0
+      )
+    )
+    error_message = "aws_dynamic_labels_policy: allowed_keys and blocked_keys cannot both be set."
+  }
 }
 
 variable "enable_job_queued_check" {
@@ -999,8 +1020,8 @@ variable "runner_cpu_options" {
 
   validation {
     condition = var.runner_cpu_options == null ? true : (
-      (var.runner_cpu_options.amd_sev_snp == null || contains(["enabled", "disabled"], var.runner_cpu_options.amd_sev_snp)) &&
-      (var.runner_cpu_options.nested_virtualization == null || contains(["enabled", "disabled"], var.runner_cpu_options.nested_virtualization))
+      (var.runner_cpu_options.amd_sev_snp == null ? true : contains(["enabled", "disabled"], var.runner_cpu_options.amd_sev_snp)) &&
+      (var.runner_cpu_options.nested_virtualization == null ? true : contains(["enabled", "disabled"], var.runner_cpu_options.nested_virtualization))
     )
     error_message = "When set, runner_cpu_options.amd_sev_snp and runner_cpu_options.nested_virtualization must be one of: enabled, disabled."
   }
@@ -1040,6 +1061,44 @@ variable "associate_public_ipv4_address" {
   description = "Associate public IPv4 with the runner. Only tested with IPv4"
   type        = bool
   default     = false
+}
+
+variable "runner_network_interfaces" {
+  description = "Advanced network interface configuration for the runner launch template. See https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#network-interfaces for details. Leave unset (default) to keep using associate_public_ipv4_address for a simple single-interface setup; set this to fully control one or more interfaces."
+  type = list(object({
+    associate_carrier_ip_address = optional(bool)
+    associate_public_ip_address  = optional(bool)
+    delete_on_termination        = optional(bool)
+    description                  = optional(string)
+    device_index                 = optional(number)
+    interface_type               = optional(string)
+    ipv4_address_count           = optional(number)
+    ipv4_addresses               = optional(list(string))
+    ipv4_prefix_count            = optional(number)
+    ipv4_prefixes                = optional(list(string))
+    ipv6_address_count           = optional(number)
+    ipv6_addresses               = optional(list(string))
+    ipv6_prefix_count            = optional(number)
+    ipv6_prefixes                = optional(list(string))
+    network_card_index           = optional(number)
+    network_interface_id         = optional(string)
+    primary_ipv6                 = optional(bool)
+    private_ip_address           = optional(string)
+    security_groups              = optional(list(string))
+    subnet_id                    = optional(string)
+    connection_tracking_specification = optional(object({
+      tcp_established_timeout = optional(number)
+      udp_stream_timeout      = optional(number)
+      udp_timeout             = optional(number)
+    }))
+    ena_srd_specification = optional(object({
+      ena_srd_enabled = optional(bool)
+      ena_srd_udp_specification = optional(object({
+        ena_srd_udp_enabled = optional(bool)
+      }))
+    }))
+  }))
+  default = []
 }
 
 variable "runners_ssm_housekeeper" {

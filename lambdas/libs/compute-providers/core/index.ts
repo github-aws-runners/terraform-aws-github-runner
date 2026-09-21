@@ -6,7 +6,7 @@ export interface ComputeProvider {
   type: ComputeProviderType;
 }
 
-export type LambdaRunnerSource = 'scale-up-lambda' | 'pool-lambda';
+export type RunnerSource = 'scale-up-lambda' | 'pool-lambda';
 export type RunnerType = 'Org' | 'Repo';
 
 export interface CreateGitHubRunnerConfig {
@@ -21,9 +21,6 @@ export interface CreateGitHubRunnerConfig {
   runnerOwner: string;
   runnerType: RunnerType;
   disableAutoUpdate: boolean;
-  ssmTokenPath: string;
-  ssmConfigPath: string;
-  ssmParameterStoreTags: { Key: string; Value: string }[];
 }
 
 export interface GitHubRunnerMetadata {
@@ -32,7 +29,9 @@ export interface GitHubRunnerMetadata {
 }
 
 export interface StartRunnerConfigOptions {
-  getSsmParameterTags?: (runnerId: string) => { Key: string; Value: string }[];
+  runnerConfigStore?: import('@aws-github-runner/storage-providers').RunnerConfigStore;
+  runnerGroupCacheStore?: import('@aws-github-runner/storage-providers').RunnerGroupCacheStore;
+  getRunnerConfigMetadata?: (runnerId: string) => { key: string; value: string }[];
   onJitConfigCreated?: (runnerId: string, metadata: GitHubRunnerMetadata) => Promise<void>;
 }
 
@@ -53,11 +52,20 @@ export interface CreateScaleUpRunnersInput<TState = unknown> {
   numberOfRunners: number;
   githubInstallationClient: Octokit;
   state: TState;
+  storage?: import('@aws-github-runner/storage-providers').RunnerConfigStorage;
 }
 
 export interface RunnerLabelResolution<TState = unknown> {
   runnerLabels: string[];
   state: TState;
+}
+
+/** Signals that runner labels are permanently invalid and must not be retried. */
+export class InvalidRunnerLabelsError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'InvalidRunnerLabelsError';
+  }
 }
 
 export interface CreateRunnerResult {
@@ -82,6 +90,11 @@ export interface RunnerInfo {
   orphan?: boolean;
   githubRunnerId?: string;
   bypassRemoval?: boolean;
+  /**
+   * When scale-down first observed this runner reporting idle, as an ISO-8601 string.
+   * Set and cleared via `markIdle` / `unmarkIdle`; absent when no marker is recorded.
+   */
+  idleDetectedAt?: string;
 }
 
 export interface ListRunnerFilters {
@@ -97,6 +110,14 @@ export interface ScaleDownComputeProvider extends ComputeProvider {
   markOrphan(id: string): Promise<void>;
   unmarkOrphan(id: string): Promise<void>;
   terminate(id: string): Promise<void>;
+  /**
+   * Record that the runner was observed idle at `at` (ISO-8601), so a later cycle can tell
+   * how long it has read idle. Surfaces back on `RunnerInfo.idleDetectedAt`. Only called
+   * when the idle-confirmation window (SCALE_DOWN_IDLE_CONFIRMATION_SECONDS) is enabled.
+   */
+  markIdle(id: string, at: string): Promise<void>;
+  /** Clear the idle marker — the runner was seen busy again, so the window restarts. */
+  unmarkIdle(id: string): Promise<void>;
 }
 
 export interface RunnerStatus {
@@ -114,6 +135,7 @@ export interface CreatePoolRunnersInput {
   githubRunnerConfig: CreateGitHubRunnerConfig;
   numberOfRunners: number;
   githubInstallationClient: Octokit;
+  storage?: import('@aws-github-runner/storage-providers').RunnerConfigStorage;
 }
 
 export interface PoolComputeProvider<TRunner = unknown> extends ComputeProvider {

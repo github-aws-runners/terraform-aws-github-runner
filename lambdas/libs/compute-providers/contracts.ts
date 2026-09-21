@@ -15,6 +15,7 @@ export interface AwsDynamicLabelsValueRule {
 
 export interface AwsDynamicLabelsPolicy {
   blocked_keys?: string[];
+  allowed_keys?: string[];
   restricted_keys?: Record<string, AwsDynamicLabelsValueRule>;
 }
 
@@ -43,12 +44,13 @@ export interface DynamicLabelDispatchTarget {
   labels: string[];
 }
 
+export interface DynamicLabelViolation {
+  label: string;
+  reason: string;
+}
+
 export interface DynamicLabelProvider {
-  selectQueue(input: {
-    queue: RunnerMatcherConfig;
-    nonGhrLabels: string[];
-    sanitizedGhrLabels: string[];
-  }): DynamicLabelDispatchTarget | undefined;
+  getViolations(input: { queue: RunnerMatcherConfig; labels: string[] }): DynamicLabelViolation[];
 }
 
 export interface ControlPlaneProviderCapabilities {

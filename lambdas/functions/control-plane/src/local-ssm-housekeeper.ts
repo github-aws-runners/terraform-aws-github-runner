@@ -1,4 +1,4 @@
-import { cleanSSMTokens } from './scale-runners/ssm-housekeeper';
+import { cleanSSMTokens } from '@aws-github-runner/storage-providers/aws/ssm/runner-config-housekeeper';
 
 export function run(): void {
   cleanSSMTokens({

@@ -1,24 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { RunnerInfo, RunnerType } from '../../../../core';
-import { createEc2ScaleDownProvider } from './scale-down';
-import { listEC2Runners, tag, terminateRunner, untag } from './runners';
+import { IDLE_DETECTED_TAG, createEc2ScaleDownCapability } from './scale-down';
+import type { Ec2RunnerResourceOperations } from '../runners';
 
-vi.mock('./runners', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./runners')>();
-  return {
-    ...actual,
-    listEC2Runners: vi.fn(),
-    tag: vi.fn(),
-    terminateRunner: vi.fn(),
-    untag: vi.fn(),
-  };
-});
-
-const mockListRunners = vi.mocked(listEC2Runners);
-const mockTagRunner = vi.mocked(tag);
-const mockTerminateRunner = vi.mocked(terminateRunner);
-const mockUntagRunner = vi.mocked(untag);
+const mockListRunners = vi.fn<Ec2RunnerResourceOperations['list']>();
+const mockCreateRunner = vi.fn<Ec2RunnerResourceOperations['create']>();
+const mockTagRunner = vi.fn<Ec2RunnerResourceOperations['tag']>();
+const mockTerminateRunner = vi.fn<Ec2RunnerResourceOperations['terminate']>();
+const mockUntagRunner = vi.fn<Ec2RunnerResourceOperations['untag']>();
+const ec2Operations: Ec2RunnerResourceOperations = {
+  list: mockListRunners,
+  create: mockCreateRunner,
+  terminate: mockTerminateRunner,
+  tag: mockTagRunner,
+  untag: mockUntagRunner,
+};
+const capability = createEc2ScaleDownCapability(ec2Operations);
 
 describe('Scale down runners', () => {
   beforeEach(() => {
@@ -47,10 +45,8 @@ describe('Scale down runners', () => {
         mockListRunners.mockResolvedValueOnce([]).mockResolvedValueOnce([runner]);
         mockTagRunner.mockResolvedValue();
         mockUntagRunner.mockResolvedValue();
-        const provider = createEc2ScaleDownProvider();
-
-        await expect(provider.list('unit-test-environment')).resolves.toEqual([]);
-        await expect(provider.list('unit-test-environment', true)).resolves.toEqual([runner]);
+        await expect(capability.list('unit-test-environment')).resolves.toEqual([]);
+        await expect(capability.list('unit-test-environment', true)).resolves.toEqual([runner]);
         expect(mockListRunners).toHaveBeenNthCalledWith(1, {
           environment: 'unit-test-environment',
           orphan: undefined,
@@ -58,11 +54,24 @@ describe('Scale down runners', () => {
         expect(mockListRunners).toHaveBeenNthCalledWith(2, { environment: 'unit-test-environment', orphan: true });
         expect(mockTerminateRunner).not.toHaveBeenCalled();
 
-        await provider.markOrphan(runner.id);
-        await provider.unmarkOrphan(runner.id);
+        await capability.markOrphan(runner.id);
+        await capability.unmarkOrphan(runner.id);
 
         expect(mockTagRunner).toHaveBeenCalledWith(runner.id, [{ Key: 'ghr:orphan', Value: 'true' }]);
         expect(mockUntagRunner).toHaveBeenCalledWith(runner.id, [{ Key: 'ghr:orphan', Value: 'true' }]);
+      });
+
+      it('Should persist and clear the idle-detection marker as an instance tag.', async () => {
+        mockTagRunner.mockResolvedValue();
+        mockUntagRunner.mockResolvedValue();
+        const detectedAt = '2026-08-05T10:05:00.000Z';
+
+        await capability.markIdle(runner.id, detectedAt);
+        await capability.unmarkIdle(runner.id);
+
+        expect(mockTagRunner).toHaveBeenCalledWith(runner.id, [{ Key: IDLE_DETECTED_TAG, Value: detectedAt }]);
+        expect(mockUntagRunner).toHaveBeenCalledWith(runner.id, [{ Key: IDLE_DETECTED_TAG }]);
+        expect(mockTerminateRunner).not.toHaveBeenCalled();
       });
 
       it(`Should respect booting runner.`, async () => {
@@ -71,12 +80,11 @@ describe('Scale down runners', () => {
           launchTime: new Date(),
         };
         process.env.RUNNER_BOOT_TIME_IN_MINUTES = '5';
-        const provider = createEc2ScaleDownProvider();
 
-        expect(provider.bootTimeExceeded(scaleDownRunner)).toBe(false);
+        expect(capability.bootTimeExceeded(scaleDownRunner)).toBe(false);
         expect(mockTerminateRunner).not.toHaveBeenCalled();
         mockTerminateRunner.mockResolvedValue();
-        await provider.terminate(runner.id);
+        await capability.terminate(runner.id);
 
         expect(mockTerminateRunner).toHaveBeenCalledWith(runner.id);
       });

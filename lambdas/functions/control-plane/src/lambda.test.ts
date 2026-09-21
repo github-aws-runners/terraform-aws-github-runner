@@ -1,4 +1,5 @@
 import { captureLambdaHandler, logger } from '@aws-github-runner/aws-powertools-util';
+import { createRunnerConfigHousekeeper } from '@aws-github-runner/storage-providers';
 import { Context, SQSEvent, SQSRecord } from 'aws-lambda';
 
 import { addMiddleware, adjustPool, scaleDownHandler, scaleUpHandler, ssmHousekeeper, jobRetryCheck } from './lambda';
@@ -6,7 +7,6 @@ import { adjust } from './pool/pool';
 import { scaleDown } from './scale-runners/scale-down';
 import { scaleUp } from './scale-runners/scale-up';
 import type { ActionRequestMessage } from './scale-runners/types';
-import { cleanSSMTokens } from './scale-runners/ssm-housekeeper';
 import { checkAndRetryJob } from './scale-runners/job-retry';
 import { describe, it, expect, vi, MockedFunction, beforeEach } from 'vitest';
 
@@ -64,10 +64,14 @@ const context: Context = {
 vi.mock('./pool/pool');
 vi.mock('./scale-runners/scale-down');
 vi.mock('./scale-runners/scale-up');
-vi.mock('./scale-runners/ssm-housekeeper');
 vi.mock('./scale-runners/job-retry');
 vi.mock('@aws-github-runner/aws-powertools-util');
 vi.mock('@aws-github-runner/aws-ssm-util');
+vi.mock('@aws-github-runner/storage-providers', () => ({
+  createRunnerConfigHousekeeper: vi.fn(),
+}));
+
+const mockedCreateRunnerConfigHousekeeper = vi.mocked(createRunnerConfigHousekeeper);
 
 describe('Test scale up lambda wrapper.', () => {
   it('Do not handle empty record sets.', async () => {
@@ -276,14 +280,14 @@ describe('Test scale down lambda wrapper.', () => {
 describe('Adjust pool.', () => {
   it('Receive message to adjust pool.', async () => {
     vi.mocked(adjust).mockResolvedValue();
-    await expect(adjustPool({ poolSize: 2, type: 'ec2' }, context)).resolves.not.toThrow();
+    await expect(adjustPool({ poolSize: 2 }, context)).resolves.not.toThrow();
   });
 
   it('Handle error for adjusting pool.', async () => {
     const error = new Error('Handle error for adjusting pool.');
     vi.mocked(adjust).mockRejectedValue(error);
     const logSpy = vi.spyOn(logger, 'error');
-    await adjustPool({ poolSize: 0, type: 'ec2' }, context);
+    await adjustPool({ poolSize: 0 }, context);
     expect(logSpy).toHaveBeenCalledWith(`Handle error for adjusting pool. ${error.message}`, { error });
   });
 });
@@ -298,19 +302,15 @@ describe('Test middleware', () => {
 
 describe('Test ssm housekeeper lambda wrapper.', () => {
   it('Invoke without errors.', async () => {
-    vi.mocked(cleanSSMTokens).mockResolvedValue();
-
-    process.env.SSM_CLEANUP_CONFIG = JSON.stringify({
-      dryRun: false,
-      minimumDaysOld: 1,
-      tokenPath: '/path/to/tokens/',
-    });
+    const houseKeeper = vi.fn().mockResolvedValue();
+    mockedCreateRunnerConfigHousekeeper.mockReturnValue({ houseKeeper });
 
     await expect(ssmHousekeeper({}, context)).resolves.not.toThrow();
+    expect(houseKeeper).toHaveBeenCalledOnce();
   });
 
   it('Errors not throws.', async () => {
-    vi.mocked(cleanSSMTokens).mockRejectedValue(new Error());
+    mockedCreateRunnerConfigHousekeeper.mockReturnValue({ houseKeeper: vi.fn().mockRejectedValue(new Error()) });
     await expect(ssmHousekeeper({}, context)).resolves.not.toThrow();
   });
 });

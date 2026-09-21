@@ -33,3 +33,10 @@ output "additional_app_parameters" {
     }
   ]
 }
+
+output "additional_apps_manifest" {
+  value = length(var.additional_github_apps) > 0 ? {
+    name = aws_ssm_parameter.additional_github_apps_manifest[0].name
+    arn  = aws_ssm_parameter.additional_github_apps_manifest[0].arn
+  } : null
+}

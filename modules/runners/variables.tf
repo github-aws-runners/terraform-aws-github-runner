@@ -229,20 +229,24 @@ variable "github_app_parameters" {
   description = <<-EOF
     Parameter Store for GitHub App Parameters.
 
-    Supports multiple GitHub Apps for random API rate limit distribution.
-    Each list element corresponds to one GitHub App and is a map containing
-    `name` and `arn` keys referencing SSM parameters. The first element is the
-    primary app (the one whose webhook secret is used for incoming webhook
-    validation). All apps must be installed on the same repositories/organizations.
-
-    The control-plane lambdas (scale-up, scale-down, pool, job-retry) randomly
-    select an app from the list for each GitHub API call, distributing rate
-    limit consumption across all configured apps.
+    Supports multiple GitHub Apps for API rate limit distribution. `id` and
+    `key_base64` reference the primary app (the one whose webhook secret is
+    used for incoming webhook validation). Additional apps are delivered to
+    the lambdas via `additional_apps_manifest`, an SSM parameter whose value
+    lists the per-app credential parameter names, keeping the lambda
+    environment size constant regardless of app count.
+    `additional_app_parameter_arns` carries the ARNs of every additional app
+    credential parameter for the lambda IAM policies. All apps must be
+    installed on the same repositories/organizations as the primary app.
   EOF
   type = object({
-    key_base64      = list(map(string))
-    id              = list(map(string))
-    installation_id = list(object({ name = string, arn = string }))
+    key_base64 = map(string)
+    id         = map(string)
+    additional_apps_manifest = optional(object({
+      name = string
+      arn  = string
+    }), null)
+    additional_app_parameter_arns = optional(list(string), [])
   })
 }
 
@@ -268,6 +272,17 @@ variable "runner_boot_time_in_minutes" {
   description = "The minimum time for an EC2 runner to boot and register as a runner."
   type        = number
   default     = 5
+}
+
+variable "scale_down_idle_confirmation_seconds" {
+  description = "Number of seconds a runner must consistently report not-busy before scale-down terminates it. GitHub's busy flag can be stale (it can read false for a runner that is actively executing a job), so a single not-busy reading is not sufficient evidence a runner is idle. Set to at least one scale-down schedule interval to require two consecutive not-busy evaluations; a busy reading resets the window. 0 keeps the previous single-reading behaviour."
+  type        = number
+  default     = 0
+
+  validation {
+    condition     = var.scale_down_idle_confirmation_seconds >= 0
+    error_message = "The idle confirmation window must be 0 (disabled) or a positive number of seconds."
+  }
 }
 
 variable "runner_disable_default_labels" {
@@ -711,8 +726,8 @@ variable "cpu_options" {
 
   validation {
     condition = var.cpu_options == null ? true : (
-      (var.cpu_options.amd_sev_snp == null || contains(["enabled", "disabled"], var.cpu_options.amd_sev_snp)) &&
-      (var.cpu_options.nested_virtualization == null || contains(["enabled", "disabled"], var.cpu_options.nested_virtualization))
+      (var.cpu_options.amd_sev_snp == null ? true : contains(["enabled", "disabled"], var.cpu_options.amd_sev_snp)) &&
+      (var.cpu_options.nested_virtualization == null ? true : contains(["enabled", "disabled"], var.cpu_options.nested_virtualization))
     )
     error_message = "When set, cpu_options.amd_sev_snp and cpu_options.nested_virtualization must be one of: enabled, disabled."
   }
@@ -752,6 +767,44 @@ variable "associate_public_ipv4_address" {
   description = "Associate public IPv4 with the runner. Only tested with IPv4"
   type        = bool
   default     = false
+}
+
+variable "network_interfaces" {
+  description = "Advanced network interface configuration for the runner launch template. See https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#network-interfaces for details. Leave unset (default) to keep using associate_public_ipv4_address for a simple single-interface setup; set this to fully control one or more interfaces."
+  type = list(object({
+    associate_carrier_ip_address = optional(bool)
+    associate_public_ip_address  = optional(bool)
+    delete_on_termination        = optional(bool)
+    description                  = optional(string)
+    device_index                 = optional(number)
+    interface_type               = optional(string)
+    ipv4_address_count           = optional(number)
+    ipv4_addresses               = optional(list(string))
+    ipv4_prefix_count            = optional(number)
+    ipv4_prefixes                = optional(list(string))
+    ipv6_address_count           = optional(number)
+    ipv6_addresses               = optional(list(string))
+    ipv6_prefix_count            = optional(number)
+    ipv6_prefixes                = optional(list(string))
+    network_card_index           = optional(number)
+    network_interface_id         = optional(string)
+    primary_ipv6                 = optional(bool)
+    private_ip_address           = optional(string)
+    security_groups              = optional(list(string))
+    subnet_id                    = optional(string)
+    connection_tracking_specification = optional(object({
+      tcp_established_timeout = optional(number)
+      udp_stream_timeout      = optional(number)
+      udp_timeout             = optional(number)
+    }))
+    ena_srd_specification = optional(object({
+      ena_srd_enabled = optional(bool)
+      ena_srd_udp_specification = optional(object({
+        ena_srd_udp_enabled = optional(bool)
+      }))
+    }))
+  }))
+  default = []
 }
 
 variable "ssm_housekeeper" {

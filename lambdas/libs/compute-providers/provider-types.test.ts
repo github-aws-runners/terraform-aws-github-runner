@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  defaultComputeProvider,
-  normalizeComputeProviderType,
-  resolveComputeProviderType,
-  computeProviderTypes,
-} from './provider-types';
+import { computeProviderTypes, defaultComputeProvider, resolveComputeProviderType } from './provider-types';
+
+const defaultProviderInputs = [undefined, '', '   '] as const;
+const supportedProviderCases = computeProviderTypes.flatMap(
+  (provider) =>
+    [
+      [provider, provider],
+      [` ${provider.toUpperCase()} `, provider],
+    ] as const,
+);
 
 describe('compute provider configuration', () => {
   it('defines an explicit default provider', () => {
@@ -13,32 +17,16 @@ describe('compute provider configuration', () => {
   });
 });
 
-describe('compute provider normalization', () => {
-  it.each([
-    [undefined, 'ec2'],
-    ['', 'ec2'],
-    ['   ', 'ec2'],
-    [' EC2 ', 'ec2'],
-  ])('normalizes provider type %j to %j', (type, expected) => {
-    expect(normalizeComputeProviderType(type)).toBe(expected);
-  });
-
-  it.each([[' Unknown '], ['microvm'], [null], [1]])('returns undefined for unsupported provider type %j', (type) => {
-    expect(normalizeComputeProviderType(type)).toBeUndefined();
-  });
-});
-
 describe('compute provider resolution', () => {
-  it.each([
-    [undefined, 'ec2'],
-    ['', 'ec2'],
-    ['   ', 'ec2'],
-    [' EC2 ', 'ec2'],
-  ])('resolves provider type %j to %j', (type, expected) => {
+  it.each(defaultProviderInputs)('resolves default provider input %j', (type) => {
+    expect(resolveComputeProviderType(type)).toBe(defaultComputeProvider);
+  });
+
+  it.each(supportedProviderCases)('resolves provider type %j to %j', (type, expected) => {
     expect(resolveComputeProviderType(type)).toBe(expected);
   });
 
-  it.each([[' Unknown '], ['microvm'], [null], [1]])('rejects unsupported provider type %j', (type) => {
+  it.each([[' Unknown '], ['unsupported-provider'], [null], [1]])('rejects unsupported provider type %j', (type) => {
     expect(() => resolveComputeProviderType(type)).toThrow(`Unsupported compute provider type '${String(type)}'`);
   });
 });

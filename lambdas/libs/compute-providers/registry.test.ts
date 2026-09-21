@@ -31,8 +31,10 @@ it('exposes every configured provider through both capability registries', () =>
       bootTimeExceeded: expect.any(Function),
       markOrphan: expect.any(Function),
       unmarkOrphan: expect.any(Function),
+      markIdle: expect.any(Function),
+      unmarkIdle: expect.any(Function),
       terminate: expect.any(Function),
     });
-    expect(webhookProviderRegistry.capability(type, 'dynamicLabels').selectQueue).toEqual(expect.any(Function));
+    expect(webhookProviderRegistry.capability(type, 'dynamicLabels').getViolations).toEqual(expect.any(Function));
   }
 });
