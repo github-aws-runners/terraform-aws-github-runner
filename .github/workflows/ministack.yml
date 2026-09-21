@@ -141,7 +141,7 @@ jobs:
     timeout-minutes: 30
     services:
       ministack:
-        image: ghcr.io/ministackorg/ministack-preview-build:pr-1790-f3a550cf
+        image: ghcr.io/ministackorg/ministack-preview-build:pr-1790-172234b0
         ports:
           - 4566:4566
         options: --add-host=host.docker.internal:host-gateway
