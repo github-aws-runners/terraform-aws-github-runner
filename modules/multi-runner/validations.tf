@@ -13,7 +13,16 @@ locals {
     var.queue_encryption == null || var.queue_encryption.sqs_managed_sse_enabled != null && var.queue_encryption.kms_master_key_id == null && var.queue_encryption.kms_data_key_reuse_period_seconds == null || var.queue_encryption.sqs_managed_sse_enabled == null && var.queue_encryption.kms_master_key_id != null ? [] : ["Invalid configuration for `queue_encryption`. Valid configurations are encryption disabled, enabled via SSE. Or encryption via KMS."],
     contains(["Standard", "Advanced"], var.matcher_config_parameter_store_tier) ? [] : ["`matcher_config_parameter_store_tier` value is not valid, valid values are: `Standard`, and `Advanced`."],
     !var.iam_overrides.override_instance_profile || var.iam_overrides.instance_profile_name != null ? [] : ["instance_profile_name must be provided when override_instance_profile is true."],
-    !var.iam_overrides.override_runner_role || var.iam_overrides.runner_role_arn != null ? [] : ["runner_role_arn must be provided when override_runner_role is true."]
+    !var.iam_overrides.override_runner_role || var.iam_overrides.runner_role_arn != null ? [] : ["runner_role_arn must be provided when override_runner_role is true."],
+    alltrue([
+      for config in var.multi_runner_config : !(
+        try(length(config.matcherConfig.awsDynamicLabelsPolicy.allowed_keys), 0) > 0 &&
+        try(length(config.matcherConfig.awsDynamicLabelsPolicy.blocked_keys), 0) > 0
+        ) && !(
+        try(length(config.orchestration_provider.webhook.matcherConfig.awsDynamicLabelsPolicy.allowed_keys), 0) > 0 &&
+        try(length(config.orchestration_provider.webhook.matcherConfig.awsDynamicLabelsPolicy.blocked_keys), 0) > 0
+      )
+    ]) ? [] : ["multi_runner_config: allowed_keys and blocked_keys cannot both be set in awsDynamicLabelsPolicy."]
   )
 }
 

@@ -34,7 +34,15 @@ variable "runner_matcher_config" {
       bidirectionalLabelMatch = optional(bool, false)
       priority                = optional(number, 999)
       enableDynamicLabels     = optional(bool, false)
-      awsDynamicLabelsPolicy  = optional(any, null)
+      awsDynamicLabelsPolicy = optional(object({
+        allowed_keys = optional(list(string), [])
+        blocked_keys = optional(list(string), [])
+        restricted_keys = optional(map(object({
+          allowed = optional(list(string), [])
+          denied  = optional(list(string), [])
+          max     = optional(string, null)
+        })), {})
+      }), null)
     })
   }))
   validation {
@@ -50,6 +58,15 @@ variable "runner_matcher_config" {
       contains(["ec2", "microvm"], lower(trimspace(config.computeProvider)))
     ])
     error_message = "computeProvider must be one of: ec2, microvm."
+  }
+  validation {
+    condition = alltrue([
+      for config in values(var.runner_matcher_config) : !(
+        try(length(config.matcherConfig.awsDynamicLabelsPolicy.allowed_keys), 0) > 0 &&
+        try(length(config.matcherConfig.awsDynamicLabelsPolicy.blocked_keys), 0) > 0
+      )
+    ])
+    error_message = "runner_matcher_config: allowed_keys and blocked_keys cannot both be set in awsDynamicLabelsPolicy."
   }
 }
 
