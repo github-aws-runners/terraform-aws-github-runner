@@ -12,6 +12,24 @@ It manages:
 - A Lambda-trusted Network Connector operator role and propagation barrier.
 - An unattached runtime usage policy for the reserved image namespace and connector inventory.
 
+## Build role and execution role
+
+MicroVM deployments use two different IAM roles with different lifecycles:
+
+- The `build_role_arn` output is the **build role**. The image builder assumes
+  this role while it creates and publishes a MicroVM image. It grants the
+  image-build permissions for the foundation artifact bucket, logs, and any
+  configured ECR repositories. It is not the role used by a runner job.
+- The **execution role** is attached to each MicroVM when the runner control
+  plane launches it. The control-plane TypeScript passes this role to
+  `RunMicrovm`; the Lambda that calls that API must be allowed to pass the
+  role. The MicroVM and the ephemeral runner use this role at runtime.
+
+The execution role is resolved by the runner configuration and is intentionally
+not created by this foundation module. The foundation creates the regional
+build resources and the reusable `usage_policy_arn`; the runner/control-plane
+configuration owns the runtime role and its provider-specific permissions.
+
 The module does not create MicroVM images, runner execution roles, or the
 runner control plane. Attach `usage_policy_arn` to the control-plane role that
 owns the runtime launch operations. The caller must also grant the Terraform
