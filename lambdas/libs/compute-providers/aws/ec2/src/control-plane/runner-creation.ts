@@ -155,6 +155,9 @@ function createEc2StartRunnerConfigOptions(
   return {
     runnerConfigStore: storage?.runnerConfig,
     runnerGroupCacheStore: storage?.runnerGroupCache,
+    computeProvider: 'ec2',
+    getRunnerConfigAccessScope: (instanceId) =>
+      process.env.EC2_INSTANCE_ARN_PREFIX ? `${process.env.EC2_INSTANCE_ARN_PREFIX}${instanceId}` : undefined,
     getRunnerConfigMetadata: (instanceId) => [{ key: 'InstanceId', value: instanceId }],
     onJitConfigCreated: async (instanceId, metadata) => await tagEc2RunnerMetadata(ec2Operations, instanceId, metadata),
   };

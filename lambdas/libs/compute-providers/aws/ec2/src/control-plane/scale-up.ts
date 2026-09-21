@@ -59,7 +59,9 @@ export function createEc2ScaleUpCapability(
   return {
     resolveLabelsForRunners: (labels) => resolveEc2ScaleUpRunnerLabels(ec2Operations, labels),
     getCurrentRunners: async (_state, { runnerType, runnerOwner }) =>
-      (await ec2Operations.list({ environment: process.env.ENVIRONMENT, runnerType, runnerOwner })).length,
+      (await ec2Operations.list({ environment: process.env.ENVIRONMENT, runnerType, runnerOwner })).map(
+        (runner) => runner.id,
+      ),
     createRunners: async ({ githubRunnerConfig, numberOfRunners, githubInstallationClient, state, storage }) => {
       const config = loadEc2ScaleUpProviderConfig();
 

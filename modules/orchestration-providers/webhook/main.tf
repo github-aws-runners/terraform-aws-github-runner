@@ -30,12 +30,13 @@ locals {
     queue = merge(var.config.queue, {
       event_source_mapping = var.config.lambda.scale.up.event_source_mapping
     })
-    scale_up      = var.config.lambda.scale.up
-    scale_down    = var.config.lambda.scale.down
-    pool          = var.config.lambda.pool
-    job_retry     = var.config.job_retry
-    ssm           = var.ssm
-    observability = var.observability
+    scale_up         = var.config.lambda.scale.up
+    scale_down       = var.config.lambda.scale.down
+    pool             = var.config.lambda.pool
+    job_retry        = var.config.job_retry
+    ssm              = var.ssm
+    storage_provider = var.storage_provider
+    observability    = var.observability
   }
 
   common_tags            = local.resolved_config.tags

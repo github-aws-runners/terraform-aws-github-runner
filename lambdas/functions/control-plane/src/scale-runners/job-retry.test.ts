@@ -12,6 +12,13 @@ vi.mock('../aws/sqs', async () => ({
   publishMessage: vi.fn(),
 }));
 
+vi.mock('@aws-github-runner/storage-providers', () => ({
+  getGitHubAppCredentialsStore: vi.fn(),
+  getRunnerConfigStore: vi.fn().mockReturnValue({ houseKeeper: vi.fn() }),
+  getRunnerGroupCacheStore: vi.fn(),
+  getRunnerStateStore: vi.fn().mockReturnValue(undefined),
+}));
+
 vi.mock('@aws-github-runner/aws-powertools-util', async () => {
   // This is a workaround for TypeScript's type checking
   // Use vi.importActual with a type assertion to avoid spread operator type error
