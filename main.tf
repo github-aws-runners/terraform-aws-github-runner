@@ -111,13 +111,19 @@ module "ssm" {
 module "webhook" {
   source = "./modules/webhook"
 
-  ssm_paths = {
-    root    = local.ssm_root_path
-    webhook = var.ssm_paths.webhook
+  storage_provider = {
+    aws = {
+      kms_key_id = var.kms_key_arn
+      ssm = {
+        paths = {
+          root    = local.ssm_root_path
+          webhook = var.ssm_paths.webhook
+        }
+      }
+    }
   }
   prefix      = var.prefix
   tags        = local.tags
-  kms_key_arn = var.kms_key_arn
   eventbridge = var.eventbridge
 
   runner_matcher_config = {

@@ -79,7 +79,7 @@ module "direct" {
     storage_provider = {
       aws = {
         ssm = {
-          kms_key_id = var.storage_provider.aws.ssm.kms_key_id
+          kms_key_id = var.storage_provider.aws.kms_key_id
         }
       }
     }
@@ -128,7 +128,7 @@ module "eventbridge" {
     storage_provider = {
       aws = {
         ssm = {
-          kms_key_id = var.storage_provider.aws.ssm.kms_key_id
+          kms_key_id = var.storage_provider.aws.kms_key_id
         }
       }
     }

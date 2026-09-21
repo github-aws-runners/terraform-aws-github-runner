@@ -29,8 +29,8 @@ module "webhook" {
   tags   = local.tags
   storage_provider = {
     aws = {
+      kms_key_id = local.webhook_storage_kms_key_arn
       ssm = {
-        kms_key_id = local.webhook_storage_kms_key_arn
         paths = {
           root    = local.ssm_root_path
           webhook = local.effective_config.storage_provider.aws.ssm.paths.webhook
