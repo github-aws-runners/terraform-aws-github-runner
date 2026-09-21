@@ -22,7 +22,7 @@ case "$iac_binary" in
     ;;
 esac
 case "$example" in
-  base | prebuilt | default | ephemeral | multi-runner | multi-runner-v2 | microvm-foundation | microvm)
+  base | prebuilt | default | ephemeral | multi-runner | multi-runner-webhook | microvm-foundation)
     use_tfvars=true
     ;;
   migration-test)
@@ -32,7 +32,7 @@ case "$example" in
     use_tfvars=false
     ;;
   *)
-  echo "Supported examples for the runner are: base, prebuilt, default, ephemeral, multi-runner, multi-runner-v2, microvm-foundation, microvm, migration-test, termination-watcher" >&2
+  echo "Supported examples for the runner are: base, prebuilt, default, ephemeral, multi-runner, multi-runner-webhook, microvm-foundation, migration-test, termination-watcher" >&2
   exit 64
   ;;
 esac
@@ -40,7 +40,7 @@ esac
 case "$action" in
   init | plan | apply | destroy) ;;
   *)
-    echo "Usage: $0 {init|plan|apply|destroy} {base|prebuilt|default|ephemeral|multi-runner|multi-runner-v2|microvm-foundation|microvm|migration-test|termination-watcher} [TFVARS_FILE]" >&2
+    echo "Usage: $0 {init|plan|apply|destroy} {base|prebuilt|default|ephemeral|multi-runner|multi-runner-webhook|microvm-foundation|migration-test|termination-watcher} [TFVARS_FILE]" >&2
     exit 64
     ;;
 esac
@@ -196,11 +196,11 @@ create_ami_fixture() {
   architecture="$2"
   ami_id=$(ministack_aws ec2 describe-images \
     --owners self \
-    --filters "Name=name,Values=$ami_name" "Name=state,Values=available" \
+    --filters "Name=name,Values=$ami_name" \
     --query 'Images[0].ImageId' \
     --output text)
 
-  if [ "$ami_id" = "None" ]; then
+  if [ "$ami_id" = "None" ] || [ -z "$ami_id" ]; then
     ami_id=$(ministack_aws ec2 register-image \
       --name "$ami_name" \
       --description "MiniStack test-only AMI" \
@@ -213,6 +213,25 @@ create_ami_fixture() {
     ami_created_ids="$ami_created_ids
 $ami_id"
   fi
+
+  attempts=60
+  while [ "$attempts" -gt 0 ]; do
+    ami_state=$(ministack_aws ec2 describe-images \
+      --owners self \
+      --image-ids "$ami_id" \
+      --query 'Images[0].State' \
+      --output text)
+    if [ "$ami_state" = "available" ]; then
+      return
+    fi
+
+    attempts=$((attempts - 1))
+    if [ "$attempts" -eq 0 ]; then
+      echo "AMI $ami_id ($ami_name) did not become available; last state: $ami_state" >&2
+      exit 70
+    fi
+    sleep 1
+  done
 
 }
 
@@ -347,29 +366,8 @@ $lambda_zip"
         "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-arm64" \
         "ami-0abcdef1234567890"
       ;;
-    multi-runner-v2)
-      create_ami_fixture "ministack-v2-linux-arm64" arm64 >/dev/null
-      create_ami_fixture "ministack-v2-linux-x64" x86_64 >/dev/null
-      create_ami_fixture "ministack-v2-windows-x64" x86_64 >/dev/null
-      ;;
-    microvm)
-      create_ssm_fixture \
-        "/ministack/microvm/github-app-key" \
-        "test-only"
-      create_ssm_fixture \
-        "/ministack/microvm/github-app-id" \
-        "123456"
-      create_ssm_fixture \
-        "/ministack/microvm/webhook-secret" \
-        "test-only"
-      create_s3_fixture \
-        "github-actions-runner-microvm-ministack" \
-        "runners.zip" \
-        "$lambda_fixture_dir/ministack-lambda.zip"
-      create_s3_fixture \
-        "github-actions-runner-microvm-ministack" \
-        "webhook.zip" \
-        "$lambda_fixture_dir/ministack-lambda.zip"
+    multi-runner-webhook)
+      create_ami_fixture "ministack-webhook-linux-x64" x86_64 >/dev/null
       ;;
   esac
 }
