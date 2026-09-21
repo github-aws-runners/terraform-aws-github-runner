@@ -114,6 +114,7 @@ variable "compute_provider" {
     - `aws.ec2.license_specifications`: License Manager configurations added to the launch template.
     - `aws.ec2.license_specifications[].license_configuration_arn`: ARN of a License Manager license configuration.
     - `aws.ec2.associate_public_ipv4_address`: Associates a public IPv4 address with runner network interfaces.
+    - `aws.ec2.network_interfaces`: Advanced network interface configuration for the launch template. Leave empty to keep using `associate_public_ipv4_address` for a simple single-interface setup.
     - `aws.ec2.on_demand_failover_for_errors`: EC2 error codes that trigger an on-demand fallback after a Spot launch failure.
     - `aws.ec2.scale_errors`: EC2 error codes treated as retryable scale-up failures.
     - `aws.ec2.use_dedicated_host`: Enables the dedicated-host launch path, required for macOS runners.
@@ -243,6 +244,39 @@ variable "compute_provider" {
           license_configuration_arn = string
         })), [])
         associate_public_ipv4_address = optional(bool, false)
+        network_interfaces = optional(list(object({
+          associate_carrier_ip_address = optional(bool)
+          associate_public_ip_address  = optional(bool)
+          delete_on_termination        = optional(bool)
+          description                  = optional(string)
+          device_index                 = optional(number)
+          interface_type               = optional(string)
+          ipv4_address_count           = optional(number)
+          ipv4_addresses               = optional(list(string))
+          ipv4_prefix_count            = optional(number)
+          ipv4_prefixes                = optional(list(string))
+          ipv6_address_count           = optional(number)
+          ipv6_addresses               = optional(list(string))
+          ipv6_prefix_count            = optional(number)
+          ipv6_prefixes                = optional(list(string))
+          network_card_index           = optional(number)
+          network_interface_id         = optional(string)
+          primary_ipv6                 = optional(bool)
+          private_ip_address           = optional(string)
+          security_groups              = optional(list(string))
+          subnet_id                    = optional(string)
+          connection_tracking_specification = optional(object({
+            tcp_established_timeout = optional(number)
+            udp_stream_timeout      = optional(number)
+            udp_timeout             = optional(number)
+          }))
+          ena_srd_specification = optional(object({
+            ena_srd_enabled = optional(bool)
+            ena_srd_udp_specification = optional(object({
+              ena_srd_udp_enabled = optional(bool)
+            }))
+          }))
+        })), [])
         on_demand_failover_for_errors = optional(list(string), [])
         scale_errors = optional(list(string), [
           "UnfulfillableCapacity",
