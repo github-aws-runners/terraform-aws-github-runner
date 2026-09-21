@@ -131,11 +131,6 @@ resource "aws_iam_role_policy" "dispatcher_kms" {
   })
 }
 
-moved {
-  from = aws_iam_role_policy.dispatcher_kms
-  to   = aws_iam_role_policy.dispatcher_kms[0]
-}
-
 resource "aws_iam_role_policy" "dispatcher_ssm" {
   name = "publish-ssm-policy"
   role = aws_iam_role.dispatcher_lambda.name

@@ -143,11 +143,6 @@ resource "aws_iam_role_policy" "webhook_kms" {
   })
 }
 
-moved {
-  from = aws_iam_role_policy.webhook_kms
-  to   = aws_iam_role_policy.webhook_kms[0]
-}
-
 resource "aws_iam_role_policy" "xray" {
   count  = var.config.tracing_config.mode != null ? 1 : 0
   name   = "xray-policy"
