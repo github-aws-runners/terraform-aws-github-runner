@@ -26,7 +26,7 @@ resource "aws_lambda_function" "pool" {
   tags                           = merge(var.config.tags, var.config.lambda_tags)
 
   environment {
-    variables = {
+    variables = merge({
       AMI_ID_SSM_PARAMETER_NAME                = var.config.ami_id_ssm_parameter_name
       DISABLE_RUNNER_AUTOUPDATE                = var.config.runner.disable_runner_autoupdate
       ENABLE_EPHEMERAL_RUNNERS                 = var.config.runner.ephemeral
@@ -53,7 +53,6 @@ resource "aws_lambda_function" "pool" {
       RUNNER_OWNER                             = var.config.runner.pool_owner
       RUNNERS_MAXIMUM_COUNT                    = var.config.runners_maximum_count
       SSM_TOKEN_PATH                           = var.config.ssm_token_path
-      SSM_TOKEN_TTL_SECONDS                    = var.config.ssm_ttl_seconds.tokens != null ? var.config.ssm_ttl_seconds.tokens : ""
       SSM_CONFIG_PATH                          = var.config.ssm_config_path
       SUBNET_IDS                               = join(",", var.config.subnet_ids)
       POWERTOOLS_SERVICE_NAME                  = "${var.config.prefix}-pool"
@@ -65,7 +64,9 @@ resource "aws_lambda_function" "pool" {
       SCALE_ERRORS                             = jsonencode(var.config.runner.scale_errors)
       USE_DEDICATED_HOST                       = var.config.runner.use_dedicated_host
       INCLUDE_BUSY_RUNNERS                     = var.config.include_busy_runners
-    }
+      }, var.config.ssm_ttl_seconds.tokens != null ? {
+      SSM_TOKEN_TTL_SECONDS = tostring(var.config.ssm_ttl_seconds.tokens)
+    } : {})
   }
 
   dynamic "vpc_config" {
