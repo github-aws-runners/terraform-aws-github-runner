@@ -133,11 +133,6 @@ resource "aws_iam_role_policy" "webhook_kms" {
   })
 }
 
-moved {
-  from = aws_iam_role_policy.webhook_kms
-  to   = aws_iam_role_policy.webhook_kms[0]
-}
-
 resource "aws_iam_role_policy" "webhook_ssm" {
   name = "publish-ssm-policy"
   role = aws_iam_role.webhook_lambda.name
