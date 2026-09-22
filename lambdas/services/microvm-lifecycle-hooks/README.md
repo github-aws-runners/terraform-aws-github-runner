@@ -14,6 +14,20 @@ yarn workspace @aws-github-runner/microvm-lifecycle-hooks start
 
 `build` uses esbuild to create the self-contained CommonJS server bundle `dist/server.js`. It also writes `dist/package.json` with `type: commonjs` so the bundle remains executable after it is copied outside the Yarn workspace.
 
+## Build and release with the Lambda artifacts
+
+The lifecycle-hook server is a deployable image-build artifact, not a service
+that is installed separately beside the runner control plane. Build and test it
+through the normal Lambda workspace/release process, then provide the resulting
+ZIP to the MicroVM image build as `MICROVM_LIFECYCLE_HOOK_ZIP`. Packer embeds
+that artifact in the image; every published image used by the MicroVM provider
+must contain a compatible hook server.
+
+The hook server's release lifecycle is therefore separate from the MicroVM
+execution role. The image build uses the foundation's build role. When a job
+starts, the runner control plane supplies the runtime execution role to
+`RunMicrovm`.
+
 To build before invoking Docker, run the workspace build above. In the existing MicroVM runner Dockerfile, which already installs s6-overlay and the GitHub runner's Node 24 runtime, copy the complete artifact and replace the old hook command with:
 
 ```dockerfile

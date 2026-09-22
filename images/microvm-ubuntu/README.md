@@ -7,8 +7,11 @@ Dockerfile, compiled lifecycle-hook ZIP contract, and image entrypoint.
 Before building the image:
 
 1. Apply `examples/microvm-foundation` in the target AWS Region.
-2. Install Packer and set the required AWS, S3, IAM, connector, and
-   lifecycle-hook variables.
+2. Build and release the lifecycle-hook service from
+   `lambdas/services/microvm-lifecycle-hooks`, then set
+   `MICROVM_LIFECYCLE_HOOK_ZIP` to the released artifact.
+3. Install Packer and set the required AWS, S3, IAM, connector, and image
+   variables.
 
 The image intentionally excludes the source repository's optional external
 telemetry and Teleport services. It contains only the Actions runner,
@@ -40,7 +43,13 @@ packer build -color=false github_agent.microvm.ubuntu.pkr.hcl
 ```
 
 The build role, artifact bucket, and network connector are created by the
-foundation module. Keep the bucket private and versioned, use the module's
-least-privilege policies, and do not put credentials in checked-in files. The
-lifecycle-hook ZIP must contain the compiled `server.js` at its archive root;
-any bundled dependencies must use safe relative paths.
+foundation module. The build role is used only while Packer creates and
+publishes the image; it is not baked into the image and is not the role used
+by runner jobs. The execution role is selected by the runner control plane and
+passed to `RunMicrovm` at launch time, so it is not configured by this image
+build.
+
+Keep the bucket private and versioned, use the module's least-privilege
+policies, and do not put credentials in checked-in files. The lifecycle-hook
+ZIP must contain the compiled `server.js` at its archive root; any bundled
+dependencies must use safe relative paths.

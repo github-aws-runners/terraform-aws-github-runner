@@ -21,10 +21,26 @@ documented in `../../images/microvm-ubuntu/README.md`. Use the outputs as the bu
 - `connector_arns.ministack` -> `MICROVM_EGRESS_NETWORK_CONNECTOR_ARN`
 - `usage_policy_arn` -> attach to the control-plane role used by the runner example
 
+The deployment order is:
+
+1. Apply this foundation to create the regional bucket, Network Connectors,
+   build role, and reusable runtime policy.
+2. Build and release the lifecycle-hook service from
+   `lambdas/services/microvm-lifecycle-hooks` using the repository's normal
+   Lambda artifact process.
+3. Build and publish the MicroVM image with Packer, passing the foundation
+   outputs and the released lifecycle-hook ZIP. The image builder uses the
+   **build role**.
+4. Deploy the runner control plane, such as
+   `examples/multi-runner-webhook`, with the published image ARN/version. The
+   control plane resolves the **execution role** from the runner configuration
+   and passes it to `RunMicrovm` when it starts a job.
+
+The two roles must not be conflated: the build role creates the image, while
+the execution role runs the ephemeral GitHub Actions runner inside that image.
 The foundation module owns regional storage, build IAM, Network Connectors,
-and the reusable runtime policy. It does not publish an image or create the
-runner control plane; those steps remain explicit and can be performed after
-the foundation is available.
+and the reusable runtime policy. It does not publish an image, create the
+execution role, or create the runner control plane.
 
 <!-- BEGIN_TF_DOCS -->
 ## Requirements

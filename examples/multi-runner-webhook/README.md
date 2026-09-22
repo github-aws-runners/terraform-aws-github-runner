@@ -18,6 +18,32 @@ terraform apply \
   -var='webhook_lambda_zip=/path/to/webhook.zip'
 ```
 
+## MicroVM prerequisites
+
+The MicroVM lane expects an image that has already been built and published in
+the target Region. The image is not created by this example. Prepare it in
+this order:
+
+1. Apply `examples/microvm-foundation`.
+2. Build and release the lifecycle-hook service from
+   `lambdas/services/microvm-lifecycle-hooks` using the same artifact process
+   used for the repository's Lambda services.
+3. Build the image with Packer from `images/microvm-ubuntu`, passing the
+   foundation's bucket, connector, build-role, and lifecycle-hook artifact.
+4. Set `compute_provider.aws.microvm.image_arn` (and, when applicable,
+   `image_version`) to the published image.
+
+The foundation's build role is used to create the image. It is different from
+the execution role used by the runner job. The runner configuration owns that
+execution role; the control-plane TypeScript passes it to `RunMicrovm` when it
+starts an ephemeral runner. The control-plane Lambda therefore needs
+permission to pass the configured execution role, and the role needs the
+runtime permissions required by the selected runner lane.
+
+This example deploys both EC2 and MicroVM lanes behind one webhook endpoint,
+but it does not replace the foundation, image build, lifecycle-hook release,
+or execution-role setup steps.
+
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
 
