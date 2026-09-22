@@ -1,1 +1,1 @@
---8<-- "modules/ssm/README.md"
+--8<-- "modules/storage-providers/aws/ssm/README.md"

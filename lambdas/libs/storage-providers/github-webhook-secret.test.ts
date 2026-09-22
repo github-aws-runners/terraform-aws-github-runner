@@ -12,8 +12,7 @@ vi.mock('./aws/ssm/github-webhook-secret-store', () => ({
   createAwsSsmGitHubWebhookSecretStore: vi.fn(),
 }));
 
-const createAwsDynamoDbStoreMock = vi.mocked(createAwsDynamoDbGitHubWebhookSecretStore);
-const createAwsSsmStoreMock = vi.mocked(createAwsSsmGitHubWebhookSecretStore);
+const createAwsSsmGitHubWebhookSecretStoreMock = vi.mocked(createAwsSsmGitHubWebhookSecretStore);
 const cleanEnv = process.env;
 
 describe('GitHub webhook secret store selection', () => {
@@ -24,55 +23,52 @@ describe('GitHub webhook secret store selection', () => {
     resetGitHubWebhookSecretStore();
   });
 
-  it.each([undefined, '', '   ', 'aws_ssm', ' AWS_SSM '])('uses aws_ssm for selector input %j', (provider) => {
+  it.each([undefined, '', '   '])('uses aws_ssm for default selector input %j', (provider) => {
     setProvider(provider);
-    const store = stubSsmStore();
+    const store = stubStore();
 
     expect(getGitHubWebhookSecretStore()).toBe(store);
-    expect(createAwsSsmStoreMock).toHaveBeenCalledOnce();
-    expect(createAwsDynamoDbStoreMock).not.toHaveBeenCalled();
+    expect(createAwsSsmGitHubWebhookSecretStoreMock).toHaveBeenCalledOnce();
   });
 
-  it.each(['aws_dynamodb', ' AWS_DYNAMODB '])('uses aws_dynamodb for selector input %j', (provider) => {
-    setProvider(provider);
-    const store = stubDynamoDbStore();
+  it.each(['aws_ssm', ' AWS_SSM '])('uses aws_ssm for explicit selector input %j', (provider) => {
+    process.env.RUNNER_CONFIG_STORAGE_PROVIDER = provider;
+    const store = stubStore();
 
     expect(getGitHubWebhookSecretStore()).toBe(store);
-    expect(createAwsDynamoDbStoreMock).toHaveBeenCalledOnce();
-    expect(createAwsSsmStoreMock).not.toHaveBeenCalled();
+    expect(createAwsSsmGitHubWebhookSecretStoreMock).toHaveBeenCalledOnce();
   });
 
-  it('rejects an unsupported provider before creating a store', () => {
-    setProvider('not-registered');
+  it('rejects an unsupported provider on first use', () => {
+    process.env.RUNNER_CONFIG_STORAGE_PROVIDER = 'not-registered';
 
     expect(() => getGitHubWebhookSecretStore()).toThrow("Unsupported runner config storage provider 'not-registered'");
-    expect(createAwsSsmStoreMock).not.toHaveBeenCalled();
-    expect(createAwsDynamoDbStoreMock).not.toHaveBeenCalled();
+    expect(createAwsSsmGitHubWebhookSecretStoreMock).not.toHaveBeenCalled();
   });
 
-  it('creates the selected store lazily and caches it', () => {
-    const store = stubSsmStore();
+  it('selects lazily and caches the created store', () => {
+    const store = stubStore();
 
-    expect(createAwsSsmStoreMock).not.toHaveBeenCalled();
+    expect(createAwsSsmGitHubWebhookSecretStoreMock).not.toHaveBeenCalled();
     const first = getGitHubWebhookSecretStore();
-    setProvider('not-registered');
+    process.env.RUNNER_CONFIG_STORAGE_PROVIDER = 'not-registered';
     const second = getGitHubWebhookSecretStore();
 
     expect(first).toBe(store);
     expect(second).toBe(store);
-    expect(createAwsSsmStoreMock).toHaveBeenCalledOnce();
+    expect(createAwsSsmGitHubWebhookSecretStoreMock).toHaveBeenCalledOnce();
   });
 
   it('selects again after the test reset', () => {
-    const firstStore = stubSsmStore();
+    const firstStore = stubStore();
     expect(getGitHubWebhookSecretStore()).toBe(firstStore);
 
     const secondStore = { get: vi.fn() } satisfies GitHubWebhookSecretStore;
-    createAwsSsmStoreMock.mockReturnValue(secondStore);
+    createAwsSsmGitHubWebhookSecretStoreMock.mockReturnValue(secondStore);
     resetGitHubWebhookSecretStore();
 
     expect(getGitHubWebhookSecretStore()).toBe(secondStore);
-    expect(createAwsSsmStoreMock).toHaveBeenCalledTimes(2);
+    expect(createAwsSsmGitHubWebhookSecretStoreMock).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -84,14 +80,8 @@ function setProvider(provider: string | undefined): void {
   }
 }
 
-function stubSsmStore(): GitHubWebhookSecretStore {
+function stubStore(): GitHubWebhookSecretStore {
   const store = { get: vi.fn() } satisfies GitHubWebhookSecretStore;
-  createAwsSsmStoreMock.mockReturnValue(store);
-  return store;
-}
-
-function stubDynamoDbStore(): GitHubWebhookSecretStore {
-  const store = { get: vi.fn() } satisfies GitHubWebhookSecretStore;
-  createAwsDynamoDbStoreMock.mockReturnValue(store);
+  createAwsSsmGitHubWebhookSecretStoreMock.mockReturnValue(store);
   return store;
 }

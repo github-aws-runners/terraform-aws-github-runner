@@ -32,7 +32,7 @@ resource "aws_lambda_function" "webhook" {
         PARAMETER_RUNNER_MATCHER_CONFIG_PATH     = var.config.storage_provider.type == "aws_ssm" ? join(":", [for p in var.config.ssm_parameter_runner_matcher_config : p.name]) : null
         PARAMETER_RUNNER_MATCHER_VERSION         = var.config.storage_provider.type == "aws_ssm" ? join(":", [for p in var.config.ssm_parameter_runner_matcher_config : p.version]) : null # enforce cold start after Changes in SSM parameter
       } : k => v if v != null
-    }, var.config.storage_provider.environment_variables)
+    })
   }
 
   dynamic "vpc_config" {
@@ -131,7 +131,7 @@ resource "aws_iam_role_policy" "webhook_kms" {
   role = aws_iam_role.webhook_lambda.name
 
   policy = templatefile("${path.module}/../policies/lambda-kms.json", {
-    kms_key_arn = var.config.kms_key_arn != null ? var.config.kms_key_arn : "arn:${var.config.aws_partition}:kms:::CMK_NOT_IN_USE"
+    kms_key_arn = var.config.storage_provider.aws.ssm.kms_key_id != null ? var.config.storage_provider.aws.ssm.kms_key_id : "arn:${var.config.aws_partition}:kms:::CMK_NOT_IN_USE"
   })
 }
 

@@ -358,6 +358,8 @@ users define in their workflow files. Any user with permission to create or modi
 **Only enable this feature in repositories where you trust all workflow contributors.** Consider combining it with [GitHub branch protection
 rules](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-a-branch-rule/about-branch-rules) and required reviews for workflow file changes.
 
+`blocked_keys` and `restricted_keys` work like a blocklist: any key not on the list is allowed. If GitHub adds a new key later, or a key is simply left off the list, it stays allowed until someone notices and blocks it. `allowed_keys` (below) works the other way: only the listed keys are allowed, everything else is blocked. `allowed_keys` fits best when only a small, known set of keys is needed.
+
 This feature is in early stage and therefore disabled by default. To enable dynamic labels, set `enable_dynamic_labels = true`.
 
 Dynamic labels allow workflow authors to pass arbitrary metadata and EC2 instance overrides directly from the `runs-on` labels in their GitHub Actions workflows. All labels prefixed with `ghr-` are treated as dynamic labels. A deterministic hash of all `ghr-` prefixed labels is computed and used for runner matching, ensuring that each unique combination of dynamic labels routes to the correct runner configuration.
@@ -378,6 +380,8 @@ This change renames `ec2_dynamic_labels_policy` to `aws_dynamic_labels_policy`. 
 root module input and rename `matcherConfig.ec2DynamicLabelsPolicy` to `matcherConfig.awsDynamicLabelsPolicy`
 in `runner_matcher_config` or `multi_runner_config`. Terraform object validation rejects the legacy attribute
 names.
+
+Deny-list, using `blocked_keys`/`restricted_keys` (unlisted keys are allowed):
 
 ```hcl
 module "runners" {
@@ -403,13 +407,40 @@ module "runners" {
 }
 ```
 
+Allow-list, using `allowed_keys` (unlisted keys are rejected):
+
+```hcl
+module "runners" {
+  source = "github-aws-runners/github-runners/aws"
+
+  ...
+  enable_dynamic_labels = true
+  aws_dynamic_labels_policy = {
+    allowed_keys = ["instance-type", "ebs-volume-size"]
+
+    restricted_keys = {
+      "instance-type" = {
+        allowed = ["m5.*", "c5.*"]
+      }
+      "ebs-volume-size" = {
+        max = 200
+      }
+    }
+  }
+  ...
+}
+```
+
 The root module variable is named `aws_dynamic_labels_policy`. The webhook matcher config receives the same policy under `matcherConfig.awsDynamicLabelsPolicy`. If you configure `runner_matcher_config` or `multi_runner_config.matcherConfig` directly, use `awsDynamicLabelsPolicy` for this policy.
 
 The policy is evaluated by dynamic label key:
 
-1. Keys in `blocked_keys` are always rejected.
-2. Keys in `restricted_keys` are allowed only when their value passes the rule.
-3. Keys not listed in `blocked_keys` or `restricted_keys` are allowed.
+1. If `allowed_keys` is set (non-empty), any key not listed there is rejected.
+2. Keys in `blocked_keys` are always rejected.
+3. Keys in `restricted_keys` are allowed only when their value passes the rule.
+4. A key not listed anywhere above is allowed.
+
+Use only one of `allowed_keys` or `blocked_keys` in the same policy, not both. Setting both is an error: `terraform plan`/`apply` will fail. If a policy with both somehow still reaches the dispatcher (for example, someone edited the SSM parameter by hand), it rejects every dynamic label instead of guessing which list to use.
 
 Policy keys use the dynamic label suffix, not the full label. For example, use `instance-type` for `ghr-ec2-instance-type`.
 

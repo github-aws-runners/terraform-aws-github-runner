@@ -28,11 +28,17 @@ variable "config" {
     }), null)
     repository_white_list    = optional(list(string), [])
     queue_selection_strategy = optional(string, "first")
-    kms_key_arn              = optional(string, null)
-    log_level                = optional(string, "info")
-    lambda_runtime           = optional(string, "nodejs24.x")
-    aws_partition            = optional(string, "aws")
-    lambda_architecture      = optional(string, "arm64")
+    storage_provider = object({
+      aws = object({
+        ssm = object({
+          kms_key_id = optional(string, null)
+        })
+      })
+    })
+    log_level           = optional(string, "info")
+    lambda_runtime      = optional(string, "nodejs24.x")
+    aws_partition       = optional(string, "aws")
+    lambda_architecture = optional(string, "arm64")
     github_app_parameters = object({
       webhook_secret = map(string)
     })

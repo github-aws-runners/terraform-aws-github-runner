@@ -18,6 +18,7 @@ declare global {
         | 'prioritized';
       EC2_INSTANCE_ARN_PREFIX: string | undefined;
       SCALE_ERRORS: string;
+      ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS: string;
     }
   }
 }

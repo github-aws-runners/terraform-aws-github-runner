@@ -33,9 +33,6 @@ module "job_retry" {
         kms_data_key_reuse_period_seconds = null
       }
     }
-    ssm = {
-      kms_key_id = local.resolved_config.ssm.kms_key_id
-    }
     observability = local.resolved_config.observability
     tags = {
       resources            = local.job_retry_tags
@@ -47,7 +44,11 @@ module "job_retry" {
   }
 
   storage_provider = merge(
-    { type = local.resolved_config.storage_provider.type },
+    {
+      aws = {
+        ssm = local.resolved_config.storage_provider.aws.ssm
+      }
+    },
     local.resolved_config.storage_provider.job_retry,
   )
 }

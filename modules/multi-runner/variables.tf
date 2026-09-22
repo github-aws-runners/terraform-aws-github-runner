@@ -177,6 +177,39 @@ variable "multi_runner_config" {
         amd_sev_snp           = optional(string)
         nested_virtualization = optional(string)
       }), null)
+      network_interfaces = optional(list(object({
+        associate_carrier_ip_address = optional(bool)
+        associate_public_ip_address  = optional(bool)
+        delete_on_termination        = optional(bool)
+        description                  = optional(string)
+        device_index                 = optional(number)
+        interface_type               = optional(string)
+        ipv4_address_count           = optional(number)
+        ipv4_addresses               = optional(list(string))
+        ipv4_prefix_count            = optional(number)
+        ipv4_prefixes                = optional(list(string))
+        ipv6_address_count           = optional(number)
+        ipv6_addresses               = optional(list(string))
+        ipv6_prefix_count            = optional(number)
+        ipv6_prefixes                = optional(list(string))
+        network_card_index           = optional(number)
+        network_interface_id         = optional(string)
+        primary_ipv6                 = optional(bool)
+        private_ip_address           = optional(string)
+        security_groups              = optional(list(string))
+        subnet_id                    = optional(string)
+        connection_tracking_specification = optional(object({
+          tcp_established_timeout = optional(number)
+          udp_stream_timeout      = optional(number)
+          udp_timeout             = optional(number)
+        }))
+        ena_srd_specification = optional(object({
+          ena_srd_enabled = optional(bool)
+          ena_srd_udp_specification = optional(object({
+            ena_srd_udp_enabled = optional(bool)
+          }))
+        }))
+      })), [])
       placement = optional(object({
         affinity                = optional(string)
         availability_zone       = optional(string)
@@ -313,6 +346,7 @@ variable "multi_runner_config" {
           priority                = optional(number, 999)
           dynamic_labels_enabled  = optional(bool, false)
           awsDynamicLabelsPolicy = optional(object({
+            allowed_keys = optional(list(string), [])
             blocked_keys = optional(list(string), [])
             restricted_keys = optional(map(object({
               allowed = optional(list(string), [])
@@ -388,35 +422,39 @@ variable "multi_runner_config" {
       }), null)
     }), {})
 
-    ssm = optional(object({
-      paths = optional(object({
-        root   = optional(string, null)
-        tokens = optional(string, null)
-        config = optional(string, null)
-      }), {})
-      tags = optional(map(string), {})
-      parameters = optional(object({
-        tags = optional(map(string), {})
-      }), {})
-      housekeeper = optional(object({
-        schedule_expression = optional(string, null)
-        state               = optional(string, null)
-        tags                = optional(map(string), {})
-        lambda = optional(object({
-          artifact = optional(object({
-            zip = optional(string, null)
-            s3 = optional(object({
-              key            = string
-              object_version = optional(string, null)
-            }), null)
+    storage_provider = optional(object({
+      aws = optional(object({
+        ssm = optional(object({
+          paths = optional(object({
+            root   = optional(string, null)
+            tokens = optional(string, null)
+            config = optional(string, null)
           }), {})
-          memory_size = optional(number, null)
-          timeout     = optional(number, null)
-        }), {})
-        config = optional(object({
-          tokenPath      = optional(string, null)
-          minimumDaysOld = optional(number, null)
-          dryRun         = optional(bool, null)
+          tags = optional(map(string), {})
+          parameters = optional(object({
+            tags = optional(map(string), {})
+          }), {})
+          housekeeper = optional(object({
+            schedule_expression = optional(string, null)
+            state               = optional(string, null)
+            tags                = optional(map(string), {})
+            lambda = optional(object({
+              artifact = optional(object({
+                zip = optional(string, null)
+                s3 = optional(object({
+                  key            = string
+                  object_version = optional(string, null)
+                }), null)
+              }), {})
+              memory_size = optional(number, null)
+              timeout     = optional(number, null)
+            }), {})
+            config = optional(object({
+              tokenPath      = optional(string, null)
+              minimumDaysOld = optional(number, null)
+              dryRun         = optional(bool, null)
+            }), {})
+          }), {})
         }), {})
       }), {})
     }), {})
@@ -546,6 +584,39 @@ variable "multi_runner_config" {
             amd_sev_snp           = optional(string)
             nested_virtualization = optional(string)
           }), null)
+          network_interfaces = optional(list(object({
+            associate_carrier_ip_address = optional(bool)
+            associate_public_ip_address  = optional(bool)
+            delete_on_termination        = optional(bool)
+            description                  = optional(string)
+            device_index                 = optional(number)
+            interface_type               = optional(string)
+            ipv4_address_count           = optional(number)
+            ipv4_addresses               = optional(list(string))
+            ipv4_prefix_count            = optional(number)
+            ipv4_prefixes                = optional(list(string))
+            ipv6_address_count           = optional(number)
+            ipv6_addresses               = optional(list(string))
+            ipv6_prefix_count            = optional(number)
+            ipv6_prefixes                = optional(list(string))
+            network_card_index           = optional(number)
+            network_interface_id         = optional(string)
+            primary_ipv6                 = optional(bool)
+            private_ip_address           = optional(string)
+            security_groups              = optional(list(string))
+            subnet_id                    = optional(string)
+            connection_tracking_specification = optional(object({
+              tcp_established_timeout = optional(number)
+              udp_stream_timeout      = optional(number)
+              udp_timeout             = optional(number)
+            }))
+            ena_srd_specification = optional(object({
+              ena_srd_enabled = optional(bool)
+              ena_srd_udp_specification = optional(object({
+                ena_srd_udp_enabled = optional(bool)
+              }))
+            }))
+          })), [])
           placement = optional(object({
             affinity                = optional(string)
             availability_zone       = optional(string)
@@ -666,7 +737,7 @@ variable "multi_runner_config" {
         bidirectionalLabelMatch: "If set to true, the runner labels and workflow job labels must be an exact two-way match (same set, any order, no extras or missing labels). This is stricter than `exactMatch` which only checks that workflow labels are a subset of runner labels. When false, if __any__ workflow label matches it will trigger the webhook."
         priority: "If set it defines the priority of the matcher, the matcher with the lowest priority will be evaluated first. Default is 999, allowed values 0-999."
         enableDynamicLabels: "Experimental! When true the dispatcher allows `ghr-*` dynamic labels for jobs routed to this runner. Default false."
-        awsDynamicLabelsPolicy: "Optional AWS dynamic label policy evaluated by the dispatcher. Only effective when `enableDynamicLabels = true`. Jobs whose provider dynamic labels violate every matching runner's policy are rejected with a 202 (a warning is logged). Evaluation: keys in `blocked_keys` are always rejected; keys in `restricted_keys` are allowed only when their value passes the rule; unlisted keys are allowed. Schema: `{ blocked_keys = [<key>], restricted_keys = { <key> = { allowed = [globs], denied = [globs], max = number|string } } }`. Keys use the dynamic label suffix, e.g. `instance-type` for `ghr-ec2-instance-type`."
+        awsDynamicLabelsPolicy: "Optional AWS dynamic label policy evaluated by the dispatcher. Only effective when `enableDynamicLabels = true`. Jobs whose provider dynamic labels violate every matching runner's policy are rejected with a 202 (a warning is logged). Evaluation: if `allowed_keys` is set, only those keys are accepted; keys in `blocked_keys` are always rejected (cannot be used together with `allowed_keys`); keys in `restricted_keys` are allowed only when their value passes the rule; a key not listed anywhere is allowed. Schema: `{ allowed_keys = [<key>], blocked_keys = [<key>], restricted_keys = { <key> = { allowed = [globs], denied = [globs], max = number|string } } }`. Keys use the dynamic label suffix, e.g. `instance-type` for `ghr-ec2-instance-type`."
       }
       redrive_build_queue: "Set options to attach (optional) a dead letter queue to the build queue, the queue between the webhook and the scale up lambda. You have the following options. 1. Disable by setting `enabled` to false. 2. Enable by setting `enabled` to `true`, `maxReceiveCount` to a number of max retries."
     }
@@ -679,6 +750,7 @@ variable "multi_runner_config" {
     )
     error_message = "Use one multi_runner_config shape per module invocation: provide either v1 entries with runner_config or v2 entries without runner_config, not both in the same map."
   }
+
 }
 
 variable "scale_up_lambda_memory_size" {

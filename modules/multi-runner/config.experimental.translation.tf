@@ -62,7 +62,41 @@ locals {
   stable_to_v2_storage_provider = {
     aws = {
       dynamodb = null
-      ssm      = {}
+      ssm = {
+        paths = {
+          root    = "/${var.ssm_paths.root}/${var.prefix}"
+          app     = var.ssm_paths.app
+          webhook = var.ssm_paths.webhook
+          tokens  = "${var.ssm_paths.runners}/tokens"
+          config  = "${var.ssm_paths.runners}/config"
+        }
+        kms_key_id = var.kms_key_arn
+        tags       = {}
+        parameters = {
+          tags = var.parameter_store_tags
+        }
+        housekeeper = {
+          schedule_expression = var.runners_ssm_housekeeper.schedule_expression
+          state               = var.runners_ssm_housekeeper.enabled ? "ENABLED" : "DISABLED"
+          tags                = {}
+          lambda = {
+            artifact = {
+              zip = var.lambda_s3_bucket == null ? var.runners_lambda_zip : null
+              s3 = var.lambda_s3_bucket == null ? null : {
+                key            = var.runners_lambda_s3_key
+                object_version = var.runners_lambda_s3_object_version
+              }
+            }
+            memory_size = var.runners_ssm_housekeeper.lambda_memory_size
+            timeout     = var.runners_ssm_housekeeper.lambda_timeout
+          }
+          config = {
+            tokenPath      = var.runners_ssm_housekeeper.config.tokenPath
+            minimumDaysOld = var.runners_ssm_housekeeper.config.minimumDaysOld
+            dryRun         = var.runners_ssm_housekeeper.config.dryRun
+          }
+        }
+      }
     }
   }
 
@@ -146,42 +180,6 @@ locals {
         }
         tags       = {}
         encryption = var.queue_encryption
-      }
-    }
-  }
-
-  stable_to_v2_ssm = {
-    paths = {
-      root    = "/${var.ssm_paths.root}/${var.prefix}"
-      app     = var.ssm_paths.app
-      webhook = var.ssm_paths.webhook
-      tokens  = "${var.ssm_paths.runners}/tokens"
-      config  = "${var.ssm_paths.runners}/config"
-    }
-    kms_key_id = var.kms_key_arn
-    tags       = {}
-    parameters = {
-      tags = var.parameter_store_tags
-    }
-    housekeeper = {
-      schedule_expression = var.runners_ssm_housekeeper.schedule_expression
-      state               = var.runners_ssm_housekeeper.enabled ? "ENABLED" : "DISABLED"
-      tags                = {}
-      lambda = {
-        artifact = {
-          zip = var.lambda_s3_bucket == null ? var.runners_lambda_zip : null
-          s3 = var.lambda_s3_bucket == null ? null : {
-            key            = var.runners_lambda_s3_key
-            object_version = var.runners_lambda_s3_object_version
-          }
-        }
-        memory_size = var.runners_ssm_housekeeper.lambda_memory_size
-        timeout     = var.runners_ssm_housekeeper.lambda_timeout
-      }
-      config = {
-        tokenPath      = var.runners_ssm_housekeeper.config.tokenPath
-        minimumDaysOld = var.runners_ssm_housekeeper.config.minimumDaysOld
-        dryRun         = var.runners_ssm_housekeeper.config.dryRun
       }
     }
   }
@@ -436,32 +434,36 @@ locals {
         }
       }
 
-      ssm = {
-        paths = {
-          root   = null
-          tokens = null
-          config = null
-        }
-        tags = {}
-        parameters = {
-          tags = {}
-        }
-        housekeeper = {
-          schedule_expression = null
-          state               = null
-          tags                = {}
-          lambda = {
-            artifact = {
-              zip = null
-              s3  = null
+      storage_provider = {
+        aws = {
+          ssm = {
+            paths = {
+              root   = null
+              tokens = null
+              config = null
             }
-            memory_size = null
-            timeout     = null
-          }
-          config = {
-            tokenPath      = null
-            minimumDaysOld = null
-            dryRun         = null
+            tags = {}
+            parameters = {
+              tags = {}
+            }
+            housekeeper = {
+              schedule_expression = null
+              state               = null
+              tags                = {}
+              lambda = {
+                artifact = {
+                  zip = null
+                  s3  = null
+                }
+                memory_size = null
+                timeout     = null
+              }
+              config = {
+                tokenPath      = null
+                minimumDaysOld = null
+                dryRun         = null
+              }
+            }
           }
         }
       }
@@ -555,6 +557,7 @@ locals {
             subnet_ids                    = v.runner_config.subnet_ids
             vpc_id                        = v.runner_config.vpc_id
             cpu_options                   = v.runner_config.cpu_options
+            network_interfaces            = v.runner_config.network_interfaces
             placement                     = v.runner_config.placement
             license_specifications        = v.runner_config.license_specifications
             use_dedicated_host            = v.runner_config.use_dedicated_host

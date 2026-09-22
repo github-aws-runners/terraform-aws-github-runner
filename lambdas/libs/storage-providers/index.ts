@@ -19,6 +19,7 @@ export type {
   RunnerStateRecord,
   RunnerStateStore,
   RunnerType,
+  RunnerMatcherConfigStore,
 } from './core';
 export { createRunnerConfigHousekeeper } from './runner-config-housekeeper';
 export { createRunnerConfigConsumer, type RunnerConfigConsumerConfig } from './runner-config-consumer';
@@ -36,3 +37,5 @@ export { getRunnerGroupCacheStore, resetRunnerGroupCacheStore } from './runner-g
 export { getGitHubWebhookSecretStore, resetGitHubWebhookSecretStore } from './github-webhook-secret';
 export { getRunnerMatcherConfigStore, resetRunnerMatcherConfigStore } from './runner-matcher-config';
 export { getRunnerStateStore, resetRunnerStateStore } from './runner-state';
+export { getGitHubWebhookSecretStore, resetGitHubWebhookSecretStore } from './github-webhook-secret';
+export { getRunnerMatcherConfigStore, resetRunnerMatcherConfigStore } from './runner-matcher-config';

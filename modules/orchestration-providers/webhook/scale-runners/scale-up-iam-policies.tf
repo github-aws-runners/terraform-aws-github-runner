@@ -1,50 +1,41 @@
 data "aws_iam_policy_document" "scale_up_common" {
-  dynamic "statement" {
-    for_each = var.storage_provider.type == "aws_ssm" ? [true] : []
-
-    content {
-      sid    = "WebhookScaleUpWriteRuntimeParameters"
-      effect = "Allow"
-      actions = [
-        "ssm:PutParameter",
-        "ssm:AddTagsToResource",
-      ]
-      resources = [
-        var.config.ssm.token_path_arn,
-        "${var.config.ssm.token_path_arn}/*",
-        var.config.ssm.config_path_arn,
-        "${var.config.ssm.config_path_arn}/*",
-      ]
-    }
-    
+  statement {
+    sid    = "WebhookScaleUpWriteRuntimeParameters"
+    effect = "Allow"
+    actions = [
+      "ssm:PutParameter",
+      "ssm:AddTagsToResource",
+    ]
+    resources = [
+      var.storage_provider.aws.ssm.token_path_arn,
+      "${var.storage_provider.aws.ssm.token_path_arn}/*",
+      var.storage_provider.aws.ssm.config_path_arn,
+      "${var.storage_provider.aws.ssm.config_path_arn}/*",
+    ]
   }
 
-  dynamic "statement" {
-    for_each = var.storage_provider.type == "aws_ssm" ? [true] : []
-
-    content {
-      sid    = "WebhookScaleUpReadGitHubAppAndRunnerConfigParameters"
-      effect = "Allow"
-      actions = [
-        "ssm:GetParameter",
-        "ssm:GetParameters",
-      ]
-      resources = concat(
-        [
-          var.config.github.app_parameters.id.arn,
-          var.config.github.app_parameters.key_base64.arn,
-        ],
-        var.config.github.app_parameters.additional_app_parameter_arns,
-        var.config.github.app_parameters.additional_apps_manifest != null ? [var.config.github.app_parameters.additional_apps_manifest.arn] : [],
-        [
-          var.config.ssm.config_path_arn,
-          "${var.config.ssm.config_path_arn}/*",
-        ],
-      )
-    }
+  statement {
+    sid    = "WebhookScaleUpReadGitHubAppAndRunnerConfigParameters"
+    effect = "Allow"
+    actions = [
+      "ssm:GetParameter",
+      "ssm:GetParameters",
+    ]
+    resources = concat(
+      [
+        var.config.github.app_parameters.id.arn,
+        var.config.github.app_parameters.key_base64.arn,
+      ],
+      var.config.github.app_parameters.additional_app_parameter_arns,
+      var.config.github.app_parameters.additional_apps_manifest != null ? [var.config.github.app_parameters.additional_apps_manifest.arn] : [],
+      [
+        var.storage_provider.aws.ssm.config_path_arn,
+        "${var.storage_provider.aws.ssm.config_path_arn}/*",
+      ],
+    )
   }
 
-  
+
 
   statement {
     sid    = "WebhookScaleUpConsumeBuildQueue"
@@ -58,7 +49,7 @@ data "aws_iam_policy_document" "scale_up_common" {
   }
 
   dynamic "statement" {
-    for_each = var.storage_provider.type == "aws_ssm" && var.config.ssm.kms_key_id != null ? [var.config.ssm.kms_key_id] : []
+    for_each = var.storage_provider.aws.ssm.kms_key_id != null ? [var.storage_provider.aws.ssm.kms_key_id] : []
     iterator = kms_key
 
     content {

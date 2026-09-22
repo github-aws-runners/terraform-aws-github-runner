@@ -54,6 +54,10 @@ data "aws_iam_policy_document" "lambda_xray" {
 data "aws_iam_policy_document" "job_retry" {
   source_policy_documents = compact([var.storage_provider.iam_policy_json])
 
+  statement {
+    sid    = "WebhookJobRetryReadGitHubAppParameters"
+    effect = "Allow"
+
   dynamic "statement" {
     for_each = var.storage_provider.type == "aws_ssm" ? [true] : []
 
@@ -103,7 +107,7 @@ data "aws_iam_policy_document" "job_retry" {
   }
 
   dynamic "statement" {
-    for_each = var.storage_provider.type == "aws_ssm" && var.config.ssm.kms_key_id != null ? [var.config.ssm.kms_key_id] : []
+    for_each = var.storage_provider.aws.ssm.kms_key_id != null ? [var.storage_provider.aws.ssm.kms_key_id] : []
     iterator = kms_key
 
     content {

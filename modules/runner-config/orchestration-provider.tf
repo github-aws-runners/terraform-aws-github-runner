@@ -39,13 +39,17 @@ module "orchestration_webhook" {
       principals           = var.lambda.principals
     }
   }
-  ssm = {
-    token_path           = local.token_path
-    token_path_arn       = local.arn_ssm_parameters_path_tokens
-    config_path          = "${var.ssm.paths.root}/${var.ssm.paths.config}"
-    config_path_arn      = local.arn_ssm_parameters_path_config
-    kms_key_id           = local.kms_key_id
-    parameter_store_tags = local.parameter_store_tags
+  storage_provider = {
+    aws = {
+      ssm = {
+        token_path           = local.token_path
+        token_path_arn       = local.arn_ssm_parameters_path_tokens
+        config_path          = "${var.storage_provider.aws.ssm.paths.root}/${var.storage_provider.aws.ssm.paths.config}"
+        config_path_arn      = local.arn_ssm_parameters_path_config
+        kms_key_id           = local.kms_key_id
+        parameter_store_tags = local.parameter_store_tags
+      }
+    }
   }
   observability = var.observability
 

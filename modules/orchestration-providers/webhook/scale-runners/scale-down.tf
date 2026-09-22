@@ -32,11 +32,11 @@ resource "aws_lambda_function" "scale_down" {
       POWERTOOLS_TRACER_CAPTURE_ERROR          = var.config.observability.tracing.capture_error
       COMPUTE_PROVIDER_TYPE                    = var.runner_provider.type
       RUNNER_BOOT_TIME_IN_MINUTES              = var.config.runner.boot_time_in_minutes
-    }, var.storage_provider.type == "aws_ssm" ? {
-      PARAMETER_GITHUB_APP_ID_NAME             = var.config.github.app_parameters.id.name
-      PARAMETER_GITHUB_APP_KEY_BASE64_NAME     = var.config.github.app_parameters.key_base64.name
-      PARAMETER_GITHUB_APPS_MANIFEST_NAME      = var.config.github.app_parameters.additional_apps_manifest != null ? var.config.github.app_parameters.additional_apps_manifest.name : ""
-    } : {}, var.storage_provider.scale_down.environment_variables)
+      }, {
+      PARAMETER_GITHUB_APP_ID_NAME         = var.config.github.app_parameters.id.name
+      PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.config.github.app_parameters.key_base64.name
+      PARAMETER_GITHUB_APPS_MANIFEST_NAME  = var.config.github.app_parameters.additional_apps_manifest != null ? var.config.github.app_parameters.additional_apps_manifest.name : ""
+    }, var.storage_provider.scale_down.environment_variables)
   }
 
   dynamic "vpc_config" {

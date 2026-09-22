@@ -23,7 +23,7 @@ variable "tags" {
 }
 
 variable "runner_matcher_config" {
-  description = "SQS queue to publish accepted build events based on the runner type. `computeProvider` defaults to `ec2`; EC2 is the only provider currently implemented. When exact match is disabled the webhook accepts the event if one of the workflow job labels is part of the matcher. The priority defines the order the matchers are applied. Optional `matcherConfig.enableDynamicLabels` and `matcherConfig.awsDynamicLabelsPolicy` are evaluated by the dispatcher to gate provider dynamic labels per runner. The policy supports `blocked_keys = [<key>]` and `restricted_keys = { <key> = { allowed = [globs], denied = [globs], max = number|string } }`; keys use the provider dynamic label suffix form, for example `instance-type` for `ghr-ec2-instance-type`."
+  description = "SQS queue to publish accepted build events based on the runner type. `computeProvider` defaults to `ec2`; EC2 is the only provider currently implemented. When exact match is disabled the webhook accepts the event if one of the workflow job labels is part of the matcher. The priority defines the order the matchers are applied. Optional `matcherConfig.enableDynamicLabels` and `matcherConfig.awsDynamicLabelsPolicy` are evaluated by the dispatcher to gate provider dynamic labels per runner. The policy supports `allowed_keys = [<key>]`, `blocked_keys = [<key>]` (cannot be used together with `allowed_keys`), and `restricted_keys = { <key> = { allowed = [globs], denied = [globs], max = number|string } }`; keys use the provider dynamic label suffix form, for example `instance-type` for `ghr-ec2-instance-type`."
   type = map(object({
     arn             = string
     id              = string
@@ -34,7 +34,15 @@ variable "runner_matcher_config" {
       bidirectionalLabelMatch = optional(bool, false)
       priority                = optional(number, 999)
       enableDynamicLabels     = optional(bool, false)
-      awsDynamicLabelsPolicy  = optional(any, null)
+      awsDynamicLabelsPolicy = optional(object({
+        allowed_keys = optional(list(string), [])
+        blocked_keys = optional(list(string), [])
+        restricted_keys = optional(map(object({
+          allowed = optional(list(string), [])
+          denied  = optional(list(string), [])
+          max     = optional(string, null)
+        })), {})
+      }), null)
     })
   }))
   validation {
@@ -47,6 +55,15 @@ variable "runner_matcher_config" {
       lower(trimspace(config.computeProvider)) == "ec2"
     ])
     error_message = "computeProvider must be ec2."
+  }
+  validation {
+    condition = alltrue([
+      for config in values(var.runner_matcher_config) : !(
+        try(length(config.matcherConfig.awsDynamicLabelsPolicy.allowed_keys), 0) > 0 &&
+        try(length(config.matcherConfig.awsDynamicLabelsPolicy.blocked_keys), 0) > 0
+      )
+    ])
+    error_message = "runner_matcher_config: allowed_keys and blocked_keys cannot both be set in awsDynamicLabelsPolicy."
   }
 }
 
@@ -146,12 +163,6 @@ variable "queue_selection_strategy" {
   }
 }
 
-variable "kms_key_arn" {
-  description = "Optional CMK Key ARN to be used for Parameter Store."
-  type        = string
-  default     = null
-}
-
 variable "log_level" {
   description = "Logging level for lambda logging. Valid values are  'silly', 'trace', 'debug', 'info', 'warn', 'error', 'fatal'."
   type        = string
@@ -210,14 +221,6 @@ variable "tracing_config" {
   default = {}
 }
 
-variable "ssm_paths" {
-  description = "The root path used in SSM to store configuration and secrets."
-  type = object({
-    root    = string
-    webhook = string
-  })
-}
-
 variable "lambda_tags" {
   description = "Map of tags that will be added to all the lambda function resources. Note these are additional tags to the default tags."
   type        = map(string)
@@ -235,46 +238,19 @@ variable "matcher_config_parameter_store_tier" {
 }
 
 variable "storage_provider" {
-  description = "Selected storage-provider type and opaque capabilities used by the webhook and optional dispatcher Lambdas."
+  description = "Storage-provider configuration used by the webhook resources."
   type = object({
-    type = optional(string, "aws_ssm")
-    direct = object({
-      environment_variables = map(string)
-      iam_policy_json       = optional(string, null)
-    })
-    eventbridge = object({
-      webhook = object({
-        environment_variables = map(string)
-        iam_policy_json       = optional(string, null)
-      })
-      dispatcher = object({
-        environment_variables = map(string)
-        iam_policy_json       = optional(string, null)
+    aws = object({
+      kms_key_id = optional(string, null)
+      ssm = object({
+        paths = object({
+          root    = string
+          webhook = string
+        })
       })
     })
   })
-  default = {
-    type = "aws_ssm"
-    direct = {
-      environment_variables = {}
-      iam_policy_json       = null
-    }
-    eventbridge = {
-      webhook = {
-        environment_variables = {}
-        iam_policy_json       = null
-      }
-      dispatcher = {
-        environment_variables = {}
-        iam_policy_json       = null
-      }
-    }
-  }
-
-  validation {
-    condition     = contains(["aws_ssm", "aws_dynamodb"], var.storage_provider.type)
-    error_message = "storage_provider.type must be aws_ssm or aws_dynamodb."
-  }
+  nullable = false
 }
 
 variable "eventbridge" {

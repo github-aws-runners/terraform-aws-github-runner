@@ -34,7 +34,6 @@ locals {
     scale_down       = var.config.lambda.scale.down
     pool             = var.config.lambda.pool
     job_retry        = var.config.job_retry
-    ssm              = var.ssm
     storage_provider = var.storage_provider
     observability    = var.observability
   }

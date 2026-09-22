@@ -19,14 +19,14 @@ locals {
   }
 
   job_retry_environment_variables = {
-    ENABLE_ORGANIZATION_RUNNERS          = var.config.github.organization_runners
-    ENABLE_METRIC_JOB_RETRY              = var.config.observability.metrics.enabled && var.config.observability.metrics.metric.job_retry.enabled
-    ENABLE_METRIC_GITHUB_APP_RATE_LIMIT  = var.config.observability.metrics.enabled && var.config.observability.metrics.metric.github_app_rate_limit.enabled
-    GHES_URL                             = var.config.github.enterprise_server.url
-    NODE_TLS_REJECT_UNAUTHORIZED         = var.config.github.enterprise_server.url != null && !var.config.github.enterprise_server.ssl_verify ? 0 : 1
-    USER_AGENT                           = var.config.github.user_agent
-    JOB_QUEUE_SCALE_UP_URL               = var.config.queue.build.url
-    RUNNER_NAME_PREFIX                   = var.config.runner.name_prefix
+    ENABLE_ORGANIZATION_RUNNERS         = var.config.github.organization_runners
+    ENABLE_METRIC_JOB_RETRY             = var.config.observability.metrics.enabled && var.config.observability.metrics.metric.job_retry.enabled
+    ENABLE_METRIC_GITHUB_APP_RATE_LIMIT = var.config.observability.metrics.enabled && var.config.observability.metrics.metric.github_app_rate_limit.enabled
+    GHES_URL                            = var.config.github.enterprise_server.url
+    NODE_TLS_REJECT_UNAUTHORIZED        = var.config.github.enterprise_server.url != null && !var.config.github.enterprise_server.ssl_verify ? 0 : 1
+    USER_AGENT                          = var.config.github.user_agent
+    JOB_QUEUE_SCALE_UP_URL              = var.config.queue.build.url
+    RUNNER_NAME_PREFIX                  = var.config.runner.name_prefix
   }
 
   ssm_environment_variables = {
@@ -39,7 +39,7 @@ locals {
     local.lambda_environment_variables,
     var.config.lambda.environment_variables,
     local.job_retry_environment_variables,
-    var.storage_provider.type == "aws_ssm" ? local.ssm_environment_variables : {},
+    local.ssm_environment_variables,
     var.storage_provider.environment_variables,
   )
 }

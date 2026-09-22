@@ -22,7 +22,6 @@ module "scale_runners" {
       kms_key_id           = local.resolved_config.queue.kms_key_id
       event_source_mapping = local.resolved_config.queue.event_source_mapping
     }
-    ssm = local.resolved_config.ssm
     observability = {
       logs    = local.resolved_config.observability.logs
       tracing = local.resolved_config.observability.tracing
@@ -55,7 +54,9 @@ module "scale_runners" {
   }
 
   storage_provider = {
-    type       = local.resolved_config.storage_provider.type
+    aws = {
+      ssm = local.resolved_config.storage_provider.aws.ssm
+    }
     scale_up   = local.resolved_config.storage_provider.scale_up
     scale_down = local.resolved_config.storage_provider.scale_down
   }

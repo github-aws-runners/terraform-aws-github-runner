@@ -21,7 +21,7 @@ data "aws_iam_policy_document" "scale_down_common" {
   }
 
   dynamic "statement" {
-    for_each = var.storage_provider.type == "aws_ssm" && var.config.ssm.kms_key_id != null ? [var.config.ssm.kms_key_id] : []
+    for_each = var.storage_provider.aws.ssm.kms_key_id != null ? [var.storage_provider.aws.ssm.kms_key_id] : []
     iterator = kms_key
 
     content {
