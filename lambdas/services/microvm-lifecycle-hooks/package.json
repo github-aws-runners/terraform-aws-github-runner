@@ -18,6 +18,7 @@
     "test:watch": "NODE_ENV=test nx test --watch",
     "lint": "eslint src",
     "build": "node build.mjs",
+    "dist": "yarn build && cd dist && zip ../microvm-lifecycle-hooks.zip *",
     "format": "prettier --write \"**/*.{ts,json,md}\"",
     "format-check": "prettier --check \"**/*.{ts,json,md}\"",
     "all": "yarn build && yarn format && yarn lint && yarn test"
@@ -30,23 +31,14 @@
     "@aws-github-runner/storage-providers": "*"
   },
   "nx": {
-    "targets": {
-      "build": {
-        "inputs": [
-          "default",
-          "^default"
-        ],
-        "outputs": [
-          "{projectRoot}/dist/**/*"
-        ]
-      }
-    },
     "includedScripts": [
       "build",
+      "dist",
       "format",
       "format-check",
       "lint",
       "start",
+      "watch",
       "all"
     ]
   }
