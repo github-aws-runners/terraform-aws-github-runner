@@ -88,7 +88,7 @@ export async function runMicrovmRunner(input: RunMicrovmRunnerInput): Promise<Ru
     runnerType: input.runnerType,
     source: input.source,
     imageArn: input.config.imageIdentifier,
-    imageVersion: input.config.imageVersion ?? 'version-validation',
+    imageVersion: input.config.imageVersion,
     ssmParameterStoreTags: input.ssmParameterStoreTags,
   });
 

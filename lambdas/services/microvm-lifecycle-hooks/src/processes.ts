@@ -1,10 +1,15 @@
 import { type ChildProcess, spawn } from 'node:child_process';
-import { Readable } from 'node:stream';
+import { isAbsolute, join } from 'node:path';
 
 import type { ManagedProcess, RunnerBootstrap, RunnerLauncher } from './contracts';
 import { delay } from './timing';
 
-const CREDENTIAL_ENVIRONMENT_VARIABLES = [
+const LAUNCH_HANDOFF_DELAY_MS = 1_000;
+const MAX_POSIX_ID = 2_147_483_647;
+const ENVIRONMENT_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+const ALWAYS_DENIED_RUNNER_ENVIRONMENT = new Set([
+  'ACTIONS_RUNNER_INPUT_JITCONFIG',
   'AWS_ACCESS_KEY_ID',
   'AWS_CONFIG_FILE',
   'AWS_CONTAINER_AUTHORIZATION_TOKEN',
@@ -17,14 +22,23 @@ const CREDENTIAL_ENVIRONMENT_VARIABLES = [
   'AWS_ROLE_ARN',
   'AWS_SECRET_ACCESS_KEY',
   'AWS_SECURITY_TOKEN',
-  'AWS_SHARED_CREDENTIALS_FILE',
   'AWS_SESSION_TOKEN',
+  'AWS_SHARED_CREDENTIALS_FILE',
   'AWS_WEB_IDENTITY_TOKEN_FILE',
   'ENCODED_JIT_CONFIG',
-  'RUNNER_CONFIG_STORAGE_PROVIDER',
+  'INTERNAL_SERVICES',
+  'JIT_CONFIG',
+  'MICROVM_RUNNER_ENV_DENYLIST',
   'RUNNER_ALLOW_RUNASROOT',
+  'RUNNER_CONFIG_SSM_ARN',
+  'RUNNER_CONFIG_SSM_PATH',
+  'RUNNER_CONFIG_STORAGE_PROVIDER',
+  'RUNNER_TOKEN_SSM_PATH',
   'SSM_TOKEN_PATH',
-] as const;
+  'bootstrap_payload',
+  'encoded_jit_config',
+  'jit_config',
+]);
 
 function signalProcessGroup(child: ChildProcess, signal: NodeJS.Signals): void {
   if (child.pid === undefined || child.exitCode !== null || child.signalCode !== null) {
@@ -37,6 +51,121 @@ function signalProcessGroup(child: ChildProcess, signal: NodeJS.Signals): void {
       child.kill(signal);
     }
   }
+}
+
+function parsePosixId(variable: string, fallback: number): number {
+  const value = process.env[variable] ?? String(fallback);
+  if (!/^\d+$/.test(value)) {
+    throw new Error(`${variable} must be a positive integer`);
+  }
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed <= 0 || parsed > MAX_POSIX_ID) {
+    throw new Error(`${variable} must be a positive integer`);
+  }
+  return parsed;
+}
+
+function runnerIdentity(): { gid?: number; uid?: number } {
+  if (process.getuid?.() !== 0) {
+    return {};
+  }
+  return {
+    gid: parsePosixId('RUNNER_GID', 1_000),
+    uid: parsePosixId('RUNNER_UID', 1_000),
+  };
+}
+
+function runnerEnvironmentDenylist(): Set<string> {
+  const configured = process.env.MICROVM_RUNNER_ENV_DENYLIST;
+  if (configured === undefined || configured.trim() === '') {
+    return new Set(ALWAYS_DENIED_RUNNER_ENVIRONMENT);
+  }
+
+  const denylist = new Set(ALWAYS_DENIED_RUNNER_ENVIRONMENT);
+  for (const name of configured.split(',')) {
+    const normalized = name.trim();
+    if (!ENVIRONMENT_NAME_PATTERN.test(normalized)) {
+      throw new Error('MICROVM_RUNNER_ENV_DENYLIST contains an invalid environment name');
+    }
+    denylist.add(normalized);
+  }
+  return denylist;
+}
+
+function runnerEnvironment(microvmId: string, denylist: ReadonlySet<string>): NodeJS.ProcessEnv {
+  const environment = { ...process.env };
+  for (const name of denylist) {
+    delete environment[name];
+  }
+  return {
+    ...environment,
+    HOME: process.env.RUNNER_HOME ?? '/home/runner',
+    LOGNAME: process.env.RUNNER_USER ?? 'runner',
+    MICROVM_ID: microvmId,
+    USER: process.env.RUNNER_USER ?? 'runner',
+  };
+}
+
+function redactSpawnArguments(child: ChildProcess, arguments_: string[], sensitiveValue: string): void {
+  for (let index = 0; index < arguments_.length; index += 1) {
+    if (arguments_[index] === sensitiveValue) {
+      arguments_[index] = '[redacted]';
+    }
+  }
+  for (let index = 0; index < child.spawnargs.length; index += 1) {
+    if (child.spawnargs[index] === sensitiveValue) {
+      child.spawnargs[index] = '[redacted]';
+    }
+  }
+}
+
+function waitForLaunchHandoff(child: ChildProcess, handoffDelayMs: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    let handoffTimer: NodeJS.Timeout | undefined;
+
+    const cleanup = (): void => {
+      child.off('error', onError);
+      child.off('spawn', onSpawn);
+      child.off('exit', onExit);
+      if (handoffTimer !== undefined) {
+        clearTimeout(handoffTimer);
+      }
+    };
+
+    const fail = (error: Error): void => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      cleanup();
+      reject(error);
+    };
+
+    const commit = (): void => {
+      if (settled) {
+        return;
+      }
+      if (child.exitCode !== null || child.signalCode !== null) {
+        fail(new Error('GitHub Actions runner exited before the launch handoff'));
+        return;
+      }
+      settled = true;
+      cleanup();
+      child.unref();
+      resolve();
+    };
+
+    const onError = (error: Error): void => fail(error);
+    const onExit = (): void => fail(new Error('GitHub Actions runner exited before the launch handoff'));
+    const onSpawn = (): void => {
+      handoffTimer = setTimeout(commit, handoffDelayMs);
+    };
+
+    child.once('error', onError);
+    child.once('spawn', onSpawn);
+    child.once('exit', onExit);
+  });
 }
 
 export class NodeManagedProcess implements ManagedProcess {
@@ -72,116 +201,35 @@ export class NodeManagedProcess implements ManagedProcess {
   }
 }
 
-function entrypointEnvironment(microvmId: string): NodeJS.ProcessEnv {
-  const environment = { ...process.env };
-  for (const variable of CREDENTIAL_ENVIRONMENT_VARIABLES) {
-    delete environment[variable];
+/** Launches the GitHub Actions runner directly from the image's runner installation. */
+export class GitHubRunnerLauncher implements RunnerLauncher {
+  private readonly denylist = runnerEnvironmentDenylist();
+  private readonly runnerRoot = process.env.RUNNER_ROOT ?? '/opt/actions-runner';
+  private readonly identity = runnerIdentity();
+
+  public constructor(
+    private readonly stopGraceMs = 30_000,
+    private readonly handoffDelayMs = LAUNCH_HANDOFF_DELAY_MS,
+  ) {
+    if (!isAbsolute(this.runnerRoot)) {
+      throw new Error('RUNNER_ROOT must be an absolute path');
+    }
   }
-  return {
-    ...environment,
-    MICROVM_ID: microvmId,
-  };
-}
-
-function waitForEntrypointReady(child: ChildProcess): Promise<void> {
-  const candidate = child.stdio[3];
-  if (!(candidate instanceof Readable)) {
-    return Promise.reject(new Error('runner entrypoint readiness pipe is unavailable'));
-  }
-  const readinessStream: Readable = candidate;
-  readinessStream.setEncoding('utf8');
-
-  return new Promise((resolve, reject) => {
-    let buffer = '';
-    let settled = false;
-
-    function cleanup(): void {
-      readinessStream.off('data', onData);
-      readinessStream.off('end', onEnd);
-      readinessStream.off('error', onError);
-      child.off('error', onError);
-    }
-
-    function succeed(): void {
-      if (!settled) {
-        settled = true;
-        cleanup();
-        resolve();
-      }
-    }
-
-    function fail(error: Error): void {
-      if (!settled) {
-        settled = true;
-        cleanup();
-        reject(error);
-      }
-    }
-
-    function onData(chunk: string | Buffer): void {
-      buffer += chunk.toString();
-      if (buffer === 'ready\n') {
-        succeed();
-      } else if (buffer.includes('\n') || buffer.length > 64) {
-        fail(new Error('runner entrypoint emitted an invalid readiness signal'));
-      }
-    }
-
-    function onEnd(): void {
-      fail(new Error('runner entrypoint exited before signaling readiness'));
-    }
-
-    function onError(error: Error): void {
-      fail(error);
-    }
-
-    readinessStream.on('data', onData);
-    readinessStream.once('end', onEnd);
-    readinessStream.once('error', onError);
-    child.once('error', onError);
-  });
-}
-
-/**
- * Sends the one-time JIT document through stdin to an image-specific supervisor.
- * Neither the JIT document nor storage-provider credentials are exported to the runner.
- */
-export class RunnerEntrypointLauncher implements RunnerLauncher {
-  private readonly entrypoint = process.env.RUNNER_ENTRYPOINT ?? '/opt/microvm/entrypoint.sh';
-
-  public constructor(private readonly stopGraceMs = 30_000) {}
 
   public launch(bootstrap: RunnerBootstrap, microvmId: string): ManagedProcess {
-    const child = spawn(this.entrypoint, ['run'], {
+    const runner = join(this.runnerRoot, 'run.sh');
+    const arguments_ = ['--jitconfig', bootstrap.jitConfig];
+    const child = spawn(runner, arguments_, {
+      cwd: this.runnerRoot,
       detached: true,
-      env: entrypointEnvironment(microvmId),
-      stdio: ['pipe', 'inherit', 'inherit', 'pipe'],
+      env: runnerEnvironment(microvmId, this.denylist),
+      shell: false,
+      stdio: ['ignore', 'inherit', 'inherit'],
+      ...this.identity,
     });
-    const entrypointReady = waitForEntrypointReady(child);
-    const inputWritten = new Promise<void>((resolve, reject) => {
-      const fail = (error: Error): void => reject(error);
-      child.once('error', fail);
-      child.once('spawn', () => {
-        if (child.stdin === null) {
-          reject(new Error('runner entrypoint stdin is unavailable'));
-          return;
-        }
-        child.stdin.once('error', fail);
-        child.stdin.end(
-          JSON.stringify({
-            jitConfig: bootstrap.jitConfig,
-            microvmId,
-            version: 1,
-          }),
-          () => {
-            child.removeListener('error', fail);
-            child.stdin?.removeListener('error', fail);
-            resolve();
-          },
-        );
-      });
-    });
-    const ready = Promise.all([inputWritten, entrypointReady]).then(() => undefined);
+    redactSpawnArguments(child, arguments_, bootstrap.jitConfig);
+
+    const ready = waitForLaunchHandoff(child, this.handoffDelayMs);
     return new NodeManagedProcess(child, ready, this.stopGraceMs);
   }
 }

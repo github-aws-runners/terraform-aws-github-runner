@@ -4,7 +4,7 @@ import type { Logger } from './contracts';
 import { consoleLogger } from './contracts';
 import { RunnerLifecycle } from './lifecycle';
 import { HookRequestError, MAX_REQUEST_BYTES } from './payload';
-import { RunnerEntrypointLauncher } from './processes';
+import { GitHubRunnerLauncher } from './processes';
 import { StorageJitConfigSource } from './storage';
 
 export const HOOK_PREFIX = '/aws/lambda-microvms/runtime/v1';
@@ -185,7 +185,7 @@ export function createHookServer(
 }
 
 export function createDefaultLifecycle(logger: Logger = consoleLogger): RunnerLifecycle {
-  return new RunnerLifecycle(new StorageJitConfigSource(), new RunnerEntrypointLauncher(), logger);
+  return new RunnerLifecycle(new StorageJitConfigSource(), new GitHubRunnerLauncher(), logger);
 }
 
 interface ClosableServer {
@@ -222,7 +222,7 @@ export function watchRunnerCompletion(
     } else {
       logger.error('GitHub Actions runner exited unexpectedly with status %s', runnerExitCode ?? 'signal');
     }
-    // Let the /run handler flush its acknowledgement if the runner exits immediately after readiness.
+    // Let the /run handler flush its acknowledgement if the runner exits immediately after handoff.
     setImmediate(() => requestExit(exitCode));
   });
 }

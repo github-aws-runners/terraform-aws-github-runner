@@ -10,7 +10,7 @@ export type {
 export { consoleLogger } from './contracts';
 export { RunnerLifecycle } from './lifecycle';
 export { HookRequestError, MAX_REQUEST_BYTES, parseRunRequest } from './payload';
-export { NodeManagedProcess, RunnerEntrypointLauncher } from './processes';
+export { GitHubRunnerLauncher, NodeManagedProcess } from './processes';
 export {
   createHookExitRequester,
   createDefaultLifecycle,

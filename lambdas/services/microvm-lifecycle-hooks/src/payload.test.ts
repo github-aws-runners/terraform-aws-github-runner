@@ -7,7 +7,10 @@ const SSM_STORAGE = {
 } as const;
 function request(
   payload: object = {
-    runnerConfigSsmPath: '/github-action-runners/tenant/token',
+    imageArn: 'arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner',
+    imageVersion: '8.0',
+    runnerConfigSsmPath: '/github-action-runners/tenant/config',
+    runnerTokenSsmPath: '/github-action-runners/tenant/token',
     version: 1,
   },
   microvmId = MICROVM_ID,
@@ -19,7 +22,7 @@ function request(
 }
 
 describe('parseRunRequest', () => {
-  it('maps the strict version 1 payload to the allowlisted SSM storage environment', () => {
+  it('maps the producer version 1 payload to the allowlisted SSM storage environment', () => {
     expect(parseRunRequest(request())).toEqual({
       microvmId: MICROVM_ID,
       storage: SSM_STORAGE,
@@ -30,7 +33,10 @@ describe('parseRunRequest', () => {
     expect(
       parseRunRequest(
         request({
-          runnerConfigSsmPath: '/github-action-runners/tenant/token/',
+          imageArn: 'arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner',
+          imageVersion: '8.0',
+          runnerConfigSsmPath: '/github-action-runners/tenant/config/',
+          runnerTokenSsmPath: '/github-action-runners/tenant/token/',
           version: 1,
         }),
       ).storage,
@@ -60,7 +66,7 @@ describe('parseRunRequest', () => {
     ['invalid outer JSON', '{'],
     ['an invalid MicroVM identifier', request(undefined, '../vm')],
     ['an overlong MicroVM identifier', request(undefined, 'a'.repeat(257))],
-    ['an unversioned payload', request({ runnerConfigSsmPath: '/runner/token' })],
+    ['an unversioned payload', request({ runnerConfigSsmPath: '/runner/config', runnerTokenSsmPath: '/runner/token' })],
     ['a relative legacy SSM path', request({ runnerConfigSsmPath: 'runner/token', version: 1 })],
     ['a root legacy SSM path', request({ runnerConfigSsmPath: '/', version: 1 })],
     ['repeated legacy SSM slashes', request({ runnerConfigSsmPath: '/runner//token', version: 1 })],

@@ -17,7 +17,10 @@ function runRequest(): string {
   return JSON.stringify({
     microvmId: MICROVM_ID,
     runHookPayload: JSON.stringify({
-      runnerConfigSsmPath: '/runner/token',
+      imageArn: 'arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner',
+      imageVersion: '8.0',
+      runnerConfigSsmPath: '/runner/config',
+      runnerTokenSsmPath: '/runner/token',
       version: 1,
     }),
   });
@@ -115,7 +118,7 @@ describe('RunnerLifecycle', () => {
     await lifecycle.stop();
   });
 
-  it('returns to idle if the configured entrypoint cannot launch', async () => {
+  it('returns to idle if the GitHub Actions runner cannot launch', async () => {
     const consume = vi.fn().mockResolvedValue({ jitConfig: 'encoded-jit' });
     const lifecycle = new RunnerLifecycle(
       { consume },
@@ -130,6 +133,34 @@ describe('RunnerLifecycle', () => {
     await expect(lifecycle.start(runRequest())).rejects.toThrow('spawn failed');
     await expect(lifecycle.start(runRequest())).rejects.toThrow('spawn failed');
     expect(consume).toHaveBeenCalledTimes(2);
+  });
+
+  it('logs the startup stage and safe error details without exposing internal messages', async () => {
+    const messages: unknown[] = [];
+    const logger: Logger = {
+      error: (...values) => messages.push(...values),
+      info: () => undefined,
+      warn: () => undefined,
+    };
+    const error = new Error('encoded-jit-secret');
+    error.name = 'encoded-jit-secret-name';
+    Object.assign(error, { code: 'encoded-jit-secret-code' });
+    const lifecycle = new RunnerLifecycle(
+      {
+        consume: async () => {
+          throw error;
+        },
+      },
+      { launch: () => new DeferredProcess() },
+      logger,
+    );
+
+    await expect(lifecycle.start(runRequest())).rejects.toBe(error);
+
+    const serializedMessages = JSON.stringify(messages);
+    expect(serializedMessages).toContain('consume runner configuration');
+    expect(serializedMessages).toContain('unknown-error');
+    expect(serializedMessages).not.toContain('encoded-jit-secret');
   });
 
   it('aborts in-flight consumption when the run-hook deadline elapses', async () => {
@@ -166,7 +197,7 @@ describe('RunnerLifecycle', () => {
     expect(launched).toBe(false);
   });
 
-  it('waits for cleanup when terminate races with entrypoint readiness', async () => {
+  it('waits for cleanup when terminate races with the runner launch handoff', async () => {
     let finishCleanup = (): void => undefined;
     let reportLaunched = (): void => undefined;
     let stopCalled = false;

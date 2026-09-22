@@ -4,7 +4,7 @@ export interface MicrovmProviderConfig {
   egressNetworkConnectors?: string[];
   executionRoleArn: string;
   imageIdentifier: string;
-  imageVersion?: string;
+  imageVersion: string;
   ingressNetworkConnectors?: string[];
   logging?: Logging;
   metadataSsmPath: string;
@@ -61,7 +61,7 @@ export function loadMicrovmProviderConfig(): MicrovmProviderConfig {
 
   return {
     imageIdentifier: requiredEnvironmentValue('MICROVM_IMAGE_ARN', process.env.MICROVM_IMAGE_ARN),
-    imageVersion: optionalEnvironmentValue(process.env.MICROVM_IMAGE_VERSION),
+    imageVersion: requiredEnvironmentValue('MICROVM_IMAGE_VERSION', process.env.MICROVM_IMAGE_VERSION),
     executionRoleArn: requiredEnvironmentValue('MICROVM_EXECUTION_ROLE_ARN', process.env.MICROVM_EXECUTION_ROLE_ARN),
     ingressNetworkConnectors: parseNetworkConnectors(
       'MICROVM_INGRESS_NETWORK_CONNECTORS',

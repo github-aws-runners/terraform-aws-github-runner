@@ -23,7 +23,10 @@ interface LambdaRunRequest {
 
 interface VersionedRunPayload {
   version?: unknown;
+  imageArn?: unknown;
+  imageVersion?: unknown;
   runnerConfigSsmPath?: unknown;
+  runnerTokenSsmPath?: unknown;
   context?: unknown;
 }
 
@@ -47,6 +50,10 @@ function parseObject<T>(value: string, errorMessage: string): T {
 function hasExactKeys(value: object, expected: readonly string[]): boolean {
   const keys = Object.keys(value);
   return keys.length === expected.length && keys.every((key) => expected.includes(key));
+}
+
+function hasOnlyKeys(value: object, allowed: readonly string[]): boolean {
+  return Object.keys(value).every((key) => allowed.includes(key));
 }
 
 function isObject(value: unknown): value is object {
@@ -73,14 +80,20 @@ export function parseRunRequest(body: string): RunContext {
 
   const payload = parseObject<VersionedRunPayload>(request.runHookPayload, 'runHookPayload must contain valid JSON');
   if (payload.version === 1) {
-    if (!hasExactKeys(payload, ['version', 'runnerConfigSsmPath'])) {
+    if (
+      !hasOnlyKeys(payload, ['version', 'imageArn', 'imageVersion', 'runnerConfigSsmPath', 'runnerTokenSsmPath']) ||
+      typeof payload.imageArn !== 'string' ||
+      typeof payload.imageVersion !== 'string' ||
+      typeof payload.runnerConfigSsmPath !== 'string' ||
+      typeof payload.runnerTokenSsmPath !== 'string'
+    ) {
       throw new HookRequestError('version 1 runHookPayload contains unsupported or missing fields');
     }
     return {
       microvmId: request.microvmId,
       storage: parseStorageContext({
         RUNNER_CONFIG_STORAGE_PROVIDER: 'aws_ssm',
-        SSM_TOKEN_PATH: payload.runnerConfigSsmPath,
+        SSM_TOKEN_PATH: payload.runnerTokenSsmPath,
       }),
     };
   }
