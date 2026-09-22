@@ -2,7 +2,7 @@
 
 # Lambda MicroVMs currently run ARM64 images. The image contains the Actions
 # runner, CloudWatch Agent, S6 overlay, and compiled lifecycle-hook server.
-ARG UBUNTU_IMAGE
+ARG UBUNTU_IMAGE=ubuntu:24.04
 
 # hadolint ignore=DL3006
 FROM ${UBUNTU_IMAGE} AS tooling
@@ -93,10 +93,10 @@ RUN curl --fail --location --show-error --silent \
         --directory /export \
     && rm -f /tmp/s6-overlay-noarch.tar.xz /tmp/s6-overlay-aarch64.tar.xz
 
-COPY lifecycle-hook.zip /tmp/lifecycle-hook.zip
-RUN unzip -q /tmp/lifecycle-hook.zip -d /export/opt/microvm \
+COPY microvm-lifecycle-hooks.zip /tmp/microvm-lifecycle-hooks.zip
+RUN unzip -q /tmp/microvm-lifecycle-hooks.zip -d /export/opt/microvm \
     && test -r /export/opt/microvm/server.js \
-    && rm -f /tmp/lifecycle-hook.zip
+    && rm -f /tmp/microvm-lifecycle-hooks.zip
 
 FROM ${UBUNTU_IMAGE}
 
@@ -133,10 +133,10 @@ RUN existing_group="$(getent group 1000 | cut -d: -f1)" \
         useradd --create-home --home-dir /home/runner --shell /bin/bash \
             --uid 1000 --gid 1000 runner; \
     fi \
-    && install -d -m 0755 /opt/microvm /etc/services.d/cloudwatch-agent /var/log/microvm \
+    && install -d -m 0755 /opt/hostedtoolcache /opt/microvm /etc/services.d/cloudwatch-agent /var/log/microvm \
     && install -m 0600 /dev/null /var/log/microvm/internal-services.log \
     && install -m 0600 /dev/null /var/log/microvm/run.log \
-    && chown -R runner:runner /home/runner /opt/actions-runner
+    && chown -R runner:runner /home/runner /opt/actions-runner /opt/hostedtoolcache
 
 COPY --chmod=0555 image-entrypoint.sh /opt/microvm/image-entrypoint.sh
 COPY --chmod=0555 start-services.sh /opt/microvm/start-services.sh
