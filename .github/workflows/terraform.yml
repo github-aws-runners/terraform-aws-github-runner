@@ -34,7 +34,7 @@ env:
     modules/runners/job-retry
     modules/runners/pool
     modules/setup-iam-permissions
-    modules/ssm
+    modules/storage-providers/aws/ssm
     modules/termination-watcher
     modules/termination-watcher/notification
     modules/termination-watcher/termination

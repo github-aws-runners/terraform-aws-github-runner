@@ -375,11 +375,11 @@ run "separates_provider_runner_and_ssm_tags" {
 
   assert {
     condition = (
-      aws_ssm_parameter.runner_config_run_as[0].tags["Name"] == "ssm-name"
-      && aws_ssm_parameter.runner_config_run_as[0].tags["Scope"] == "ssm"
-      && aws_ssm_parameter.runner_config_run_as[0].tags["SsmOnly"] == "ssm"
-      && !contains(keys(aws_ssm_parameter.runner_config_run_as[0].tags), "RunnerOnly")
-      && !contains(keys(aws_ssm_parameter.runner_config_run_as[0].tags), "ghr:environment")
+      aws_ssm_parameter.runner_config_run_as.tags["Name"] == "ssm-name"
+      && aws_ssm_parameter.runner_config_run_as.tags["Scope"] == "ssm"
+      && aws_ssm_parameter.runner_config_run_as.tags["SsmOnly"] == "ssm"
+      && !contains(keys(aws_ssm_parameter.runner_config_run_as.tags), "RunnerOnly")
+      && !contains(keys(aws_ssm_parameter.runner_config_run_as.tags), "ghr:environment")
     )
     error_message = "EC2 SSM parameters must merge SSM component tags over provider tags."
   }
