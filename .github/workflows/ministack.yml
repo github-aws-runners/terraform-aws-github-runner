@@ -76,7 +76,7 @@ jobs:
           - termination-watcher
     services:
       ministack:
-        image: ghcr.io/ministackorg/ministack:1.5.11@sha256:ce3c906f2866ff953ce4c56f06b1fa3e453bc32e41c00de17b5f5a8672c5a42c
+        image: ghcr.io/ministackorg/ministack:1.5.15@sha256:3ab60a21fc04df74522d853141b7a839ada576ce640909b20f5c65475526f25c
         ports:
           - 4566:4566
         env:
@@ -141,7 +141,7 @@ jobs:
     timeout-minutes: 30
     services:
       ministack:
-        image: ghcr.io/ministackorg/ministack:1.5.10@sha256:3ab60a21fc04df74522d853141b7a839ada576ce640909b20f5c65475526f25c
+        image: ghcr.io/ministackorg/ministack:1.5.15@sha256:3ab60a21fc04df74522d853141b7a839ada576ce640909b20f5c65475526f25c
         ports:
           - 4566:4566
         options: --add-host=host.docker.internal:host-gateway
