@@ -40,8 +40,12 @@ locals {
           scale_set = v.orchestration_provider.scale_set
         }
 
-        ssm = merge(v.ssm, {
-          kms_key_id = local.normalized_config.ssm.kms_key_id
+        storage_provider = merge(v.storage_provider, {
+          aws = merge(v.storage_provider.aws, {
+            ssm = merge(v.storage_provider.aws.ssm, {
+              kms_key_id = local.normalized_config.storage_provider.aws.ssm.kms_key_id
+            })
+          })
         })
 
         compute_provider = merge(v.compute_provider, {

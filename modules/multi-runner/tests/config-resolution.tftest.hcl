@@ -111,12 +111,16 @@ variables {
     }
   }
 
-  global_config_ssm = {
-    housekeeper = {
-      lambda = {
-        artifact = {
-          s3 = {
-            key = "runners.zip"
+  global_storage_provider = {
+    aws = {
+      ssm = {
+        housekeeper = {
+          lambda = {
+            artifact = {
+              s3 = {
+                key = "runners.zip"
+              }
+            }
           }
         }
       }
@@ -310,12 +314,16 @@ run "v2_inputs_resolve_lane_over_global" {
       }
     }
 
-    global_config_ssm = {
-      housekeeper = {
-        lambda = {
-          artifact = {
-            s3 = {
-              key = "global-housekeeper.zip"
+    global_storage_provider = {
+      aws = {
+        ssm = {
+          housekeeper = {
+            lambda = {
+              artifact = {
+                s3 = {
+                  key = "global-housekeeper.zip"
+                }
+              }
             }
           }
         }
@@ -348,12 +356,16 @@ run "v2_inputs_resolve_lane_over_global" {
             }
           }
         }
-        ssm = {
-          housekeeper = {
-            lambda = {
-              artifact = {
-                s3 = {
-                  key = "lane-housekeeper.zip"
+        storage_provider = {
+          aws = {
+            ssm = {
+              housekeeper = {
+                lambda = {
+                  artifact = {
+                    s3 = {
+                      key = "lane-housekeeper.zip"
+                    }
+                  }
                 }
               }
             }
@@ -392,8 +404,8 @@ run "v2_inputs_resolve_lane_over_global" {
       && !local.resolved_config.compute_provider.aws.ec2.instance_termination_watcher.features.spot_termination_handler.enabled
       && !local.resolved_config.compute_provider.aws.ec2.instance_termination_watcher.features.spot_termination_notification_watcher.enabled
       && !local.resolved_config.compute_provider.aws.ec2.instance_termination_watcher.features.runner_deregistration.enabled
-      && local.resolved_config.multi_runner_config["lane"].ssm.housekeeper.lambda.artifact.zip == null
-      && local.resolved_config.multi_runner_config["lane"].ssm.housekeeper.lambda.artifact.s3.key == "lane-housekeeper.zip"
+      && local.resolved_config.multi_runner_config["lane"].storage_provider.aws.ssm.housekeeper.lambda.artifact.zip == null
+      && local.resolved_config.multi_runner_config["lane"].storage_provider.aws.ssm.housekeeper.lambda.artifact.s3.key == "lane-housekeeper.zip"
       && toset(local.effective_config.multi_runner_config["lane"].runner.labels) == toset(["arm64", "linux", "self-hosted"])
     )
     error_message = "v2 inputs must resolve lane overrides before v2 global defaults."

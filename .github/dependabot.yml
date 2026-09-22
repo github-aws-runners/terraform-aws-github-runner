@@ -93,13 +93,6 @@ updates:
       - dependency-name: "mcr.microsoft.com/vscode/devcontainers/typescript-node"
         update-types: ["version-update:semver-major"]
 
-  - package-ecosystem: "docker-compose"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    allow:
-      - dependency-name: "ghcr.io/ministackorg/ministack"
-
   - package-ecosystem: "docker"
     directory: "/lambdas/services/scale-set"
     schedule:

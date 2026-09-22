@@ -78,11 +78,15 @@ variables {
     }
   }
 
-  ssm = {
-    paths = {
-      root   = "/github-runner/provider-test"
-      tokens = "tokens"
-      config = "config"
+  storage_provider = {
+    aws = {
+      ssm = {
+        paths = {
+          root   = "/github-runner/provider-test"
+          tokens = "tokens"
+          config = "config"
+        }
+      }
     }
   }
 }
@@ -331,20 +335,24 @@ run "separates_provider_runner_and_ssm_tags" {
         }
       }
     }
-    ssm = {
-      paths = {
-        root   = "/github-runner/provider-test"
-        tokens = "tokens"
-        config = "config"
-      }
-      parameters = {
-        tags = {
-          Name                       = "ssm-name"
-          Scope                      = "ssm"
-          SsmOnly                    = "ssm"
-          "ghr:ami_name"             = "ssm-override"
-          "ghr:ami_creation_date"    = "ssm-override"
-          "ghr:ami_deprecation_time" = "ssm-override"
+    storage_provider = {
+      aws = {
+        ssm = {
+          paths = {
+            root   = "/github-runner/provider-test"
+            tokens = "tokens"
+            config = "config"
+          }
+          parameters = {
+            tags = {
+              Name                       = "ssm-name"
+              Scope                      = "ssm"
+              SsmOnly                    = "ssm"
+              "ghr:ami_name"             = "ssm-override"
+              "ghr:ami_creation_date"    = "ssm-override"
+              "ghr:ami_deprecation_time" = "ssm-override"
+            }
+          }
         }
       }
     }

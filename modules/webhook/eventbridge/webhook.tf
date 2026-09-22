@@ -24,7 +24,7 @@ resource "aws_lambda_function" "webhook" {
   depends_on        = [aws_cloudwatch_log_group.webhook]
 
   environment {
-    variables = {
+    variables = merge({
       for k, v in {
         LOG_LEVEL                                = upper(var.config.log_level)
         POWERTOOLS_LOGGER_LOG_EVENT              = var.config.log_level == "debug" ? "true" : "false"
@@ -38,7 +38,7 @@ resource "aws_lambda_function" "webhook" {
         PARAMETER_GITHUB_APP_WEBHOOK_SECRET  = var.config.github_app_parameters.webhook_secret.name
         PARAMETER_RUNNER_MATCHER_CONFIG_PATH = join(":", [for p in var.config.ssm_parameter_runner_matcher_config : p.name])
       } : k => v if v != null
-    }
+    })
   }
 
   dynamic "vpc_config" {
@@ -139,7 +139,7 @@ resource "aws_iam_role_policy" "webhook_kms" {
   role = aws_iam_role.webhook_lambda.name
 
   policy = templatefile("${path.module}/../policies/lambda-kms.json", {
-    kms_key_arn = var.config.kms_key_arn != null ? var.config.kms_key_arn : "arn:${var.config.aws_partition}:kms:::CMK_NOT_IN_USE"
+    kms_key_arn = var.config.storage_provider.aws.ssm.kms_key_id != null ? var.config.storage_provider.aws.ssm.kms_key_id : "arn:${var.config.aws_partition}:kms:::CMK_NOT_IN_USE"
   })
 }
 
