@@ -47,7 +47,10 @@ async function loadAppCredentials(): Promise<GitHubAppCredential> {
 
 function getAppCredentials(): Promise<GitHubAppCredential> {
   if (!appCredentialsPromise) {
-    appCredentialsPromise = loadAppCredentials();
+    appCredentialsPromise = loadAppCredentials().catch((error: unknown) => {
+      appCredentialsPromise = undefined;
+      throw error;
+    });
   }
   return appCredentialsPromise;
 }

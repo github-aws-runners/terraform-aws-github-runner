@@ -196,6 +196,29 @@ describe('deregisterRunner', () => {
     expect(mockActions.deleteSelfHostedRunnerFromOrg).not.toHaveBeenCalled();
   });
 
+  it('should reload app credentials after a transient storage provider error', async () => {
+    mockGetCredentials
+      .mockRejectedValueOnce(new Error('Transient credential storage error'))
+      .mockResolvedValue([{ appId: 12345, privateKey: 'fake-private-key' }]);
+    mockApps.getOrgInstallation.mockResolvedValue({ data: { id: 999 } });
+
+    async function* fakeIterator() {
+      yield { data: [{ id: 42, name: `runner-i-12345678901234567` }] };
+    }
+    mockPaginate.iterator.mockReturnValue(fakeIterator());
+    mockActions.deleteSelfHostedRunnerFromOrg.mockResolvedValue({});
+
+    await deregisterRunner(orgInstance, baseConfig);
+    await deregisterRunner(orgInstance, baseConfig);
+
+    expect(mockGetCredentials).toHaveBeenCalledTimes(2);
+    expect(mockActions.deleteSelfHostedRunnerFromOrg).toHaveBeenCalledTimes(1);
+    expect(mockActions.deleteSelfHostedRunnerFromOrg).toHaveBeenCalledWith({
+      org: 'test-org',
+      runner_id: 42,
+    });
+  });
+
   it('should default to Org runner type when ghr:Type tag is missing', async () => {
     const instance: Instance = {
       ...orgInstance,
