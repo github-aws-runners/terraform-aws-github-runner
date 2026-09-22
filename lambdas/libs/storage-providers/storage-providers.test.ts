@@ -43,4 +43,12 @@ describe('createStorageProviders', () => {
       githubAppCredentials: expect.any(Object),
     });
   });
+
+  it('rejects an invalid token TTL before creating a storage provider', () => {
+    vi.clearAllMocks();
+    expect(() =>
+      createStorageProviders({ SSM_TOKEN_PATH: '/runners/tokens', SSM_TOKEN_TTL_SECONDS: 'not-a-number' }),
+    ).toThrow('SSM_TOKEN_TTL_SECONDS must be a positive number');
+    expect(createAwsSsmRunnerConfigStore).not.toHaveBeenCalled();
+  });
 });

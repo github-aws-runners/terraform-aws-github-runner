@@ -64,10 +64,10 @@ describe('aws_ssm runner config store', () => {
     });
   });
 
-  it('passes the configured token TTL to SSM', async () => {
+  it.each(['jit-config', 'registration-config'])('passes the configured token TTL to SSM for %s', async (value) => {
     process.env.SSM_TOKEN_TTL_SECONDS = '3600';
-    await createAwsSsmRunnerConfigStore().create({ runnerId: 'runner-1', value: 'jit-config' });
-    expect(putParameterMock).toHaveBeenCalledWith('/runner/tokens/runner-1', 'jit-config', true, {
+    await createAwsSsmRunnerConfigStore().create({ runnerId: 'runner-1', value });
+    expect(putParameterMock).toHaveBeenCalledWith('/runner/tokens/runner-1', value, true, {
       tags: [],
       ttlSeconds: 3600,
     });
