@@ -11,7 +11,6 @@ module "pool" {
     user_agent            = local.resolved_config.github.user_agent
     github_app_parameters = local.resolved_config.github.app_parameters
     runners_maximum_count = local.resolved_config.runner.maximum_count
-    kms_key_id            = local.resolved_config.ssm.kms_key_id
     lambda = {
       log_level                      = local.resolved_config.observability.logs.level
       logging_retention_in_days      = local.resolved_config.observability.logs.retention_in_days
@@ -28,7 +27,6 @@ module "pool" {
       runtime                        = local.resolved_config.lambda.runtime
       timeout                        = local.resolved_config.pool.timeout
       zip                            = local.resolved_config.lambda.artifact.zip
-      parameter_store_tags           = local.resolved_config.ssm.parameter_store_tags
       principals                     = local.resolved_config.lambda.role.principals
     }
     pool                      = local.resolved_config.pool.config
@@ -45,17 +43,21 @@ module "pool" {
       pool_owner                = local.resolved_config.pool.runner_owner
       boot_time_in_minutes      = local.resolved_config.runner.boot_time_in_minutes
     }
-    ssm_token_path                 = local.resolved_config.ssm.token_path
-    ssm_token_path_arn             = local.resolved_config.ssm.token_path_arn
-    ssm_config_path                = local.resolved_config.ssm.config_path
-    tags                           = local.pool_tags
-    lambda_tags                    = local.pool_lambda_tags
-    log_group_tags                 = local.pool_log_tags
-    arn_ssm_parameters_path_config = local.resolved_config.ssm.config_path_arn
+    tags           = local.pool_tags
+    lambda_tags    = local.pool_lambda_tags
+    log_group_tags = local.pool_log_tags
   }
 
   aws_partition  = var.aws_partition
   tracing_config = local.resolved_config.observability.tracing
+  storage_provider = merge(
+    {
+      aws = {
+        ssm = local.resolved_config.storage_provider.aws.ssm
+      }
+    },
+    local.resolved_config.storage_provider.pool,
+  )
   runner_provider = {
     type                   = var.runner_provider.type
     environment_variables  = var.runner_provider.pool.environment_variables

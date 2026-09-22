@@ -24,8 +24,8 @@ locals {
     runner                 = var.global_config.runner
     github                 = var.global_config_github
     lambda                 = var.global_config_lambda
+    storage_provider       = var.global_storage_provider
     orchestration_provider = var.global_config_orchestration_provider
-    ssm                    = var.global_config_ssm
     observability          = var.global_config_observability
     compute_provider       = var.global_config_compute_provider
     multi_runner_config    = merge(local.stable_to_v2_multi_runner_config, local.v2_multi_runner_config)
@@ -37,8 +37,8 @@ locals {
     runner                 = local.stable_to_v2_runner
     github                 = local.stable_to_v2_github
     lambda                 = local.stable_to_v2_lambda
+    storage_provider       = local.stable_to_v2_storage_provider
     orchestration_provider = local.stable_to_v2_orchestration_provider
-    ssm                    = local.stable_to_v2_ssm
     observability          = local.stable_to_v2_observability
     compute_provider       = local.stable_to_v2_compute_provider
     multi_runner_config    = local.stable_to_v2_multi_runner_config
@@ -297,76 +297,80 @@ locals {
           })
         }
 
-        ssm = merge(v.ssm, {
-          paths = {
-            root = "${trimsuffix(coalesce(
-              v.ssm.paths.root,
-              local.normalized_config.ssm.paths.root,
-              "/github-action-runners/${var.prefix}",
-            ), "/")}/${k}"
-            tokens = coalesce(
-              v.ssm.paths.tokens,
-              local.normalized_config.ssm.paths.tokens,
-            )
-            config = coalesce(
-              v.ssm.paths.config,
-              local.normalized_config.ssm.paths.config,
-            )
-          }
-          tags = merge(local.normalized_config.ssm.tags, v.ssm.tags)
-          parameters = {
-            tags = merge(local.normalized_config.ssm.parameters.tags, v.ssm.parameters.tags)
-          }
-          housekeeper = {
-            schedule_expression = coalesce(
-              v.ssm.housekeeper.schedule_expression,
-              local.normalized_config.ssm.housekeeper.schedule_expression,
-            )
-            state = coalesce(
-              v.ssm.housekeeper.state,
-              local.normalized_config.ssm.housekeeper.state,
-            )
-            tags = merge(local.normalized_config.ssm.housekeeper.tags, v.ssm.housekeeper.tags)
-            lambda = {
-              # Artifact precedence: lane ZIP, lane S3, global ZIP, then global
-              # S3.
-              artifact = v.ssm.housekeeper.lambda.artifact.zip != null ? {
-                zip = v.ssm.housekeeper.lambda.artifact.zip
-                s3  = null
-                } : v.ssm.housekeeper.lambda.artifact.s3 != null ? {
-                zip = null
-                s3  = v.ssm.housekeeper.lambda.artifact.s3
-                } : local.normalized_config.ssm.housekeeper.lambda.artifact.zip != null ? {
-                zip = local.normalized_config.ssm.housekeeper.lambda.artifact.zip
-                s3  = null
-                } : {
-                zip = null
-                s3  = local.normalized_config.ssm.housekeeper.lambda.artifact.s3
+        storage_provider = merge(v.storage_provider, {
+          aws = merge(v.storage_provider.aws, {
+            ssm = merge(v.storage_provider.aws.ssm, {
+              paths = {
+                root = "${trimsuffix(coalesce(
+                  v.storage_provider.aws.ssm.paths.root,
+                  local.normalized_config.storage_provider.aws.ssm.paths.root,
+                  "/github-action-runners/${var.prefix}",
+                ), "/")}/${k}"
+                tokens = coalesce(
+                  v.storage_provider.aws.ssm.paths.tokens,
+                  local.normalized_config.storage_provider.aws.ssm.paths.tokens,
+                )
+                config = coalesce(
+                  v.storage_provider.aws.ssm.paths.config,
+                  local.normalized_config.storage_provider.aws.ssm.paths.config,
+                )
               }
-              memory_size = coalesce(
-                v.ssm.housekeeper.lambda.memory_size,
-                local.normalized_config.ssm.housekeeper.lambda.memory_size,
-              )
-              timeout = coalesce(
-                v.ssm.housekeeper.lambda.timeout,
-                local.normalized_config.ssm.housekeeper.lambda.timeout,
-              )
-            }
-            config = {
-              tokenPath = try(coalesce(
-                v.ssm.housekeeper.config.tokenPath,
-                local.normalized_config.ssm.housekeeper.config.tokenPath,
-              ), null)
-              minimumDaysOld = coalesce(
-                v.ssm.housekeeper.config.minimumDaysOld,
-                local.normalized_config.ssm.housekeeper.config.minimumDaysOld,
-              )
-              dryRun = coalesce(
-                v.ssm.housekeeper.config.dryRun,
-                local.normalized_config.ssm.housekeeper.config.dryRun,
-              )
-            }
-          }
+              tags = merge(local.normalized_config.storage_provider.aws.ssm.tags, v.storage_provider.aws.ssm.tags)
+              parameters = {
+                tags = merge(local.normalized_config.storage_provider.aws.ssm.parameters.tags, v.storage_provider.aws.ssm.parameters.tags)
+              }
+              housekeeper = {
+                schedule_expression = coalesce(
+                  v.storage_provider.aws.ssm.housekeeper.schedule_expression,
+                  local.normalized_config.storage_provider.aws.ssm.housekeeper.schedule_expression,
+                )
+                state = coalesce(
+                  v.storage_provider.aws.ssm.housekeeper.state,
+                  local.normalized_config.storage_provider.aws.ssm.housekeeper.state,
+                )
+                tags = merge(local.normalized_config.storage_provider.aws.ssm.housekeeper.tags, v.storage_provider.aws.ssm.housekeeper.tags)
+                lambda = {
+                  # Artifact precedence: lane ZIP, lane S3, global ZIP, then global
+                  # S3.
+                  artifact = v.storage_provider.aws.ssm.housekeeper.lambda.artifact.zip != null ? {
+                    zip = v.storage_provider.aws.ssm.housekeeper.lambda.artifact.zip
+                    s3  = null
+                    } : v.storage_provider.aws.ssm.housekeeper.lambda.artifact.s3 != null ? {
+                    zip = null
+                    s3  = v.storage_provider.aws.ssm.housekeeper.lambda.artifact.s3
+                    } : local.normalized_config.storage_provider.aws.ssm.housekeeper.lambda.artifact.zip != null ? {
+                    zip = local.normalized_config.storage_provider.aws.ssm.housekeeper.lambda.artifact.zip
+                    s3  = null
+                    } : {
+                    zip = null
+                    s3  = local.normalized_config.storage_provider.aws.ssm.housekeeper.lambda.artifact.s3
+                  }
+                  memory_size = coalesce(
+                    v.storage_provider.aws.ssm.housekeeper.lambda.memory_size,
+                    local.normalized_config.storage_provider.aws.ssm.housekeeper.lambda.memory_size,
+                  )
+                  timeout = coalesce(
+                    v.storage_provider.aws.ssm.housekeeper.lambda.timeout,
+                    local.normalized_config.storage_provider.aws.ssm.housekeeper.lambda.timeout,
+                  )
+                }
+                config = {
+                  tokenPath = try(coalesce(
+                    v.storage_provider.aws.ssm.housekeeper.config.tokenPath,
+                    local.normalized_config.storage_provider.aws.ssm.housekeeper.config.tokenPath,
+                  ), null)
+                  minimumDaysOld = coalesce(
+                    v.storage_provider.aws.ssm.housekeeper.config.minimumDaysOld,
+                    local.normalized_config.storage_provider.aws.ssm.housekeeper.config.minimumDaysOld,
+                  )
+                  dryRun = coalesce(
+                    v.storage_provider.aws.ssm.housekeeper.config.dryRun,
+                    local.normalized_config.storage_provider.aws.ssm.housekeeper.config.dryRun,
+                  )
+                }
+              }
+            })
+          })
         })
 
         observability = {

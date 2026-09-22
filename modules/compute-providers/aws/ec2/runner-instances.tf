@@ -10,8 +10,8 @@ locals {
 
   ssm_parameter_tags = merge(
     local.provider_tags,
-    var.ssm.tags,
-    var.ssm.parameters.tags,
+    var.storage_provider.aws.ssm.tags,
+    var.storage_provider.aws.ssm.parameters.tags,
   )
 
   log_group_tags = merge(
@@ -29,7 +29,7 @@ locals {
     var.config.tags,
     {
       "ghr:environment"        = var.prefix
-      "ghr:ssm_config_path"    = "${var.ssm.paths.root}/${var.ssm.paths.config}"
+      "ghr:ssm_config_path"    = "${var.storage_provider.aws.ssm.paths.root}/${var.storage_provider.aws.ssm.paths.config}"
       "ghr:runner_name_prefix" = var.runner.name_prefix
     },
   )
@@ -163,7 +163,7 @@ data "aws_ami" "runner" {
 
 resource "aws_ssm_parameter" "runner_ami_id" {
   count     = local.ami_id_ssm_module_managed ? 1 : 0
-  name      = "${var.ssm.paths.root}/${var.ssm.paths.config}/ami_id"
+  name      = "${var.storage_provider.aws.ssm.paths.root}/${var.storage_provider.aws.ssm.paths.config}/ami_id"
   type      = "String"
   data_type = "aws:ec2:image"
   value     = data.aws_ami.runner[0].id

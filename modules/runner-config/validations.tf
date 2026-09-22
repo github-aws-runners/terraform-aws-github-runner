@@ -37,15 +37,15 @@ resource "terraform_data" "validate_config" {
 
     precondition {
       condition = !(
-        var.ssm.housekeeper.lambda.artifact.zip != null &&
-        var.ssm.housekeeper.lambda.artifact.s3 != null
+        var.storage_provider.aws.ssm.housekeeper.lambda.artifact.zip != null &&
+        var.storage_provider.aws.ssm.housekeeper.lambda.artifact.s3 != null
       )
       error_message = "ssm.housekeeper.lambda.artifact must select at most one of zip or s3."
     }
 
     precondition {
       condition = (
-        var.ssm.housekeeper.lambda.artifact.s3 == null ||
+        var.storage_provider.aws.ssm.housekeeper.lambda.artifact.s3 == null ||
         var.lambda.artifact.s3.bucket != null
       )
       error_message = "lambda.artifact.s3.bucket must be set when ssm.housekeeper.lambda.artifact.s3 is selected."
