@@ -20,6 +20,9 @@ export function getErrorNames(error: unknown): string[] {
     if ('name' in current && typeof current.name === 'string') {
       names.push(current.name);
     }
+    if ('__type' in current && typeof current.__type === 'string' && !names.includes(current.__type)) {
+      names.push(current.__type);
+    }
     current = 'cause' in current ? current.cause : undefined;
   }
 
