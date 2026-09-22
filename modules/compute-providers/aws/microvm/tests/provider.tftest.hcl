@@ -131,7 +131,6 @@ run "exposes_microvm_control_plane_contract" {
         "MICROVM_INGRESS_NETWORK_CONNECTORS",
         "MICROVM_LOG_GROUP",
         "MICROVM_METADATA_SSM_PATH",
-        "SSM_TOKEN_PATH",
       ])
       && output.provider.environment_variables.scale_up == output.provider.environment_variables.scale_down
       && output.provider.environment_variables.scale_up == output.provider.environment_variables.pool
@@ -338,7 +337,6 @@ run "normalizes_ssm_paths_and_arns" {
   assert {
     condition = (
       output.provider.environment_variables.scale_up["MICROVM_METADATA_SSM_PATH"] == "/github-action-runners/config/microvm-metadata"
-      && output.provider.environment_variables.scale_up["SSM_TOKEN_PATH"] == "/github-action-runners/tokens"
       && data.aws_iam_policy_document.scale_up.statement[6].resources == toset(["arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/tokens/*"])
       && data.aws_iam_policy_document.scale_down.statement[4].resources == toset(["arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/tokens/*"])
       && data.aws_iam_policy_document.runner_ssm_jit.statement[0].resources == toset(["arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/tokens/*"])
