@@ -121,12 +121,16 @@ module "external_iam" {
     }
   }
 
-  ssm = {
-    kms_key_id = "arn:aws:kms:eu-west-1:123456789012:key/${random_id.external.hex}"
-    paths = {
-      root   = "/github-runner/computed-external"
-      tokens = "tokens"
-      config = "config"
+  storage_provider = {
+    aws = {
+      ssm = {
+        kms_key_id = "arn:aws:kms:eu-west-1:123456789012:key/${random_id.external.hex}"
+        paths = {
+          root   = "/github-runner/computed-external"
+          tokens = "tokens"
+          config = "config"
+        }
+      }
     }
   }
 }
@@ -207,11 +211,15 @@ module "generated_policy" {
     }
   }
 
-  ssm = {
-    paths = {
-      root   = "/github-runner/computed-policy"
-      tokens = "tokens"
-      config = "config"
+  storage_provider = {
+    aws = {
+      ssm = {
+        paths = {
+          root   = "/github-runner/computed-policy"
+          tokens = "tokens"
+          config = "config"
+        }
+      }
     }
   }
 }
