@@ -12,15 +12,11 @@ class MicrovmProvider:
     display_name = "MicroVM"
     image_arn = "arn:aws:lambda:eu-west-1:000000000000:microvm-image:ministack"
     image_version = "3.0"
+    metadata_path = "/github-action-runners/multi-runner-webhook/microvm/runners/config/microvm-metadata"
 
     def configure(self, context: SmokeContext) -> None:
         context.configure_jit_expectations()
-        microvms = context.aws("lambda-microvms", "list-microvms", check=False) or {}
-        context.before_microvm_ids = {
-            item["microvmId"]
-            for item in microvms.get("items", [])
-            if item.get("microvmId")
-        }
+        context.before_microvm_ids = set(self._metadata_by_path(context))
 
     def event(self, context: SmokeContext, job_id: int, dynamic: bool) -> dict[str, Any]:
         value = json.loads((context.script_dir / "workflow_job_event.json").read_text())
@@ -43,24 +39,48 @@ class MicrovmProvider:
     def _metadata(self, context: SmokeContext, microvm_id: str) -> dict[str, Any]:
         value = context.aws(
             "ssm", "get-parameter",
-            "--name", f"/github-action-runners/multi-runner-webhook/microvm/runners/config/microvm-metadata/{microvm_id}",
+            "--name", f"{self.metadata_path}/{microvm_id}",
             check=False,
         )
         if not value or value.get("Parameter", {}).get("Value") in (None, "None"):
             raise RuntimeError(f"Missing MicroVM ownership metadata for {microvm_id}")
         return json.loads(value["Parameter"]["Value"])
 
+    def _metadata_by_path(self, context: SmokeContext) -> dict[str, dict[str, Any]]:
+        result = context.aws(
+            "ssm",
+            "get-parameters-by-path",
+            "--path",
+            self.metadata_path,
+            check=False,
+        ) or {}
+        prefix = f"{self.metadata_path}/"
+        metadata: dict[str, dict[str, Any]] = {}
+        for parameter in result.get("Parameters", []):
+            name = parameter.get("Name", "")
+            if not name.startswith(prefix):
+                continue
+            microvm_id = name[len(prefix):]
+            if "." in microvm_id:
+                continue
+            value = parameter.get("Value")
+            if value in (None, "None"):
+                continue
+            metadata[microvm_id] = json.loads(value)
+        return metadata
+
     def _wait_for_microvm(self, context: SmokeContext, source: str, description: str) -> RunnerResource:
         def find() -> str | None:
-            result = context.aws("lambda-microvms", "list-microvms", check=False) or {}
-            for item in result.get("items", []):
-                microvm_id = item.get("microvmId")
-                if not microvm_id or microvm_id in context.before_microvm_ids:
+            for microvm_id, metadata in self._metadata_by_path(context).items():
+                if microvm_id in context.before_microvm_ids or microvm_id in context.discovered_microvm_ids:
                     continue
-                if self._metadata(context, microvm_id).get("source") == source:
-                    if microvm_id not in context.discovered_microvm_ids:
-                        context.discovered_microvm_ids.append(microvm_id)
-                    return microvm_id
+                if metadata.get("source") != source:
+                    continue
+                details = self._details(context, RunnerResource(microvm_id))
+                if details.get("state") not in ("PENDING", "RUNNING", "SUSPENDING", "SUSPENDED"):
+                    continue
+                context.discovered_microvm_ids.append(microvm_id)
+                return microvm_id
             return None
 
         return RunnerResource(context.wait_for(find, description))

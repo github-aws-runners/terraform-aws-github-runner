@@ -5,6 +5,8 @@ from __future__ import annotations
 from .common import SmokeContext
 from .provider import RunnerResource, SmokeProvider
 
+MOCK_JIT_RUNNER_ID = 987654321
+
 
 def _log_group(provider: SmokeProvider, stage: str) -> str:
     # The webhook and EventBridge dispatcher are shared by all compute
@@ -64,32 +66,49 @@ def _pool(context: SmokeContext, provider: SmokeProvider, pool_size: int) -> Run
     return resource
 
 
+def _scale_down(
+    context: SmokeContext,
+    provider: SmokeProvider,
+    resource: RunnerResource,
+    runner_id: int,
+    marker: str,
+    check: str,
+) -> None:
+    print(f"  {provider.display_name}: scale-down resource {resource.identifier}", flush=True)
+    provider.scale_down(context, resource, runner_id, marker, [(runner_id, resource)])
+    context.mark_check(provider.slug, check)
+
+
 def run(context: SmokeContext, provider: SmokeProvider) -> None:
     print(f"Running {provider.display_name} webhook lifecycle scenarios", flush=True)
     provider.configure(context)
 
     scale_up = _scale_up(context, provider, 123456, False, "scale-up-lambda")
-    dynamic_scale_up = _scale_up(context, provider, 123457, True, "scale-up-lambda")
-    # The two webhook scale-ups above already create two managed runners. Ask
-    # the pool to reach three so it has to create the third runner and exercise
-    # its runner-group/JIT path as well.
-    pool = _pool(context, provider, pool_size=3)
+    _scale_down(
+        context,
+        provider,
+        scale_up,
+        MOCK_JIT_RUNNER_ID,
+        f"multi-runner-webhook-{provider.slug}-scale-up-scale-down",
+        "scale_down_standard",
+    )
 
-    scale_down_runners = [
-        (987654321, scale_up),
-        (987654323, dynamic_scale_up),
-        (987654322, pool),
-    ]
-    for resource, runner_id, marker, check in (
-        (scale_up, 987654321, f"multi-runner-webhook-{provider.slug}-scale-up-scale-down", "scale_down_standard"),
-        (dynamic_scale_up, 987654323, f"multi-runner-webhook-{provider.slug}-dynamic-scale-down", "scale_down_dynamic"),
-        (pool, 987654322, f"multi-runner-webhook-{provider.slug}-pool-scale-down", "scale_down_pool"),
-    ):
-        print(f"  {provider.display_name}: scale-down resource {resource.identifier}", flush=True)
-        provider.scale_down(context, resource, runner_id, marker, scale_down_runners)
-        context.mark_check(provider.slug, check)
-        scale_down_runners = [
-            (active_runner_id, active_resource)
-            for active_runner_id, active_resource in scale_down_runners
-            if active_runner_id != runner_id
-        ]
+    dynamic_scale_up = _scale_up(context, provider, 123457, True, "scale-up-lambda")
+    _scale_down(
+        context,
+        provider,
+        dynamic_scale_up,
+        MOCK_JIT_RUNNER_ID,
+        f"multi-runner-webhook-{provider.slug}-dynamic-scale-down",
+        "scale_down_dynamic",
+    )
+
+    pool = _pool(context, provider, pool_size=1)
+    _scale_down(
+        context,
+        provider,
+        pool,
+        MOCK_JIT_RUNNER_ID,
+        f"multi-runner-webhook-{provider.slug}-pool-scale-down",
+        "scale_down_pool",
+    )

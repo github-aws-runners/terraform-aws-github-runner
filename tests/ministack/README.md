@@ -35,7 +35,7 @@ The script also supports `init`, `plan`, and `destroy`. It creates inert Lambda
 ZIP fixtures in the paths expected by the modules when they are absent, and
 removes only the files it created. For `prebuilt`, it seeds AMI metadata through
 MiniStack's AWS-compatible EC2 API, then removes only the resources it created
-during cleanup. MiniStack v1.5.11 provides the EC2 image behavior needed by the
+during cleanup. MiniStack v1.5.15 provides the EC2 image behavior needed by the
 `default`, `ephemeral`, and `multi-runner` examples, so they are included in
 the same lifecycle matrix.
 
@@ -60,7 +60,7 @@ creates a second provider runner. Installation lookup is mocked for configuratio
 that do not provide a stored installation ID, but is conditional and is not a
 required assertion. The test also verifies the `ghr:Application`,
 `ghr:created_by`, `ghr:Type`, and `ghr:Owner` tags used to discover managed
-instances. MiniStack v1.5.10 propagates the Terraform launch-template tags to
+instances. MiniStack v1.5.15 propagates the Terraform launch-template tags to
 instances, allowing the scale-down Lambda to discover and remove each runner.
 The smoke test invokes scale-down for the webhook and pool-created runners and
 verifies the GitHub API calls and EC2 termination.
