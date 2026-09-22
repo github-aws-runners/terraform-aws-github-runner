@@ -21,7 +21,7 @@ locals {
       region                  = var.aws_region
       environment             = var.prefix
       runnerNamePrefix        = var.runner.name_prefix
-      jitConfigParameterPath  = "${var.ssm.paths.root}/${var.ssm.paths.tokens}"
+      jitConfigParameterPath  = "${var.storage_provider.aws.ssm.paths.root}/${var.storage_provider.aws.ssm.paths.tokens}"
       subnets                 = var.config.subnet_ids
       launchTemplateName      = aws_launch_template.runner.name
       ec2instanceCriteria     = local.scale_set_ec2_instance_criteria
@@ -194,7 +194,7 @@ locals {
           "ssm:PutParameter",
         ])
         resources = toset([
-          "${local.ssm_parameter_arn_prefix}${var.ssm.paths.root}/${var.ssm.paths.tokens}/*",
+          "${local.ssm_parameter_arn_prefix}${var.storage_provider.aws.ssm.paths.root}/${var.storage_provider.aws.ssm.paths.tokens}/*",
         ])
         conditions = []
       }
