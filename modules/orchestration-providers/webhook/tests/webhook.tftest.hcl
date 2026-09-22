@@ -65,13 +65,17 @@ variables {
     }
   }
 
-  ssm = {
-    token_path           = "/github-runner/tokens"
-    token_path_arn       = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/tokens"
-    config_path          = "/github-runner/config"
-    config_path_arn      = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config"
-    kms_key_id           = "arn:aws:kms:eu-west-1:123456789012:key/webhook-test"
-    parameter_store_tags = "[]"
+  storage_provider = {
+    aws = {
+      ssm = {
+        token_path           = "/github-runner/tokens"
+        token_path_arn       = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/tokens"
+        config_path          = "/github-runner/config"
+        config_path_arn      = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config"
+        kms_key_id           = "arn:aws:kms:eu-west-1:123456789012:key/webhook-test"
+        parameter_store_tags = "[]"
+      }
+    }
   }
 
   observability = {

@@ -422,35 +422,39 @@ variable "multi_runner_config" {
       }), null)
     }), {})
 
-    ssm = optional(object({
-      paths = optional(object({
-        root   = optional(string, null)
-        tokens = optional(string, null)
-        config = optional(string, null)
-      }), {})
-      tags = optional(map(string), {})
-      parameters = optional(object({
-        tags = optional(map(string), {})
-      }), {})
-      housekeeper = optional(object({
-        schedule_expression = optional(string, null)
-        state               = optional(string, null)
-        tags                = optional(map(string), {})
-        lambda = optional(object({
-          artifact = optional(object({
-            zip = optional(string, null)
-            s3 = optional(object({
-              key            = string
-              object_version = optional(string, null)
-            }), null)
+    storage_provider = optional(object({
+      aws = optional(object({
+        ssm = optional(object({
+          paths = optional(object({
+            root   = optional(string, null)
+            tokens = optional(string, null)
+            config = optional(string, null)
           }), {})
-          memory_size = optional(number, null)
-          timeout     = optional(number, null)
-        }), {})
-        config = optional(object({
-          tokenPath      = optional(string, null)
-          minimumDaysOld = optional(number, null)
-          dryRun         = optional(bool, null)
+          tags = optional(map(string), {})
+          parameters = optional(object({
+            tags = optional(map(string), {})
+          }), {})
+          housekeeper = optional(object({
+            schedule_expression = optional(string, null)
+            state               = optional(string, null)
+            tags                = optional(map(string), {})
+            lambda = optional(object({
+              artifact = optional(object({
+                zip = optional(string, null)
+                s3 = optional(object({
+                  key            = string
+                  object_version = optional(string, null)
+                }), null)
+              }), {})
+              memory_size = optional(number, null)
+              timeout     = optional(number, null)
+            }), {})
+            config = optional(object({
+              tokenPath      = optional(string, null)
+              minimumDaysOld = optional(number, null)
+              dryRun         = optional(bool, null)
+            }), {})
+          }), {})
         }), {})
       }), {})
     }), {})
