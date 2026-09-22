@@ -306,11 +306,15 @@ module "computed_microvm" {
     }
   }
 
-  ssm = {
-    paths = {
-      root   = "/github-runner/computed-microvm"
-      tokens = "tokens"
-      config = "config"
+  storage_provider = {
+    aws = {
+      ssm = {
+        paths = {
+          root   = "/github-runner/computed-microvm"
+          tokens = "tokens"
+          config = "config"
+        }
+      }
     }
   }
 }

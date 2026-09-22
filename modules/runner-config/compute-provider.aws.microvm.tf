@@ -21,7 +21,6 @@ module "compute_aws_microvm" {
       managed_policy_arns = local.common_runner_managed_policy_arns
     })
   })
-  github           = var.github
   storage_provider = var.storage_provider
   observability    = var.observability
 }
