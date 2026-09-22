@@ -163,12 +163,6 @@ variable "queue_selection_strategy" {
   }
 }
 
-variable "kms_key_arn" {
-  description = "Optional CMK Key ARN to be used for Parameter Store."
-  type        = string
-  default     = null
-}
-
 variable "log_level" {
   description = "Logging level for lambda logging. Valid values are  'silly', 'trace', 'debug', 'info', 'warn', 'error', 'fatal'."
   type        = string
@@ -227,14 +221,6 @@ variable "tracing_config" {
   default = {}
 }
 
-variable "ssm_paths" {
-  description = "The root path used in SSM to store configuration and secrets."
-  type = object({
-    root    = string
-    webhook = string
-  })
-}
-
 variable "lambda_tags" {
   description = "Map of tags that will be added to all the lambda function resources. Note these are additional tags to the default tags."
   type        = map(string)
@@ -249,6 +235,22 @@ variable "matcher_config_parameter_store_tier" {
     condition     = contains(["Standard", "Advanced"], var.matcher_config_parameter_store_tier)
     error_message = "`matcher_config_parameter_store_tier` value is not valid, valid values are: `Standard`, and `Advanced`."
   }
+}
+
+variable "storage_provider" {
+  description = "Storage-provider configuration used by the webhook resources."
+  type = object({
+    aws = object({
+      kms_key_id = optional(string, null)
+      ssm = object({
+        paths = object({
+          root    = string
+          webhook = string
+        })
+      })
+    })
+  })
+  nullable = false
 }
 
 variable "eventbridge" {

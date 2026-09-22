@@ -4,7 +4,7 @@ data "aws_caller_identity" "current" {}
 
 locals {
   ssm_parameter_arn_prefix = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter"
-  ssm_config_arn           = "${local.ssm_parameter_arn_prefix}${var.ssm.paths.root}/${var.ssm.paths.config}"
+  ssm_config_arn           = "${local.ssm_parameter_arn_prefix}${var.storage_provider.aws.ssm.paths.root}/${var.storage_provider.aws.ssm.paths.config}"
   cloudwatch_config_arn    = "${local.ssm_config_arn}/cloudwatch_agent_config_runner"
 }
 
@@ -17,7 +17,7 @@ data "aws_iam_policy_document" "ssm_parameters" {
       "ssm:GetParameter",
     ]
     resources = [
-      "${local.ssm_parameter_arn_prefix}${var.ssm.paths.root}/${var.ssm.paths.tokens}/*",
+      "${local.ssm_parameter_arn_prefix}${var.storage_provider.aws.ssm.paths.root}/${var.storage_provider.aws.ssm.paths.tokens}/*",
     ]
 
     condition {
@@ -167,10 +167,6 @@ data "aws_iam_policy_document" "cloudwatch" {
 locals {
   runner_inline_policies = merge(
     {
-      ssm_parameters = {
-        name        = "runner-ssm-parameters"
-        policy_json = data.aws_iam_policy_document.ssm_parameters.json
-      }
       describe_tags = {
         name        = "runner-describe-tags"
         policy_json = data.aws_iam_policy_document.describe_tags.json
@@ -182,6 +178,12 @@ locals {
       terminate_self = {
         name        = "ec2"
         policy_json = data.aws_iam_policy_document.terminate_self.json
+      }
+    },
+    {
+      ssm_parameters = {
+        name        = "runner-ssm-parameters"
+        policy_json = data.aws_iam_policy_document.ssm_parameters.json
       }
     },
     var.config.ssm_enabled ? {

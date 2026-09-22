@@ -22,7 +22,7 @@ locals {
   }
 
   ssm_root_path = trimsuffix(coalesce(
-    local.effective_config.ssm.paths.root,
+    local.effective_config.storage_provider.aws.ssm.paths.root,
     "/github-action-runners/${var.prefix}",
   ), "/")
 }

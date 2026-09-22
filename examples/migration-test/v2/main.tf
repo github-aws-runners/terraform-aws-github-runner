@@ -192,24 +192,28 @@ module "runners" {
     }
   }
 
-  global_config_ssm = {
-    paths = {
-      root    = "/github-action-runners/migration-test"
-      app     = "app"
-      webhook = "webhook"
-      tokens  = "runners/tokens"
-      config  = "runners/config"
-    }
-    housekeeper = {
-      schedule_expression = "rate(12 hours)"
-      state               = "ENABLED"
-      lambda = {
-        memory_size = 640
-        timeout     = 75
-      }
-      config = {
-        minimumDaysOld = 3
-        dryRun         = true
+  global_storage_provider = {
+    aws = {
+      ssm = {
+        paths = {
+          root    = "/github-action-runners/migration-test"
+          app     = "app"
+          webhook = "webhook"
+          tokens  = "runners/tokens"
+          config  = "runners/config"
+        }
+        housekeeper = {
+          schedule_expression = "rate(12 hours)"
+          state               = "ENABLED"
+          lambda = {
+            memory_size = 640
+            timeout     = 75
+          }
+          config = {
+            minimumDaysOld = 3
+            dryRun         = true
+          }
+        }
       }
     }
   }
