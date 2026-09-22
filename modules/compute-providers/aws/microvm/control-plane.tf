@@ -95,7 +95,6 @@ locals {
     var.config.iam.resource_arns.images,
     [var.config.image_arn],
   )
-  runner_jit_ssm_path = "/${trim(var.ssm.paths.root, "/")}/${trim(var.ssm.paths.tokens, "/")}"
 
   microvm_custom_environment_variables = {
     for key, value in var.config.environment_variables : key => value
@@ -109,7 +108,6 @@ locals {
     MICROVM_INGRESS_NETWORK_CONNECTORS = length(var.config.ingress_network_connectors) == 0 ? "" : jsonencode(var.config.ingress_network_connectors)
     MICROVM_LOG_GROUP                  = aws_cloudwatch_log_group.runtime.name
     MICROVM_METADATA_SSM_PATH          = local.microvm_metadata_ssm_path
-    SSM_TOKEN_PATH                     = local.runner_jit_ssm_path
   })
 
   scale_up_environment_variables   = local.microvm_environment_variables
