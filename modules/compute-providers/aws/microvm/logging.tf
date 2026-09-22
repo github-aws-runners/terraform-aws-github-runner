@@ -11,11 +11,11 @@ locals {
     var.observability.logs.tags,
   )
 
-  ssm_config_ssm_path = "/${trim(var.ssm.paths.root, "/")}/${trim(var.ssm.paths.config, "/")}"
+  ssm_config_ssm_path = "/${trim(var.storage_provider.aws.ssm.paths.root, "/")}/${trim(var.storage_provider.aws.ssm.paths.config, "/")}"
   ssm_parameter_tags = merge(
     local.provider_tags,
-    var.ssm.tags,
-    var.ssm.parameters.tags,
+    var.storage_provider.aws.ssm.tags,
+    var.storage_provider.aws.ssm.parameters.tags,
   )
 
   runner_log_files = var.config.log_files != null ? var.config.log_files : [

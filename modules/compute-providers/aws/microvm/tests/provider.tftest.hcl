@@ -41,8 +41,7 @@ variables {
       MICROVM_IMAGE_ARN             = "caller-cannot-override-provider-contract"
       MICROVM_METADATA_SSM_PATH     = "/caller/cannot/override/provider-contract"
       MICROVM_METADATA_TAGS         = "retired-provider-contract"
-      MICROVM_RUNNER_CONFIG_SSM_ARN = "retired-provider-contract"
-      SSM_TOKEN_PATH                = "/caller/cannot/override/token-path"
+      MICROVM_RUNNER_CONFIG_SSM_ARN = "retired-provider-contract"    
     }
   }
 
@@ -59,26 +58,30 @@ variables {
     }
   }
 
-  ssm = {
-    paths = {
-      root   = "/github-action-runners"
-      tokens = "tokens"
-      config = "config"
-    }
-    tags = {
-      Name       = "ssm"
-      Precedence = "ssm"
-      Ssm        = "shared"
-    }
-    parameters = {
-      tags = {
-        Name                     = "parameter"
-        Parameter                = "metadata"
-        Precedence               = "parameter"
-        "ghr:environment"        = "caller-cannot-override"
-        "ghr:runner_name_prefix" = "caller-cannot-override"
-        "ghr:ssm_config_path"    = "caller-cannot-override"
-      }
+  storage_provider = {
+    aws = {
+      ssm = {
+        paths = {
+          root   = "/github-action-runners"
+          tokens = "tokens"
+          config = "config"
+        }
+        tags = {
+          Name       = "ssm"
+          Precedence = "ssm"
+          Ssm        = "shared"
+        }
+        parameters = {
+          tags = {
+            Name                     = "parameter"
+            Parameter                = "metadata"
+            Precedence               = "parameter"
+            "ghr:environment"        = "caller-cannot-override"
+            "ghr:runner_name_prefix" = "caller-cannot-override"
+            "ghr:ssm_config_path"    = "caller-cannot-override"
+          }
+        }
+      } 
     }
   }
 
