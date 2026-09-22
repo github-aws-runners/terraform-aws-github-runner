@@ -66,9 +66,13 @@ module "runners" {
     }
   }
 
-  global_config_ssm = {
-    paths = {
-      root = "/github-action-runners/${local.environment}"
+  global_storage_provider = {
+    aws = {
+      ssm = {
+        paths = {
+          root = "/github-action-runners/${local.environment}"
+        }
+      }
     }
   }
 
