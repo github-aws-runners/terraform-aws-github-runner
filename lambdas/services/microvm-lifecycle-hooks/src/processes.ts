@@ -1,8 +1,47 @@
 import { type ChildProcess, spawn } from 'node:child_process';
+import { chmod, writeFile } from 'node:fs/promises';
+import { arch, type } from 'node:os';
 import { isAbsolute, join } from 'node:path';
 
-import type { ManagedProcess, RunnerBootstrap, RunnerLauncher } from './contracts';
+import type { Logger, ManagedProcess, RunContext, RunnerBootstrap, RunnerLauncher } from './contracts';
 import { delay } from './timing';
+
+function safeErrorName(error: unknown): string {
+  return error instanceof Error && error.name ? error.name : 'UnknownError';
+}
+
+/** Writes the runner-visible machine information consumed during job setup. */
+export async function writeRunnerSetupInfo(context: RunContext, logger: Logger): Promise<void> {
+  const runnerRoot = process.env.ACTIONS_RUNNER_ROOT ?? '/opt/actions-runner';
+  const setupInfoPath = join(runnerRoot, '.setup_info');
+  const setupInfo = [
+    {
+      group: 'Operating System',
+      detail: `Platform: ${type()}\nArchitecture: ${arch()}`,
+    },
+  ];
+  if (context.imageArn !== undefined && context.imageVersion !== undefined) {
+    setupInfo.push({
+      group: 'Runner Image',
+      detail: `MicroVM image ARN: ${context.imageArn}\nMicroVM image version: ${context.imageVersion}`,
+    });
+  }
+  setupInfo.push({
+    group: 'Lambda MicroVM',
+    detail: `MicroVM id: ${context.microvmId}`,
+  });
+
+  try {
+    await writeFile(setupInfoPath, `${JSON.stringify(setupInfo, null, 2)}\n`, {
+      encoding: 'utf8',
+      mode: 0o644,
+    });
+    await chmod(setupInfoPath, 0o644);
+  } catch (error) {
+    // Setup information is informational and must not strand consumed JIT.
+    logger.warn('GitHub Actions runner setup information could not be written (%s)', safeErrorName(error));
+  }
+}
 
 const LAUNCH_HANDOFF_DELAY_MS = 1_000;
 const MAX_POSIX_ID = 2_147_483_647;

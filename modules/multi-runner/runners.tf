@@ -16,9 +16,9 @@ module "runners" {
   s3_runner_binaries = try(each.value.compute_provider.aws.ec2.binaries_syncer.enabled, false) ? local.runner_binaries_by_os_and_arch_map["${each.value.runner.os}_${each.value.runner.architecture}"] : null
 
   ssm_paths = {
-    root   = each.value.ssm.paths.root
-    tokens = each.value.ssm.paths.tokens
-    config = each.value.ssm.paths.config
+    root   = each.value.storage_provider.aws.ssm.paths.root
+    tokens = each.value.storage_provider.aws.ssm.paths.tokens
+    config = each.value.storage_provider.aws.ssm.paths.config
   }
 
   runner_os                     = each.value.runner.os
@@ -95,7 +95,7 @@ module "runners" {
   runner_log_files                                               = each.value.compute_provider.aws.ec2.log_files
   runner_group_name                                              = each.value.runner.group_name
   runner_name_prefix                                             = each.value.runner.name_prefix
-  parameter_store_tags                                           = each.value.ssm.parameters.tags
+  parameter_store_tags                                           = each.value.storage_provider.aws.ssm.parameters.tags
 
   scale_up_reserved_concurrent_executions = each.value.orchestration_provider.webhook.lambda.scale.up.reserved_concurrent_executions
 
@@ -128,7 +128,7 @@ module "runners" {
   ghes_ssl_verify = local.effective_config.github.enterprise_server.ssl_verify
   user_agent      = local.effective_config.github.user_agent
 
-  kms_key_arn = local.effective_config.ssm.kms_key_id
+  kms_key_arn = local.effective_config.storage_provider.aws.ssm.kms_key_id
 
   log_level = each.value.observability.logs.level
 
@@ -141,17 +141,17 @@ module "runners" {
   associate_public_ipv4_address              = each.value.compute_provider.aws.ec2.associate_public_ipv4_address
 
   ssm_housekeeper = {
-    schedule_expression = each.value.ssm.housekeeper.schedule_expression
-    state               = each.value.ssm.housekeeper.state
+    schedule_expression = each.value.storage_provider.aws.ssm.housekeeper.schedule_expression
+    state               = each.value.storage_provider.aws.ssm.housekeeper.state
     artifact = {
-      zip               = each.value.ssm.housekeeper.lambda.artifact.zip
+      zip               = each.value.storage_provider.aws.ssm.housekeeper.lambda.artifact.zip
       s3_bucket         = try(local.effective_config.lambda.artifact.s3.bucket, null)
-      s3_key            = try(each.value.ssm.housekeeper.lambda.artifact.s3.key, null)
-      s3_object_version = try(each.value.ssm.housekeeper.lambda.artifact.s3.object_version, null)
+      s3_key            = try(each.value.storage_provider.aws.ssm.housekeeper.lambda.artifact.s3.key, null)
+      s3_object_version = try(each.value.storage_provider.aws.ssm.housekeeper.lambda.artifact.s3.object_version, null)
     }
-    lambda_memory_size = each.value.ssm.housekeeper.lambda.memory_size
-    lambda_timeout     = each.value.ssm.housekeeper.lambda.timeout
-    config             = each.value.ssm.housekeeper.config
+    lambda_memory_size = each.value.storage_provider.aws.ssm.housekeeper.lambda.memory_size
+    lambda_timeout     = each.value.storage_provider.aws.ssm.housekeeper.lambda.timeout
+    config             = each.value.storage_provider.aws.ssm.housekeeper.config
   }
 
   job_retry = {

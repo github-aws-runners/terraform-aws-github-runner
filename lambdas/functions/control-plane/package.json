@@ -31,7 +31,6 @@
   },
   "dependencies": {
     "@aws-github-runner/aws-powertools-util": "*",
-    "@aws-github-runner/aws-ssm-util": "*",
     "@aws-github-runner/compute-providers": "*",
     "@aws-github-runner/storage-providers": "*",
     "@aws-lambda-powertools/parameters": "^2.31.0",

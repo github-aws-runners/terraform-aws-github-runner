@@ -6,6 +6,8 @@ import {
 import type { RunContext } from './contracts';
 
 const MICROVM_ID_PATTERN = /^[A-Za-z0-9_.-]{1,256}$/;
+const MICROVM_IMAGE_ARN_PATTERN = /^arn:aws[a-z-]*:lambda:[A-Za-z0-9-]+:[0-9]{12}:microvm-image:[A-Za-z0-9_.-]+$/;
+const MICROVM_IMAGE_VERSION_PATTERN = /^[A-Za-z0-9_.-]{1,128}$/;
 
 export const MAX_REQUEST_BYTES = 20 * 1024;
 
@@ -82,14 +84,29 @@ export function parseRunRequest(body: string): RunContext {
   if (payload.version === 1) {
     if (
       !hasOnlyKeys(payload, ['version', 'imageArn', 'imageVersion', 'runnerConfigSsmPath', 'runnerTokenSsmPath']) ||
-      typeof payload.imageArn !== 'string' ||
-      typeof payload.imageVersion !== 'string' ||
       typeof payload.runnerConfigSsmPath !== 'string' ||
       typeof payload.runnerTokenSsmPath !== 'string'
     ) {
       throw new HookRequestError('version 1 runHookPayload contains unsupported or missing fields');
     }
+    const hasImageMetadata = payload.imageArn !== undefined || payload.imageVersion !== undefined;
+    if (
+      hasImageMetadata &&
+      (typeof payload.imageArn !== 'string' ||
+        payload.imageArn.length > 2_048 ||
+        !MICROVM_IMAGE_ARN_PATTERN.test(payload.imageArn) ||
+        typeof payload.imageVersion !== 'string' ||
+        !MICROVM_IMAGE_VERSION_PATTERN.test(payload.imageVersion))
+    ) {
+      throw new HookRequestError('imageArn and imageVersion must be valid when provided');
+    }
     return {
+      ...(hasImageMetadata
+        ? {
+            imageArn: payload.imageArn as string,
+            imageVersion: payload.imageVersion as string,
+          }
+        : {}),
       microvmId: request.microvmId,
       storage: parseStorageContext({
         RUNNER_CONFIG_STORAGE_PROVIDER: 'aws_ssm',

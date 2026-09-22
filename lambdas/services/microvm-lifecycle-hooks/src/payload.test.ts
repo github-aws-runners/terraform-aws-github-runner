@@ -24,6 +24,23 @@ function request(
 describe('parseRunRequest', () => {
   it('maps the producer version 1 payload to the allowlisted SSM storage environment', () => {
     expect(parseRunRequest(request())).toEqual({
+      imageArn: 'arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner',
+      imageVersion: '8.0',
+      microvmId: MICROVM_ID,
+      storage: SSM_STORAGE,
+    });
+  });
+
+  it('accepts version 1 payloads without image metadata', () => {
+    expect(
+      parseRunRequest(
+        request({
+          runnerConfigSsmPath: '/github-action-runners/tenant/config',
+          runnerTokenSsmPath: '/github-action-runners/tenant/token',
+          version: 1,
+        }),
+      ),
+    ).toEqual({
       microvmId: MICROVM_ID,
       storage: SSM_STORAGE,
     });
@@ -67,6 +84,15 @@ describe('parseRunRequest', () => {
     ['an invalid MicroVM identifier', request(undefined, '../vm')],
     ['an overlong MicroVM identifier', request(undefined, 'a'.repeat(257))],
     ['an unversioned payload', request({ runnerConfigSsmPath: '/runner/config', runnerTokenSsmPath: '/runner/token' })],
+    [
+      'partial image metadata',
+      request({
+        imageArn: 'arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner',
+        runnerConfigSsmPath: '/runner/config',
+        runnerTokenSsmPath: '/runner/token',
+        version: 1,
+      }),
+    ],
     ['a relative legacy SSM path', request({ runnerConfigSsmPath: 'runner/token', version: 1 })],
     ['a root legacy SSM path', request({ runnerConfigSsmPath: '/', version: 1 })],
     ['repeated legacy SSM slashes', request({ runnerConfigSsmPath: '/runner//token', version: 1 })],

@@ -1,6 +1,8 @@
 import type { RunnerConfigStorageContext } from '@aws-github-runner/storage-providers/runner-config-consumer';
 
 export interface RunContext {
+  imageArn?: string;
+  imageVersion?: string;
   microvmId: string;
   storage: RunnerConfigStorageContext;
 }

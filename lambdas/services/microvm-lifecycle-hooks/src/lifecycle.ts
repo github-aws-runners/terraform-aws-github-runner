@@ -1,6 +1,7 @@
 import type { JitConfigSource, Logger, ManagedProcess, RunnerBootstrap, RunnerLauncher } from './contracts';
 import { consoleLogger } from './contracts';
 import { parseRunRequest } from './payload';
+import { writeRunnerSetupInfo } from './processes';
 import { beforeDeadline, beforeDeadlineOrAbort } from './timing';
 
 type LifecycleState = 'idle' | 'starting' | 'running' | 'stopping' | 'stopped';
@@ -155,6 +156,7 @@ export class RunnerLifecycle {
         throw new Error('runner start was cancelled');
       }
 
+      await writeRunnerSetupInfo(context, this.logger);
       stage = 'launch GitHub Actions runner';
       this.logger.info('Lifecycle hook launching GitHub Actions runner for MicroVM %s', context.microvmId);
       processHandle = this.launcher.launch(bootstrap, context.microvmId);

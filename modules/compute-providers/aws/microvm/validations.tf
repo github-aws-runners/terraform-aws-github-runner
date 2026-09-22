@@ -42,26 +42,6 @@ resource "terraform_data" "validate_config" {
       condition     = try(var.config.iam.additional_policy_json.scale_up, null) == null ? true : can(jsondecode(var.config.iam.additional_policy_json.scale_up))
       error_message = "compute_provider.aws.microvm.iam.additional_policy_json.scale_up must be valid JSON when set."
     }
-
-    precondition {
-      condition = !(
-        local.microvm_metadata_ssm_path == local.runner_jit_ssm_path ||
-        startswith(local.microvm_metadata_ssm_path, "${local.runner_jit_ssm_path}/") ||
-        startswith(local.runner_jit_ssm_path, "${local.microvm_metadata_ssm_path}/")
-      )
-      error_message = "The MicroVM metadata Parameter Store path must be separate from the runner JIT configuration path."
-    }
-
-    precondition {
-      condition = (
-        startswith(var.ssm.paths.root, "/") &&
-        trim(var.ssm.paths.root, "/") != "" &&
-        trim(var.ssm.paths.config, "/") != "" &&
-        can(regex("^/[A-Za-z0-9_./-]+$", local.microvm_metadata_ssm_path)) &&
-        !strcontains(local.microvm_metadata_ssm_path, "//")
-      )
-      error_message = "The derived MicroVM metadata Parameter Store path must be an absolute path containing only letters, numbers, dot, underscore, hyphen, and slash."
-    }
   }
 }
 

@@ -25,7 +25,6 @@ become active.
 
 ```bash
 export AWS_REGION="<aws-region>"
-export AWS_DATA_PATH="<path-to-botocore-data>"
 export MICROVM_ARTIFACT_BUCKET="<artifact-bucket-name>"
 export MICROVM_BUILD_ROLE_ARN="<build-role-arn>"
 export MICROVM_EGRESS_NETWORK_CONNECTOR_ARN="<egress-network-connector-arn>"

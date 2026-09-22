@@ -1,3 +1,8 @@
+import { mkdtemp, rm, stat } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
+import { arch, tmpdir, type } from 'node:os';
+import { join } from 'node:path';
+
 import type { JitConfigSource, Logger, ManagedProcess, RunContext, RunnerBootstrap, RunnerLauncher } from './contracts';
 import { RunnerLifecycle } from './lifecycle';
 
@@ -13,16 +18,39 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function runRequest(): string {
+function overrideEnvironment(overrides: Record<string, string | undefined>): () => void {
+  const previous = new Map<string, string | undefined>();
+  for (const [name, value] of Object.entries(overrides)) {
+    previous.set(name, process.env[name]);
+    if (value === undefined) {
+      delete process.env[name];
+    } else {
+      process.env[name] = value;
+    }
+  }
+  return (): void => {
+    for (const [name, value] of previous) {
+      if (value === undefined) {
+        delete process.env[name];
+      } else {
+        process.env[name] = value;
+      }
+    }
+  };
+}
+
+function runRequest(
+  payload: object = {
+    imageArn: 'arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner',
+    imageVersion: '8.0',
+    runnerConfigSsmPath: '/runner/config',
+    runnerTokenSsmPath: '/runner/token',
+    version: 1,
+  },
+): string {
   return JSON.stringify({
     microvmId: MICROVM_ID,
-    runHookPayload: JSON.stringify({
-      imageArn: 'arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner',
-      imageVersion: '8.0',
-      runnerConfigSsmPath: '/runner/config',
-      runnerTokenSsmPath: '/runner/token',
-      version: 1,
-    }),
+    runHookPayload: JSON.stringify(payload),
   });
 }
 
@@ -51,6 +79,90 @@ class DeferredProcess implements ManagedProcess {
 }
 
 describe('RunnerLifecycle', () => {
+  it('writes setup information before launching the runner', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'microvm-lifecycle-setup-info-'));
+    const restoreEnvironment = overrideEnvironment({ ACTIONS_RUNNER_ROOT: directory });
+    let setupInfoAtLaunch: unknown;
+    const launcher: RunnerLauncher = {
+      launch(): ManagedProcess {
+        setupInfoAtLaunch = JSON.parse(readFileSync(join(directory, '.setup_info'), 'utf8'));
+        return new DeferredProcess();
+      },
+    };
+
+    try {
+      const lifecycle = new RunnerLifecycle(
+        { consume: async () => ({ jitConfig: 'encoded-jit' }) },
+        launcher,
+        quietLogger,
+      );
+
+      await lifecycle.start(runRequest());
+
+      expect(setupInfoAtLaunch).toEqual([
+        {
+          group: 'Operating System',
+          detail: `Platform: ${type()}\nArchitecture: ${arch()}`,
+        },
+        {
+          group: 'Runner Image',
+          detail:
+            'MicroVM image ARN: arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner\nMicroVM image version: 8.0',
+        },
+        {
+          group: 'Lambda MicroVM',
+          detail: `MicroVM id: ${MICROVM_ID}`,
+        },
+      ]);
+      expect((await stat(join(directory, '.setup_info'))).mode & 0o777).toBe(0o644);
+    } finally {
+      restoreEnvironment();
+      await rm(directory, { force: true, recursive: true });
+    }
+  });
+
+  it('writes available setup information without image metadata', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'microvm-lifecycle-setup-info-'));
+    const restoreEnvironment = overrideEnvironment({ ACTIONS_RUNNER_ROOT: directory });
+    let setupInfoAtLaunch: unknown;
+    const launcher: RunnerLauncher = {
+      launch(): ManagedProcess {
+        setupInfoAtLaunch = JSON.parse(readFileSync(join(directory, '.setup_info'), 'utf8'));
+        return new DeferredProcess();
+      },
+    };
+
+    try {
+      const lifecycle = new RunnerLifecycle(
+        { consume: async () => ({ jitConfig: 'encoded-jit' }) },
+        launcher,
+        quietLogger,
+      );
+
+      await lifecycle.start(
+        runRequest({
+          runnerConfigSsmPath: '/runner/config',
+          runnerTokenSsmPath: '/runner/token',
+          version: 1,
+        }),
+      );
+
+      expect(setupInfoAtLaunch).toEqual([
+        {
+          group: 'Operating System',
+          detail: `Platform: ${type()}\nArchitecture: ${arch()}`,
+        },
+        {
+          group: 'Lambda MicroVM',
+          detail: `MicroVM id: ${MICROVM_ID}`,
+        },
+      ]);
+    } finally {
+      restoreEnvironment();
+      await rm(directory, { force: true, recursive: true });
+    }
+  });
+
   it('starts only once and waits for terminate cleanup after the runner exits', async () => {
     const events: string[] = [];
     const processHandle = new DeferredProcess();

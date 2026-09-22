@@ -2,10 +2,10 @@ data "aws_caller_identity" "current" {}
 
 locals {
   ssm_parameter_arn_prefix     = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter"
-  runner_token_path_arn        = "${local.ssm_parameter_arn_prefix}/${trim(var.ssm.paths.root, "/")}/${trim(var.ssm.paths.tokens, "/")}/*"
+  runner_token_path_arn        = "${local.ssm_parameter_arn_prefix}/${trim(var.storage_provider.aws.ssm.paths.root, "/")}/${trim(var.storage_provider.aws.ssm.paths.tokens, "/")}/*"
   runner_metadata_tags_arn     = "${local.microvm_metadata_path_arn}/*.tags"
-  runner_enable_cloudwatch_arn = "${local.ssm_parameter_arn_prefix}${local.ssm_config_ssm_path}/enable_cloudwatch"
-  runner_cloudwatch_config_arn = "${local.ssm_parameter_arn_prefix}${local.ssm_config_ssm_path}/cloudwatch_agent_config_runner"
+  runner_enable_cloudwatch_arn = "${local.ssm_parameter_arn_prefix}/${trim(var.storage_provider.aws.ssm.paths.root, "/")}/${trim(var.storage_provider.aws.ssm.paths.config, "/")}/enable_cloudwatch"
+  runner_cloudwatch_config_arn = "${local.ssm_parameter_arn_prefix}/${trim(var.storage_provider.aws.ssm.paths.root, "/")}/${trim(var.storage_provider.aws.ssm.paths.config, "/")}/cloudwatch_agent_config_runner"
   runner_cloudwatch_log_group_arns = [for name in local.runner_log_group_names :
     "arn:${var.aws_partition}:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:${name}"
   ]
