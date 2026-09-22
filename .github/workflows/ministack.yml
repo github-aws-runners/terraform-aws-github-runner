@@ -1,11 +1,8 @@
 name: "Terraform lifecycle"
 
 on:
-  push:
-    branches:
-      - main
   pull_request:
-    paths: ["**/*.tf", "**/*.hcl", ".github/workflows/terraform.yml"]
+    paths: ["**/*.tf", "**/*.hcl", ".github/workflows/ministack.yml"]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

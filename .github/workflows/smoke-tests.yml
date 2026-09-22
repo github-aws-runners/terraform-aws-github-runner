@@ -1,24 +1,8 @@
 name: "Smoke Tests"
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "tests/ministack/**"
-      - "*.tf"
-      - "policies/**"
-      - "examples/**"
-      - "modules/**"
-      - "lambdas/**"
   pull_request:
-    paths:
-      - "tests/ministack/**"
-      - "*.tf"
-      - "policies/**"
-      - "examples/**"
-      - "modules/**"
-      - "lambdas/**"
+    paths: ["**/*.tf", "**/*.hcl", ".github/workflows/smoke-tests.yml"]
   workflow_dispatch:
 
 concurrency:
