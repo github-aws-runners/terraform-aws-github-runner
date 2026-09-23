@@ -57,26 +57,26 @@ The delayed observations reduce launch/eventual-consistency races but do not pro
 ## Requirements
 
 | Name | Version |
-| ---- | ------- |
+|------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.5.6 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 6.21 |
 
 ## Providers
 
 | Name | Version |
-| ---- | ------- |
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.60.0 |
+|------|---------|
+| <a name="provider_aws"></a> [aws](#provider\_aws) | >= 6.21 |
 
 ## Modules
 
 | Name | Source | Version |
-| ---- | ------ | ------- |
+|------|--------|---------|
 | <a name="module_lambda"></a> [lambda](#module\_lambda) | ../lambda | n/a |
 
 ## Resources
 
 | Name | Type |
-| ---- | ---- |
+|------|------|
 | [aws_cloudwatch_event_rule.schedule](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_event_rule) | resource |
 | [aws_cloudwatch_event_target.schedule](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_event_target) | resource |
 | [aws_iam_role_policy.cleanup](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
@@ -91,13 +91,13 @@ The delayed observations reduce launch/eventual-consistency races but do not pro
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-| ---- | ----------- | ---- | ------- | :------: |
+|------|-------------|------|---------|:--------:|
 | <a name="input_config"></a> [config](#input\_config) | Opt-in GitHub registration cleanup for EC2 runners. The name prefix must be exclusive to this AWS account within the configured groups; regions must include every region using it. | <pre>object({<br/>    prefix              = string<br/>    organization        = string<br/>    runner_group_ids    = set(number)<br/>    runner_name_prefix  = string<br/>    regions             = set(string)<br/>    dry_run             = optional(bool, true)<br/>    max_candidates      = optional(number, 100)<br/>    schedule_expression = optional(string, "rate(30 minutes)")<br/>    schedule_state      = optional(string, "ENABLED")<br/>    ghes_api_url        = optional(string, "")<br/>    github_app_parameters = object({<br/>      id                            = object({ name = string, arn = string })<br/>      key_base64                    = object({ name = string, arn = string })<br/>      additional_apps_manifest      = optional(object({ name = string, arn = string }))<br/>      additional_app_parameter_arns = optional(list(string), [])<br/>    })<br/>    github_app_kms_key_arn    = optional(string)<br/>    zip                       = optional(string)<br/>    s3_bucket                 = optional(string)<br/>    s3_key                    = optional(string)<br/>    s3_object_version         = optional(string)<br/>    architecture              = optional(string, "arm64")<br/>    runtime                   = optional(string, "nodejs24.x")<br/>    memory_size               = optional(number, 512)<br/>    timeout                   = optional(number, 300)<br/>    log_level                 = optional(string, "info")<br/>    logging_retention_in_days = optional(number, 30)<br/>    logging_kms_key_id        = optional(string)<br/>    role_path                 = optional(string)<br/>    role_permissions_boundary = optional(string)<br/>    tags                      = optional(map(string), {})<br/>  })</pre> | n/a | yes |
 
 ## Outputs
 
 | Name | Description |
-| ---- | ----------- |
+|------|-------------|
 | <a name="output_dead_letter_queue"></a> [dead\_letter\_queue](#output\_dead\_letter\_queue) | Failed confirmation messages. Inspect before redriving; candidates expire after 24 hours. |
 | <a name="output_lambda"></a> [lambda](#output\_lambda) | Scheduled registration janitor Lambda resources. |
 <!-- END_TF_DOCS -->
