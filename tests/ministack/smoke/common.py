@@ -73,34 +73,14 @@ class SmokeContext:
         print(line, flush=True)
         self._append_log(f"{line}\n")
 
-    def _emit_github_command(self, command: str) -> None:
-        sys.stdout.write(f"{command}\n\n")
-        sys.stdout.flush()
-        self._append_log(f"{command}\n")
-
     @contextmanager
     def step(self, name: str) -> Iterator[None]:
-        github_actions = self.environment.get("GITHUB_ACTIONS") == "true"
-        grouped = github_actions and self.step_depth < 2
-        if grouped:
-            self._emit_github_command(f"::group::{name}")
-        else:
-            self.progress(name)
+        self.progress(name)
         self.step_depth += 1
-        failed = False
         try:
             yield
-        except BaseException:
-            failed = True
-            raise
         finally:
             self.step_depth -= 1
-            if grouped:
-                self._emit_github_command("::endgroup::")
-            if failed and github_actions and self.step_depth == 0:
-                self._emit_github_command(
-                    f"::error::Smoke test failed in {name}; see ministack-smoke.log"
-                )
 
     def _log_command_output(
         self,
