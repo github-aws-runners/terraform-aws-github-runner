@@ -35,8 +35,10 @@ locals {
     }
     enable_runner_deregistration = local.effective_config.compute_provider.aws.ec2.instance_termination_watcher.features.runner_deregistration.enabled
     github_app_parameters = local.effective_config.compute_provider.aws.ec2.instance_termination_watcher.features.runner_deregistration.enabled ? {
-      id         = local.github_app_parameters.id
-      key_base64 = local.github_app_parameters.key_base64
+      id                            = local.github_app_parameters.id
+      key_base64                    = local.github_app_parameters.key_base64
+      additional_apps_manifest      = local.github_app_parameters.additional_apps_manifest
+      additional_app_parameter_arns = local.github_app_parameters.additional_app_parameter_arns
     } : null
     ghes_url              = local.effective_config.github.enterprise_server.url
     environment_variables = local.effective_config.compute_provider.aws.ec2.instance_termination_watcher.environment_variables
