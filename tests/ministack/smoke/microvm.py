@@ -125,9 +125,7 @@ class MicrovmProvider:
             image_context = image_root / "packer" / "scripts" / "microvm" / "image"
             lifecycle_hook_zip = (
                 context.source_root
-                / "lambdas"
-                / "services"
-                / "microvm-lifecycle-hooks"
+                / "lambda_output/"
                 / "microvm-lifecycle-hooks.zip"
             )
 
