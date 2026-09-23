@@ -109,12 +109,28 @@ export async function putParameter(
   parameter_name: string,
   parameter_value: string,
   secure: boolean,
-  options: { tags?: Tag[] } = {},
+  options: { tags?: Tag[]; ttlSeconds?: number } = {},
 ): Promise<void> {
   const client = ssmClient();
 
   // Determine tier based on parameter_value size
   const valueSizeBytes = Buffer.byteLength(parameter_value, 'utf8');
+
+  // Parameter policies (e.g. Expiration) are only supported on the Advanced
+  // tier, so a TTL forces the tier regardless of the value size. Expiration is
+  // enforced asynchronously by SSM: treat it as cleanup, not a security boundary.
+  const expiration =
+    options.ttlSeconds !== undefined
+      ? JSON.stringify([
+          {
+            Type: 'Expiration',
+            Version: '1.0',
+            Attributes: {
+              Timestamp: new Date(Date.now() + options.ttlSeconds * 1000).toISOString(),
+            },
+          },
+        ])
+      : undefined;
 
   await client.send(
     new PutParameterCommand({
@@ -122,7 +138,8 @@ export async function putParameter(
       Value: parameter_value,
       Type: secure ? 'SecureString' : 'String',
       Tags: options.tags,
-      Tier: valueSizeBytes >= SSM_ADVANCED_TIER_THRESHOLD ? 'Advanced' : 'Standard',
+      Tier: expiration || valueSizeBytes >= SSM_ADVANCED_TIER_THRESHOLD ? 'Advanced' : 'Standard',
+      Policies: expiration,
     }),
   );
 }
