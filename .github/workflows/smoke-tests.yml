@@ -65,14 +65,9 @@ jobs:
           terraform_version: latest
           terraform_wrapper: false
 
-      - name: Install Lambda dependencies
-        working-directory: lambdas
-        run: yarn install --frozen-lockfile
-
-      - name: Build smoke-test Lambda distributions
-        working-directory: lambdas
+      - name: Build Lambda distributions for smoke tests
         run: |
-          yarn dist
+          ./.ci/build.sh
 
       - name: Start MockServer
         id: mockserver
