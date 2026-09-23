@@ -97,7 +97,6 @@ describe('createMicrovmRunHookPayload', () => {
       runnerTokenSsmPath: '/runner/token',
     });
   });
-
 });
 
 describe('createMicrovmRunners', () => {

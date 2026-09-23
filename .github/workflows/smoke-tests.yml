@@ -87,4 +87,4 @@ jobs:
           MINISTACK_GITHUB_MOCK_HOST: host.docker.internal
           MINISTACK_GITHUB_MOCK_PORT: "1080"
           MINISTACK_GITHUB_MOCK_URL: ${{ steps.mockserver.outputs.url }}
-        run: sh tests/ministack/run-smoke.sh
+        run: python tests/ministack/run-smoke.py
