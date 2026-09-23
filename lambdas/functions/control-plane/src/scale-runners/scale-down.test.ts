@@ -6,6 +6,7 @@ import { defaultComputeProvider } from '@aws-github-runner/compute-providers/pro
 
 import { controlPlaneProviderRegistry } from '../control-plane-providers';
 import * as ghAuth from '../github/auth';
+import * as rateLimit from '../github/rate-limit';
 import { githubCache } from './cache';
 import { newestFirstStrategy, oldestFirstStrategy, scaleDown } from './scale-down';
 import type { RunnerInfo, RunnerType, ScaleDownComputeProvider } from './types';
@@ -18,6 +19,7 @@ vi.mock('../github/auth', () => ({
 }));
 
 const mockOctokit = {
+  hook: { after: vi.fn(), error: vi.fn() },
   apps: {
     getOrgInstallation: vi.fn(),
     getRepoInstallation: vi.fn(),
@@ -260,6 +262,70 @@ describe('Scale down runners', () => {
       installationId: 0,
     });
     mockCreateClient.mockResolvedValue(mockOctokit as unknown as Octokit);
+  });
+
+  it('selects Apps before owner-cache lookup and attributes response quota to the selected App', async () => {
+    process.env.SCALE_DOWN_CONFIG = '[]';
+    const runners = ['first', 'second', 'third'].map((id) => createRunnerTestData(id, 'Org', 60, true, false, false));
+    mockGitHubRunners(runners);
+    mockListRunners.mockResolvedValueOnce([]).mockResolvedValueOnce(runners).mockResolvedValue([]);
+    const authentication = { type: 'app' as const, token: 'token', appId: 1 };
+    mockedAppAuth
+      .mockResolvedValueOnce({ ...authentication, appIndex: 0 })
+      .mockResolvedValue({ ...authentication, appIndex: 1 });
+    vi.mocked(ghAuth.getStoredInstallationId).mockResolvedValue(123);
+    const metric = vi.spyOn(rateLimit, 'metricGitHubAppRateLimit').mockResolvedValue();
+    try {
+      await scaleDown();
+      expect(mockedInstallationAuth).toHaveBeenCalledTimes(2);
+      expect(mockedInstallationAuth).toHaveBeenCalledWith(123, '', 0);
+      expect(mockedInstallationAuth).toHaveBeenCalledWith(123, '', 1);
+      expect(githubCache.clients.has(`0:Org:${runners[0].owner}`)).toBe(true);
+      expect(githubCache.clients.has(`1:Org:${runners[0].owner}`)).toBe(true);
+      const headers = { 'x-ratelimit-remaining': '17', 'x-ratelimit-limit': '5000' };
+      await mockOctokit.hook.after.mock.calls[1][1]({ headers });
+      expect(metric).toHaveBeenCalledWith(headers, 1);
+    } finally {
+      metric.mockRestore();
+      vi.mocked(ghAuth.getStoredInstallationId).mockResolvedValue(undefined);
+    }
+  });
+
+  it('attributes successful and failed installation lookup and runner requests to the selected App', async () => {
+    const runner = createRunnerTestData('quota-hooks', 'Org', 60, true, false, false);
+    mockGitHubRunners([runner]);
+    mockListRunners.mockResolvedValueOnce([]).mockResolvedValueOnce([runner]).mockResolvedValue([]);
+    mockedAppAuth.mockResolvedValue({ type: 'app', token: 'token', appId: 1, appIndex: 2 });
+    vi.mocked(ghAuth.getStoredInstallationId).mockResolvedValue(undefined);
+    const metric = vi.spyOn(rateLimit, 'metricGitHubAppRateLimit').mockResolvedValue();
+    try {
+      mockOctokit.apps.getOrgInstallation.mockImplementationOnce(async () => {
+        expect(mockOctokit.hook.after).toHaveBeenCalledTimes(1);
+        expect(mockOctokit.hook.error).toHaveBeenCalledTimes(1);
+        return { data: { id: 123 } };
+      });
+      await scaleDown();
+      expect(mockOctokit.hook.after).toHaveBeenCalledTimes(2);
+      const headers = { 'x-ratelimit-remaining': '0', 'x-ratelimit-limit': '5000' };
+      for (const [, hook] of mockOctokit.hook.after.mock.calls) {
+        await hook({ headers });
+        expect(metric).toHaveBeenLastCalledWith(headers, 2);
+      }
+      for (const [, hook] of mockOctokit.hook.error.mock.calls) {
+        const error = new RequestError('rate limited', 403, {
+          request: { method: 'GET', url: 'https://api.github.com/test', headers: {} },
+          response: { status: 403, url: 'https://api.github.com/test', headers, data: {} },
+        });
+        await expect(hook(error)).rejects.toBe(error);
+        expect(metric).toHaveBeenLastCalledWith(headers, 2);
+        const networkError = new Error('network unavailable');
+        metric.mockClear();
+        await expect(hook(networkError)).rejects.toBe(networkError);
+        expect(metric).not.toHaveBeenCalled();
+      }
+    } finally {
+      metric.mockRestore();
+    }
   });
 
   const endpoints = ['https://api.github.com', 'https://github.enterprise.something', 'https://companyname.ghe.com'];
