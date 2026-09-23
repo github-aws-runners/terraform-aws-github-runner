@@ -56,18 +56,27 @@ or execution-role setup steps.
 
 ## Providers
 
-No providers.
+| Name | Version |
+|------|---------|
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.66.0 |
 
 ## Modules
 
 | Name | Source | Version |
 |------|--------|---------|
 | <a name="module_base"></a> [base](#module\_base) | ../base | n/a |
+| <a name="module_microvm_foundation"></a> [microvm\_foundation](#module\_microvm\_foundation) | ../../modules/microvm-foundation | n/a |
 | <a name="module_runners"></a> [runners](#module\_runners) | ../../modules/multi-runner | n/a |
 
 ## Resources
 
-No resources.
+| Name | Type |
+|------|------|
+| [aws_cloudwatch_log_group.aws_cloudwatch_log_group_microvm](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_log_group) | resource |
+| [aws_ecr_repository.base_ubuntu24](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ecr_repository) | resource |
+| [aws_ecr_repository_policy.repository_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ecr_repository_policy) | resource |
+| [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
+| [aws_iam_policy_document.ecr_repository_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 
 ## Inputs
 
@@ -85,6 +94,7 @@ No resources.
 
 | Name | Description |
 |------|-------------|
+| <a name="output_microvm"></a> [microvm](#output\_microvm) | n/a |
 | <a name="output_webhook_endpoint"></a> [webhook\_endpoint](#output\_webhook\_endpoint) | n/a |
 | <a name="output_webhook_secret"></a> [webhook\_secret](#output\_webhook\_secret) | n/a |
 <!-- END_TF_DOCS -->
