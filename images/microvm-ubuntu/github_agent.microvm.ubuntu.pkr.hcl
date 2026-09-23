@@ -3,13 +3,6 @@
 # while delegating packaging, regional publication, and polling to boto3.
 # The null builder and shell-local provisioner are Packer built-ins, so this
 # template intentionally has no required_plugins entry for them.
-
-variable "aws_data_path" {
-  description = "Botocore data path containing the Lambda MicroVM service model."
-  type        = string
-  default     = env("AWS_DATA_PATH")
-}
-
 variable "aws_region" {
   description = "AWS Region for the S3 artifact, Ubuntu ECR mirror, and Lambda MicroVM image."
   type        = string
@@ -96,7 +89,6 @@ build {
     # MICROVM_ENVIRONMENT_VARIABLES is inherited from the build step. Do not
     # add it here: shell-local renders environment_vars into the shell argv.
     environment_vars = [
-      "AWS_DATA_PATH=${var.aws_data_path}",
       "AWS_REGION=${var.aws_region}",
       "MICROVM_ARTIFACT_BUCKET=${var.artifact_bucket}",
       "MICROVM_BUILD_ROLE_ARN=${var.build_role_arn}",

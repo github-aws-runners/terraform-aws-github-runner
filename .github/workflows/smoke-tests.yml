@@ -35,7 +35,7 @@ jobs:
     timeout-minutes: 120
     services:
       ministack:
-        image: ministackorg/ministack-preview-build:pr-1808-d140da92
+        image: ministackorg/ministack:latest
         ports:
           - 4566:4566
         options: --add-host=host.docker.internal:host-gateway
@@ -76,6 +76,9 @@ jobs:
           version: '7.6.0@sha256:80b3b1a26f3553d0c81a3f3896b5b7274c17b2a2e52f0fd2b28e246bc9efa290'
           port: '1080'
           startup-timeout: '60'
+
+      - name: Install boto3
+        run: python3 -m pip install --upgrade boto3 botocore
 
       - name: Run webhook and pool lifecycle smoke test
         env:

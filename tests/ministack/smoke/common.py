@@ -75,12 +75,13 @@ class SmokeContext:
 
     @contextmanager
     def step(self, name: str) -> Iterator[None]:
-        self.progress(name)
         github_actions = self.environment.get("GITHUB_ACTIONS") == "true"
         if github_actions:
             group_start = f"::group::{name}\n"
             print(group_start, end="", flush=True)
             self._append_log(group_start)
+        else:
+            self.progress(name)
         self.step_depth += 1
         try:
             yield
