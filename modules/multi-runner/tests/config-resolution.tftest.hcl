@@ -582,7 +582,7 @@ run "v2_microvm_inputs_route_to_microvm_provider" {
       }
     }
 
-    global_storage_provider = {
+    global_config_storage_provider = {
       aws = {
         ssm = {
           housekeeper = {
