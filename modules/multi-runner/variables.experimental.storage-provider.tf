@@ -1,9 +1,9 @@
 # Global storage-provider configuration.
-variable "global_storage_provider" {
+variable "global_config_storage_provider" {
   description = <<-EOT
     Global storage-provider configuration shared by all runner lanes.
 
-    global_storage_provider = {
+    global_config_storage_provider = {
       aws.ssm.paths.root: "Root path for SSM parameters."
       aws.ssm.paths.app: "Path segment for application parameters."
       aws.ssm.paths.webhook: "Path segment for webhook parameters."
