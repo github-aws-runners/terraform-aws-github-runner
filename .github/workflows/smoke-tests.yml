@@ -91,3 +91,14 @@ jobs:
           MINISTACK_GITHUB_MOCK_PORT: "1080"
           MINISTACK_GITHUB_MOCK_URL: ${{ steps.mockserver.outputs.url }}
         run: python3 tests/ministack/run-webhook-smoke.py
+
+      - name: Upload MiniStack smoke diagnostics
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ministack-smoke-diagnostics
+          path: |
+            ministack-smoke.log
+            ministack-smoke-checklist.txt
+          if-no-files-found: warn
+          retention-days: 7
