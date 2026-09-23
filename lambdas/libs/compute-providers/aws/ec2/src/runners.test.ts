@@ -36,6 +36,9 @@ const ORG_NAME = 'SomeAwesomeCoder';
 const REPO_NAME = `${ORG_NAME}/some-amazing-library`;
 const ENVIRONMENT = 'unit-test-environment';
 const RUNNER_NAME_PREFIX = '';
+beforeEach(() => {
+  process.env.RUNNER_NAME_PREFIX = RUNNER_NAME_PREFIX;
+});
 const RUNNER_TYPES: RunnerType[] = ['Repo', 'Org'];
 
 mockEC2Client.on(DescribeInstancesCommand).resolves({});
@@ -95,6 +98,7 @@ describe('list instances', () => {
       launchTime: new Date('2020-10-10T14:48:00.000+09:00'),
       type: 'Org',
       owner: 'CoderToCat',
+      githubRunnerName: 'i-1234',
       orphan: false,
       bypassRemoval: false,
     });
@@ -109,6 +113,7 @@ describe('list instances', () => {
       launchTime: new Date('2020-10-10T14:48:00.000+09:00'),
       type: 'Org',
       owner: 'CoderToCat',
+      githubRunnerName: 'i-1234',
       orphan: false,
       githubRunnerId: '9876543210',
       bypassRemoval: false,
@@ -130,6 +135,7 @@ describe('list instances', () => {
       launchTime: instances.Reservations![0].Instances![0].LaunchTime!,
       type: 'Org',
       owner: 'CoderToCat',
+      githubRunnerName: 'i-1234',
       orphan: true,
       bypassRemoval: false,
     });
@@ -1803,4 +1809,43 @@ describe('create runner with useDedicatedHost', () => {
     expect(runInstancesInput).not.toHaveProperty('Priority');
     expect(runInstancesInput).not.toHaveProperty('WeightedCapacity');
   });
+});
+
+describe('resumable EC2 cleanup pages', () => {
+  it('returns one bounded page and its continuation without loading the next page', async () => {
+    mockEC2Client.reset();
+    mockEC2Client.on(DescribeInstancesCommand).resolves({ ...mockRunningInstances, NextToken: 'next-page' });
+    const page = await ec2Operations.listPage!('test-environment', 'current-page');
+    expect(mockEC2Client).toHaveReceivedCommandTimes(DescribeInstancesCommand, 1);
+    expect(mockEC2Client).toHaveReceivedCommandWith(DescribeInstancesCommand, {
+      MaxResults: 100,
+      NextToken: 'current-page',
+      Filters: expect.arrayContaining([{ Name: 'tag:ghr:environment', Values: ['test-environment'] }]),
+    });
+    expect(page.nextToken).toBe('next-page');
+    expect(page.runners[0].githubRunnerName).toBe('i-1234');
+  });
+});
+
+describe('trusted EC2 runner identity', () => {
+  it.each([undefined, 'configured_'])(
+    'does not trust an instance tag inconsistent with configured prefix %s',
+    async (prefix) => {
+      if (prefix === undefined) delete process.env.RUNNER_NAME_PREFIX;
+      else process.env.RUNNER_NAME_PREFIX = prefix;
+      mockEC2Client.reset();
+      mockEC2Client.on(DescribeInstancesCommand).resolves(mockRunningInstances);
+      const page = await ec2Operations.listPage!('test-environment');
+      expect(page.runners[0].githubRunnerName).toBeUndefined();
+    },
+  );
+});
+
+it('does not issue a cleanup page request after request cancellation', async () => {
+  mockEC2Client.reset();
+  const controller = new AbortController();
+  controller.abort();
+  const client = createEc2RunnerClient(new EC2Client({})).forRequest({ signal: controller.signal });
+  await expect(client.listPage!('test-environment')).rejects.toThrow();
+  expect(mockEC2Client).not.toHaveReceivedCommand(DescribeInstancesCommand);
 });

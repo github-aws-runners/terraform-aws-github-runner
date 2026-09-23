@@ -88,7 +88,7 @@ export async function scaleDownHandler(event: unknown, context: Context): Promis
   logger.logEventIfEnabled(event);
 
   try {
-    await scaleDown();
+    await scaleDown(() => context.getRemainingTimeInMillis());
   } catch (e) {
     logger.error(`${(e as Error).message}`, { error: e as Error });
   }

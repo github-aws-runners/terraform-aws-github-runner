@@ -69,6 +69,11 @@ variables {
 }
 
 run "plan_with_pool_enabled" {
+  assert {
+    condition     = aws_lambda_function.scale_down.environment[0].variables["RUNNER_NAME_PREFIX"] == var.runner_name_prefix
+    error_message = "Scale-down must receive the configured runner name prefix."
+  }
+
   command = plan
 
   assert {
