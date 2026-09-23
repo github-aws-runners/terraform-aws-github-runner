@@ -151,7 +151,7 @@ class Ec2Provider:
             "EC2 scale-down Lambda invoked",
         )
         context.wait_for_log("/aws/lambda/multi-runner-webhook-ec2-scale-down", marker, "EC2 scale-down Lambda started")
-        context.scale_down_routes(runner_id)
+        context.scale_down_routes(runner_id, "/aws/lambda/multi-runner-webhook-ec2-scale-down")
         context.configure_runner_removed(runner_id)
         context.assert_runner_removed(runner_id)
         self._wait_for_termination(context, resource)

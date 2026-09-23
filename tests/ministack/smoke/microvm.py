@@ -75,6 +75,7 @@ class MicrovmProvider:
 
     def __init__(self) -> None:
         self._runner_image_built = False
+        self._hook_needs_restart = False
 
     def configure(self, context: SmokeContext) -> None:
         self.build_runner_image(context)
@@ -107,131 +108,140 @@ class MicrovmProvider:
         if self._runner_image_built:
             return
 
-        output = json.loads(context.terraform("output", "-json", "microvm"))
-        foundation = output["microvm_foundation"]
-        ecr_repository_uri = output["ecr_repo"]
-        repository_name = ecr_repository_uri.rsplit("/", 1)[-1]
-        docker_registry = "localhost:4566"
-        image_tag = "latest"
-        docker_base_image = f"{docker_registry}/{repository_name}:{image_tag}"
-        ubuntu_image = (
-            ecr_repository_uri
-            if ":" in ecr_repository_uri.rsplit("/", 1)[-1]
-            else f"{ecr_repository_uri}:{image_tag}"
-        )
-        image_root = context.source_root / "images" / "microvm-ubuntu"
-        image_context = image_root / "packer" / "scripts" / "microvm" / "image"
-        lifecycle_hook_zip = (
-            context.source_root
-            / "lambdas"
-            / "services"
-            / "microvm-lifecycle-hooks"
-            / "microvm-lifecycle-hooks.zip"
-        )
+        with context.step("Test Packer"):
+            output = json.loads(context.terraform("output", "-json", "microvm"))
+            foundation = output["microvm_foundation"]
+            ecr_repository_uri = output["ecr_repo"]
+            repository_name = ecr_repository_uri.rsplit("/", 1)[-1]
+            docker_registry = "localhost:4566"
+            image_tag = "latest"
+            docker_base_image = f"{docker_registry}/{repository_name}:{image_tag}"
+            ubuntu_image = (
+                ecr_repository_uri
+                if ":" in ecr_repository_uri.rsplit("/", 1)[-1]
+                else f"{ecr_repository_uri}:{image_tag}"
+            )
+            image_root = context.source_root / "images" / "microvm-ubuntu"
+            image_context = image_root / "packer" / "scripts" / "microvm" / "image"
+            lifecycle_hook_zip = (
+                context.source_root
+                / "lambdas"
+                / "services"
+                / "microvm-lifecycle-hooks"
+                / "microvm-lifecycle-hooks.zip"
+            )
 
-        context.run(
-            [
-                "bash",
-                "-o",
-                "pipefail",
-                "-c",
-                "aws ecr get-login-password | "
-                f"docker login --username AWS --password-stdin {docker_registry}",
-            ],
-            stream=True,
-        )
-        context.run(["docker", "pull", "--platform", "linux/arm64", "ubuntu:24.04"], stream=True)
-        context.run(["docker", "tag", "ubuntu:24.04", docker_base_image], stream=True)
-        context.run(["docker", "push", docker_base_image], stream=True)
+            with context.step("Build base image"):
+                context.run(
+                    [
+                        "bash",
+                        "-o",
+                        "pipefail",
+                        "-c",
+                        "aws ecr get-login-password | "
+                        f"docker login --username AWS --password-stdin {docker_registry}",
+                    ],
+                    stream=True,
+                )
+                context.run(["docker", "pull", "--platform", "linux/arm64", "ubuntu:24.04"], stream=True)
+                context.run(["docker", "tag", "ubuntu:24.04", docker_base_image], stream=True)
+                context.run(["docker", "push", docker_base_image], stream=True)
 
-        context.environment.update(
-            {
-                "MICROVM_ARTIFACT_BUCKET": foundation["artifact_bucket_name"],
-                "MICROVM_BUILD_ROLE_ARN": foundation["build_role_arn"],
-                "MICROVM_EGRESS_NETWORK_CONNECTOR_ARN": foundation["connector_arns"]["ministack"],
-                "MICROVM_IMAGE_NAME": "micro-ubuntu24",
-                "MICROVM_MEMORY_MIB": "8192",
-                "MICROVM_IDEMPOTENCY_NONCE": context.environment.get(
-                    "MICROVM_IDEMPOTENCY_NONCE", "ministack-smoke"
-                ),
-                "MICROVM_LOG_GROUP": output.get("log_group", "/aws/lambda/microvms/ubuntu24"),
-                "MICROVM_UBUNTU_IMAGE": ubuntu_image,
-                "MICROVM_LIFECYCLE_HOOK_ZIP": str(lifecycle_hook_zip),
-            }
-        )
+            context.environment.update(
+                {
+                    "MICROVM_ARTIFACT_BUCKET": foundation["artifact_bucket_name"],
+                    "MICROVM_BUILD_ROLE_ARN": foundation["build_role_arn"],
+                    "MICROVM_EGRESS_NETWORK_CONNECTOR_ARN": foundation["connector_arns"]["ministack"],
+                    "MICROVM_IMAGE_NAME": "micro-ubuntu24",
+                    "MICROVM_MEMORY_MIB": "8192",
+                    "MICROVM_IDEMPOTENCY_NONCE": context.environment.get(
+                        "MICROVM_IDEMPOTENCY_NONCE", "ministack-smoke"
+                    ),
+                    "MICROVM_LOG_GROUP": output.get("log_group", "/aws/lambda/microvms/ubuntu24"),
+                    "MICROVM_UBUNTU_IMAGE": ubuntu_image,
+                    "MICROVM_LIFECYCLE_HOOK_ZIP": str(lifecycle_hook_zip),
+                }
+            )
 
-        context.run(["packer", "build", "."], cwd=image_root, stream=True)
+            with context.step("Build MicroVM image"):
+                context.run(["packer", "build", "."], cwd=image_root, stream=True)
 
-        shutil.copy2(lifecycle_hook_zip, image_context / "microvm-lifecycle-hooks.zip")
-        context.run(
-            [
-                "docker",
-                "build",
-                "--platform",
-                "linux/arm64",
-                "-f",
-                str(image_context / "ubuntu24.arm64.Dockerfile"),
-                "--build-arg",
-                f"UBUNTU_IMAGE={docker_base_image}",
-                "--tag",
-                MICROVM_HOOK_CONTAINER,
-                str(image_context),
-            ],
-            stream=True,
-        )
+            with context.step("Build lifecycle-hook image"):
+                shutil.copy2(lifecycle_hook_zip, image_context / "microvm-lifecycle-hooks.zip")
+                context.run(
+                    [
+                        "docker",
+                        "build",
+                        "--platform",
+                        "linux/arm64",
+                        "-f",
+                        str(image_context / "ubuntu24.arm64.Dockerfile"),
+                        "--build-arg",
+                        f"UBUNTU_IMAGE={docker_base_image}",
+                        "--tag",
+                        MICROVM_HOOK_CONTAINER,
+                        str(image_context),
+                    ],
+                    stream=True,
+                )
 
-        context.run(["docker", "rm", "--force", MICROVM_HOOK_CONTAINER], check=False)
-        context.run(
-            [
-                "docker",
-                "run",
-                "--detach",
-                "--rm",
-                "--platform",
-                "linux/arm64",
-                "--name",
-                MICROVM_HOOK_CONTAINER,
-                "--network",
-                "ministack-mockserver-debug",
-                "--add-host=host.docker.internal:host-gateway",
-                "--publish",
-                f"{MICROVM_HOOK_PORT}:8080",
-                "--env",
-                "AWS_ENDPOINT_URL=http://host.docker.internal:4566",
-                "--env",
-                "AWS_REGION=eu-west-1",
-                "--env",
-                "AWS_DEFAULT_REGION=eu-west-1",
-                "--env",
-                "AWS_ACCESS_KEY_ID=000000000000",
-                "--env",
-                "AWS_SECRET_ACCESS_KEY=test",
-                "--env",
-                "MICROVM_ID=ministack-microvm",
-                "--env",
-                f"RUNNER_CONFIG_SSM_PATH={self.runner_config_path}",
-                MICROVM_HOOK_CONTAINER,
-            ],
-            stream=True,
-        )
-        context.wait_for(
-            lambda: context.run(
-                [
-                    "curl",
-                    "--fail",
-                    "--silent",
-                    "--show-error",
-                    "--request",
-                    "POST",
-                    f"http://127.0.0.1:{MICROVM_HOOK_PORT}/aws/lambda-microvms/runtime/v1/ready",
-                ],
-                check=False,
-            ).returncode
-            == 0,
-            "MicroVM lifecycle hook container readiness",
-            attempts=30,
-        )
+            self._start_microvm_hook(context)
         self._runner_image_built = True
+
+    def _start_microvm_hook(self, context: SmokeContext) -> None:
+        with context.step("Start lifecycle-hook container"):
+            context.run(["docker", "rm", "--force", MICROVM_HOOK_CONTAINER], check=False)
+            context.run(
+                [
+                    "docker",
+                    "run",
+                    "--detach",
+                    "--rm",
+                    "--platform",
+                    "linux/arm64",
+                    "--name",
+                    MICROVM_HOOK_CONTAINER,
+                    "--network",
+                    "ministack-mockserver-debug",
+                    "--add-host=host.docker.internal:host-gateway",
+                    "--publish",
+                    f"{MICROVM_HOOK_PORT}:8080",
+                    "--env",
+                    "AWS_ENDPOINT_URL=http://host.docker.internal:4566",
+                    "--env",
+                    "AWS_REGION=eu-west-1",
+                    "--env",
+                    "AWS_DEFAULT_REGION=eu-west-1",
+                    "--env",
+                    "AWS_ACCESS_KEY_ID=000000000000",
+                    "--env",
+                    "AWS_SECRET_ACCESS_KEY=test",
+                    "--env",
+                    "MICROVM_ID=ministack-microvm",
+                    "--env",
+                    f"RUNNER_CONFIG_SSM_PATH={self.runner_config_path}",
+                    MICROVM_HOOK_CONTAINER,
+                ],
+                stream=True,
+            )
+        with context.step("Wait for lifecycle-hook readiness"):
+            context.wait_for(
+                lambda: context.run(
+                    [
+                        "curl",
+                        "--fail",
+                        "--silent",
+                        "--show-error",
+                        "--request",
+                        "POST",
+                        f"http://127.0.0.1:{MICROVM_HOOK_PORT}/aws/lambda-microvms/runtime/v1/ready",
+                    ],
+                    check=False,
+                ).returncode
+                == 0,
+                "MicroVM lifecycle hook container readiness",
+                attempts=30,
+            )
 
     def event(self, context: SmokeContext, job_id: int, dynamic: bool) -> dict[str, Any]:
         value = json.loads((context.fixture_dir / "workflow_job_event.json").read_text())
@@ -334,6 +344,11 @@ class MicrovmProvider:
         self._assert_resource(context, resource, "scale-up-lambda", dynamic)
 
     def start_scale_up_runner(self, context: SmokeContext, resource: RunnerResource) -> bool:
+        if self._hook_needs_restart:
+            with context.step("Restart lifecycle-hook container"):
+                self._start_microvm_hook(context)
+            self._hook_needs_restart = False
+
         details = self._details(context, resource)
         image_arn = details.get("imageArn")
         image_version = details.get("imageVersion")
@@ -360,7 +375,7 @@ class MicrovmProvider:
             {"microvmId": resource.identifier, "runHookPayload": run_hook_payload},
             separators=(",", ":"),
         )
-        print(f"    Curling MicroVM runner hook for {resource.identifier}", flush=True)
+        context.progress(f"Curling MicroVM runner hook for {resource.identifier}")
         result = context.run(
             [
                 "curl",
@@ -389,6 +404,19 @@ class MicrovmProvider:
             lambda: not context.aws("ssm", "get-parameter", "--name", parameter_name, check=False),
             f"MicroVM runner hook to consume {parameter_name}",
         )
+        github_runner_id_parameter = f"{self.metadata_path}/{resource.identifier}.github-runner-id"
+        context.wait_for(
+            lambda: bool(
+                context.aws(
+                    "ssm",
+                    "get-parameter",
+                    "--name",
+                    github_runner_id_parameter,
+                    check=False,
+                )
+            ),
+            f"MicroVM scale-up to persist {github_runner_id_parameter}",
+        )
         return True
 
     def wait_for_pool(self, context: SmokeContext, source: str) -> RunnerResource:
@@ -410,6 +438,17 @@ class MicrovmProvider:
 
         context.wait_for(terminated, f"MicroVM {resource.identifier} termination")
 
+    def _wait_for_listed_microvm(self, context: SmokeContext, resource: RunnerResource) -> None:
+        def listed() -> bool:
+            result = context.aws("lambda-microvms", "list-microvms", check=False) or {}
+            return any(
+                item.get("microvmId") == resource.identifier
+                and item.get("state") in ("PENDING", "RUNNING", "SUSPENDING", "SUSPENDED")
+                for item in result.get("items", [])
+            )
+
+        context.wait_for(listed, f"MicroVM {resource.identifier} to appear in ListMicrovms")
+
     def scale_down(
         self,
         context: SmokeContext,
@@ -418,6 +457,7 @@ class MicrovmProvider:
         marker: str,
         active_runners: list[tuple[int, RunnerResource]],
     ) -> None:
+        self._wait_for_listed_microvm(context, resource)
         context.configure_runner_fixtures(
             self.slug,
             [(active_runner_id, active_resource.identifier) for active_runner_id, active_resource in active_runners],
@@ -430,7 +470,7 @@ class MicrovmProvider:
             "MicroVM scale-down Lambda invoked",
         )
         context.wait_for_log("/aws/lambda/multi-runner-webhook-microvm-scale-down", marker, "MicroVM scale-down Lambda started")
-        context.scale_down_routes(runner_id)
+        context.scale_down_routes(runner_id, "/aws/lambda/multi-runner-webhook-microvm-scale-down")
         context.configure_runner_removed(runner_id)
         context.assert_runner_removed(runner_id)
         self._wait_for_termination(context, resource)
@@ -444,6 +484,7 @@ class MicrovmProvider:
         )
         if status not in (0, 200, 404):
             raise RuntimeError(f"MicroVM lifecycle hook termination failed with HTTP {status}: {body}")
+        self._hook_needs_restart = True
 
 
 provider = MicrovmProvider()

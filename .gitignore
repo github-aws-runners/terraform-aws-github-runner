@@ -32,3 +32,4 @@ site/
 
 __pycache__/
 ministack-smoke-checklist.txt
+ministack-smoke.log

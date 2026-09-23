@@ -32,9 +32,11 @@ def main() -> int:
     context.initialize_checklist([item.slug for item in selected])
     succeeded = False
     try:
-        context.prepare()
-        for selected_provider in selected:
-            run(context, selected_provider)
+        with context.step("Webhook Test"):
+            with context.step("Prepare deployment"):
+                context.prepare()
+            for selected_provider in selected:
+                run(context, selected_provider)
         tested = "EC2 and MicroVM" if args.provider == "all" else providers[args.provider].display_name
         print(f"MiniStack multi-runner-webhook smoke tests passed for {tested}.", flush=True)
         succeeded = True

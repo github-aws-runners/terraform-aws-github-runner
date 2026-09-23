@@ -3,17 +3,20 @@
 from __future__ import annotations
 
 import base64
+from contextlib import contextmanager
 import hashlib
 import hmac
 import json
 import os
+import shlex
 import subprocess
+import sys
 import tempfile
 import time
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 from urllib.parse import urlsplit, urlunsplit
 
 class SmokeContext:
@@ -42,9 +45,68 @@ class SmokeContext:
         self.before_microvm_ids: set[str] = set()
         self.response_path = Path(tempfile.mkstemp(prefix="ministack-smoke-response.")[1])
         self.checklist_path = Path(os.environ.get("MINISTACK_SMOKE_CHECKLIST_FILE", "ministack-smoke-checklist.txt"))
+        self.log_path = Path(os.environ.get("MINISTACK_SMOKE_LOG_FILE", "ministack-smoke.log"))
         self.checklist: dict[str, list[dict[str, str | bool]]] = {}
         self.checklist_failure = ""
         self.keep_deployment = keep_deployment or os.environ.get("MINISTACK_SMOKE_KEEP_DEPLOYMENT") == "1"
+        self.step_depth = 0
+
+    def _redact_log(self, value: str) -> str:
+        for secret in (
+            self.webhook_secret,
+            self.environment.get("AWS_ACCESS_KEY_ID", ""),
+            self.environment.get("AWS_SECRET_ACCESS_KEY", ""),
+        ):
+            if secret:
+                value = value.replace(secret, "[REDACTED]")
+        return value
+
+    def _append_log(self, value: str) -> None:
+        if not value:
+            return
+        self.log_path.parent.mkdir(parents=True, exist_ok=True)
+        with self.log_path.open("a", encoding="utf-8") as log_file:
+            log_file.write(self._redact_log(value))
+
+    def progress(self, message: str) -> None:
+        line = f"{'  ' * self.step_depth}{message}"
+        print(line, flush=True)
+        self._append_log(f"{line}\n")
+
+    @contextmanager
+    def step(self, name: str) -> Iterator[None]:
+        self.progress(name)
+        github_actions = self.environment.get("GITHUB_ACTIONS") == "true"
+        if github_actions:
+            group_start = f"::group::{name}\n"
+            print(group_start, end="", flush=True)
+            self._append_log(group_start)
+        self.step_depth += 1
+        try:
+            yield
+        finally:
+            self.step_depth -= 1
+            if github_actions:
+                group_end = "::endgroup::\n"
+                print(group_end, end="", flush=True)
+                self._append_log(group_end)
+
+    def _log_command_output(
+        self,
+        command: list[str],
+        stdout: str | None,
+        stderr: str | None,
+        *,
+        include_command: bool = True,
+    ) -> None:
+        output = ""
+        if include_command:
+            output += f"\n$ {shlex.join(command)}\n"
+        if stdout:
+            output += stdout
+        if stderr:
+            output += stderr
+        self._append_log(output)
 
     def command(self, name: str) -> None:
         if not shutil_which(name):
@@ -57,15 +119,64 @@ class SmokeContext:
         check: bool = True,
         stream: bool = False,
         cwd: Path | None = None,
+        log_output: bool = True,
     ) -> subprocess.CompletedProcess[str]:
-        return subprocess.run(
-            command,
-            check=check,
-            text=True,
-            capture_output=not stream,
-            env=self.environment,
-            cwd=cwd,
-        )
+        if not stream:
+            try:
+                result = subprocess.run(
+                    command,
+                    check=check,
+                    text=True,
+                    capture_output=True,
+                    env=self.environment,
+                    cwd=cwd,
+                )
+            except subprocess.CalledProcessError as error:
+                if log_output:
+                    self._log_command_output(command, error.stdout, error.stderr)
+                raise
+            if log_output:
+                self._log_command_output(command, result.stdout, result.stderr)
+            return result
+
+        log_file = self.log_path.open("a", encoding="utf-8") if log_output else None
+        try:
+            process = subprocess.Popen(
+                command,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                bufsize=1,
+                env=self.environment,
+                cwd=cwd,
+            )
+        except BaseException:
+            if log_file is not None:
+                log_file.close()
+            raise
+
+        output: list[str] = []
+        try:
+            if log_file is not None:
+                log_file.write(self._redact_log(f"\n$ {shlex.join(command)}\n"))
+            assert process.stdout is not None
+            for line in process.stdout:
+                output.append(line)
+                if log_file is not None:
+                    log_file.write(self._redact_log(line))
+                    log_file.flush()
+            return_code = process.wait()
+        finally:
+            if log_file is not None:
+                log_file.close()
+
+        result = subprocess.CompletedProcess(command, return_code, "".join(output), None)
+        if check and return_code != 0:
+            self.progress(f"Command failed: {shlex.join(command)}")
+            sys.stdout.write(self._redact_log(result.stdout))
+            sys.stdout.flush()
+            raise subprocess.CalledProcessError(return_code, command, output=result.stdout)
+        return result
 
     def aws(self, *args: str, check: bool = True) -> Any:
         result = self.run(
@@ -79,8 +190,12 @@ class SmokeContext:
         except json.JSONDecodeError:
             return result.stdout.strip()
 
-    def terraform(self, *args: str, check: bool = True) -> str:
-        result = self.run(["terraform", f"-chdir={self.example_root}", *args], check=check)
+    def terraform(self, *args: str, check: bool = True, log_output: bool = True) -> str:
+        result = self.run(
+            ["terraform", f"-chdir={self.example_root}", *args],
+            check=check,
+            log_output=log_output,
+        )
         return result.stdout.strip()
 
     def http(self, method: str, url: str, body: Any = None) -> tuple[int, str]:
@@ -105,7 +220,7 @@ class SmokeContext:
             if result:
                 return result
             if attempt == 1 or attempt % 10 == 0:
-                print(f"    Still waiting for {description} ({attempt}/{attempts})", flush=True)
+                self.progress(f"Still waiting for {description} ({attempt}/{attempts})")
             time.sleep(2)
         raise RuntimeError(f"Timed out waiting for {description}")
 
@@ -130,7 +245,8 @@ class SmokeContext:
             for provider in providers
         }
         self._write_checklist("running")
-        print(f"Writing smoke checklist to {self.checklist_path}", flush=True)
+        self.progress(f"Writing smoke checklist to {self.checklist_path}")
+        self.progress(f"Writing smoke command output to {self.log_path}")
 
     def mark_check(self, provider: str, key: str) -> None:
         for check in self.checklist.get(provider, []):
@@ -162,7 +278,7 @@ class SmokeContext:
     def configure_mockserver(self) -> None:
         if not self.mock_url:
             raise RuntimeError("MINISTACK_GITHUB_MOCK_URL must point to an already-running MockServer")
-        print(f"Using external MockServer at {self.mock_url}", flush=True)
+        self.progress(f"Using external MockServer at {self.mock_url}")
         if not self.mock_port:
             self.mock_port = urlsplit(self.mock_url).port or 1080
         self.wait_for(lambda: self.http("PUT", f"{self.mock_url}/mockserver/status")[0] < 300, "MockServer")
@@ -197,15 +313,15 @@ class SmokeContext:
         parameter_name = (
             f"/github-action-runners/multi-runner-webhook/{provider}/runners/config/runner-group/Default"
         )
-        print(f"    Clearing {provider} runner-group cache", flush=True)
+        self.progress(f"Clearing {provider} runner-group cache")
         self.aws("ssm", "delete-parameter", "--name", parameter_name, check=False)
 
     def clear_requests(self) -> None:
-        print("    Clearing MockServer request history", flush=True)
+        self.progress("Clearing MockServer request history")
         code, _ = self.http("PUT", f"{self.mock_url}/mockserver/clear?type=log")
         if code >= 300:
             raise RuntimeError("Failed to clear MockServer request history")
-        print("    MockServer request history cleared", flush=True)
+        self.progress("MockServer request history cleared")
 
     def verify_route(self, method: str, path: str, description: str) -> None:
         def verify() -> bool:
@@ -216,14 +332,19 @@ class SmokeContext:
             )
             return code < 300
 
-        self.wait_for(verify, description)
+        try:
+            self.wait_for(verify, description)
+        except RuntimeError as error:
+            raise RuntimeError(
+                f"{error}. Recent messages in the provider Lambda logs may be available in {self.log_path}"
+            ) from error
 
     def send_webhook(self, event: dict[str, Any], delivery_id: str) -> None:
         payload = json.dumps(event).encode()
         signature = hmac.new(self.webhook_secret.encode(), payload, hashlib.sha256).hexdigest()
         parsed_endpoint = urlsplit(self.webhook_endpoint)
         endpoint = urlunsplit((parsed_endpoint.scheme, f"localhost:{parsed_endpoint.port or 4566}", parsed_endpoint.path, parsed_endpoint.query, parsed_endpoint.fragment))
-        print(f"    Sending webhook {delivery_id} to {endpoint} (Host: {parsed_endpoint.netloc})", flush=True)
+        self.progress(f"Sending webhook {delivery_id} to {endpoint} (Host: {parsed_endpoint.netloc})")
         request = urllib.request.Request(
             endpoint,
             data=payload,
@@ -249,10 +370,10 @@ class SmokeContext:
             ) from error
         if status != 201:
             raise RuntimeError(f"Webhook smoke request failed with HTTP {status}")
-        print(f"    Webhook {delivery_id} accepted with HTTP 201", flush=True)
+        self.progress(f"Webhook {delivery_id} accepted with HTTP 201")
 
     def wait_for_log(self, group: str, marker: str, description: str) -> None:
-        print(f"    Waiting for {description} ({group})", flush=True)
+        self.progress(f"Waiting for {description} ({group})")
         def found() -> bool:
             events = self.aws("logs", "filter-log-events", "--log-group-name", group, "--filter-pattern", marker, "--limit", "1", check=False)
             return bool(events and events.get("events"))
@@ -274,7 +395,19 @@ class SmokeContext:
                 f"{error}. Available smoke log groups: {available}. "
                 f"Recent messages in {group}: {messages}"
             ) from error
-        print(f"    Found {description}", flush=True)
+        self.progress(f"Found {description}")
+
+    def recent_log_messages(self, group: str, limit: int = 50) -> list[str]:
+        events = self.aws(
+            "logs",
+            "filter-log-events",
+            "--log-group-name",
+            group,
+            "--limit",
+            str(limit),
+            check=False,
+        ) or {}
+        return [item.get("message", "") for item in events.get("events", [])]
 
     def invoke(self, function_name: str, payload: dict[str, Any], description: str) -> None:
         payload_path = Path(tempfile.mkstemp(prefix="ministack-smoke-payload.")[1])
@@ -353,11 +486,17 @@ class SmokeContext:
         if code != 404:
             raise RuntimeError(f"Expected runner {runner_id} to be removed, got HTTP {code}")
 
-    def scale_down_routes(self, runner_id: int) -> None:
-        self.verify_route("POST", "/api/v3/app/installations/123/access_tokens", "Scale-down requested a GitHub App token")
-        self.verify_route("GET", "/api/v3/orgs/test-owner/actions/runners", "Scale-down listed organization runners")
-        self.verify_route("GET", f"/api/v3/orgs/test-owner/actions/runners/{runner_id}", "Scale-down checked runner state")
-        self.verify_route("DELETE", f"/api/v3/orgs/test-owner/actions/runners/{runner_id}", "Scale-down deleted the GitHub runner")
+    def scale_down_routes(self, runner_id: int, log_group: str | None = None) -> None:
+        try:
+            self.verify_route("POST", "/api/v3/app/installations/123/access_tokens", "Scale-down requested a GitHub App token")
+            self.verify_route("GET", "/api/v3/orgs/test-owner/actions/runners", "Scale-down listed organization runners")
+            self.verify_route("GET", f"/api/v3/orgs/test-owner/actions/runners/{runner_id}", "Scale-down checked runner state")
+            self.verify_route("DELETE", f"/api/v3/orgs/test-owner/actions/runners/{runner_id}", "Scale-down deleted the GitHub runner")
+        except RuntimeError as error:
+            if log_group is None:
+                raise
+            messages = self.recent_log_messages(log_group)
+            raise RuntimeError(f"{error}. Recent messages in {log_group}: {messages}") from error
 
     def scale_up_routes(self, job_id: int, provider: str) -> None:
         self.verify_route("POST", "/api/v3/app/installations/123/access_tokens", f"{provider} scale-up requested a GitHub token for {job_id}")
@@ -369,7 +508,7 @@ class SmokeContext:
         self.verify_route("GET", "/api/v3/orgs/test-owner/actions/runners", f"{provider} pool listed organization runners")
 
     def prepare(self) -> None:
-        print("Preparing multi-runner-webhook smoke deployment", flush=True)
+        self.progress("Preparing multi-runner-webhook smoke deployment")
         commands = ("aws", "openssl", "terraform")
         for command in commands:
             self.command(command)
@@ -394,15 +533,15 @@ class SmokeContext:
         if "webhook_lambda_zip" not in text:
             additions.append(f'webhook_lambda_zip = "{self.source_root / "lambdas/functions/webhook/webhook.zip"}"')
         self.tfvars_path.write_text(text + "\n" + "\n".join(additions) + "\n")
-        print("Applying multi-runner-webhook Terraform example", flush=True)
+        self.progress("Applying multi-runner-webhook Terraform example")
         self.run(
             [str(self.source_root / "tests/ministack/run-example.sh"), "apply", "multi-runner-webhook", str(self.tfvars_path)],
             stream=True,
         )
         self.webhook_endpoint = self.terraform("output", "-raw", "webhook_endpoint")
-        self.webhook_secret = self.terraform("output", "-raw", "webhook_secret")
+        self.webhook_secret = self.terraform("output", "-raw", "webhook_secret", log_output=False)
         self.wait_for_webhook_route()
-        print("Deployment ready; starting provider lifecycle checks", flush=True)
+        self.progress("Deployment ready; starting provider lifecycle checks")
 
     def wait_for_webhook_route(self) -> None:
         hostname = urlsplit(self.webhook_endpoint).hostname
@@ -425,7 +564,7 @@ class SmokeContext:
     def cleanup(self) -> None:
         self.update_checklist_status("cleanup")
         if "microvm" in self.checklist:
-            print("MicroVM lifecycle hook container logs (last 200 lines):", flush=True)
+            self.progress("MicroVM lifecycle hook container logs (last 200 lines):")
             self.run(
                 ["docker", "logs", "--timestamps", "--tail", "200", "microvm-lifecycle-hook"],
                 check=False,
@@ -443,9 +582,9 @@ class SmokeContext:
                 check=False,
             )
         if self.tfvars_path and self.keep_deployment:
-            print(f"Terraform deployment retained; tfvars file: {self.tfvars_path}", flush=True)
+            self.progress(f"Terraform deployment retained; tfvars file: {self.tfvars_path}")
         elif self.tfvars_path:
-            print("Destroying multi-runner-webhook Terraform deployment", flush=True)
+            self.progress("Destroying multi-runner-webhook Terraform deployment")
             self.run(
                 [
                     str(self.source_root / "tests/ministack/run-example.sh"),

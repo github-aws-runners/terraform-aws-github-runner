@@ -26,6 +26,12 @@ MINISTACK_GITHUB_MOCK_URL=http://localhost:1080 \
 The ordinary smoke test requires MiniStack on `AWS_ENDPOINT_URL` and an
 already-running MockServer exposed through `MINISTACK_GITHUB_MOCK_URL`.
 
+Step progress is written to the test step. Detailed subprocess output is
+tee'd to `MINISTACK_SMOKE_LOG_FILE` (default: `ministack-smoke.log`) and is
+printed to the test step only when a command fails. The checklist and command
+log are separate files: use `MINISTACK_SMOKE_CHECKLIST_FILE` for assertion
+status and the log file for Terraform, Packer, Docker, and AWS CLI output.
+
 ## Complete execution flow
 
 ### 1. Select providers and create the checklist

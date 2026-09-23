@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from uuid import uuid4
+
 from .common import SmokeContext
 from .provider import RunnerResource, SmokeProvider
 
@@ -30,42 +32,59 @@ def _scale_up(
     source: str,
 ) -> RunnerResource:
     label_mode = "with dynamic label" if dynamic else "without dynamic label"
-    print(f"  {provider.display_name}: scale-up {label_mode} (job {job_id})", flush=True)
-    context.clear_runner_group_cache(provider.slug)
-    context.clear_requests()
-    context.send_webhook(provider.event(context, job_id, dynamic), f"multi-runner-webhook-{provider.slug}-{job_id}")
-    context.mark_check(provider.slug, "webhook")
-    _wait_for_webhook_chain(context, provider, job_id)
-    context.mark_check(provider.slug, "chain")
-    context.scale_up_routes(job_id, provider.display_name)
-    provider.verify_scale_up_routes(context, job_id)
-    context.mark_check(provider.slug, "scale_up_dynamic_routes" if dynamic else "scale_up_standard_routes")
-    resource = provider.wait_for_scale_up(context, source)
-    provider.assert_scale_up(context, resource, dynamic)
-    context.mark_check(provider.slug, "scale_up_dynamic_resource" if dynamic else "scale_up_standard_resource")
-    if provider.start_scale_up_runner(context, resource):
-        context.mark_check(provider.slug, "microvm_hook")
-    return resource
+    with context.step(f"{provider.display_name}: scale-up {label_mode} (job {job_id})"):
+        with context.step("Prepare scale-up fixtures"):
+            context.clear_runner_group_cache(provider.slug)
+            context.clear_requests()
+        with context.step("Send webhook"):
+            context.send_webhook(
+                provider.event(context, job_id, dynamic),
+                f"multi-runner-webhook-{provider.slug}-{job_id}",
+            )
+        context.mark_check(provider.slug, "webhook")
+        with context.step("Wait for webhook chain"):
+            _wait_for_webhook_chain(context, provider, job_id)
+        context.mark_check(provider.slug, "chain")
+        with context.step("Verify shared scale-up routes"):
+            context.scale_up_routes(job_id, provider.display_name)
+        with context.step("Verify provider scale-up routes"):
+            provider.verify_scale_up_routes(context, job_id)
+        context.mark_check(provider.slug, "scale_up_dynamic_routes" if dynamic else "scale_up_standard_routes")
+        with context.step("Wait for compute resource"):
+            resource = provider.wait_for_scale_up(context, source)
+        with context.step("Validate compute resource"):
+            provider.assert_scale_up(context, resource, dynamic)
+        context.mark_check(provider.slug, "scale_up_dynamic_resource" if dynamic else "scale_up_standard_resource")
+        with context.step("Start runner"):
+            if provider.start_scale_up_runner(context, resource):
+                context.mark_check(provider.slug, "microvm_hook")
+        return resource
 
 
 def _pool(context: SmokeContext, provider: SmokeProvider, pool_size: int) -> RunnerResource:
-    print(f"  {provider.display_name}: pool scale-up (target size {pool_size})", flush=True)
-    context.configure_empty_runner_list()
-    context.clear_runner_group_cache(provider.slug)
-    context.clear_requests()
-    context.invoke(
-        f"multi-runner-webhook-{provider.slug}-pool",
-        {"poolSize": pool_size, "type": provider.slug},
-        f"{provider.display_name} pool Lambda invoked",
-    )
-    context.pool_routes(provider.display_name)
-    provider.verify_pool_routes(context)
-    context.mark_check(provider.slug, "pool_routes")
-    resource = provider.wait_for_pool(context, "pool-lambda")
-    print(f"  {provider.display_name}: pool created resource {resource.identifier}", flush=True)
-    provider.assert_pool(context, resource)
-    context.mark_check(provider.slug, "pool_resource")
-    return resource
+    with context.step(f"{provider.display_name}: pool scale-up (target size {pool_size})"):
+        with context.step("Prepare pool fixtures"):
+            context.configure_empty_runner_list()
+            context.clear_runner_group_cache(provider.slug)
+            context.clear_requests()
+        with context.step("Invoke pool Lambda"):
+            context.invoke(
+                f"multi-runner-webhook-{provider.slug}-pool",
+                {"poolSize": pool_size, "type": provider.slug},
+                f"{provider.display_name} pool Lambda invoked",
+            )
+        with context.step("Verify shared pool routes"):
+            context.pool_routes(provider.display_name)
+        with context.step("Verify provider pool routes"):
+            provider.verify_pool_routes(context)
+        context.mark_check(provider.slug, "pool_routes")
+        with context.step("Wait for compute resource"):
+            resource = provider.wait_for_pool(context, "pool-lambda")
+        with context.step("Validate compute resource"):
+            context.progress(f"Pool created resource {resource.identifier}")
+            provider.assert_pool(context, resource)
+        context.mark_check(provider.slug, "pool_resource")
+        return resource
 
 
 def _scale_down(
@@ -76,41 +95,43 @@ def _scale_down(
     marker: str,
     check: str,
 ) -> None:
-    print(f"  {provider.display_name}: scale-down resource {resource.identifier}", flush=True)
-    provider.scale_down(context, resource, runner_id, marker, [(runner_id, resource)])
-    context.mark_check(provider.slug, check)
+    with context.step(f"{provider.display_name}: scale-down resource {resource.identifier}"):
+        with context.step("Run provider scale-down checks"):
+            provider.scale_down(context, resource, runner_id, marker, [(runner_id, resource)])
+        context.mark_check(provider.slug, check)
 
 
 def run(context: SmokeContext, provider: SmokeProvider) -> None:
-    print(f"Running {provider.display_name} webhook lifecycle scenarios", flush=True)
-    provider.configure(context)
+    with context.step(f"{provider.display_name} lifecycle"):
+        with context.step("Configure"):
+            provider.configure(context)
 
-    scale_up = _scale_up(context, provider, 123456, False, "scale-up-lambda")
-    _scale_down(
-        context,
-        provider,
-        scale_up,
-        MOCK_JIT_RUNNER_ID,
-        f"multi-runner-webhook-{provider.slug}-scale-up-scale-down",
-        "scale_down_standard",
-    )
+        scale_up = _scale_up(context, provider, 123456, False, "scale-up-lambda")
+        _scale_down(
+            context,
+            provider,
+            scale_up,
+            MOCK_JIT_RUNNER_ID,
+            f"multi-runner-webhook-{provider.slug}-scale-up-scale-down-{uuid4().hex}",
+            "scale_down_standard",
+        )
 
-    dynamic_scale_up = _scale_up(context, provider, 123457, True, "scale-up-lambda")
-    _scale_down(
-        context,
-        provider,
-        dynamic_scale_up,
-        MOCK_JIT_RUNNER_ID,
-        f"multi-runner-webhook-{provider.slug}-dynamic-scale-down",
-        "scale_down_dynamic",
-    )
+        dynamic_scale_up = _scale_up(context, provider, 123457, True, "scale-up-lambda")
+        _scale_down(
+            context,
+            provider,
+            dynamic_scale_up,
+            MOCK_JIT_RUNNER_ID,
+            f"multi-runner-webhook-{provider.slug}-dynamic-scale-down-{uuid4().hex}",
+            "scale_down_dynamic",
+        )
 
-    pool = _pool(context, provider, pool_size=1)
-    _scale_down(
-        context,
-        provider,
-        pool,
-        MOCK_JIT_RUNNER_ID,
-        f"multi-runner-webhook-{provider.slug}-pool-scale-down",
-        "scale_down_pool",
-    )
+        pool = _pool(context, provider, pool_size=1)
+        _scale_down(
+            context,
+            provider,
+            pool,
+            MOCK_JIT_RUNNER_ID,
+            f"multi-runner-webhook-{provider.slug}-pool-scale-down-{uuid4().hex}",
+            "scale_down_pool",
+        )
