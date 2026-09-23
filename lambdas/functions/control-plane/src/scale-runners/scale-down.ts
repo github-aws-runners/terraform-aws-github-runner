@@ -40,19 +40,14 @@ function guardRequests(client: Octokit, remainingTime: () => number): void {
 
 async function getOrCreateOctokit(runner: RunnerInfo, remainingTime: () => number): Promise<Octokit> {
   requireTime(remainingTime);
-  const key = runner.owner;
-  const cachedOctokit = githubCache.clients.get(key);
-
-  if (cachedOctokit) {
-    logger.debug(`[createGitHubClientForRunner] Cache hit for ${key}`);
-    return cachedOctokit;
-  }
-
-  logger.debug(`[createGitHubClientForRunner] Cache miss for ${key}`);
   const { ghesApiUrl } = getGitHubEnterpriseApiUrl();
   const scope = installationScope(ghesApiUrl, runner.owner);
   requireTime(remainingTime);
   const ghAuthPre = await createGithubAppAuth(undefined, ghesApiUrl, undefined, undefined, scope);
+  // Select before cache lookup so exhausted Apps do not pin an owner to a client.
+  const key = `${ghAuthPre.appIndex ?? 0}:${runner.type}:${runner.owner}`;
+  const cachedOctokit = githubCache.clients.get(key);
+  if (cachedOctokit) return cachedOctokit;
   const octokit = await withAppFailover(
     ghAuthPre.appIndex,
     async (appIdx) => {
