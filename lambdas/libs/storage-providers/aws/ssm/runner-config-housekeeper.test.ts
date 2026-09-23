@@ -1,192 +1,226 @@
-import { DeleteParameterCommand, GetParametersByPathCommand, SSMClient } from '@aws-sdk/client-ssm';
+import { DeleteParametersCommand, GetParametersByPathCommand, SSMClient } from '@aws-sdk/client-ssm';
 import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest/vitest';
-import { cleanSSMTokens } from './runner-config-housekeeper';
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-process.env.AWS_REGION = 'eu-east-1';
+const { warn } = vi.hoisted(() => ({ warn: vi.fn() }));
+vi.mock('./logger', async (importOriginal) => {
+  const original = await importOriginal<typeof import('./logger')>();
+  return {
+    ...original,
+    createAwsSsmStorageLogger: () => ({ info: vi.fn(), debug: vi.fn(), warn, error: vi.fn() }),
+  };
+});
+
+import { cleanSSMTokens } from './runner-config-housekeeper';
 
 const mockSSMClient = mockClient(SSMClient);
-
-const deleteAmisOlderThenDays = 1;
-const now = new Date();
-const dateOld = new Date();
-dateOld.setDate(dateOld.getDate() - deleteAmisOlderThenDays - 1);
-
 const tokenPath = '/path/to/tokens/';
+const now = new Date('2026-09-23T12:00:00Z');
+const old = new Date('2026-09-21T12:00:00Z');
+const options = { dryRun: false, minimumDaysOld: 1, tokenPath };
+const staleParameters = (count: number) =>
+  Array.from({ length: count }, (_, i) => ({ Name: `${tokenPath}i-${i}`, LastModifiedDate: old }));
+
+function mockPages(count: number) {
+  const parameters = staleParameters(count);
+  mockSSMClient.on(GetParametersByPathCommand).callsFake((input) => {
+    const offset = Number(input.NextToken ?? 0);
+    return {
+      Parameters: parameters.slice(offset, offset + 10),
+      NextToken: offset + 10 < count ? String(offset + 10) : undefined,
+    };
+  });
+}
+
+async function clean(overrides = {}, remainingTime?: () => number) {
+  const cleanup = cleanSSMTokens({ ...options, ...overrides }, remainingTime);
+  await vi.runAllTimersAsync();
+  await cleanup;
+}
 
 describe('clean SSM tokens / JIT config', () => {
-  afterEach(() => vi.unstubAllEnvs());
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+    warn.mockClear();
     mockSSMClient.reset();
-    mockSSMClient.on(GetParametersByPathCommand).resolves({
-      Parameters: undefined,
-    });
-    mockSSMClient.on(GetParametersByPathCommand, { Path: tokenPath }).resolves({
-      Parameters: [
-        {
-          Name: tokenPath + 'i-old-01',
-          LastModifiedDate: dateOld,
-        },
-      ],
-      NextToken: 'next',
-    });
-    mockSSMClient.on(GetParametersByPathCommand, { Path: tokenPath, NextToken: 'next' }).resolves({
-      Parameters: [
-        {
-          Name: tokenPath + 'i-new-01',
-          LastModifiedDate: now,
-        },
-      ],
-      NextToken: undefined,
-    });
+    mockSSMClient.on(GetParametersByPathCommand).resolves({ Parameters: staleParameters(1) });
+    mockSSMClient.on(DeleteParametersCommand).resolves({});
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it.each([1, 10, 11, 25])('deletes %i stale parameters in batches of at most ten', async (count) => {
+    const parameters = staleParameters(count);
+    mockPages(count);
+    await clean();
+    const batches = mockSSMClient.commandCalls(DeleteParametersCommand).map((call) => call.args[0].input.Names!);
+    expect(batches.map((batch) => batch.length)).toEqual(
+      Array.from({ length: Math.ceil(count / 10) }, (_, i) => Math.min(10, count - i * 10)),
+    );
+    expect(batches.flat()).toEqual(parameters.map((parameter) => parameter.Name));
+    for (const call of mockSSMClient.commandCalls(GetParametersByPathCommand)) {
+      expect(call.args[0].input.MaxResults).toBe(10);
+    }
   });
 
-  it('should delete parameters older then minimumDaysOld', async () => {
-    await cleanSSMTokens({
-      dryRun: false,
-      minimumDaysOld: deleteAmisOlderThenDays,
-      tokenPath: tokenPath,
-    });
-
-    expect(mockSSMClient).toHaveReceivedCommandWith(GetParametersByPathCommand, { Path: tokenPath });
-    expect(mockSSMClient).toHaveReceivedCommandWith(DeleteParameterCommand, { Name: tokenPath + 'i-old-01' });
-    expect(mockSSMClient).not.toHaveReceivedCommandWith(DeleteParameterCommand, { Name: tokenPath + 'i-new-01' });
-  });
-
-  it.each([undefined, []])('keeps later pages when the first page has no parameters (%s)', async (firstPage) => {
-    mockSSMClient.reset();
+  it('filters young, boundary-age and incomplete parameters across listing pages', async () => {
     mockSSMClient
       .on(GetParametersByPathCommand)
-      .resolvesOnce({ Parameters: firstPage, NextToken: 'empty-page' })
-      .resolvesOnce({ NextToken: 'last-page' })
-      .resolvesOnce({ Parameters: [{ Name: tokenPath + 'i-old-later', LastModifiedDate: dateOld }] });
+      .resolvesOnce({
+        Parameters: [
+          ...staleParameters(1),
+          { Name: 'young', LastModifiedDate: now },
+          { Name: 'boundary', LastModifiedDate: new Date('2026-09-22T12:00:00Z') },
+          { Name: 'missing-date' },
+          { LastModifiedDate: old },
+        ],
+        NextToken: 'next',
+      })
+      .resolvesOnce({ Parameters: [{ Name: 'old-on-second-page', LastModifiedDate: old }] });
+    await clean();
+    expect(mockSSMClient).toHaveReceivedCommandWith(GetParametersByPathCommand, { Path: tokenPath, NextToken: 'next' });
+    expect(mockSSMClient).toHaveReceivedCommandTimes(DeleteParametersCommand, 2);
+    expect(mockSSMClient).toHaveReceivedCommandWith(DeleteParametersCommand, { Names: [`${tokenPath}i-0`] });
+    expect(mockSSMClient).toHaveReceivedCommandWith(DeleteParametersCommand, { Names: ['old-on-second-page'] });
+  });
 
-    await cleanSSMTokens({ dryRun: false, minimumDaysOld: 1, tokenPath });
+  it('does not delete in dry-run mode', async () => {
+    await clean({ dryRun: true });
+    expect(mockSSMClient).toHaveReceivedCommandTimes(DeleteParametersCommand, 0);
+    expect(vi.getTimerCount()).toBe(0);
+  });
 
-    expect(mockSSMClient).toHaveReceivedCommandTimes(GetParametersByPathCommand, 3);
-    expect(mockSSMClient).toHaveReceivedCommandWith(GetParametersByPathCommand, {
-      Path: tokenPath,
-      NextToken: 'last-page',
+  it.each([undefined, [], [{ Name: 'young', LastModifiedDate: now }]])(
+    'does not send an empty delete request (%j)',
+    async (Parameters) => {
+      mockSSMClient.on(GetParametersByPathCommand).resolves({ Parameters });
+      await clean();
+      expect(mockSSMClient).toHaveReceivedCommandTimes(DeleteParametersCommand, 0);
+    },
+  );
+
+  it('paces successive batch requests', async () => {
+    mockPages(11);
+    const cleanup = cleanSSMTokens(options);
+    await vi.advanceTimersByTimeAsync(349);
+    expect(mockSSMClient).toHaveReceivedCommandTimes(DeleteParametersCommand, 0);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(mockSSMClient).toHaveReceivedCommandTimes(DeleteParametersCommand, 1);
+    await vi.advanceTimersByTimeAsync(349);
+    expect(mockSSMClient).toHaveReceivedCommandTimes(DeleteParametersCommand, 1);
+    await vi.advanceTimersByTimeAsync(1);
+    await cleanup;
+    expect(mockSSMClient).toHaveReceivedCommandTimes(DeleteParametersCommand, 2);
+  });
+
+  it('logs an exhausted batch failure and continues to later batches', async () => {
+    mockPages(11);
+    mockSSMClient.on(DeleteParametersCommand).rejectsOnce(new Error('Rate exceeded')).resolves({});
+    await clean();
+    expect(warn).toHaveBeenCalledWith('Failed to delete expired runner configuration batch', {
+      parameterNames: staleParameters(10).map((parameter) => parameter.Name),
+      errorNames: ['Error'],
     });
-    expect(mockSSMClient).toHaveReceivedCommandWith(DeleteParameterCommand, { Name: tokenPath + 'i-old-later' });
+    expect(mockSSMClient).toHaveReceivedCommandWith(DeleteParametersCommand, { Names: [`${tokenPath}i-10`] });
   });
 
-  it('keeps deletions from earlier pages when a later listing page fails', async () => {
+  it('reports invalid names in a successful response and continues cleanup', async () => {
+    mockPages(11);
     mockSSMClient
-      .on(GetParametersByPathCommand, { Path: tokenPath, NextToken: 'next' })
-      .rejects(new Error('SSM unavailable'));
-
-    await expect(cleanSSMTokens({ dryRun: false, minimumDaysOld: 1, tokenPath })).rejects.toThrow('SSM unavailable');
-
-    expect(mockSSMClient).toHaveReceivedCommandWith(DeleteParameterCommand, { Name: tokenPath + 'i-old-01' });
+      .on(DeleteParametersCommand)
+      .resolvesOnce({
+        DeletedParameters: staleParameters(9).map((parameter) => parameter.Name),
+        InvalidParameters: [`${tokenPath}i-9`],
+      })
+      .resolves({});
+    await clean();
+    expect(warn).toHaveBeenCalledWith('Runner configurations were not deleted', {
+      parameterNames: [`${tokenPath}i-9`],
+    });
+    expect(mockSSMClient).toHaveReceivedCommandTimes(DeleteParametersCommand, 2);
   });
 
-  it('starts fresh against remaining parameters after an interrupted invocation', async () => {
+  it.each([undefined, []])('follows tokens through empty pages (%j)', async (Parameters) => {
+    mockSSMClient
+      .on(GetParametersByPathCommand)
+      .resolvesOnce({ Parameters, NextToken: 'empty' })
+      .resolvesOnce({ NextToken: 'last' })
+      .resolvesOnce({ Parameters: staleParameters(1) });
+    await clean();
+    expect(mockSSMClient).toHaveReceivedCommandTimes(GetParametersByPathCommand, 3);
+    expect(mockSSMClient).toHaveReceivedCommandWith(GetParametersByPathCommand, { NextToken: 'last' });
+    expect(mockSSMClient).toHaveReceivedCommandWith(DeleteParametersCommand, { Names: [`${tokenPath}i-0`] });
+  });
+
+  it('deletes the current page before fetching the next page, even if that listing fails', async () => {
+    mockSSMClient
+      .on(GetParametersByPathCommand)
+      .resolvesOnce({ Parameters: staleParameters(1), NextToken: 'next' })
+      .callsFake(() => {
+        expect(mockSSMClient).toHaveReceivedCommandWith(DeleteParametersCommand, { Names: [`${tokenPath}i-0`] });
+        throw new Error('Later listing failed');
+      });
+    const result = expect(cleanSSMTokens(options)).rejects.toThrow('Later listing failed');
+    await vi.runAllTimersAsync();
+    await result;
+  });
+
+  it('does not start listing with less than ten seconds remaining', async () => {
+    await clean({}, () => 9999);
+    expect(mockSSMClient.calls()).toHaveLength(0);
+  });
+
+  it('does not delete when listing consumes the remaining time', async () => {
     let remaining = 60000;
-    const inventory = [
-      { Name: tokenPath + 'first', LastModifiedDate: dateOld },
-      { Name: tokenPath + 'second', LastModifiedDate: dateOld },
-    ];
-    mockSSMClient.reset();
-    mockSSMClient.on(GetParametersByPathCommand).callsFake(() => ({ Parameters: [...inventory] }));
-    mockSSMClient.on(DeleteParameterCommand).callsFake((input) => {
-      inventory.splice(
-        inventory.findIndex((item) => item.Name === input.Name),
-        1,
-      );
+    mockSSMClient.on(GetParametersByPathCommand).callsFake(() => {
+      remaining = 9999;
+      return { Parameters: staleParameters(1), NextToken: 'next' };
+    });
+    await clean({}, () => remaining);
+    expect(mockSSMClient).toHaveReceivedCommandTimes(GetParametersByPathCommand, 1);
+    expect(mockSSMClient).toHaveReceivedCommandTimes(DeleteParametersCommand, 0);
+  });
+
+  it('checks the remaining time again after the pacing delay', async () => {
+    const deadline = now.getTime() + 10300;
+    await clean({}, () => deadline - Date.now());
+    expect(mockSSMClient).toHaveReceivedCommandTimes(DeleteParametersCommand, 0);
+  });
+
+  it('starts a fresh scan of remaining parameters after stopping between pages', async () => {
+    let remaining = 60000;
+    let inventory = staleParameters(11);
+    mockSSMClient.on(GetParametersByPathCommand).callsFake(() => ({
+      Parameters: inventory.slice(0, 10),
+      NextToken: inventory.length > 10 ? 'next' : undefined,
+    }));
+    mockSSMClient.on(DeleteParametersCommand).callsFake((input) => {
+      inventory = inventory.filter((parameter) => !input.Names.includes(parameter.Name));
       remaining = 0;
       return {};
     });
-    await cleanSSMTokens({ dryRun: false, minimumDaysOld: 1, tokenPath }, () => remaining);
-    expect(inventory).toHaveLength(1);
+    await clean({}, () => remaining);
+    expect(inventory.map((parameter) => parameter.Name)).toEqual([`${tokenPath}i-10`]);
+    expect(mockSSMClient).toHaveReceivedCommandTimes(GetParametersByPathCommand, 1);
     mockSSMClient.resetHistory();
-    await cleanSSMTokens({ dryRun: false, minimumDaysOld: 1, tokenPath });
+    await clean();
     expect(mockSSMClient.commandCalls(GetParametersByPathCommand)[0].args[0].input.NextToken).toBeUndefined();
-    expect(mockSSMClient).not.toHaveReceivedCommandWith(DeleteParameterCommand, { Name: tokenPath + 'first' });
+    expect(mockSSMClient).toHaveReceivedCommandWith(DeleteParametersCommand, { Names: [`${tokenPath}i-10`] });
     expect(inventory).toHaveLength(0);
   });
 
-  it('continues past a failed deletion within the same invocation', async () => {
-    mockSSMClient.on(GetParametersByPathCommand, { Path: tokenPath }).resolves({
-      Parameters: [
-        { Name: tokenPath + 'failed', LastModifiedDate: dateOld },
-        { Name: tokenPath + 'healthy', LastModifiedDate: dateOld },
-      ],
-    });
-    mockSSMClient.on(DeleteParameterCommand, { Name: tokenPath + 'failed' }).rejects(new Error('Denied'));
-    await cleanSSMTokens({ dryRun: false, minimumDaysOld: 1, tokenPath });
-    expect(mockSSMClient).toHaveReceivedCommandWith(DeleteParameterCommand, { Name: tokenPath + 'healthy' });
+  it('propagates listing failures without deleting', async () => {
+    mockSSMClient.on(GetParametersByPathCommand).rejects(new Error('Listing failed'));
+    await expect(cleanSSMTokens(options)).rejects.toThrow('Listing failed');
+    expect(mockSSMClient).toHaveReceivedCommandTimes(DeleteParametersCommand, 0);
   });
 
-  it('deletes a page before requesting the next page', async () => {
-    mockSSMClient.on(GetParametersByPathCommand, { Path: tokenPath, NextToken: 'next' }).callsFake(() => {
-      expect(mockSSMClient).toHaveReceivedCommandWith(DeleteParameterCommand, { Name: tokenPath + 'i-old-01' });
-      return {};
-    });
-    await cleanSSMTokens({ dryRun: false, minimumDaysOld: 1, tokenPath });
-  });
-
-  it('should not delete when dry run is activated', async () => {
-    await cleanSSMTokens({
-      dryRun: true,
-      minimumDaysOld: deleteAmisOlderThenDays,
-      tokenPath: tokenPath,
-    });
-
-    expect(mockSSMClient).toHaveReceivedCommandWith(GetParametersByPathCommand, { Path: tokenPath });
-    expect(mockSSMClient).not.toHaveReceivedCommandWith(DeleteParameterCommand, { Name: tokenPath + 'i-old-01' });
-    expect(mockSSMClient).not.toHaveReceivedCommandWith(DeleteParameterCommand, { Name: tokenPath + 'i-new-01' });
-  });
-
-  it('should not call delete when no parameters are found.', async () => {
-    await expect(
-      cleanSSMTokens({
-        dryRun: false,
-        minimumDaysOld: deleteAmisOlderThenDays,
-        tokenPath: 'no-exist',
-      }),
-    ).resolves.not.toThrow();
-
-    expect(mockSSMClient).not.toHaveReceivedCommandWith(DeleteParameterCommand, { Name: tokenPath + 'i-old-01' });
-    expect(mockSSMClient).not.toHaveReceivedCommandWith(DeleteParameterCommand, { Name: tokenPath + 'i-new-01' });
-  });
-
-  it('should not error on delete failure.', async () => {
-    mockSSMClient.on(DeleteParameterCommand).rejects(new Error('ParameterNotFound'));
-
-    await expect(
-      cleanSSMTokens({
-        dryRun: false,
-        minimumDaysOld: deleteAmisOlderThenDays,
-        tokenPath: tokenPath,
-      }),
-    ).resolves.not.toThrow();
-  });
-
-  it('should only accept valid options.', async () => {
-    await expect(
-      cleanSSMTokens({
-        dryRun: false,
-        minimumDaysOld: undefined as unknown as number,
-        tokenPath: tokenPath,
-      }),
-    ).rejects.toBeInstanceOf(Error);
-
-    await expect(
-      cleanSSMTokens({
-        dryRun: false,
-        minimumDaysOld: 0,
-        tokenPath: tokenPath,
-      }),
-    ).rejects.toBeInstanceOf(Error);
-
-    await expect(
-      cleanSSMTokens({
-        dryRun: false,
-        minimumDaysOld: 1,
-        tokenPath: undefined as unknown as string,
-      }),
-    ).rejects.toBeInstanceOf(Error);
-  });
+  it.each([{ minimumDaysOld: 0 }, { minimumDaysOld: undefined }, { tokenPath: undefined }])(
+    'rejects invalid cleanup options (%j)',
+    async (invalid) => {
+      await expect(cleanSSMTokens({ ...options, ...invalid } as typeof options)).rejects.toThrow();
+      expect(mockSSMClient.calls()).toHaveLength(0);
+    },
+  );
 });

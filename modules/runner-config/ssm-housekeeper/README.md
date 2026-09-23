@@ -8,6 +8,10 @@ This provider-neutral child module owns the Lambda function, EventBridge schedul
 
 The module is an implementation detail of the experimental runner configuration. It is composed by `runner-config` and is not intended to be called directly.
 
+Cleanup requests pages of up to 10 parameters and batch-deletes names older than the configured minimum age before fetching the next page, with a 350 ms delay before each batch. It checks the remaining runtime before and after the delay. Dry-run mode only reports candidates. SDK retries handle retryable failures; exhausted batch failures and invalid parameter names are logged, and cleanup continues with later batches. Remaining parameters can be attempted on a later scheduled run. Pacing is per invocation, while AWS delete quotas are shared across the account and Region.
+
+Deploy the Lambda update together with the Terraform IAM policy update: batch deletion requires `ssm:DeleteParameters` on the configured token path.
+
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
 
