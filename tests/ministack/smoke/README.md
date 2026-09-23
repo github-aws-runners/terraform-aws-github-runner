@@ -142,9 +142,10 @@ once before the lifecycle scenarios:
 6. Copies the lifecycle-hook ZIP already produced by CI into the Docker build
    context.
 7. Builds the `microvm-lifecycle-hook` ARM64 Docker image.
-8. Starts the `microvm-lifecycle-hook` container on
-   `ministack-mockserver-debug`, publishes `8080:8080`, and waits for its
-   readiness endpoint.
+8. Starts the `microvm-lifecycle-hook` container with Docker's default bridge
+   network, publishes `8080:8080`, and waits for its readiness endpoint. The
+   `host.docker.internal` host-gateway mapping lets it reach MiniStack on the
+   host-published port.
 
 After the MicroVM scale-up creates the resource, the test waits for the SSM
 JIT parameter created by that scale-up. It then sends the same version-1

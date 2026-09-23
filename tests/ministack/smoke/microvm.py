@@ -199,8 +199,6 @@ class MicrovmProvider:
                     "linux/arm64",
                     "--name",
                     MICROVM_HOOK_CONTAINER,
-                    "--network",
-                    "ministack-mockserver-debug",
                     "--add-host=host.docker.internal:host-gateway",
                     "--publish",
                     f"{MICROVM_HOOK_PORT}:8080",
