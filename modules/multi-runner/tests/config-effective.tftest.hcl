@@ -200,7 +200,7 @@ run "v2_effective_config_contains_derived_values" {
       }
     }
 
-    global_storage_provider = {
+    global_config_storage_provider = {
       aws = {
         ssm = {
           kms_key_id = "kms-global-ssm"
