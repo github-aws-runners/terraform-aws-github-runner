@@ -1,8 +1,19 @@
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { chown, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { GitHubRunnerLauncher } from './processes';
+
+async function prepareRunnerFixture(directory: string, runner: string): Promise<void> {
+  if (process.getuid?.() !== 0) {
+    return;
+  }
+
+  const uid = Number(process.env.RUNNER_UID ?? 1_000);
+  const gid = Number(process.env.RUNNER_GID ?? 1_000);
+  await chown(directory, uid, gid);
+  await chown(runner, uid, gid);
+}
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -37,6 +48,7 @@ sleep 0.2
 `,
       { mode: 0o700 },
     );
+    await prepareRunnerFixture(directory, runner);
 
     vi.stubEnv('RUNNER_ROOT', directory);
     vi.stubEnv('TEST_RUNNER_OUTPUT', output);
@@ -72,6 +84,7 @@ sleep 0.2
     const runner = join(directory, 'run.sh');
 
     await writeFile(runner, '#!/bin/sh\nexit 7\n', { mode: 0o700 });
+    await prepareRunnerFixture(directory, runner);
     vi.stubEnv('RUNNER_ROOT', directory);
     try {
       const processHandle = new GitHubRunnerLauncher().launch({ jitConfig: 'encoded-jit' }, 'mvm-1234');
