@@ -121,7 +121,7 @@ variables {
     }
   }
 
-  global_storage_provider = {
+  global_config_storage_provider = {
     aws = {
       ssm = {
         housekeeper = {
@@ -628,7 +628,7 @@ run "lane_values_override_experimental_globals" {
       }
     }
 
-    global_storage_provider = {
+    global_config_storage_provider = {
       aws = {
         ssm = {
           housekeeper = {

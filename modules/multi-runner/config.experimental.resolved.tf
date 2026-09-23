@@ -24,7 +24,7 @@ locals {
     runner                 = var.global_config.runner
     github                 = var.global_config_github
     lambda                 = var.global_config_lambda
-    storage_provider       = var.global_storage_provider
+    storage_provider       = var.global_config_storage_provider
     orchestration_provider = var.global_config_orchestration_provider
     observability          = var.global_config_observability
     compute_provider       = var.global_config_compute_provider

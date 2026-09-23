@@ -111,7 +111,7 @@ variables {
     }
   }
 
-  global_storage_provider = {
+  global_config_storage_provider = {
     aws = {
       ssm = {
         housekeeper = {
@@ -314,7 +314,7 @@ run "v2_inputs_resolve_lane_over_global" {
       }
     }
 
-    global_storage_provider = {
+    global_config_storage_provider = {
       aws = {
         ssm = {
           housekeeper = {
