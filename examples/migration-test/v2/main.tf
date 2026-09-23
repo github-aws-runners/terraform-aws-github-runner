@@ -192,7 +192,7 @@ module "runners" {
     }
   }
 
-  global_storage_provider = {
+  global_config_storage_provider = {
     aws = {
       ssm = {
         paths = {
