@@ -102,34 +102,62 @@ async function getGitHubRunnerBusyState(client: Octokit, runner: RunnerInfo, run
   return state.busy;
 }
 
-async function listGitHubRunners(runner: RunnerInfo): Promise<GhRunners> {
-  const key = runner.owner;
-  const cachedRunners = githubCache.runners.get(key);
-  if (cachedRunners) {
-    logger.debug(`[listGithubRunners] Cache hit for ${key}`);
-    return cachedRunners;
-  }
+function hasGitHubRunnerId(runner: RunnerInfo): boolean {
+  return /^[1-9]\d*$/.test(runner.githubRunnerId ?? '') && Number.isSafeInteger(Number(runner.githubRunnerId));
+}
 
-  logger.debug(`[listGithubRunners] Cache miss for ${key}`);
-  const client = await getOrCreateOctokit(runner);
-  let runners;
-  if (runner.type === 'Org') {
-    runners = await client.paginate(client.actions.listSelfHostedRunnersForOrg, {
-      org: runner.owner,
-      per_page: 100,
-    });
-  } else {
-    const [owner, repo] = runner.owner.split('/');
-    runners = await client.paginate(client.actions.listSelfHostedRunnersForRepo, {
-      owner,
-      repo,
-      per_page: 100,
-    });
+class UnverifiableRunnerError extends Error {}
+
+async function listGitHubRunners(runner: RunnerInfo, computeProvider: ScaleDownComputeProvider): Promise<GhRunners> {
+  if (computeProvider.listPage && !hasGitHubRunnerId(runner) && runner.githubRunnerName === undefined) {
+    throw new UnverifiableRunnerError(`Runner '${runner.id}' has no trusted GitHub identity; retaining instance`);
   }
-  githubCache.runners.set(key, runners);
-  logger.debug(`[listGithubRunners] Cache set for ${key}`);
-  logger.debug(`[listGithubRunners] Runners: ${JSON.stringify(runners)}`);
-  return runners;
+  const client = await getOrCreateOctokit(runner);
+  if (hasGitHubRunnerId(runner)) {
+    const state = await getGitHubSelfHostedRunnerState(client, runner, Number(runner.githubRunnerId));
+    return state ? [state] : [];
+  }
+  if (runner.githubRunnerName !== undefined) {
+    const owner =
+      runner.type === 'Org'
+        ? { org: runner.owner }
+        : {
+            owner: runner.owner.split('/')[0],
+            repo: runner.owner.split('/')[1],
+          };
+    const method =
+      runner.type === 'Org' ? client.actions.listSelfHostedRunnersForOrg : client.actions.listSelfHostedRunnersForRepo;
+    const matches = await client.paginate(method, { ...owner, name: runner.githubRunnerName, per_page: 100 });
+    if (matches.length > 0) return matches;
+    // Custom start scripts may register another name. A filtered miss alone
+    // cannot prove that this instance has no live (possibly busy) registration.
+    if (computeProvider.listPage) {
+      throw new UnverifiableRunnerError(`Runner '${runner.id}' was not found by expected name; retaining instance`);
+    }
+  }
+  if (!computeProvider.listPage) {
+    // Preserve the legacy provider contract. Cache only a complete successful
+    // listing; a failed/partial lookup must never establish absence.
+    const key = `${runner.type}:${runner.owner}`;
+    const cached = githubCache.runners.get(key);
+    if (cached) return cached;
+    const runners =
+      runner.type === 'Org'
+        ? await client.paginate(client.actions.listSelfHostedRunnersForOrg, { org: runner.owner, per_page: 100 })
+        : await client.paginate(client.actions.listSelfHostedRunnersForRepo, {
+            owner: runner.owner.split('/')[0],
+            repo: runner.owner.split('/')[1],
+            per_page: 100,
+          });
+    githubCache.runners.set(key, runners);
+    return runners;
+  }
+  // Without either identity we cannot establish absence with a bounded query.
+  // Do not let a legacy/incomplete record force an organization-wide inventory
+  // before other instances can be cleaned up.
+  throw new UnverifiableRunnerError(
+    `Runner '${runner.id}' has no GitHub ID or complete runner name; retaining instance`,
+  );
 }
 
 function runnerMinimumTimeExceeded(runner: RunnerInfo): boolean {
@@ -283,8 +311,10 @@ async function evaluateAndRemoveRunners(
   runners: RunnerInfo[],
   scaleDownConfigs: ScalingDownConfigList,
   computeProvider: ScaleDownComputeProvider,
+  sweep = { idleRemaining: getIdleRunnerCount(scaleDownConfigs) },
+  remainingTime = () => Infinity,
 ): Promise<void> {
-  let idleCounter = getIdleRunnerCount(scaleDownConfigs);
+  let idleCounter = sweep.idleRemaining;
   const evictionStrategy = getEvictionStrategy(scaleDownConfigs);
   const ownerTags = new Set(runners.map((runner) => runner.owner));
 
@@ -295,35 +325,43 @@ async function evaluateAndRemoveRunners(
     logger.debug(`Found: '${ownerRunners.length}' active GitHub runners with owner tag: '${ownerTag}'`);
     logger.debug(`Active GitHub runners with owner tag: '${ownerTag}': ${JSON.stringify(ownerRunners)}`);
     for (const runner of ownerRunners) {
-      if (runner.bypassRemoval) {
-        logger.debug(`Runner '${runner.id}' has bypass-removal tag set, skipping evaluation.`);
-        continue;
-      }
-      const ghRunners = await listGitHubRunners(runner);
-      const ghRunnersFiltered = ghRunners.filter((ghRunner: { name: string }) => ghRunner.name.endsWith(runner.id));
-      logger.debug(`Found: '${ghRunnersFiltered.length}' GitHub runners for runner: '${runner.id}'`);
-      logger.debug(`GitHub runners for runner: '${runner.id}': ${JSON.stringify(ghRunnersFiltered)}`);
-      if (ghRunnersFiltered.length) {
-        if (runnerMinimumTimeExceeded(runner)) {
-          if (idleCounter > 0) {
-            idleCounter--;
-            // A runner kept idle is not evaluated for removal, so its idle marker cannot be
-            // refreshed by busy readings. Clear it so a later evaluation starts a fresh window.
-            await clearIdleDetection(runner, computeProvider);
-            logger.info(`Runner '${runner.id}' will be kept idle.`);
-          } else {
-            logger.info(`Terminating all non busy runners.`);
-            await removeRunner(
-              runner,
-              ghRunnersFiltered.map((runner: { id: number }) => runner.id),
-              computeProvider,
-            );
-          }
+      if (remainingTime() < 10000) return;
+      try {
+        if (runner.bypassRemoval) {
+          logger.debug(`Runner '${runner.id}' has bypass-removal tag set, skipping evaluation.`);
+          continue;
         }
-      } else if (computeProvider.bootTimeExceeded(runner)) {
-        await markOrphan(runner.id, computeProvider);
-      } else {
-        logger.debug(`Runner ${runner.id} has not yet booted.`);
+        const ghRunners = await listGitHubRunners(runner, computeProvider);
+        const ghRunnersFiltered = ghRunners.filter((ghRunner: { name: string }) => ghRunner.name.endsWith(runner.id));
+        logger.debug(`Found: '${ghRunnersFiltered.length}' GitHub runners for runner: '${runner.id}'`);
+        logger.debug(`GitHub runners for runner: '${runner.id}': ${JSON.stringify(ghRunnersFiltered)}`);
+        if (ghRunnersFiltered.length) {
+          if (runnerMinimumTimeExceeded(runner)) {
+            if (idleCounter > 0) {
+              idleCounter--;
+              sweep.idleRemaining = idleCounter;
+              // A runner kept idle is not evaluated for removal, so its idle marker cannot be
+              // refreshed by busy readings. Clear it so a later evaluation starts a fresh window.
+              await clearIdleDetection(runner, computeProvider);
+              logger.info(`Runner '${runner.id}' will be kept idle.`);
+            } else {
+              logger.info(`Terminating all non busy runners.`);
+              await removeRunner(
+                runner,
+                ghRunnersFiltered.map((runner: { id: number }) => runner.id),
+                computeProvider,
+              );
+            }
+          }
+        } else if (computeProvider.bootTimeExceeded(runner)) {
+          await markOrphan(runner.id, computeProvider);
+        } else {
+          logger.debug(`Runner ${runner.id} has not yet booted.`);
+        }
+      } catch (error) {
+        if (error instanceof UnverifiableRunnerError) {
+          logger.error(error.message, { code: 'UNVERIFIABLE_RUNNER', runnerId: runner.id, owner: runner.owner });
+        } else logger.warn(`Failed to evaluate runner '${runner.id}'; continuing cleanup.`, { error });
       }
     }
   }
@@ -367,31 +405,52 @@ async function lastChanceCheckOrphanRunner(runner: RunnerInfo): Promise<boolean>
   return isOrphan;
 }
 
-async function terminateOrphan(environment: string, computeProvider: ScaleDownComputeProvider): Promise<void> {
+async function terminateOrphan(
+  environment: string,
+  computeProvider: ScaleDownComputeProvider,
+  page?: RunnerInfo[],
+  remainingTime = () => Infinity,
+): Promise<void> {
+  let orphanRunners: RunnerInfo[];
   try {
-    const orphanRunners = await computeProvider.list(environment, true);
+    orphanRunners = page ?? (await computeProvider.list(environment, true));
+  } catch (error) {
+    logger.warn('Failed to list orphan runners.', { error });
+    return;
+  }
 
-    for (const runner of orphanRunners) {
-      if (runner.bypassRemoval) {
-        logger.info(`Orphan runner '${runner.id}' has bypass-removal tag set, skipping termination.`);
-        continue;
-      }
-      if (runner.githubRunnerId) {
-        const isOrphan = await lastChanceCheckOrphanRunner(runner);
-        if (isOrphan) {
-          await computeProvider.terminate(runner.id);
-        } else {
-          await unMarkOrphan(runner.id, computeProvider);
-        }
-      } else {
-        logger.info(`Terminating orphan runner '${runner.id}'`);
-        await computeProvider.terminate(runner.id).catch((e) => {
-          logger.error(`Failed to terminate orphan runner '${runner.id}'`, { error: e });
-        });
-      }
+  for (const runner of orphanRunners) {
+    if (remainingTime() < 10000) return;
+    if (runner.bypassRemoval) {
+      logger.info(`Orphan runner '${runner.id}' has bypass-removal tag set, skipping termination.`);
+      continue;
     }
-  } catch (e) {
-    logger.warn(`Failure during orphan termination processing.`, { error: e });
+    if (!runner.owner || !runner.type) {
+      logger.error(`Cannot verify orphan runner '${runner.id}' without its owner and type, skipping termination.`, {
+        code: 'UNVERIFIABLE_RUNNER',
+        runnerId: runner.id,
+      });
+      continue;
+    }
+    try {
+      // A runner can register after it was marked orphan, even if writing its
+      // registration ID back to the compute provider failed. Check GitHub again.
+      const isOrphan = hasGitHubRunnerId(runner)
+        ? await lastChanceCheckOrphanRunner(runner)
+        : !(await listGitHubRunners(runner, computeProvider)).some((registered) => registered.name.endsWith(runner.id));
+      if (isOrphan) {
+        logger.info(`Terminating orphan runner '${runner.id}'.`);
+        await computeProvider.terminate(runner.id);
+      } else {
+        await unMarkOrphan(runner.id, computeProvider);
+      }
+    } catch (error) {
+      // Leave this runner for a later invocation without blocking other owners
+      // or runners when one GitHub request or provider termination fails.
+      if (error instanceof UnverifiableRunnerError) {
+        logger.error(error.message, { code: 'UNVERIFIABLE_RUNNER', runnerId: runner.id, owner: runner.owner });
+      } else logger.warn(`Failed to process orphan runner '${runner.id}'.`, { error });
+    }
   }
 }
 
@@ -417,8 +476,20 @@ function filterRunners(runners: RunnerInfo[]): RunnerInfo[] {
   return runners.filter((runner) => runner.owner && runner.type && !runner.orphan);
 }
 
-export async function scaleDown(): Promise<void> {
+export async function scaleDown(remainingTime = () => Infinity): Promise<void> {
   githubCache.reset();
+  const readRemainingTime = remainingTime;
+  let stoppedForDeadline = false;
+  remainingTime = () => {
+    const remaining = readRemainingTime();
+    if (remaining < 10000 && !stoppedForDeadline) {
+      stoppedForDeadline = true;
+      logger.info('Stopping scale-down before the Lambda deadline; remaining work will be rediscovered next run.', {
+        remainingTimeMs: remaining,
+      });
+    }
+    return remaining;
+  };
   const environment = process.env.ENVIRONMENT;
   const scaleDownConfigs = JSON.parse(process.env.SCALE_DOWN_CONFIG) as ScalingDownConfigList;
   const computeProviderType = resolveComputeProviderType(process.env.COMPUTE_PROVIDER_TYPE);
@@ -427,8 +498,59 @@ export async function scaleDown(): Promise<void> {
     type: computeProviderType,
   };
 
+  if (computeProvider.listPage) {
+    const sweep = { idleRemaining: getIdleRunnerCount(scaleDownConfigs) };
+    let pages = 0;
+    let scannedRunners = 0;
+    let terminatedRunners = 0;
+    let completed = false;
+    const terminate = computeProvider.terminate;
+    computeProvider.terminate = async (id) => {
+      await terminate(id);
+      terminatedRunners++;
+    };
+    let nextToken: string | undefined;
+    try {
+      do {
+        if (remainingTime() < 10000) return;
+        const page = await computeProvider.listPage(environment, nextToken);
+        pages++;
+        scannedRunners += page.runners.length;
+        logger.info(
+          `Found: '${page.runners.length}' ${computeProvider.type.toUpperCase()} runners in inventory page.`,
+          { page: pages, activeRunners: filterRunners(page.runners).length },
+        );
+        await terminateOrphan(
+          environment,
+          computeProvider,
+          page.runners.filter((runner) => runner.orphan),
+          remainingTime,
+        );
+        await evaluateAndRemoveRunners(
+          filterRunners(page.runners),
+          scaleDownConfigs,
+          computeProvider,
+          sweep,
+          remainingTime,
+        );
+        nextToken = page.nextToken;
+      } while (nextToken);
+      completed = !stoppedForDeadline;
+    } finally {
+      logger.info('Scale-down inventory scan finished.', {
+        provider: computeProvider.type,
+        pages,
+        scannedRunners,
+        terminatedRunners,
+        completed,
+        stoppedForDeadline,
+      });
+    }
+    return;
+  }
+
   // first runners marked to be orphan.
-  await terminateOrphan(environment, computeProvider);
+  await terminateOrphan(environment, computeProvider, undefined, remainingTime);
 
   // next scale down idle runners with respect to config and mark potential orphans
   const providerRunners = await listRunners(environment, computeProvider);
@@ -444,7 +566,7 @@ export async function scaleDown(): Promise<void> {
   }
 
   const runners = filterRunners(providerRunners);
-  await evaluateAndRemoveRunners(runners, scaleDownConfigs, computeProvider);
+  await evaluateAndRemoveRunners(runners, scaleDownConfigs, computeProvider, undefined, remainingTime);
 
   const activeProviderRunnersCountAfter = (await listRunners(environment, computeProvider)).length;
   logger.info(

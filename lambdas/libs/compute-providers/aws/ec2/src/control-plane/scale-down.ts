@@ -13,6 +13,9 @@ export function createEc2ScaleDownCapability(
 ): Omit<ScaleDownComputeProvider, 'type'> {
   return {
     list: (environment, orphan) => ec2Operations.list({ environment, orphan }),
+    ...(ec2Operations.listPage
+      ? { listPage: (environment: string, nextToken?: string) => ec2Operations.listPage!(environment, nextToken) }
+      : {}),
     bootTimeExceeded,
     markOrphan: (id) => ec2Operations.tag(id, [{ Key: 'ghr:orphan', Value: 'true' }]),
     unmarkOrphan: (id) => ec2Operations.untag(id, [{ Key: 'ghr:orphan', Value: 'true' }]),

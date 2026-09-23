@@ -74,6 +74,14 @@ Rate limits are **disabled by default** on GitHub Enterprise Server and must be 
 | `POST /actions/runners/generate-jitconfig` | `actions_runner_registration` | 1 per instance created |
 | `GET /actions/runners` (listSelfHostedRunners) | `core` | Scale-down, pool |
 
+### Incremental scale-down API cost
+
+EC2 scale-down processes up to 100 instances per inventory page and looks up GitHub registrations individually by ID or exact name. This lets cleanup begin before the whole fleet is listed, but increases GitHub requests compared with the former owner-wide cached listing. A name lookup may itself paginate. Eligible removals also recheck busy state and delete the registration; authentication and orphan rechecks add requests.
+
+For a scan of N eligible instances every T minutes, identity lookups alone can approach `N × 60 / T` requests per hour. For example, 1,000 instances scanned every five minutes can require about 12,000 identity requests per hour, before removals or other scaling traffic. Retained instances may be checked again each run. Monitor App quota and throttling, choose a schedule that leaves room for scale-up/pool traffic, and configure additional Apps when appropriate.
+
+The EC2 inventory page size is 100: approximately ten `DescribeInstances` requests for 1,000 returned instances, excluding retries. These calls share EC2 API limits with other scaling operations. Page processing remains incremental, with a deadline check before new pages and runners; no scan progress is persisted.
+
 ## AWS Rate Limits
 
 ### SSM Parameter Store
