@@ -34,8 +34,11 @@ const mockApps = {
   getRepoInstallation: vi.fn(),
 };
 
+const mockHookAfter = vi.fn();
+
 function MockOctokit() {
   return {
+    hook: { after: mockHookAfter },
     actions: mockActions,
     apps: mockApps,
     paginate: mockPaginate,
@@ -112,6 +115,28 @@ describe('deregisterRunner', () => {
     resetAppCredentialsCache();
     mockedCreateCommonStorage.mockReturnValue({ githubAppCredentials: credentialsStore });
     setupAuthMocks();
+  });
+
+  it('deregisters through an additional App when it is selected', async () => {
+    mockGetCredentials.mockResolvedValue([
+      { appId: 1, privateKey: 'one' },
+      { appId: 2, privateKey: 'two' },
+    ]);
+    mockApps.getOrgInstallation.mockResolvedValue({ data: { id: 222 } });
+    mockPaginate.iterator.mockReturnValue(
+      (async function* () {
+        yield { data: [{ id: 42, name: `runner-${orgInstance.InstanceId}` }] };
+      })(),
+    );
+    mockActions.deleteSelfHostedRunnerFromOrg.mockResolvedValue({});
+    const random = vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    try {
+      await deregisterRunner(orgInstance, baseConfig);
+      expect(mockCreateAppAuth).toHaveBeenCalledWith({ appId: 2, privateKey: 'two', installationId: 222 });
+      expect(mockActions.deleteSelfHostedRunnerFromOrg).toHaveBeenCalledWith({ org: 'test-org', runner_id: 42 });
+    } finally {
+      random.mockRestore();
+    }
   });
 
   it('should skip deregistration when disabled', async () => {
