@@ -35,7 +35,7 @@ jobs:
     timeout-minutes: 120
     services:
       ministack:
-        image: ministackorg/ministack:latest
+        image: ghcr.io/ministackorg/ministack:1.5.16@sha256:9813da34285a0760477c761c1c03717e0290d259213c0ca97f551fefd87b292d
         ports:
           - 4566:4566
         options: --add-host=host.docker.internal:host-gateway
@@ -79,6 +79,11 @@ jobs:
 
       - name: Install boto3
         run: python3 -m pip install --upgrade boto3 botocore
+
+      - name: Set up ARM64 emulation
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
+        with:
+          platforms: arm64
 
       - name: Run webhook and pool lifecycle smoke test
         env:
