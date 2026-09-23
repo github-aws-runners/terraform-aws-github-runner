@@ -1,10 +1,13 @@
-import { DeleteParameterCommand, GetParametersByPathCommand, SSMClient } from '@aws-sdk/client-ssm';
+import { DeleteParametersCommand, GetParametersByPathCommand, SSMClient } from '@aws-sdk/client-ssm';
 import { getTracedAWSV3Client } from '@aws-github-runner/aws-powertools-util';
 
 import type { RunnerConfigHousekeeper } from '../../core';
 import { createAwsSsmStorageLogger, getErrorNames } from './logger';
 
 const logger = createAwsSsmStorageLogger('runner-config-housekeeper');
+const DELETE_BATCH_SIZE = 10;
+// Pacing is per invocation; other housekeepers share the account/Region quota.
+const DELETE_BATCH_DELAY_MS = 350;
 
 export interface SSMCleanupOptions {
   dryRun: boolean;
@@ -30,21 +33,30 @@ export async function cleanSSMTokens(options: SSMCleanupOptions, remainingTime =
   minimumDate.setDate(minimumDate.getDate() - options.minimumDaysOld);
   do {
     if (remainingTime() < 10000) return;
-    const page = await client.send(new GetParametersByPathCommand({ Path: options.tokenPath, NextToken: nextToken }));
+    const page = await client.send(
+      new GetParametersByPathCommand({ Path: options.tokenPath, NextToken: nextToken, MaxResults: DELETE_BATCH_SIZE }),
+    );
+    const names: string[] = [];
     for (const parameter of page.Parameters ?? []) {
       if (remainingTime() < 10000) return;
       if (!parameter.Name || !parameter.LastModifiedDate || !(new Date(parameter.LastModifiedDate) < minimumDate))
         continue;
       logger.info('Deleting expired runner configuration', { parameterName: parameter.Name, dryRun: options.dryRun });
+      names.push(parameter.Name);
+    }
+    if (!options.dryRun && names.length) {
+      if (remainingTime() < 10000) return;
+      await new Promise((resolve) => setTimeout(resolve, DELETE_BATCH_DELAY_MS));
+      if (remainingTime() < 10000) return;
       try {
-        if (!options.dryRun) {
-          await new Promise((resolve) => setTimeout(resolve, 50));
-          await client.send(new DeleteParameterCommand({ Name: parameter.Name }));
+        // SDK retries handle retryable failures; exhausted batches remain for the next sweep.
+        const result = await client.send(new DeleteParametersCommand({ Names: names }));
+        if (result.InvalidParameters?.length) {
+          logger.warn('Runner configurations were not deleted', { parameterNames: result.InvalidParameters });
         }
       } catch (error) {
-        // Failed items remain in the inventory for the next complete sweep.
-        logger.warn('Failed to delete expired runner configuration', {
-          parameterName: parameter.Name,
+        logger.warn('Failed to delete expired runner configuration batch', {
+          parameterNames: names,
           errorNames: getErrorNames(error),
         });
       }
