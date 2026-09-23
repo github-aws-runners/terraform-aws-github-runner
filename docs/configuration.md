@@ -21,6 +21,10 @@ The module uses the AWS System Manager Parameter Store to store configuration fo
 
 For the experimental multi-runner configuration, set `multi_runner_config.<lane>.storage_provider.aws.ssm.ttl_seconds.tokens` to configure the token TTL. Stable configurations use `ssm_ttl_seconds.tokens` (under `runner_config` for multi-runner lanes); it is translated to the same nested setting. An omitted TTL leaves native expiration disabled.
 
+The SSM housekeeper requests pages of up to 10 parameters and deletes eligible names from each page in one `DeleteParameters` request before fetching the next page, waiting 350 ms before each batch. It stops starting new work with less than ten seconds remaining, including a time check after the delay. This reduces API calls while pacing each invocation below the default three delete requests per second. The quota is shared across the AWS account and Region, so concurrent housekeepers and other clients can still cause throttling. The AWS SDK retries retryable failures; if a batch still fails, the housekeeper logs it and continues with later batches. Parameters left behind remain eligible for a later scheduled run. Names returned in `InvalidParameters` are logged separately. The configured minimum age still applies, and dry-run mode sends no delete requests.
+
+When upgrading the housekeeper Lambda, also apply the Terraform IAM changes granting `ssm:DeleteParameters`; the singular `ssm:DeleteParameter` permission does not authorize batch deletion. Custom IAM policies must grant the batch action for the runner token path as well.
+
 Furthermore, to accommodate larger JIT configurations or other stored values, the module implements automatic tier selection for SSM parameters:
 
 - **Parameter Tiering**: If the size of a parameter's value exceeds 4KB (specifically, 4000 bytes), the module will automatically use the 'Advanced' tier for that SSM parameter. Values smaller than this threshold will use the 'Standard' tier.
