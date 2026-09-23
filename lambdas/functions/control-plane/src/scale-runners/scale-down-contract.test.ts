@@ -7,6 +7,16 @@ import { controlPlaneProviderRegistry } from '../control-plane-providers';
 import { scaleDown } from './scale-down';
 import type { ScaleDownComputeProvider } from './types';
 
+vi.mock('../github/auth', () => ({
+  createGithubAppAuth: vi.fn().mockResolvedValue({ token: 'app-token', appIndex: 0 }),
+  createGithubInstallationAuth: vi.fn().mockResolvedValue({ token: 'installation-token' }),
+  getStoredInstallationId: vi.fn().mockResolvedValue(123),
+  createOctokitClient: vi.fn().mockResolvedValue({
+    actions: { listSelfHostedRunnersForOrg: vi.fn() },
+    paginate: vi.fn().mockResolvedValue([]),
+  }),
+}));
+
 const mockedResolveCapability = vi.spyOn(controlPlaneProviderRegistry, 'capability');
 
 const cleanEnv = process.env;
