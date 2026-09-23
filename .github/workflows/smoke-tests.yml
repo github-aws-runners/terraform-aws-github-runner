@@ -2,7 +2,13 @@ name: "Smoke Tests"
 
 on:
   pull_request:
-    paths: ["**/*.tf", "**/*.hcl", ".github/workflows/smoke-tests.yml"]
+    paths:
+      - "**/*.tf"
+      - "**/*.hcl"
+      - "images/microvm-ubuntu/**"
+      - "lambdas/**"
+      - "tests/ministack/**"
+      - ".github/workflows/smoke-tests.yml"
   workflow_dispatch:
 
 concurrency:
@@ -26,10 +32,10 @@ jobs:
   control_plane_smoke:
     name: Run webhook and pool lifecycle smoke test against MiniStack
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 120
     services:
       ministack:
-        image: ghcr.io/ministackorg/ministack:1.5.13@sha256:ce3c906f2866ff953ce4c56f06b1fa3e453bc32e41c00de17b5f5a8672c5a42c
+        image: ministackorg/ministack-preview-build:pr-1808-d140da92
         ports:
           - 4566:4566
         options: --add-host=host.docker.internal:host-gateway
@@ -66,8 +72,7 @@ jobs:
       - name: Build smoke-test Lambda distributions
         working-directory: lambdas
         run: |
-          yarn workspace @aws-github-runner/webhook dist
-          yarn workspace @aws-github-runner/control-plane dist
+          yarn dist
 
       - name: Start MockServer
         id: mockserver

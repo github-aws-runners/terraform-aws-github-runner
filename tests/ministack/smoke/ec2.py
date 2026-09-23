@@ -1,5 +1,6 @@
 """EC2 implementation of the provider smoke-test interface."""
 
+import base64
 import json
 from typing import Any
 
@@ -12,10 +13,29 @@ class Ec2Provider:
     display_name = "EC2"
 
     def configure(self, context: SmokeContext) -> None:
-        context.configure_jit_expectations()
+        self._configure_jit_expectations(context)
+
+    def _configure_jit_expectations(self, context: SmokeContext) -> None:
+        context.add_expectation(
+            "GET",
+            "/api/v3/orgs/test-owner/actions/runner-groups",
+            200,
+            [{"id": 1, "name": "Default"}],
+        )
+        context.add_expectation(
+            "POST",
+            "/api/v3/orgs/test-owner/actions/runners/generate-jitconfig",
+            200,
+            {
+                "runner": {"id": 987654321, "labels": [{"name": "self-hosted"}, {"name": "linux"}]},
+                # EC2 does not launch the runner in this smoke; keep the fixture
+                # Base64-shaped so it cannot mask a JIT handoff failure.
+                "encoded_jit_config": base64.b64encode(b"{}").decode(),
+            },
+        )
 
     def event(self, context: SmokeContext, job_id: int, dynamic: bool) -> dict[str, Any]:
-        value = json.loads((context.script_dir / "workflow_job_event.json").read_text())
+        value = json.loads((context.fixture_dir / "workflow_job_event.json").read_text())
         job = value["workflow_job"]
         job["id"] = job_id
         job["name"] = f"multi-runner-webhook-ec2-{job_id}"
@@ -91,6 +111,9 @@ class Ec2Provider:
         if actual_type != expected_type:
             raise RuntimeError(f"EC2 scale-up used {actual_type}, expected {expected_type}")
         self._assert_tags(context, resource, "scale-up-lambda")
+
+    def start_scale_up_runner(self, context: SmokeContext, resource: RunnerResource) -> bool:
+        return False
 
     def wait_for_pool(self, context: SmokeContext, source: str) -> RunnerResource:
         return self._wait_for_instance(context, source, "an EC2 pool instance")

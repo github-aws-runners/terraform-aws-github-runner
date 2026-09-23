@@ -43,6 +43,8 @@ def _scale_up(
     resource = provider.wait_for_scale_up(context, source)
     provider.assert_scale_up(context, resource, dynamic)
     context.mark_check(provider.slug, "scale_up_dynamic_resource" if dynamic else "scale_up_standard_resource")
+    if provider.start_scale_up_runner(context, resource):
+        context.mark_check(provider.slug, "microvm_hook")
     return resource
 
 

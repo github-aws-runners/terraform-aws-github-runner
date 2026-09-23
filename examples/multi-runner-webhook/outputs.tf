@@ -5,3 +5,7 @@ output "webhook_secret" {
   sensitive = true
   value     = var.github_app.webhook_secret
 }
+
+output "microvm" {
+  value = local.microvm
+}

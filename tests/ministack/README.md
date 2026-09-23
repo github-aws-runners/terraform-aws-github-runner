@@ -76,6 +76,23 @@ route checks, and compute-resource assertions. The shared example accepts the
 built runner-control and webhook Lambda ZIP files as `runners_lambda_zip` and
 `webhook_lambda_zip`.
 
+To exercise the MicroVM image's lifecycle hook after each MicroVM scale-up, start
+the image locally and provide its hook URL. The hook container must use the same
+MiniStack endpoint as the smoke test. The scale-up Lambda creates the JIT config
+in SSM; the smoke test sends the same `runHookPayload` to the hook, which consumes
+that SSM value.
+
+```sh
+MINISTACK_GITHUB_MOCK_URL=http://localhost:1080 \
+  python3 tests/ministack/run-webhook-smoke.py microvm
+```
+
+The test sends the outer JSON request with `runHookPayload` encoded as a JSON
+string, then waits for
+`/github-action-runners/multi-runner-webhook/microvm/runners/tokens/<microvm-id>`
+to disappear. This proves that the lifecycle hook consumed the one-time SSM
+value before the MicroVM is scaled down.
+
 Build the two real Lambda distributions, start MockServer and MiniStack, and run:
 
 ```sh

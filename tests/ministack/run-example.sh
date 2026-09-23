@@ -38,9 +38,9 @@ case "$example" in
 esac
 
 case "$action" in
-  init | plan | apply | destroy) ;;
+  init | plan | apply | destroy | output) ;;
   *)
-    echo "Usage: $0 {init|plan|apply|destroy} {base|prebuilt|default|ephemeral|multi-runner|multi-runner-webhook|microvm-foundation|migration-test|termination-watcher} [TFVARS_FILE]" >&2
+    echo "Usage: $0 {init|plan|apply|destroy|output} {base|prebuilt|default|ephemeral|multi-runner|multi-runner-webhook|microvm-foundation|migration-test|termination-watcher} [TFVARS_FILE]" >&2
     exit 64
     ;;
 esac
@@ -405,5 +405,9 @@ case "$action" in
   destroy)
     iac_init
     iac_example destroy -auto-approve -input=false -parallelism=1
+    ;;
+  output)
+    iac_init
+    iac_example output
     ;;
 esac

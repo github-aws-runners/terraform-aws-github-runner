@@ -19,6 +19,7 @@ from urllib.parse import urlsplit, urlunsplit
 class SmokeContext:
     def __init__(self, script_dir: Path, *, keep_deployment: bool = False) -> None:
         self.script_dir = script_dir
+        self.fixture_dir = Path(__file__).parent / "fixtures"
         self.source_root = script_dir.parent.parent
         self.example_root = self.source_root / "examples" / "multi-runner-webhook"
         self.aws_endpoint = os.environ.get("AWS_ENDPOINT_URL", "http://localhost:4566")
@@ -44,19 +45,26 @@ class SmokeContext:
         self.checklist: dict[str, list[dict[str, str | bool]]] = {}
         self.checklist_failure = ""
         self.keep_deployment = keep_deployment or os.environ.get("MINISTACK_SMOKE_KEEP_DEPLOYMENT") == "1"
-        self.jit_expectations_configured = False
 
     def command(self, name: str) -> None:
         if not shutil_which(name):
             raise RuntimeError(f"{name} is required to run the MiniStack smoke test")
 
-    def run(self, command: list[str], *, check: bool = True, stream: bool = False) -> subprocess.CompletedProcess[str]:
+    def run(
+        self,
+        command: list[str],
+        *,
+        check: bool = True,
+        stream: bool = False,
+        cwd: Path | None = None,
+    ) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
             command,
             check=check,
             text=True,
             capture_output=not stream,
             env=self.environment,
+            cwd=cwd,
         )
 
     def aws(self, *args: str, check: bool = True) -> Any:
@@ -88,7 +96,7 @@ class SmokeContext:
                 return response.status, response.read().decode()
         except urllib.error.HTTPError as error:
             return error.code, error.read().decode()
-        except urllib.error.URLError as error:
+        except (TimeoutError, urllib.error.URLError) as error:
             return 0, str(error)
 
     def wait_for(self, predicate, description: str, attempts: int = 60) -> Any:
@@ -115,6 +123,8 @@ class SmokeContext:
             ("scale_down_dynamic", "Scale-down removed the dynamic-label runner and compute resource"),
             ("scale_down_pool", "Scale-down removed the pool runner and compute resource"),
         )
+        if "microvm" in providers:
+            checks += (("microvm_hook", "MicroVM lifecycle hook consumed SSM and handed off the JIT runner"),)
         self.checklist = {
             provider: [{"key": key, "label": label, "passed": False} for key, label in checks]
             for provider in providers
@@ -156,7 +166,7 @@ class SmokeContext:
         if not self.mock_port:
             self.mock_port = urlsplit(self.mock_url).port or 1080
         self.wait_for(lambda: self.http("PUT", f"{self.mock_url}/mockserver/status")[0] < 300, "MockServer")
-        expectations = json.loads((self.script_dir / "github-api-expectations.json").read_text())
+        expectations = json.loads((self.fixture_dir / "github-api-expectations.json").read_text())
         for expectation in expectations:
             status, body = self.http("PUT", f"{self.mock_url}/mockserver/expectation", expectation)
             if status >= 300:
@@ -174,15 +184,14 @@ class SmokeContext:
         if code >= 300:
             raise RuntimeError(f"MockServer expectation failed: {code} {text}")
 
-    def configure_jit_expectations(self) -> None:
-        if self.jit_expectations_configured:
-            return
-        self.add_expectation("GET", "/api/v3/orgs/test-owner/actions/runner-groups", 200, [{"id": 1, "name": "Default"}])
-        self.add_expectation(
-            "POST", "/api/v3/orgs/test-owner/actions/runners/generate-jitconfig", 200,
-            {"runner": {"id": 987654321, "labels": [{"name": "self-hosted"}, {"name": "linux"}]}, "encoded_jit_config": "ministack-jit-config"},
+    def clear_expectation(self, method: str, path: str) -> None:
+        code, text = self.http(
+            "PUT",
+            f"{self.mock_url}/mockserver/clear",
+            {"httpRequest": {"method": method, "path": path}},
         )
-        self.jit_expectations_configured = True
+        if code >= 300:
+            raise RuntimeError(f"MockServer expectation clear failed: {code} {text}")
 
     def clear_runner_group_cache(self, provider: str) -> None:
         parameter_name = (
@@ -361,7 +370,8 @@ class SmokeContext:
 
     def prepare(self) -> None:
         print("Preparing multi-runner-webhook smoke deployment", flush=True)
-        for command in ("aws", "openssl", "terraform"):
+        commands = ("aws", "openssl", "terraform")
+        for command in commands:
             self.command(command)
         self.configure_mockserver()
         key_path = Path(tempfile.mkstemp(prefix="ministack-smoke-key.")[1])
@@ -391,10 +401,37 @@ class SmokeContext:
         )
         self.webhook_endpoint = self.terraform("output", "-raw", "webhook_endpoint")
         self.webhook_secret = self.terraform("output", "-raw", "webhook_secret")
+        self.wait_for_webhook_route()
         print("Deployment ready; starting provider lifecycle checks", flush=True)
+
+    def wait_for_webhook_route(self) -> None:
+        hostname = urlsplit(self.webhook_endpoint).hostname
+        if not hostname:
+            raise RuntimeError(f"Invalid webhook endpoint: {self.webhook_endpoint}")
+        api_id = hostname.split(".", 1)[0]
+
+        def route_ready() -> bool:
+            routes = self.aws(
+                "apigatewayv2",
+                "get-routes",
+                "--api-id",
+                api_id,
+                check=False,
+            ) or {}
+            return any(route.get("RouteKey") == "POST /webhook" for route in routes.get("Items", []))
+
+        self.wait_for(route_ready, "API Gateway POST /webhook route", attempts=30)
 
     def cleanup(self) -> None:
         self.update_checklist_status("cleanup")
+        if "microvm" in self.checklist:
+            print("MicroVM lifecycle hook container logs (last 200 lines):", flush=True)
+            self.run(
+                ["docker", "logs", "--timestamps", "--tail", "200", "microvm-lifecycle-hook"],
+                check=False,
+                stream=True,
+            )
+            self.run(["docker", "rm", "--force", "microvm-lifecycle-hook"], check=False)
         for instance_id in self.discovered_instance_ids:
             self.aws("ec2", "terminate-instances", "--instance-ids", instance_id, check=False)
         for microvm_id in self.discovered_microvm_ids:

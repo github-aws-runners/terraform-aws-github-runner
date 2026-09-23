@@ -37,6 +37,9 @@ class SmokeProvider(Protocol):
     def assert_scale_up(self, context: SmokeContext, resource: RunnerResource, dynamic: bool) -> None:
         """Check provider-specific scale-up state and ownership."""
 
+    def start_scale_up_runner(self, context: SmokeContext, resource: RunnerResource) -> bool:
+        """Start the provider-specific runner lifecycle after scale-up."""
+
     def wait_for_pool(self, context: SmokeContext, source: str) -> RunnerResource:
         """Find the resource created by a pool Lambda."""
 

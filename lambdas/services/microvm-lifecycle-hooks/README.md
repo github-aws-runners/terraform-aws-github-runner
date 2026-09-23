@@ -32,7 +32,6 @@ To build before invoking Docker, run the workspace build above. In the existing 
 
 ```dockerfile
 COPY lambdas/services/microvm-lifecycle-hooks/dist/ /opt/microvm-lifecycle-hooks/
-ENV RUNNER_ENTRYPOINT=/opt/microvm/entrypoint.sh
 ENTRYPOINT ["/init"]
 CMD ["/command/with-contenv", "/opt/actions-runner/externals/node24/bin/node", "/opt/microvm-lifecycle-hooks/server.js"]
 ```
@@ -58,7 +57,6 @@ Then copy the builder output into the existing final runner stage and use its su
 COPY --from=lifecycle-build \
     /source/lambdas/services/microvm-lifecycle-hooks/dist/ \
     /opt/microvm-lifecycle-hooks/
-ENV RUNNER_ENTRYPOINT=/opt/microvm/entrypoint.sh
 ENTRYPOINT ["/init"]
 CMD ["/command/with-contenv", "/opt/actions-runner/externals/node24/bin/node", "/opt/microvm-lifecycle-hooks/server.js"]
 ```
@@ -72,7 +70,7 @@ AWS sends an outer JSON object whose `runHookPayload` is itself a JSON string. V
 ```json
 {
   "microvmId": "microvm-bdd2d536-3d87-35e4-8b40-18664608ebc1",
-  "runHookPayload": "{\"version\":1,\"runnerConfigSsmPath\":\"/github-action-runners/example/token\"}"
+  "runHookPayload": "{\"version\":1,\"imageArn\":\"arn:aws:lambda:eu-west-1:166060576821:function:microvm-image\",\"imageVersion\":\"8.0\",\"runnerConfigSsmPath\":\"/github-action-runners/example/config\",\"runnerTokenSsmPath\":\"/github-action-runners/example/token\"}"
 }
 ```
 
@@ -98,34 +96,33 @@ For a rolling upgrade, keep emitting version 1 SSM payloads until every deployed
 
 ## Entrypoint contract
 
-On `/run`, the hook starts `${RUNNER_ENTRYPOINT:-/opt/microvm/entrypoint.sh} run` without a shell. It writes this versioned document to stdin:
+On `/run`, the hook starts `${RUNNER_ROOT:-/opt/actions-runner}/run.sh --jitconfig <one-time-value>` directly without a shell. The JIT configuration is passed only as the `--jitconfig` argument to the runner process:
 
-```json
-{
-  "jitConfig": "<one-time value>",
-  "microvmId": "<opaque id>",
-  "version": 1
-}
+```text
+run.sh --jitconfig <one-time-value>
 ```
 
-The entrypoint must write exactly `ready\n` to file descriptor 3 after the runner is ready. The JIT configuration, storage context, and AWS credential environment variables are not passed to the child process. `/terminate` sends `SIGTERM` to the detached process group and escalates to `SIGKILL` after the grace period.
+The hook waits for a short process-launch handoff before acknowledging `/run`; it does not require a custom readiness pipe. The JIT configuration, storage context, and AWS credential environment variables are not inherited by the runner process. `/terminate` sends `SIGTERM` to the detached process group and escalates to `SIGKILL` after the grace period.
 
 After the runner entrypoint exits on its own, the hook closes its HTTP server and exits with status `0` only when the runner exited cleanly. In the documented s6-overlay image layout above, that makes the foreground container command exit so s6 can stop the remaining image services and shut down the application container's PID 1. This path does not require `lambda:TerminateMicrovm` in the runner role. AWS documents only explicit termination and maximum duration as MicroVM termination triggers, so retain trusted control-plane cleanup and the maximum duration as failure backstops, and verify the container-exit behavior against a restored MicroVM before relying on it operationally.
 
 Useful environment variables are:
 
-| Variable                          | Default                      | Purpose                                       |
-| --------------------------------- | ---------------------------- | --------------------------------------------- |
-| `HOOK_PORT`                       | `8080`                       | Lifecycle-hook HTTP port                      |
-| `RUNNER_ENTRYPOINT`               | `/opt/microvm/entrypoint.sh` | Image-specific runner supervisor              |
-| `RUN_HOOK_TIMEOUT_SECONDS`        | `55`                         | Total `/run` budget, bounded to 40–55 seconds |
-| `HOOK_HEADERS_TIMEOUT_SECONDS`    | `5`                          | HTTP header receive timeout                   |
-| `HOOK_REQUEST_TIMEOUT_SECONDS`    | `10`                         | HTTP request receive timeout                  |
-| `HOOK_KEEP_ALIVE_TIMEOUT_SECONDS` | `5`                          | Idle keep-alive timeout                       |
-| `AWS_SDK_CALL_TIMEOUT_SECONDS`    | `5`                          | Individual storage-provider call timeout      |
-| `RUNNER_CONFIG_TIMEOUT_SECONDS`   | `20`                         | Total runner-configuration polling timeout    |
-| `RUNNER_CONFIG_POLL_SECONDS`      | `2`                          | Delay between provider polling attempts       |
-| `RUNNER_CONFIG_DELETE_ATTEMPTS`   | `3`                          | SSM one-time configuration delete attempts    |
+| Variable                          | Default               | Purpose                                       |
+| --------------------------------- | --------------------- | --------------------------------------------- |
+| `HOOK_PORT`                       | `8080`                | Lifecycle-hook HTTP port                      |
+| `RUNNER_ROOT`                     | `/opt/actions-runner` | GitHub Actions runner installation            |
+| `RUNNER_USER`                     | `runner`              | Runner process user name                      |
+| `RUNNER_UID`                      | `1000`                | Runner UID when the hook runs as root         |
+| `RUNNER_GID`                      | `1000`                | Runner GID when the hook runs as root         |
+| `RUN_HOOK_TIMEOUT_SECONDS`        | `55`                  | Total `/run` budget, bounded to 40–55 seconds |
+| `HOOK_HEADERS_TIMEOUT_SECONDS`    | `5`                   | HTTP header receive timeout                   |
+| `HOOK_REQUEST_TIMEOUT_SECONDS`    | `10`                  | HTTP request receive timeout                  |
+| `HOOK_KEEP_ALIVE_TIMEOUT_SECONDS` | `5`                   | Idle keep-alive timeout                       |
+| `AWS_SDK_CALL_TIMEOUT_SECONDS`    | `5`                   | Individual storage-provider call timeout      |
+| `RUNNER_CONFIG_TIMEOUT_SECONDS`   | `20`                  | Total runner-configuration polling timeout    |
+| `RUNNER_CONFIG_POLL_SECONDS`      | `2`                   | Delay between provider polling attempts       |
+| `RUNNER_CONFIG_DELETE_ATTEMPTS`   | `3`                   | SSM one-time configuration delete attempts    |
 
 The request body is capped at 20 KiB and HTTP headers at 16 KiB. Internal errors are returned generically and secret-bearing provider errors are never logged.
 
