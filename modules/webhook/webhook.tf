@@ -76,9 +76,11 @@ module "direct" {
     lambda_apigateway_access_log_settings = var.webhook_lambda_apigateway_access_log_settings,
     repository_white_list                 = var.repository_white_list,
     queue_selection_strategy              = var.queue_selection_strategy,
-    storage_provider = merge(var.storage_provider.direct, {
-      aws = var.storage_provider.aws
-    })
+    storage_provider = {
+      aws                   = var.storage_provider.aws
+      environment_variables = {}
+      iam_policy_json       = null
+    }
     log_level             = var.log_level,
     lambda_runtime        = var.lambda_runtime,
     aws_partition         = var.aws_partition,
@@ -121,9 +123,17 @@ module "eventbridge" {
     lambda_apigateway_access_log_settings = var.webhook_lambda_apigateway_access_log_settings,
     repository_white_list                 = var.repository_white_list,
     queue_selection_strategy              = var.queue_selection_strategy,
-    storage_provider = merge(var.storage_provider.eventbridge, {
+    storage_provider = {
       aws = var.storage_provider.aws
-    })
+      webhook = {
+        environment_variables = {}
+        iam_policy_json       = null
+      }
+      dispatcher = {
+        environment_variables = {}
+        iam_policy_json       = null
+      }
+    }
     log_level             = var.log_level,
     lambda_runtime        = var.lambda_runtime,
     aws_partition         = var.aws_partition,

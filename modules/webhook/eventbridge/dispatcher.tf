@@ -54,7 +54,7 @@ resource "aws_lambda_function" "dispatcher" {
         REPOSITORY_ALLOW_LIST                = jsonencode(var.config.repository_white_list)
         QUEUE_SELECTION_STRATEGY             = var.config.queue_selection_strategy
       } : k => v if v != null
-    }, var.config.storage_provider.dispatcher.environment_variables)
+    })
   }
 
   dynamic "vpc_config" {

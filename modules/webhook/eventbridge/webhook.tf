@@ -38,7 +38,7 @@ resource "aws_lambda_function" "webhook" {
         PARAMETER_GITHUB_APP_WEBHOOK_SECRET  = var.config.storage_provider.aws.ssm != null ? var.config.github_app_parameters.webhook_secret.name : null
         PARAMETER_RUNNER_MATCHER_CONFIG_PATH = var.config.storage_provider.aws.ssm != null ? join(":", [for p in var.config.ssm_parameter_runner_matcher_config : p.name]) : null
       } : k => v if v != null
-    }, var.config.storage_provider.webhook.environment_variables)
+    })
   }
 
   dynamic "vpc_config" {

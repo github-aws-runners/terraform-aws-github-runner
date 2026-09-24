@@ -113,25 +113,12 @@ module "webhook" {
 
   storage_provider = {
     aws = {
+      kms_key_id = var.kms_key_arn
       ssm = {
         paths = {
           root    = local.ssm_root_path
           webhook = var.ssm_paths.webhook
         }
-      }
-    }
-    direct = {
-      environment_variables = {}
-      iam_policy_json       = null
-    }
-    eventbridge = {
-      webhook = {
-        environment_variables = {}
-        iam_policy_json       = null
-      }
-      dispatcher = {
-        environment_variables = {}
-        iam_policy_json       = null
       }
     }
   }

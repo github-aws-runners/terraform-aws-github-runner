@@ -34,8 +34,6 @@ variable "config" {
           kms_key_id = optional(string, null)
         }), null)
       }), {})
-      environment_variables = map(string)
-      iam_policy_json       = optional(string, null)
     }))
     log_level           = optional(string, "info")
     lambda_runtime      = optional(string, "nodejs24.x")

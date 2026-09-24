@@ -32,7 +32,7 @@ resource "aws_lambda_function" "webhook" {
         PARAMETER_RUNNER_MATCHER_CONFIG_PATH     = var.config.storage_provider.aws.ssm != null ? join(":", [for p in var.config.ssm_parameter_runner_matcher_config : p.name]) : null
         PARAMETER_RUNNER_MATCHER_VERSION         = var.config.storage_provider.aws.ssm != null ? join(":", [for p in var.config.ssm_parameter_runner_matcher_config : p.version]) : null # enforce cold start after Changes in SSM parameter
       } : k => v if v != null
-    }, var.config.storage_provider.environment_variables)
+    })
   }
 
   dynamic "vpc_config" {
