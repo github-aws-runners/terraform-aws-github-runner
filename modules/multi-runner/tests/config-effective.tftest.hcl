@@ -94,10 +94,12 @@ run "v1_effective_config_contains_derived_runner_labels" {
     multi_runner_config = {
       stable = {
         runner_config = {
-          runner_os             = "linux"
-          runner_architecture   = "x64"
-          instance_types        = ["m5.large"]
-          runners_maximum_count = 1
+          runner_os                = "linux"
+          runner_architecture      = "x64"
+          instance_types           = ["m5.large"]
+          runners_maximum_count    = 1
+          enable_multi_org_runners = true
+          pool_config              = [{ schedule_expression = "cron(0 8 * * ? *)", size = 1, org = "org-a" }]
         }
         matcherConfig = {
           labelMatchers = [["stable-label"]]
@@ -114,6 +116,15 @@ run "v1_effective_config_contains_derived_runner_labels" {
       "x64",
     ])
     error_message = "The effective v1 configuration must contain the translated runner labels."
+  }
+
+  assert {
+    condition = (
+      local.effective_config.multi_runner_config["stable"].orchestration_provider.webhook.github.multi_org_runners &&
+      local.effective_config.multi_runner_config["stable"].orchestration_provider.webhook.lambda.pool.config[0].org == "org-a" &&
+      module.runners["stable"].lambda_scale_up.environment[0].variables["ENABLE_MULTI_ORG_RUNNERS"] == "true"
+    )
+    error_message = "Legacy multi-org inputs must survive translation into the resource configuration."
   }
 }
 
@@ -243,6 +254,8 @@ run "v2_effective_config_contains_derived_values" {
         }
         orchestration_provider = {
           webhook = {
+            github = { multi_org_runners = true }
+            lambda = { pool = { config = [{ schedule_expression = "cron(0 8 * * ? *)", size = 1, org = "org-b" }] } }
             matcherConfig = {
               labelMatchers = [["matcher-label"]]
             }
@@ -264,6 +277,9 @@ run "v2_effective_config_contains_derived_values" {
 
   assert {
     condition = (
+      local.effective_config.multi_runner_config["lane"].orchestration_provider.webhook.github.multi_org_runners &&
+      local.effective_config.multi_runner_config["lane"].orchestration_provider.webhook.lambda.pool.config[0].org == "org-b" &&
+      module.runner_configs["lane"].scale_up.lambda.environment[0].variables["ENABLE_MULTI_ORG_RUNNERS"] == "true" &&
       toset(local.effective_config.multi_runner_config["lane"].runner.labels) == toset([
         "lane-label",
         "linux",

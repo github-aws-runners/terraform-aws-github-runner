@@ -36,11 +36,9 @@ export function createEc2PoolCapability(
   createStartRunnerConfig: CreateStartRunnerConfig,
 ): Omit<PoolComputeProvider<RunnerInfo>, 'type'> {
   return {
-    listRunners: ({ environment, runnerOwner, runnerType }) =>
+    listRunners: (filters) =>
       ec2Operations.list({
-        environment,
-        runnerOwner,
-        runnerType,
+        ...filters,
         statuses: ['running'],
       }),
     countAvailableRunners: countAvailableEc2PoolRunners,

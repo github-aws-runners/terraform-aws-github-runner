@@ -91,7 +91,10 @@ async function listEc2Runners(
   for (const filter of ec2Filters) {
     runners.push(...(await getRunners(ec2Client, filter, signal)));
   }
-  return runners;
+  // EC2 tag filters are case-sensitive. In opt-in mode retain the environment/type
+  // filters in AWS, then match ownership locally so pre-existing mixed-case tags count too.
+  const owner = filters?.runnerOwnerIgnoreCase ? filters.runnerOwner?.toLowerCase() : undefined;
+  return owner ? runners.filter((runner) => runner.owner?.toLowerCase() === owner) : runners;
 }
 
 function constructFilters(filters?: Ec2ListRunnerFilters): Ec2Filter[][] {
@@ -104,7 +107,9 @@ function constructFilters(filters?: Ec2ListRunnerFilters): Ec2Filter[][] {
     }
     if (filters.runnerType && filters.runnerOwner) {
       ec2FiltersBase.push({ Name: `tag:ghr:Type`, Values: [filters.runnerType] });
-      ec2FiltersBase.push({ Name: `tag:ghr:Owner`, Values: [filters.runnerOwner] });
+      if (!filters.runnerOwnerIgnoreCase) {
+        ec2FiltersBase.push({ Name: `tag:ghr:Owner`, Values: [filters.runnerOwner] });
+      }
     }
     if (filters.orphan) {
       ec2FiltersBase.push({ Name: 'tag:ghr:orphan', Values: ['true'] });

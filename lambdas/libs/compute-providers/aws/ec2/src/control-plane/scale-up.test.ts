@@ -1329,3 +1329,19 @@ describe('parseEc2OverrideConfig', () => {
     });
   });
 });
+
+it('forwards case-insensitive owner matching for capacity counts', async () => {
+  mockListRunners.mockResolvedValue([]);
+  const resolution = await capability.resolveLabelsForRunners([]);
+  await capability.getCurrentRunners(resolution.state, {
+    runnerType: 'Org',
+    runnerOwner: 'org-a',
+    runnerOwnerIgnoreCase: true,
+  });
+  expect(mockListRunners).toHaveBeenCalledWith({
+    environment: 'unit-test-environment',
+    runnerType: 'Org',
+    runnerOwner: 'org-a',
+    runnerOwnerIgnoreCase: true,
+  });
+});
