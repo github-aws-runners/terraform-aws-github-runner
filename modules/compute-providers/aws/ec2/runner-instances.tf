@@ -10,8 +10,8 @@ locals {
 
   ssm_parameter_tags = merge(
     local.provider_tags,
-    var.storage_provider.aws.ssm.tags,
-    var.storage_provider.aws.ssm.parameters.tags,
+    try(var.storage_provider.aws.ssm.tags, {}),
+    try(var.storage_provider.aws.ssm.parameters.tags, {}),
   )
 
   log_group_tags = merge(
