@@ -46,7 +46,7 @@ variables {
     ami = {
       filter = { state = ["available"] }
       owners = ["amazon"]
-      id_ssm_parameter = {
+      ssm_parameter = {
         arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/ami-id"
       }
       kms_key = null
@@ -214,7 +214,7 @@ run "accepts_partial_typed_compute_options" {
       ami = {
         filter = { state = ["available"] }
         owners = ["amazon"]
-        id_ssm_parameter = {
+        ssm_parameter = {
           arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/ami-id"
         }
         kms_key = null
@@ -271,10 +271,12 @@ run "separates_provider_runner_and_ssm_tags" {
       subnet_ids     = ["subnet-12345678"]
       instance_types = ["m5.large"]
       ami = {
-        filter           = { state = ["available"] }
-        owners           = ["amazon"]
-        id_ssm_parameter = null
-        kms_key          = null
+        filter = { state = ["available"] }
+        owners = ["amazon"]
+        ssm_parameter = {
+          path = "/github-runner/provider-test/config"
+        }
+        kms_key = null
       }
       binaries_syncer = {
         enabled = false

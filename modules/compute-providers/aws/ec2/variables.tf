@@ -28,8 +28,9 @@ variable "config" {
     - `ami`: Optional AMI discovery and encryption configuration. Null selects defaults for `runner.os` and `runner.architecture`.
     - `ami.filter`: AMI filter names mapped to accepted values and merged over the provider defaults.
     - `ami.owners`: AWS account IDs or aliases allowed to own the selected AMI.
-    - `ami.id_ssm_parameter`: Optional externally managed SSM parameter containing the AMI ID. Its object presence is the plan-time ownership discriminator.
-    - `ami.id_ssm_parameter.arn`: ARN of the external AMI-ID parameter. The ARN may remain unknown until apply.
+    - `ami.ssm_parameter`: Optional AMI-ID SSM parameter configuration. Set `arn` to use an existing parameter or `path` to create one managed by this module.
+    - `ami.ssm_parameter.path`: Parent path under which the module creates the `ami_id` parameter.
+    - `ami.ssm_parameter.arn`: ARN of an existing AMI-ID parameter.
     - `ami.kms_key`: Optional customer-managed KMS key required for encrypted AMIs or snapshots. Its object presence is the plan-time policy discriminator.
     - `ami.kms_key.arn`: ARN of the AMI KMS key. The ARN may remain unknown until apply.
     - `vpc_id`: VPC in which runner networking resources are created.
@@ -127,8 +128,9 @@ variable "config" {
     ami = optional(object({
       filter = optional(map(list(string)), { state = ["available"] })
       owners = optional(list(string), ["amazon"])
-      id_ssm_parameter = optional(object({
-        arn = string
+      ssm_parameter = optional(object({
+        path = optional(string, null)
+        arn  = optional(string, null)
       }), null)
       kms_key = optional(object({
         arn = string
@@ -334,23 +336,6 @@ variable "runner" {
     })
   })
 
-  nullable = false
-}
-
-variable "github" {
-  description = <<-EOT
-    GitHub Enterprise Server settings available to compute-provider bootstrap data.
-
-    - `enterprise_server.url`: Optional GitHub Enterprise Server base URL. Null selects GitHub.com.
-    - `enterprise_server.ssl_verify`: Enables TLS certificate verification for GitHub Enterprise Server.
-  EOT
-  type = object({
-    enterprise_server = optional(object({
-      url        = optional(string, null)
-      ssl_verify = optional(bool, true)
-    }), {})
-  })
-  default  = {}
   nullable = false
 }
 

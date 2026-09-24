@@ -8,12 +8,6 @@ locals {
     var.tags,
   )
 
-  ssm_parameter_tags = merge(
-    local.provider_tags,
-    try(var.storage_provider.aws.ssm.tags, {}),
-    try(var.storage_provider.aws.ssm.parameters.tags, {}),
-  )
-
   log_group_tags = merge(
     local.provider_tags,
     var.observability.logs.tags,
@@ -29,14 +23,12 @@ locals {
     var.config.tags,
     {
       "ghr:environment"        = var.prefix
-      "ghr:ssm_config_path"    = local.ssm_config_path
       "ghr:runner_name_prefix" = var.runner.name_prefix
     },
+    local.ssm_runner_tags
   )
 
   role_path                       = var.runner.iam.path == null ? "/${var.prefix}/" : var.runner.iam.path
-  ssm_root_path                   = var.storage_provider.aws.ssm.paths.root
-  ssm_config_path                 = "${local.ssm_root_path}/${var.storage_provider.aws.ssm.paths.config}"
   instance_profile_path           = var.config.instance_profile_path == null ? "/${var.prefix}/" : var.config.instance_profile_path
   userdata_template               = var.config.user_data.template == null ? local.default_userdata_template[var.runner.os] : var.config.user_data.template
   s3_location_runner_distribution = var.config.binaries_syncer.enabled ? "s3://${try(var.config.binaries_syncer.s3.id, "")}/${try(var.config.binaries_syncer.s3.key, "")}" : ""
@@ -64,22 +56,6 @@ locals {
     "osx"     = "${path.module}/templates/start-runner-osx.sh"
   }
 
-  # Handle AMI configuration
-  ami_config = var.config.ami != null ? var.config.ami : {
-    filter           = local.default_ami[var.runner.os]
-    owners           = ["amazon"]
-    id_ssm_parameter = null
-    kms_key          = null
-  }
-  ami_kms_key_enabled       = local.ami_config.kms_key != null
-  ami_kms_key_arn           = local.ami_kms_key_enabled ? local.ami_config.kms_key.arn : null
-  ami_filter                = merge(local.default_ami[var.runner.os], local.ami_config.filter)
-  ami_id_ssm_external       = local.ami_config.id_ssm_parameter != null
-  ami_id_ssm_module_managed = !local.ami_id_ssm_external
-  ami_id_ssm_parameter_arn  = local.ami_id_ssm_external ? local.ami_config.id_ssm_parameter.arn : null
-  # Extract parameter name from ARN (format: arn:aws:ssm:region:account:parameter/path/to/param)
-  ami_id_ssm_parameter_name = local.ami_id_ssm_external ? try(regex("parameter(/.+)$", local.ami_id_ssm_parameter_arn)[0], null) : null
-
   user_data = var.config.user_data.enabled ? (var.config.user_data.content == null ? templatefile(local.userdata_template, {
     enable_debug_logging            = var.config.user_data.debug_logging_enabled
     s3_location_runner_distribution = local.s3_location_runner_distribution
@@ -95,13 +71,6 @@ locals {
       metadata_tags           = var.config.metadata_options != null ? var.config.metadata_options.instance_metadata_tags : "enabled"
       enable_cloudwatch_agent = var.config.cloudwatch_agent.enabled
     })
-    ghes_url        = var.github.enterprise_server.url
-    ghes_ssl_verify = var.github.enterprise_server.ssl_verify
-
-    ## retain these for backwards compatibility
-    environment                     = var.prefix
-    enable_cloudwatch_agent         = var.config.cloudwatch_agent.enabled
-    ssm_key_cloudwatch_agent_config = var.config.cloudwatch_agent.enabled ? aws_ssm_parameter.cloudwatch_agent_config_runner[0].name : ""
   }) : var.config.user_data.content) : ""
 
   encoded_user_data = (
@@ -145,45 +114,6 @@ locals {
         var.config.additional_security_group_ids,
       ))
     })] : []
-  )
-}
-
-data "aws_ami" "runner" {
-  count = local.ami_id_ssm_module_managed ? 1 : 0
-
-  most_recent = "true"
-
-  dynamic "filter" {
-    for_each = local.ami_filter
-    content {
-      name   = filter.key
-      values = filter.value
-    }
-  }
-
-  owners = local.ami_config.owners
-}
-
-resource "aws_ssm_parameter" "runner_ami_id" {
-  count     = local.ami_id_ssm_module_managed ? 1 : 0
-  name      = "${local.ssm_config_path}/ami_id"
-  type      = "String"
-  data_type = "aws:ec2:image"
-  value     = data.aws_ami.runner[0].id
-
-  tags = merge(
-    local.provider_tags,
-    local.ssm_parameter_tags,
-    {
-      # Remove parentheses from AMI name to comply with AWS tag constraints
-      "ghr:ami_name" = replace(data.aws_ami.runner[0].name, "/[()]/", "")
-    },
-    {
-      "ghr:ami_creation_date" = data.aws_ami.runner[0].creation_date
-    },
-    {
-      "ghr:ami_deprecation_time" = data.aws_ami.runner[0].deprecation_time
-    }
   )
 }
 
@@ -276,7 +206,7 @@ resource "aws_launch_template" "runner" {
   }
 
   instance_initiated_shutdown_behavior = "terminate"
-  image_id                             = "resolve:ssm:${local.ami_id_ssm_module_managed ? aws_ssm_parameter.runner_ami_id[0].arn : local.ami_id_ssm_parameter_arn}"
+  image_id                             = local.image_id
   key_name                             = var.config.key_name
   ebs_optimized                        = var.config.ebs_optimized
 

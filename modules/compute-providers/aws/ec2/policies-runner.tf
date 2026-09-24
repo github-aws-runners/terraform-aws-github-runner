@@ -2,10 +2,6 @@
 # the common runner role.
 data "aws_caller_identity" "current" {}
 
-locals {
-  ec2_instance_arn_prefix = "arn:${var.aws_partition}:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:instance/"
-}
-
 data "aws_iam_policy_document" "session_manager" {
   statement {
     effect = "Allow"
@@ -121,16 +117,11 @@ data "aws_iam_policy_document" "cloudwatch" {
     ]
     resources = ["*"]
   }
-
-  statement {
-    effect    = "Allow"
-    actions   = ["ssm:GetParameter"]
-    resources = ["${local.cloudwatch_config_arn}/*"]
-  }
 }
 
 locals {
   runner_inline_policies = merge(
+    local.ssm_runner_inline_policies,
     {
       describe_tags = {
         name        = "runner-describe-tags"
@@ -144,13 +135,6 @@ locals {
         name        = "ec2"
         policy_json = data.aws_iam_policy_document.terminate_self.json
       }
-    },
-    var.storage_provider.aws.ssm != null ? {
-      ssm_parameters = {
-        name        = "runner-ssm-parameters"
-        policy_json = data.aws_iam_policy_document.ssm_parameters[0].json
-      }
-      } : {
     },
     var.config.ssm_enabled ? {
       session_manager = {

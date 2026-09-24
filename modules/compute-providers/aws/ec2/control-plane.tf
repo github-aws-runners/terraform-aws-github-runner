@@ -63,10 +63,14 @@ data "aws_iam_policy_document" "scale_up" {
     resources = [var.runner.iam.role.arn]
   }
 
-  statement {
-    effect    = "Allow"
-    actions   = ["ssm:GetParameter", "ssm:GetParameters"]
-    resources = [local.ami_id_ssm_module_managed ? aws_ssm_parameter.runner_ami_id[0].arn : local.ami_id_ssm_parameter_arn]
+  dynamic "statement" {
+    for_each = local.ami_id_ssm_module_managed || local.ami_id_ssm_external ? [1] : []
+
+    content {
+      effect    = "Allow"
+      actions   = ["ssm:GetParameter", "ssm:GetParameters"]
+      resources = [local.ami_id_ssm_module_managed ? aws_ssm_parameter.runner_ami_id[0].arn : local.ami_id_ssm_parameter_arn]
+    }
   }
 
   dynamic "statement" {
@@ -147,10 +151,14 @@ data "aws_iam_policy_document" "pool" {
     resources = [var.runner.iam.role.arn]
   }
 
-  statement {
-    effect    = "Allow"
-    actions   = ["ssm:GetParameters"]
-    resources = [local.ami_id_ssm_module_managed ? aws_ssm_parameter.runner_ami_id[0].arn : local.ami_id_ssm_parameter_arn]
+  dynamic "statement" {
+    for_each = local.ami_id_ssm_module_managed || local.ami_id_ssm_external ? [1] : []
+
+    content {
+      effect    = "Allow"
+      actions   = ["ssm:GetParameters"]
+      resources = [local.ami_id_ssm_module_managed ? aws_ssm_parameter.runner_ami_id[0].arn : local.ami_id_ssm_parameter_arn]
+    }
   }
 
   dynamic "statement" {
@@ -191,7 +199,7 @@ data "aws_iam_policy_document" "service_linked_role" {
 }
 
 locals {
-  scale_up_environment_variables = merge({
+  scale_up_environment_variables = {
     AMI_ID_SSM_PARAMETER_NAME            = local.ami_id_ssm_parameter_name
     INSTANCE_ALLOCATION_STRATEGY         = var.config.instance_allocation_strategy
     INSTANCE_MAX_SPOT_PRICE              = var.config.instance_max_spot_price
@@ -203,9 +211,7 @@ locals {
     ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS = jsonencode(var.config.on_demand_failover_for_errors)
     SCALE_ERRORS                         = jsonencode(var.config.scale_errors)
     USE_DEDICATED_HOST                   = var.config.use_dedicated_host
-    }, var.storage_provider.aws.ssm == null ? {
-    EC2_INSTANCE_ARN_PREFIX = local.ec2_instance_arn_prefix
-  } : {})
+  }
 
   scale_down_environment_variables = {}
 
