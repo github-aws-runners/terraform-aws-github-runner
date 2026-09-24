@@ -514,8 +514,9 @@ locals {
             ami = v.runner_config.ami == null ? null : {
               filter = v.runner_config.ami.filter
               owners = v.runner_config.ami.owners
-              id_ssm_parameter = v.runner_config.ami.id_ssm_parameter_arn == null ? null : {
-                arn = v.runner_config.ami.id_ssm_parameter_arn
+              ssm_parameter = v.runner_config.ami.id_ssm_parameter_arn != null ? null : {
+                path = null
+                arn  = v.runner_config.ami.id_ssm_parameter_arn
               }
               kms_key = v.runner_config.ami.kms_key_arn == null ? null : {
                 arn = v.runner_config.ami.kms_key_arn

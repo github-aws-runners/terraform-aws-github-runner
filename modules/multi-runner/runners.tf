@@ -34,7 +34,7 @@ module "runners" {
   ami = try(each.value.compute_provider.aws.ec2.ami == null ? null : {
     filter               = each.value.compute_provider.aws.ec2.ami.filter
     owners               = each.value.compute_provider.aws.ec2.ami.owners
-    id_ssm_parameter_arn = try(each.value.compute_provider.aws.ec2.ami.id_ssm_parameter.arn, null)
+    id_ssm_parameter_arn = try(each.value.compute_provider.aws.ec2.ami.ssm_parameter.arn, null)
     kms_key_arn          = try(each.value.compute_provider.aws.ec2.ami.kms_key.arn, null)
   }, null)
 
