@@ -6,6 +6,21 @@ import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import type { Context, SQSEvent } from 'aws-lambda';
 
 import { registrationJanitor, type RegistrationJanitorConfig } from './registration-janitor';
+import { createRunnerInstallationClient } from './github-app-client';
+
+const janitorLogs = vi.hoisted(() => ({ info: vi.fn(), setContext: vi.fn() }));
+vi.mock('@aws-github-runner/aws-powertools-util', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@aws-github-runner/aws-powertools-util')>();
+  return {
+    ...actual,
+    setContext: janitorLogs.setContext,
+    createChildLogger: (name: string) => {
+      const child = actual.createChildLogger(name);
+      if (name === 'registration-janitor') vi.spyOn(child, 'info').mockImplementation(janitorLogs.info);
+      return child;
+    },
+  };
+});
 
 const github = vi.hoisted(() => ({
   request: vi.fn(),
@@ -431,4 +446,78 @@ describe('confirmation deadline guards', () => {
       expect(github.actions.deleteSelfHostedRunnerFromOrg).not.toHaveBeenCalled();
     },
   );
+});
+
+describe('invocation reuse and discovery observability', () => {
+  it('shares one client cache across discovery pages and resets it next invocation', async () => {
+    github.request
+      .mockResolvedValueOnce({
+        data: { runners: Array.from({ length: 100 }, () => ({ ...runner, status: 'online' })) },
+      })
+      .mockResolvedValue({ data: { runners: [] } });
+    await registrationJanitor({}, context);
+    const calls = vi.mocked(createRunnerInstallationClient).mock.calls;
+    expect(calls).toHaveLength(2);
+    expect(calls[0][3]).toBe(calls[1][3]);
+    await registrationJanitor({}, context);
+    expect(calls[2][3]).not.toBe(calls[0][3]);
+  });
+
+  it('shares one client cache within a confirmation batch and sets fresh invocation context', async () => {
+    const event = await confirmationEvent();
+    event.Records.push({ ...event.Records[0], messageId: 'second' });
+    vi.mocked(createRunnerInstallationClient).mockClear();
+    const batchContext = { ...context, awsRequestId: 'confirmation-request', functionName: 'janitor' } as Context;
+    await registrationJanitor(event, batchContext);
+    const calls = vi.mocked(createRunnerInstallationClient).mock.calls;
+    expect(calls).toHaveLength(2);
+    expect(calls[0][3]).toBe(calls[1][3]);
+    expect(janitorLogs.setContext).toHaveBeenLastCalledWith(batchContext, 'registration-janitor');
+  });
+
+  it('reports queued candidates and resources retained in live discovery', async () => {
+    github.request.mockResolvedValue({ data: { runners: [runner, { ...runner, id: 11 }] } });
+    ec2
+      .on(DescribeInstancesCommand)
+      .resolvesOnce({ Reservations: [] })
+      .resolvesOnce({ Reservations: [] })
+      .resolves({ Reservations: [{ Instances: [{ InstanceId: instanceId, State: { Name: 'stopped' } }] }] });
+    await registrationJanitor({}, context);
+    expect(janitorLogs.info).toHaveBeenCalledWith(
+      'Registration discovery finished.',
+      expect.objectContaining({
+        pagesScanned: 1,
+        candidatesQueued: 1,
+        existingResources: 1,
+        dryRunCandidates: 0,
+        stopReason: 'completed',
+      }),
+    );
+  });
+
+  it('reports dry-run candidates separately from queued work', async () => {
+    configure({ dryRun: true });
+    await registrationJanitor({}, context);
+    expect(janitorLogs.info).toHaveBeenCalledWith(
+      'Registration discovery finished.',
+      expect.objectContaining({ candidatesQueued: 0, dryRunCandidates: 1, dryRun: true }),
+    );
+  });
+
+  it('reports failures without claiming failed queue sends succeeded', async () => {
+    sqs.on(SendMessageCommand).rejects(new Error('queue unavailable'));
+    await registrationJanitor({}, context);
+    expect(janitorLogs.info).toHaveBeenCalledWith(
+      'Registration discovery finished.',
+      expect.objectContaining({ candidatesQueued: 0, candidateFailures: 1 }),
+    );
+  });
+
+  it('reports partial discovery when the deadline stops scanning', async () => {
+    await registrationJanitor({}, { ...context, getRemainingTimeInMillis: () => 1000 });
+    expect(janitorLogs.info).toHaveBeenCalledWith(
+      'Registration discovery finished.',
+      expect.objectContaining({ pagesScanned: 0, candidatesQueued: 0, stopReason: 'deadline' }),
+    );
+  });
 });
