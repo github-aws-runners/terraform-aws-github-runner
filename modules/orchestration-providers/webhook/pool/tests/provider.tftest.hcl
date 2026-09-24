@@ -4,6 +4,26 @@ mock_provider "aws" {
       json = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":\"logs:CreateLogStream\",\"Resource\":\"*\"}]}"
     }
   }
+
+  mock_resource "aws_iam_role" {
+    defaults = {
+      arn = "arn:aws:iam::123456789012:role/pool-test"
+    }
+  }
+
+  mock_resource "aws_lambda_function" {
+    defaults = {
+      arn = "arn:aws:lambda:eu-west-1:123456789012:function:pool-test"
+    }
+  }
+}
+
+run "base_inputs" {
+  command = apply
+
+  module {
+    source = "./tests/fixtures/base-inputs"
+  }
 }
 
 variables {
@@ -365,9 +385,9 @@ run "omits_optional_kms_statement" {
   }
 
   variables {
-    storage_provider = merge(var.storage_provider, {
-      aws = merge(var.storage_provider.aws, {
-        ssm = merge(var.storage_provider.aws.ssm, {
+    storage_provider = merge(run.base_inputs.storage_provider, {
+      aws = merge(run.base_inputs.storage_provider.aws, {
+        ssm = merge(run.base_inputs.storage_provider.aws.ssm, {
           kms_key_id = null
         })
       })
@@ -427,7 +447,7 @@ run "rejects_empty_compute_provider_type" {
   }
 
   variables {
-    runner_provider = merge(var.runner_provider, {
+    runner_provider = merge(run.base_inputs.runner_provider, {
       type = " "
     })
   }
@@ -443,7 +463,7 @@ run "rejects_invalid_compute_provider_policy" {
   }
 
   variables {
-    runner_provider = merge(var.runner_provider, {
+    runner_provider = merge(run.base_inputs.runner_provider, {
       iam_policy_json = "not-json"
     })
   }
@@ -459,7 +479,7 @@ run "requires_enabled_compute_provider_managed_policy_arn" {
   }
 
   variables {
-    runner_provider = merge(var.runner_provider, {
+    runner_provider = merge(run.base_inputs.runner_provider, {
       managed_policy_enabled = true
       managed_policy_arn     = null
     })

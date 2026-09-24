@@ -11,6 +11,26 @@ mock_provider "aws" {
     }
   }
 
+  mock_resource "aws_lambda_function" {
+    defaults = {
+      arn = "arn:aws:lambda:eu-west-1:123456789012:function:scale-runners-test"
+    }
+  }
+
+  mock_resource "aws_cloudwatch_event_rule" {
+    defaults = {
+      arn = "arn:aws:events:eu-west-1:123456789012:rule/scale-runners-test"
+    }
+  }
+
+}
+
+run "base_inputs" {
+  command = apply
+
+  module {
+    source = "./tests/fixtures/base-inputs"
+  }
 }
 
 variables {
@@ -600,14 +620,14 @@ run "omits_optional_kms_statements" {
   }
 
   variables {
-    config = merge(var.config, {
-      queue = merge(var.config.queue, {
+    config = merge(run.base_inputs.config, {
+      queue = merge(run.base_inputs.config.queue, {
         kms_key_id = null
       })
     })
-    storage_provider = merge(var.storage_provider, {
-      aws = merge(var.storage_provider.aws, {
-        ssm = merge(var.storage_provider.aws.ssm, {
+    storage_provider = merge(run.base_inputs.storage_provider, {
+      aws = merge(run.base_inputs.storage_provider.aws, {
+        ssm = merge(run.base_inputs.storage_provider.aws.ssm, {
           kms_key_id = null
         })
       })
@@ -694,8 +714,8 @@ run "requires_job_retry_queue_when_enabled" {
   }
 
   variables {
-    config = merge(var.config, {
-      job_retry = merge(var.config.job_retry, {
+    config = merge(run.base_inputs.config, {
+      job_retry = merge(run.base_inputs.config.job_retry, {
         enabled = true
         queue   = null
       })

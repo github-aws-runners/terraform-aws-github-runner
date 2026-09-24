@@ -10,6 +10,34 @@ mock_provider "aws" {
       arn = "arn:aws:iam::123456789012:role/webhook-orchestration-test"
     }
   }
+
+  mock_resource "aws_lambda_function" {
+    defaults = {
+      arn = "arn:aws:lambda:eu-west-1:123456789012:function:webhook-orchestration-test"
+    }
+  }
+
+  mock_resource "aws_sqs_queue" {
+    defaults = {
+      arn = "arn:aws:sqs:eu-west-1:123456789012:webhook-orchestration-test"
+      id  = "https://sqs.eu-west-1.amazonaws.com/123456789012/webhook-orchestration-test"
+      url = "https://sqs.eu-west-1.amazonaws.com/123456789012/webhook-orchestration-test"
+    }
+  }
+
+  mock_resource "aws_cloudwatch_event_rule" {
+    defaults = {
+      arn = "arn:aws:events:eu-west-1:123456789012:rule/webhook-orchestration-test"
+    }
+  }
+}
+
+run "base_inputs" {
+  command = apply
+
+  module {
+    source = "./tests/fixtures/base-inputs"
+  }
 }
 
 variables {
@@ -305,9 +333,9 @@ run "rejects_conflicting_artifact_sources" {
   }
 
   variables {
-    config = merge(var.config, {
-      lambda = merge(var.config.lambda, {
-        artifact = merge(var.config.lambda.artifact, {
+    config = merge(run.base_inputs.config, {
+      lambda = merge(run.base_inputs.config.lambda, {
+        artifact = merge(run.base_inputs.config.lambda.artifact, {
           zip = "runners.zip"
         })
       })

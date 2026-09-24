@@ -10,6 +10,28 @@ mock_provider "aws" {
       arn = "arn:aws:iam::123456789012:role/job-retry-test"
     }
   }
+
+  mock_resource "aws_lambda_function" {
+    defaults = {
+      arn = "arn:aws:lambda:eu-west-1:123456789012:function:job-retry-test"
+    }
+  }
+
+  mock_resource "aws_sqs_queue" {
+    defaults = {
+      arn = "arn:aws:sqs:eu-west-1:123456789012:job-retry-test"
+      id  = "https://sqs.eu-west-1.amazonaws.com/123456789012/job-retry-test"
+      url = "https://sqs.eu-west-1.amazonaws.com/123456789012/job-retry-test"
+    }
+  }
+}
+
+run "base_inputs" {
+  command = apply
+
+  module {
+    source = "./tests/fixtures/base-inputs"
+  }
 }
 
 variables {
@@ -273,9 +295,9 @@ run "omits_xray_policy_when_tracing_is_disabled" {
   command = plan
 
   variables {
-    config = merge(var.config, {
-      observability = merge(var.config.observability, {
-        tracing = merge(var.config.observability.tracing, {
+    config = merge(run.base_inputs.config, {
+      observability = merge(run.base_inputs.config.observability, {
+        tracing = merge(run.base_inputs.config.observability.tracing, {
           mode = null
         })
       })
@@ -339,9 +361,9 @@ run "does_not_enable_partial_vpc_configuration" {
   command = plan
 
   variables {
-    storage_provider = merge(var.storage_provider, {
-      aws = merge(var.storage_provider.aws, {
-        ssm = merge(var.storage_provider.aws.ssm, {
+    storage_provider = merge(run.base_inputs.storage_provider, {
+      aws = merge(run.base_inputs.storage_provider.aws, {
+        ssm = merge(run.base_inputs.storage_provider.aws.ssm, {
           kms_key_id = null
         })
       })
@@ -493,8 +515,8 @@ run "rejects_unsupported_lambda_architecture" {
   }
 
   variables {
-    config = merge(var.config, {
-      lambda = merge(var.config.lambda, {
+    config = merge(run.base_inputs.config, {
+      lambda = merge(run.base_inputs.config.lambda, {
         architecture = "unsupported"
       })
     })
@@ -511,9 +533,9 @@ run "rejects_unsupported_log_level" {
   }
 
   variables {
-    config = merge(var.config, {
-      observability = merge(var.config.observability, {
-        logs = merge(var.config.observability.logs, {
+    config = merge(run.base_inputs.config, {
+      observability = merge(run.base_inputs.config.observability, {
+        logs = merge(run.base_inputs.config.observability.logs, {
           level = "verbose"
         })
       })
@@ -531,7 +553,7 @@ run "rejects_resource_prefix_longer_than_aws_limit" {
   }
 
   variables {
-    config = merge(var.config, {
+    config = merge(run.base_inputs.config, {
       prefix = "1234567890123456789012345678901234567890123456789012345"
     })
   }
