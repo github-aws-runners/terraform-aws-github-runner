@@ -129,7 +129,7 @@ resource "aws_iam_role_policy" "dispatcher_kms" {
   role = aws_iam_role.dispatcher_lambda.name
 
   policy = templatefile("${path.module}/../policies/lambda-kms.json", {
-    kms_key_arn = "arn:${var.config.aws_partition}:kms:::CMK_NOT_IN_USE"
+    kms_key_arn = var.config.storage_provider.aws.ssm.kms_key_id != null ? var.config.storage_provider.aws.ssm.kms_key_id : "arn:${var.config.aws_partition}:kms:::CMK_NOT_IN_USE"
   })
 }
 

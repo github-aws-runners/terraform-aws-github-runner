@@ -246,6 +246,7 @@ variable "storage_provider" {
           root    = string
           webhook = string
         })
+        kms_key_id = optional(string, null)
       }), null)
     })
     direct = object({

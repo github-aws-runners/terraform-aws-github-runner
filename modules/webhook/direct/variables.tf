@@ -30,7 +30,9 @@ variable "config" {
     queue_selection_strategy = optional(string, "first")
     storage_provider = optional(object({
       aws = optional(object({
-        ssm = optional(object({}), null)
+        ssm = optional(object({
+          kms_key_id = optional(string, null)
+        }), null)
       }), {})
       environment_variables = map(string)
       iam_policy_json       = optional(string, null)
