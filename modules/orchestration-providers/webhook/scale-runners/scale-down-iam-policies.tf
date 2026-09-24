@@ -2,6 +2,7 @@
 data "aws_iam_policy_document" "scale_down" {
   source_policy_documents = compact([
     data.aws_iam_policy_document.ssm_scale_down_common.json,
+    var.runner_provider.scale_down.iam_policy_json,
   ])
 }
 

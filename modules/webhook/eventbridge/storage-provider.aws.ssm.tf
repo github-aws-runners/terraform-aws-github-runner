@@ -4,7 +4,10 @@ resource "aws_iam_role_policy" "webhook_ssm" {
 
   policy = var.config.storage_provider.aws.ssm != null ? templatefile("${path.module}/../policies/lambda-ssm.json", {
     resource_arns = jsonencode([var.config.github_app_parameters.webhook_secret.arn])
-  }) : var.config.storage_provider.webhook.iam_policy_json
+    }) : jsonencode({
+    Version   = "2012-10-17"
+    Statement = []
+  })
 }
 
 resource "aws_iam_role_policy" "webhook_kms" {
@@ -39,7 +42,10 @@ resource "aws_iam_role_policy" "dispatcher_ssm" {
         [for p in var.config.ssm_parameter_runner_matcher_config : p.arn]
       )
     )
-  }) : var.config.storage_provider.dispatcher.iam_policy_json
+    }) : jsonencode({
+    Version   = "2012-10-17"
+    Statement = []
+  })
 }
 
 moved {

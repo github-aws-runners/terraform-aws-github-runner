@@ -23,10 +23,20 @@ locals {
 }
 
 module "webhook" {
-  source           = "../webhook"
-  prefix           = var.prefix
-  tags             = local.tags
-  storage_provider = local.effective_config.storage_provider
+  source = "../webhook"
+  prefix = var.prefix
+  tags   = local.tags
+  storage_provider = {
+    aws = {
+      ssm = try(local.effective_config.storage_provider.aws.ssm, null) == null ? null : {
+        kms_key_id = try(local.effective_config.storage_provider.aws.ssm.kms_key_id, null)
+        paths = {
+          root    = local.ssm_root_path
+          webhook = try(local.effective_config.storage_provider.aws.ssm.paths.webhook, "webhook")
+        }
+      }
+    }
+  }
   eventbridge = {
     enable        = local.effective_config.orchestration_provider.webhook.eventbridge.enabled
     accept_events = local.effective_config.orchestration_provider.webhook.eventbridge.accept_events

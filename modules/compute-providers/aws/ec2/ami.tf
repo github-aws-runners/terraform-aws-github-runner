@@ -9,9 +9,9 @@ locals {
   ami_kms_key_enabled       = local.ami_config.kms_key != null
   ami_kms_key_arn           = local.ami_kms_key_enabled ? local.ami_config.kms_key.arn : null
   ami_filter                = merge(local.default_ami[var.runner.os], local.ami_config.filter)
-  ami_id_ssm_external       = local.ami_config.ssm_parameter != null && local.ami_config.ssm_parameter.path == null
-  ami_id_ssm_module_managed = local.ami_config.ssm_parameter != null && local.ami_config.ssm_parameter.path != null
-  ami_id_ssm_parameter_arn  = local.ami_id_ssm_external ? local.ami_config.ssm_parameter.arn : null
+  ami_id_ssm_external       = try(local.ami_config.ssm_parameter.path == null, false)
+  ami_id_ssm_module_managed = try(local.ami_config.ssm_parameter.path != null, false)
+  ami_id_ssm_parameter_arn  = local.ami_id_ssm_external ? try(local.ami_config.ssm_parameter.arn, null) : null
   # Extract parameter name from ARN (format: arn:aws:ssm:region:account:parameter/path/to/param)
   ami_id_ssm_parameter_name = local.ami_id_ssm_external ? try(regex("parameter(/.+)$", local.ami_id_ssm_parameter_arn)[0], null) : null
 

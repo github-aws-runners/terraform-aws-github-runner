@@ -460,6 +460,63 @@ run "v2_inputs_do_not_require_legacy_arguments" {
   }
 }
 
+run "v2_inputs_allow_null_ssm_storage_provider" {
+  command = plan
+
+  variables {
+    experimental_features = ["multi-runner-v2"]
+
+    global_config_storage_provider = {
+      aws = {
+        ssm = null
+      }
+    }
+
+    global_config_compute_provider = {
+      aws = {
+        ec2 = {
+          vpc_id     = "vpc-v2"
+          subnet_ids = ["subnet-v2"]
+          runner_binaries = {
+            enabled = false
+          }
+        }
+      }
+    }
+
+    multi_runner_config = {
+      lane = {
+        orchestration_provider = {
+          webhook = {
+            matcherConfig = {
+              labelMatchers = [["self-hosted", "linux", "x64"]]
+            }
+          }
+        }
+        compute_provider = {
+          aws = {
+            ec2 = {
+              instance_types = ["m5.large"]
+              binaries_syncer = {
+                enabled = false
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      local.use_v2_config
+      && local.effective_config.storage_provider.aws.ssm == null
+      && keys(module.runner_configs) == ["lane"]
+    )
+    error_message = "The v2 configuration must plan successfully when SSM is not selected as the storage provider."
+  }
+}
+
 run "v2_inputs_require_experimental_feature" {
   command = plan
 

@@ -20,7 +20,10 @@ resource "aws_iam_role_policy" "webhook_ssm" {
         [for p in var.config.ssm_parameter_runner_matcher_config : p.arn]
       )
     )
-  }) : var.config.storage_provider.iam_policy_json
+    }) : jsonencode({
+    Version   = "2012-10-17"
+    Statement = []
+  })
 }
 
 moved {
