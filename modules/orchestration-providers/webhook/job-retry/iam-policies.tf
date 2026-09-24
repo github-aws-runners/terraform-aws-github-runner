@@ -79,4 +79,19 @@ data "aws_iam_policy_document" "job_retry" {
 
     resources = [var.config.queue.build.arn]
   }
+
+  dynamic "statement" {
+    for_each = var.config.queue.kms_key_id == null ? [] : [var.config.queue.kms_key_id]
+    iterator = kms_key
+
+    content {
+      sid    = "WebhookJobRetryEncryptBuildQueueMessage"
+      effect = "Allow"
+      actions = [
+        "kms:Decrypt",
+        "kms:GenerateDataKey",
+      ]
+      resources = [kms_key.value]
+    }
+  }
 }

@@ -417,6 +417,14 @@ run "network_interfaces_default_matches_associate_public_ipv4_address" {
 
   variables {
     config = {
+      ami = {
+        filter = { state = ["available"] }
+        owners = ["amazon"]
+        ssm_parameter = {
+          arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/ami-id"
+        }
+        kms_key = null
+      }
       vpc_id                         = "vpc-12345678"
       subnet_ids                     = ["subnet-12345678"]
       instance_types                 = ["m5.large"]
@@ -442,6 +450,14 @@ run "network_interfaces_accepts_explicit_configuration" {
 
   variables {
     config = {
+      ami = {
+        filter = { state = ["available"] }
+        owners = ["amazon"]
+        ssm_parameter = {
+          arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/ami-id"
+        }
+        kms_key = null
+      }
       vpc_id         = "vpc-12345678"
       subnet_ids     = ["subnet-12345678"]
       instance_types = ["m5.large"]
@@ -479,6 +495,14 @@ run "rejects_external_instance_profile_with_managed_role" {
 
   variables {
     config = {
+            ami = {
+        filter = { state = ["available"] }
+        owners = ["amazon"]
+        ssm_parameter = {
+          arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/ami-id"
+        }
+        kms_key = null
+      }
       vpc_id         = "vpc-12345678"
       subnet_ids     = ["subnet-12345678"]
       instance_types = ["m5.large"]
@@ -509,6 +533,14 @@ run "requires_distribution_object_when_sync_is_enabled" {
 
   variables {
     config = {
+            ami = {
+        filter = { state = ["available"] }
+        owners = ["amazon"]
+        ssm_parameter = {
+          arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/ami-id"
+        }
+        kms_key = null
+      }
       vpc_id         = "vpc-12345678"
       subnet_ids     = ["subnet-12345678"]
       instance_types = ["m5.large"]

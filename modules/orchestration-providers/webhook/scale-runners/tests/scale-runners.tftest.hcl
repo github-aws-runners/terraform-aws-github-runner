@@ -10,6 +10,7 @@ mock_provider "aws" {
       arn = "arn:aws:iam::123456789012:role/scale-runners-test"
     }
   }
+
 }
 
 variables {
@@ -213,6 +214,92 @@ variables {
 run "assembles_provider_neutral_scaling_control_plane" {
   command = plan
 
+  override_data {
+    target = data.aws_iam_policy_document.lambda_assume_role
+
+    values = {
+      json = jsonencode({
+        Version   = "2012-10-17"
+        Statement = []
+      })
+    }
+  }
+
+  override_data {
+    target = data.aws_iam_policy_document.ssm_scale_up_common
+
+    values = {
+      json = jsonencode({
+        Version = "2012-10-17"
+        Statement = [
+          {
+            Sid    = "WebhookScaleUpWriteRuntimeParameters"
+            Effect = "Allow"
+            Action = ["ssm:PutParameter", "ssm:AddTagsToResource"]
+            Resource = [
+              "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/tokens",
+              "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/tokens/*",
+              "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/config",
+              "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/config/*",
+            ]
+          },
+          {
+            Sid    = "WebhookScaleUpReadGitHubAppAndRunnerConfigParameters"
+            Effect = "Allow"
+            Action = ["ssm:GetParameter", "ssm:GetParameters"]
+            Resource = [
+              "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/app-id",
+              "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/key-base64",
+              "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/app-id-2",
+              "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/key-base64-2",
+              "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/installation-id-2",
+              "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/additional-apps-manifest",
+              "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/config",
+              "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/config/*",
+            ]
+          },
+          {
+            Sid      = "WebhookScaleUpDecryptParameterStore"
+            Effect   = "Allow"
+            Action   = ["kms:Decrypt"]
+            Resource = ["arn:aws-us-gov:kms:us-gov-west-1:123456789012:key/scale-runners-test"]
+          },
+        ]
+      })
+    }
+  }
+
+  override_data {
+    target = data.aws_iam_policy_document.ssm_scale_down_common
+
+    values = {
+      json = jsonencode({
+        Version = "2012-10-17"
+        Statement = [
+          {
+            Sid    = "WebhookScaleDownReadGitHubAppParameters"
+            Effect = "Allow"
+            Action = ["ssm:GetParameter", "ssm:GetParameters"]
+            Resource = [
+              "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/app-id",
+              "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/key-base64",
+              "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/app-id-2",
+              "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/key-base64-2",
+              "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/installation-id-2",
+              "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/additional-apps-manifest",
+            ]
+          },
+          {
+            Sid      = "WebhookScaleDownDecryptParameterStore"
+            Effect   = "Allow"
+            Action   = ["kms:Decrypt"]
+            Resource = ["arn:aws-us-gov:kms:us-gov-west-1:123456789012:key/scale-runners-test"]
+          },
+        ]
+      })
+    }
+  }
+
   assert {
     condition = (
       length(data.aws_iam_policy_document.lambda_assume_role.statement[0].principals) == 2 &&
@@ -259,10 +346,22 @@ run "assembles_provider_neutral_scaling_control_plane" {
       aws_lambda_function.scale_up.environment[0].variables["PARAMETER_GITHUB_APP_ID_NAME"] == "/github-runner/app-id"
       && aws_lambda_function.scale_down.environment[0].variables["PARAMETER_GITHUB_APP_KEY_BASE64_NAME"] == "/github-runner/key-base64"
       && aws_lambda_function.scale_up.environment[0].variables["PARAMETER_GITHUB_APPS_MANIFEST_NAME"] == "/github-runner/additional-apps-manifest"
-      && contains(data.aws_iam_policy_document.scale_up_common.statement[1].resources, "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/app-id-2")
-      && contains(data.aws_iam_policy_document.scale_down_common.statement[0].resources, "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/key-base64-2")
-      && contains(data.aws_iam_policy_document.scale_down_common.statement[0].resources, "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/installation-id-2")
-      && contains(data.aws_iam_policy_document.scale_up_common.statement[1].resources, "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/additional-apps-manifest")
+      && contains(one([
+        for statement in data.aws_iam_policy_document.ssm_scale_up_common.statement : statement.resources
+        if statement.sid == "WebhookScaleUpReadGitHubAppAndRunnerConfigParameters"
+      ]), "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/app-id-2")
+      && contains(one([
+        for statement in data.aws_iam_policy_document.ssm_scale_down_common.statement : statement.resources
+        if statement.sid == "WebhookScaleDownReadGitHubAppParameters"
+      ]), "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/key-base64-2")
+      && contains(one([
+        for statement in data.aws_iam_policy_document.ssm_scale_down_common.statement : statement.resources
+        if statement.sid == "WebhookScaleDownReadGitHubAppParameters"
+      ]), "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/installation-id-2")
+      && contains(one([
+        for statement in data.aws_iam_policy_document.ssm_scale_up_common.statement : statement.resources
+        if statement.sid == "WebhookScaleUpReadGitHubAppAndRunnerConfigParameters"
+      ]), "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/additional-apps-manifest")
     )
     error_message = "Scale-up and scale-down must receive the new GitHub App parameter format and grant access to every corresponding SSM ARN."
   }
@@ -348,10 +447,10 @@ run "assembles_provider_neutral_scaling_control_plane" {
     condition = (
       length(data.aws_iam_policy_document.scale_up.source_policy_documents) == 2
       && length(data.aws_iam_policy_document.scale_down.source_policy_documents) == 2
-      && length(data.aws_iam_policy_document.scale_up_common.statement) == 5
-      && length(data.aws_iam_policy_document.scale_down_common.statement) == 2
+      && length(data.aws_iam_policy_document.ssm_scale_up_common.statement) == 3
+      && length(data.aws_iam_policy_document.ssm_scale_down_common.statement) == 2
       && one([
-        for statement in data.aws_iam_policy_document.scale_up_common.statement : statement
+        for statement in data.aws_iam_policy_document.ssm_scale_up_common.statement : statement
         if statement.sid == "WebhookScaleUpDecryptParameterStore"
       ]).resources == toset(["arn:aws-us-gov:kms:us-gov-west-1:123456789012:key/scale-runners-test"])
       && one([
@@ -363,7 +462,7 @@ run "assembles_provider_neutral_scaling_control_plane" {
         if statement.sid == "WebhookScaleUpDecryptBuildQueue"
       ]).actions == toset(["kms:Decrypt"])
       && one([
-        for statement in data.aws_iam_policy_document.scale_down_common.statement : statement
+        for statement in data.aws_iam_policy_document.ssm_scale_down_common.statement : statement
         if statement.sid == "WebhookScaleDownDecryptParameterStore"
       ]).resources == toset(["arn:aws-us-gov:kms:us-gov-west-1:123456789012:key/scale-runners-test"])
       && length(data.aws_iam_policy_document.scale_up_job_retry_publish) == 1
@@ -374,7 +473,7 @@ run "assembles_provider_neutral_scaling_control_plane" {
   assert {
     condition = (
       one([
-        for statement in data.aws_iam_policy_document.scale_up_common.statement : statement
+        for statement in data.aws_iam_policy_document.ssm_scale_up_common.statement : statement
         if statement.sid == "WebhookScaleUpWriteRuntimeParameters"
         ]).resources == toset([
         "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/tokens",
@@ -383,7 +482,7 @@ run "assembles_provider_neutral_scaling_control_plane" {
         "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/config/*",
       ])
       && !contains(one([
-        for statement in data.aws_iam_policy_document.scale_up_common.statement : statement
+        for statement in data.aws_iam_policy_document.ssm_scale_up_common.statement : statement
         if statement.sid == "WebhookScaleUpWriteRuntimeParameters"
       ]).resources, "*")
     )
@@ -408,6 +507,67 @@ run "assembles_provider_neutral_scaling_control_plane" {
 run "omits_optional_kms_statements" {
   command = plan
 
+  override_data {
+    target = data.aws_iam_policy_document.ssm_scale_up_common
+
+    values = {
+      json = jsonencode({
+        Version = "2012-10-17"
+        Statement = [
+          {
+            Sid    = "WebhookScaleUpWriteRuntimeParameters"
+            Effect = "Allow"
+            Action = ["ssm:PutParameter", "ssm:AddTagsToResource"]
+            Resource = [
+              "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/tokens",
+              "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/tokens/*",
+              "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/config",
+              "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/config/*",
+            ]
+          },
+          {
+            Sid    = "WebhookScaleUpReadGitHubAppAndRunnerConfigParameters"
+            Effect = "Allow"
+            Action = ["ssm:GetParameter", "ssm:GetParameters"]
+            Resource = [
+              "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/app-id",
+              "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/key-base64",
+              "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/app-id-2",
+              "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/key-base64-2",
+              "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/installation-id-2",
+              "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/additional-apps-manifest",
+              "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/config",
+              "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/config/*",
+            ]
+          },
+        ]
+      })
+    }
+  }
+
+  override_data {
+    target = data.aws_iam_policy_document.ssm_scale_down_common
+
+    values = {
+      json = jsonencode({
+        Version = "2012-10-17"
+        Statement = [{
+          Sid    = "WebhookScaleDownReadGitHubAppParameters"
+          Effect = "Allow"
+          Action = ["ssm:GetParameter", "ssm:GetParameters"]
+          Resource = [
+            "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/app-id",
+            "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/key-base64",
+            "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/app-id-2",
+            "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/key-base64-2",
+            "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/installation-id-2",
+            "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/additional-apps-manifest",
+          ]
+        }]
+      })
+    }
+  }
+
   variables {
     config = merge(var.config, {
       queue = merge(var.config.queue, {
@@ -425,18 +585,61 @@ run "omits_optional_kms_statements" {
 
   assert {
     condition = (
-      length(data.aws_iam_policy_document.scale_up_common.statement) == 3
-      && length(data.aws_iam_policy_document.scale_down_common.statement) == 1
+      length(data.aws_iam_policy_document.ssm_scale_up_common.statement) == 2
+      && length(data.aws_iam_policy_document.ssm_scale_down_common.statement) == 1
       && length([
-        for statement in data.aws_iam_policy_document.scale_up_common.statement : statement
+        for statement in data.aws_iam_policy_document.ssm_scale_up_common.statement : statement
         if anytrue([for action in statement.actions : startswith(action, "kms:")])
       ]) == 0
       && length([
-        for statement in data.aws_iam_policy_document.scale_down_common.statement : statement
+        for statement in data.aws_iam_policy_document.ssm_scale_down_common.statement : statement
         if anytrue([for action in statement.actions : startswith(action, "kms:")])
       ]) == 0
     )
     error_message = "Null Parameter Store and build-queue keys must omit every optional scale-runner KMS statement."
+  }
+}
+
+run "does_not_grant_ssm_permissions_when_storage_provider_is_null" {
+  command = plan
+
+  variables {
+    storage_provider = {
+      aws = {
+        ssm = null
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      length([
+        for statement in data.aws_iam_policy_document.ssm_scale_up_common.statement : statement
+        if anytrue([for action in statement.actions : startswith(action, "ssm:")])
+      ]) == 0
+      && length([
+        for statement in data.aws_iam_policy_document.ssm_scale_down_common.statement : statement
+        if anytrue([for action in statement.actions : startswith(action, "ssm:")])
+      ]) == 0
+      && !contains(keys(aws_lambda_function.scale_up.environment[0].variables), "PARAMETER_GITHUB_APP_ID_NAME")
+      && !contains(keys(aws_lambda_function.scale_up.environment[0].variables), "PARAMETER_GITHUB_APP_KEY_BASE64_NAME")
+      && !contains(keys(aws_lambda_function.scale_up.environment[0].variables), "PARAMETER_GITHUB_APPS_MANIFEST_NAME")
+      && !contains(keys(aws_lambda_function.scale_up.environment[0].variables), "SSM_TOKEN_PATH")
+      && !contains(keys(aws_lambda_function.scale_up.environment[0].variables), "SSM_CONFIG_PATH")
+      && !contains(keys(aws_lambda_function.scale_down.environment[0].variables), "PARAMETER_GITHUB_APP_ID_NAME")
+      && !contains(keys(aws_lambda_function.scale_down.environment[0].variables), "PARAMETER_GITHUB_APP_KEY_BASE64_NAME")
+      && !contains(keys(aws_lambda_function.scale_down.environment[0].variables), "PARAMETER_GITHUB_APPS_MANIFEST_NAME")
+      && !contains(keys(aws_lambda_function.scale_down.environment[0].variables), "SSM_TOKEN_PATH")
+      && length([
+        for statement in data.aws_iam_policy_document.scale_up.statement : statement
+        if anytrue([for action in statement.actions : startswith(action, "ssm:")])
+      ]) == 0
+      && length([
+        for statement in data.aws_iam_policy_document.scale_down.statement : statement
+        if anytrue([for action in statement.actions : startswith(action, "ssm:")])
+      ]) == 0
+    )
+    error_message = "A null SSM storage provider must not expose SSM environment variables or permissions."
   }
 }
 

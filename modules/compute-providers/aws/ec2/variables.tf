@@ -125,7 +125,7 @@ variable "config" {
   EOT
 
   type = object({
-    ami = optional(object({
+    ami = object({
       filter = optional(map(list(string)), { state = ["available"] })
       owners = optional(list(string), ["amazon"])
       ssm_parameter = optional(object({
@@ -135,7 +135,7 @@ variable "config" {
       kms_key = optional(object({
         arn = string
       }), null)
-    }), null)
+    })
     vpc_id     = string
     subnet_ids = list(string)
     overrides = optional(object({

@@ -493,6 +493,11 @@ run "external_runner_role_and_profile_remain_external" {
     compute_provider = {
       aws = {
         ec2 = {
+          ami = {
+            ssm_parameter = {
+              path = "/github-runner/provider-test/ami"
+            }
+          }
           vpc_id         = "vpc-12345678"
           subnet_ids     = ["subnet-12345678"]
           instance_types = ["m5.large"]

@@ -119,6 +119,68 @@ variables {
 run "provider_supplies_only_compute_specific_pool_configuration" {
   command = plan
 
+  override_data {
+    target = data.aws_iam_policy_document.lambda_assume_role_policy
+
+    values = {
+      json = jsonencode({
+        Version   = "2012-10-17"
+        Statement = []
+      })
+    }
+  }
+
+  override_data {
+    target = data.aws_iam_policy_document.ssm_pool_common
+
+    values = {
+      json = jsonencode({
+        Version = "2012-10-17"
+        Statement = [
+          {
+            Sid    = "WebhookPoolWriteRuntimeParameters"
+            Effect = "Allow"
+            Action = ["ssm:AddTagsToResource", "ssm:PutParameter"]
+            Resource = [
+              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/tokens",
+              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/tokens/*",
+              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config",
+              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config/*",
+            ]
+          },
+          {
+            Sid    = "WebhookPoolReadRunnerConfigParameters"
+            Effect = "Allow"
+            Action = ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"]
+            Resource = [
+              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config",
+              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config/*",
+            ]
+          },
+          {
+            Sid    = "WebhookPoolReadGitHubAppParameters"
+            Effect = "Allow"
+            Action = ["ssm:GetParameter", "ssm:GetParameters"]
+            Resource = [
+              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id",
+              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64",
+              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id-2",
+              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64-2",
+              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/installation-id-2",
+              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/additional-apps-manifest",
+            ]
+          },
+          {
+            Sid      = "WebhookPoolDecryptParameterStore"
+            Effect   = "Allow"
+            Action   = ["kms:Decrypt"]
+            Resource = ["arn:aws:kms:eu-west-1:123456789012:key/pool-test"]
+          },
+        ]
+      })
+    }
+  }
+
   assert {
     condition = (
       length(data.aws_iam_policy_document.lambda_assume_role_policy.statement[0].principals) == 2 &&
@@ -146,10 +208,22 @@ run "provider_supplies_only_compute_specific_pool_configuration" {
       aws_lambda_function.pool.environment[0].variables["PARAMETER_GITHUB_APP_ID_NAME"] == "/github-runner/app-id"
       && aws_lambda_function.pool.environment[0].variables["PARAMETER_GITHUB_APP_KEY_BASE64_NAME"] == "/github-runner/key-base64"
       && aws_lambda_function.pool.environment[0].variables["PARAMETER_GITHUB_APPS_MANIFEST_NAME"] == "/github-runner/additional-apps-manifest"
-      && contains(data.aws_iam_policy_document.pool_common.statement[2].resources, "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id-2")
-      && contains(data.aws_iam_policy_document.pool_common.statement[2].resources, "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64-2")
-      && contains(data.aws_iam_policy_document.pool_common.statement[2].resources, "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/installation-id-2")
-      && contains(data.aws_iam_policy_document.pool_common.statement[2].resources, "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/additional-apps-manifest")
+      && contains(one([
+        for statement in data.aws_iam_policy_document.ssm_pool_common.statement : statement.resources
+        if statement.sid == "WebhookPoolReadGitHubAppParameters"
+      ]), "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id-2")
+      && contains(one([
+        for statement in data.aws_iam_policy_document.ssm_pool_common.statement : statement.resources
+        if statement.sid == "WebhookPoolReadGitHubAppParameters"
+      ]), "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64-2")
+      && contains(one([
+        for statement in data.aws_iam_policy_document.ssm_pool_common.statement : statement.resources
+        if statement.sid == "WebhookPoolReadGitHubAppParameters"
+      ]), "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/installation-id-2")
+      && contains(one([
+        for statement in data.aws_iam_policy_document.ssm_pool_common.statement : statement.resources
+        if statement.sid == "WebhookPoolReadGitHubAppParameters"
+      ]), "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/additional-apps-manifest")
     )
     error_message = "Pool must receive the new GitHub App parameter format and grant access to every corresponding SSM ARN."
   }
@@ -176,9 +250,9 @@ run "provider_supplies_only_compute_specific_pool_configuration" {
 
   assert {
     condition = (
-      length(data.aws_iam_policy_document.pool_common.statement) == 4
+      length(data.aws_iam_policy_document.ssm_pool_common.statement) == 4
       && one([
-        for statement in data.aws_iam_policy_document.pool_common.statement : statement
+        for statement in data.aws_iam_policy_document.ssm_pool_common.statement : statement
         if statement.sid == "WebhookPoolDecryptParameterStore"
       ]).resources == toset(["arn:aws:kms:eu-west-1:123456789012:key/pool-test"])
     )
@@ -188,7 +262,7 @@ run "provider_supplies_only_compute_specific_pool_configuration" {
   assert {
     condition = (
       one([
-        for statement in data.aws_iam_policy_document.pool_common.statement : statement
+        for statement in data.aws_iam_policy_document.ssm_pool_common.statement : statement
         if statement.sid == "WebhookPoolWriteRuntimeParameters"
         ]).resources == toset([
         "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/tokens",
@@ -197,7 +271,7 @@ run "provider_supplies_only_compute_specific_pool_configuration" {
         "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config/*",
       ])
       && !contains(one([
-        for statement in data.aws_iam_policy_document.pool_common.statement : statement
+        for statement in data.aws_iam_policy_document.ssm_pool_common.statement : statement
         if statement.sid == "WebhookPoolWriteRuntimeParameters"
       ]).resources, "*")
     )
@@ -227,6 +301,51 @@ run "provider_supplies_only_compute_specific_pool_configuration" {
 run "omits_optional_kms_statement" {
   command = plan
 
+  override_data {
+    target = data.aws_iam_policy_document.ssm_pool_common
+
+    values = {
+      json = jsonencode({
+        Version = "2012-10-17"
+        Statement = [
+          {
+            Sid    = "WebhookPoolWriteRuntimeParameters"
+            Effect = "Allow"
+            Action = ["ssm:AddTagsToResource", "ssm:PutParameter"]
+            Resource = [
+              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/tokens",
+              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/tokens/*",
+              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config",
+              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config/*",
+            ]
+          },
+          {
+            Sid    = "WebhookPoolReadRunnerConfigParameters"
+            Effect = "Allow"
+            Action = ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"]
+            Resource = [
+              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config",
+              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config/*",
+            ]
+          },
+          {
+            Sid    = "WebhookPoolReadGitHubAppParameters"
+            Effect = "Allow"
+            Action = ["ssm:GetParameter", "ssm:GetParameters"]
+            Resource = [
+              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id",
+              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64",
+              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id-2",
+              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64-2",
+              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/installation-id-2",
+              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/additional-apps-manifest",
+            ]
+          },
+        ]
+      })
+    }
+  }
+
   variables {
     storage_provider = merge(var.storage_provider, {
       aws = merge(var.storage_provider.aws, {
@@ -239,13 +358,45 @@ run "omits_optional_kms_statement" {
 
   assert {
     condition = (
-      length(data.aws_iam_policy_document.pool_common.statement) == 3
+      length(data.aws_iam_policy_document.ssm_pool_common.statement) == 3
       && length([
-        for statement in data.aws_iam_policy_document.pool_common.statement : statement
+        for statement in data.aws_iam_policy_document.ssm_pool_common.statement : statement
         if anytrue([for action in statement.actions : startswith(action, "kms:")])
       ]) == 0
     )
     error_message = "A null Parameter Store key must omit the optional pool KMS statement."
+  }
+}
+
+run "does_not_grant_ssm_permissions_when_storage_provider_is_null" {
+  command = plan
+
+  variables {
+    storage_provider = {
+      aws = {
+        ssm = null
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      length([
+        for statement in data.aws_iam_policy_document.ssm_pool_common.statement : statement
+        if anytrue([for action in statement.actions : startswith(action, "ssm:")])
+      ]) == 0
+      && !contains(keys(aws_lambda_function.pool.environment[0].variables), "PARAMETER_GITHUB_APP_ID_NAME")
+      && !contains(keys(aws_lambda_function.pool.environment[0].variables), "PARAMETER_GITHUB_APP_KEY_BASE64_NAME")
+      && !contains(keys(aws_lambda_function.pool.environment[0].variables), "PARAMETER_GITHUB_APPS_MANIFEST_NAME")
+      && !contains(keys(aws_lambda_function.pool.environment[0].variables), "SSM_TOKEN_PATH")
+      && !contains(keys(aws_lambda_function.pool.environment[0].variables), "SSM_CONFIG_PATH")
+      && !contains(keys(aws_lambda_function.pool.environment[0].variables), "SSM_PARAMETER_STORE_TAGS")
+      && length([
+        for statement in data.aws_iam_policy_document.pool.statement : statement
+        if anytrue([for action in statement.actions : startswith(action, "ssm:")])
+      ]) == 0
+    )
+    error_message = "A null SSM storage provider must not expose SSM environment variables or permissions."
   }
 }
 

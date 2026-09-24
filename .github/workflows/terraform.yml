@@ -221,6 +221,14 @@ jobs:
           mkdir -p "$HOME/.terraform.d/plugin"
           echo "TF_PLUGIN_CACHE_DIR=$HOME/.terraform.d/plugin" >> "$GITHUB_ENV"
 
+      - name: "Fake zip files" # Validate will fail if it cannot find the zip files
+        run: |
+          touch lambdas/functions/webhook/webhook.zip
+          touch lambdas/functions/control-plane/runners.zip
+          touch lambdas/functions/gh-agent-syncer/runner-binaries-syncer.zip
+          touch lambdas/functions/ami-housekeeper/ami-housekeeper.zip
+          touch lambdas/functions/termination-watcher/termination-watcher.zip
+
       - name: Setup Terraform
         if: matrix.iac.command == 'terraform'
         uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1

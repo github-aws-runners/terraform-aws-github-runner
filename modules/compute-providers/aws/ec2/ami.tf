@@ -1,19 +1,23 @@
 locals {
-  # Handle AMI configuration  
+  # Handle AMI configuration
   ami_config = var.config.ami != null ? var.config.ami : {
     filter        = local.default_ami[var.runner.os]
     owners        = ["amazon"]
     ssm_parameter = null
     kms_key       = null
   }
+
   default_ssm_parameter_path = "/github-action-runners/${var.prefix}/runners/config"
   ami_ssm_parameter_path     = try(local.ami_config.ssm_parameter.path, null) != null ? local.ami_config.ssm_parameter.path : local.default_ssm_parameter_path
   ami_kms_key_enabled        = local.ami_config.kms_key != null
   ami_kms_key_arn            = local.ami_kms_key_enabled ? local.ami_config.kms_key.arn : null
   ami_filter                 = merge(local.default_ami[var.runner.os], local.ami_config.filter)
-  ami_id_ssm_external        = try(local.ami_config.ssm_parameter.arn, null) != null
-  ami_id_ssm_module_managed  = !local.ami_id_ssm_external
-  ami_id_ssm_parameter_arn   = local.ami_id_ssm_external ? local.ami_config.ssm_parameter.arn : null
+
+  # The path is plan-known and distinguishes an external parameter (ARN only)
+  # from a provider-managed parameter (explicit path or omitted configuration).
+  ami_id_ssm_external       = local.ami_config.ssm_parameter != null && try(local.ami_config.ssm_parameter.path, null) == null
+  ami_id_ssm_module_managed = !local.ami_id_ssm_external
+  ami_id_ssm_parameter_arn  = local.ami_id_ssm_external ? local.ami_config.ssm_parameter.arn : null
   # Extract parameter name from ARN (format: arn:aws:ssm:region:account:parameter/path/to/param)
   ami_id_ssm_parameter_name = local.ami_id_ssm_external ? try(regex("parameter(/.+)$", local.ami_id_ssm_parameter_arn)[0], null) : null
 

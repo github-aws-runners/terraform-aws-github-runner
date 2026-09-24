@@ -459,6 +459,21 @@ locals {
         compute_provider = {
           aws = {
             ec2 = v.compute_provider.aws.ec2 == null ? null : merge(v.compute_provider.aws.ec2, {
+              ami = v.compute_provider.aws.ec2.ami == null ? {
+                ssm_parameter = {
+                  path = "/github-action-runners/${var.prefix}/runners/config"
+                }
+                } : merge(
+                v.compute_provider.aws.ec2.ami,
+                {
+                  ssm_parameter = {
+                    path = coalesce(
+                      try(v.compute_provider.aws.ec2.ami.ssm_parameter.path, null),
+                      "/github-action-runners/${var.prefix}/runners/config",
+                    )
+                  }
+                }
+              )
               vpc_id = try(coalesce(
                 v.compute_provider.aws.ec2.vpc_id,
                 local.normalized_config.compute_provider.aws.ec2.vpc_id,
