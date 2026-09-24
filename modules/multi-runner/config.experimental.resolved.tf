@@ -361,11 +361,11 @@ locals {
                   ), null)
                   minimumDaysOld = coalesce(
                     v.storage_provider.aws.ssm.housekeeper.config.minimumDaysOld,
-                    local.normalized_config.storage_provider.aws.ssm.housekeeper.config.minimumDaysOld,
+                    try(local.normalized_config.storage_provider.aws.ssm.housekeeper.config.minimumDaysOld, null),
                   )
                   dryRun = coalesce(
                     v.storage_provider.aws.ssm.housekeeper.config.dryRun,
-                    local.normalized_config.storage_provider.aws.ssm.housekeeper.config.dryRun,
+                    try(local.normalized_config.storage_provider.aws.ssm.housekeeper.config.dryRun, null),
                   )
                 }
               }
