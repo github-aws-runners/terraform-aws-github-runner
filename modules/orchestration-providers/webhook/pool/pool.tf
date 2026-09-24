@@ -37,6 +37,12 @@ locals {
     SSM_CONFIG_PATH                      = var.storage_provider.aws.ssm.config_path
     SSM_PARAMETER_STORE_TAGS             = var.storage_provider.aws.ssm.parameter_store_tags
   } : {}
+
+  environment_variables = merge(
+    var.runner_provider.environment_variables,
+    local.common_environment_variables,
+    local.ssm_environment_variables,
+  )
 }
 
 resource "aws_lambda_function" "pool" {
@@ -57,11 +63,7 @@ resource "aws_lambda_function" "pool" {
   tags                           = merge(var.config.tags, var.config.lambda_tags)
 
   environment {
-    variables = merge(
-      var.runner_provider.environment_variables,
-      local.common_environment_variables,
-      local.ssm_environment_variables,
-    )
+    variables = local.environment_variables
   }
 
   dynamic "vpc_config" {

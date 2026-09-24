@@ -19,12 +19,11 @@ locals {
     RUNNER_BOOT_TIME_IN_MINUTES              = var.config.runner.boot_time_in_minutes
   }
 
-  scale_down_ssm_environment_variables = var.storage_provider.aws.ssm != null ? {
-    PARAMETER_GITHUB_APP_ID_NAME         = var.config.github.app_parameters.id.name
-    PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.config.github.app_parameters.key_base64.name
-    PARAMETER_GITHUB_APPS_MANIFEST_NAME  = var.config.github.app_parameters.additional_apps_manifest != null ? var.config.github.app_parameters.additional_apps_manifest.name : ""
-    SSM_TOKEN_PATH                       = var.storage_provider.aws.ssm.token_path
-  } : {}
+  scale_down_environment_variables = merge(
+    var.runner_provider.scale_down.environment_variables,
+    local.scale_down_common_environment_variables,
+    local.scale_down_ssm_environment_variables,
+  )
 }
 
 resource "aws_lambda_function" "scale_down" {
@@ -43,11 +42,7 @@ resource "aws_lambda_function" "scale_down" {
   architectures     = [var.config.lambda.architecture]
 
   environment {
-    variables = merge(
-      var.runner_provider.scale_down.environment_variables,
-      local.scale_down_common_environment_variables,
-      local.scale_down_ssm_environment_variables,
-    )
+    variables = local.scale_down_environment_variables
   }
 
   dynamic "vpc_config" {

@@ -53,19 +53,7 @@ data "aws_iam_policy_document" "lambda_xray" {
 
 data "aws_iam_policy_document" "job_retry" {
 
-  dynamic "statement" {
-    for_each = var.storage_provider.aws.ssm != null ? [true] : []
-    content {
-      sid     = "WebhookJobRetryReadGitHubAppParameters"
-      effect  = "Allow"
-      actions = ["ssm:GetParameter", "ssm:GetParameters"]
-      resources = concat(
-        [var.config.github.app_parameters.id.arn, var.config.github.app_parameters.key_base64.arn],
-        var.config.github.app_parameters.additional_app_parameter_arns,
-        var.config.github.app_parameters.additional_apps_manifest != null ? [var.config.github.app_parameters.additional_apps_manifest.arn] : [],
-      )
-    }
-  }
+  source_policy_documents = [data.aws_iam_policy_document.ssm_job_retry.json]
 
   statement {
     sid    = "WebhookJobRetryConsumeRetryQueue"
@@ -90,32 +78,5 @@ data "aws_iam_policy_document" "job_retry" {
     ]
 
     resources = [var.config.queue.build.arn]
-  }
-
-  dynamic "statement" {
-    for_each = var.storage_provider.aws.ssm != null && var.storage_provider.aws.ssm.kms_key_id != null ? [var.storage_provider.aws.ssm.kms_key_id] : []
-    iterator = kms_key
-
-    content {
-      sid       = "WebhookJobRetryDecryptParameterStore"
-      effect    = "Allow"
-      actions   = ["kms:Decrypt"]
-      resources = [kms_key.value]
-    }
-  }
-
-  dynamic "statement" {
-    for_each = var.config.queue.kms_key_id == null ? [] : [var.config.queue.kms_key_id]
-    iterator = kms_key
-
-    content {
-      sid    = "WebhookJobRetryEncryptBuildQueueMessage"
-      effect = "Allow"
-      actions = [
-        "kms:Decrypt",
-        "kms:GenerateDataKey",
-      ]
-      resources = [kms_key.value]
-    }
   }
 }

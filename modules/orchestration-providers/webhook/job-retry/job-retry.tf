@@ -29,12 +29,6 @@ locals {
     RUNNER_NAME_PREFIX                  = var.config.runner.name_prefix
   }
 
-  ssm_environment_variables = var.storage_provider.aws.ssm != null ? {
-    PARAMETER_GITHUB_APP_ID_NAME         = var.config.github.app_parameters.id.name
-    PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.config.github.app_parameters.key_base64.name
-    PARAMETER_GITHUB_APPS_MANIFEST_NAME  = var.config.github.app_parameters.additional_apps_manifest != null ? var.config.github.app_parameters.additional_apps_manifest.name : ""
-  } : {}
-
   environment_variables = merge(
     local.lambda_environment_variables,
     var.config.lambda.environment_variables,
