@@ -47,7 +47,6 @@ resource "aws_lambda_function" "scale_down" {
       var.runner_provider.scale_down.environment_variables,
       local.scale_down_common_environment_variables,
       local.scale_down_ssm_environment_variables,
-      var.storage_provider.scale_down.environment_variables,
     )
   }
 

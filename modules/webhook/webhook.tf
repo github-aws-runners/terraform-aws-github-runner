@@ -76,19 +76,15 @@ module "direct" {
     lambda_apigateway_access_log_settings = var.webhook_lambda_apigateway_access_log_settings,
     repository_white_list                 = var.repository_white_list,
     queue_selection_strategy              = var.queue_selection_strategy,
-    storage_provider = {
-      aws                   = var.storage_provider.aws
-      environment_variables = {}
-      iam_policy_json       = null
-    }
-    log_level             = var.log_level,
-    lambda_runtime        = var.lambda_runtime,
-    aws_partition         = var.aws_partition,
-    lambda_architecture   = var.lambda_architecture,
-    github_app_parameters = var.github_app_parameters,
-    tracing_config        = var.tracing_config,
-    lambda_tags           = var.lambda_tags,
-    api_gw_source_arn     = "${aws_apigatewayv2_api.webhook.execution_arn}/*/*/${local.webhook_endpoint}"
+    storage_provider                      = var.storage_provider
+    log_level                             = var.log_level,
+    lambda_runtime                        = var.lambda_runtime,
+    aws_partition                         = var.aws_partition,
+    lambda_architecture                   = var.lambda_architecture,
+    github_app_parameters                 = var.github_app_parameters,
+    tracing_config                        = var.tracing_config,
+    lambda_tags                           = var.lambda_tags,
+    api_gw_source_arn                     = "${aws_apigatewayv2_api.webhook.execution_arn}/*/*/${local.webhook_endpoint}"
     ssm_parameter_runner_matcher_config = [
       for p in aws_ssm_parameter.runner_matcher_config : {
         name    = p.name
@@ -123,25 +119,15 @@ module "eventbridge" {
     lambda_apigateway_access_log_settings = var.webhook_lambda_apigateway_access_log_settings,
     repository_white_list                 = var.repository_white_list,
     queue_selection_strategy              = var.queue_selection_strategy,
-    storage_provider = {
-      aws = var.storage_provider.aws
-      webhook = {
-        environment_variables = {}
-        iam_policy_json       = null
-      }
-      dispatcher = {
-        environment_variables = {}
-        iam_policy_json       = null
-      }
-    }
-    log_level             = var.log_level,
-    lambda_runtime        = var.lambda_runtime,
-    aws_partition         = var.aws_partition,
-    lambda_architecture   = var.lambda_architecture,
-    github_app_parameters = var.github_app_parameters,
-    tracing_config        = var.tracing_config,
-    lambda_tags           = var.lambda_tags,
-    api_gw_source_arn     = "${aws_apigatewayv2_api.webhook.execution_arn}/*/*/${local.webhook_endpoint}"
+    storage_provider                      = var.storage_provider
+    log_level                             = var.log_level,
+    lambda_runtime                        = var.lambda_runtime,
+    aws_partition                         = var.aws_partition,
+    lambda_architecture                   = var.lambda_architecture,
+    github_app_parameters                 = var.github_app_parameters,
+    tracing_config                        = var.tracing_config,
+    lambda_tags                           = var.lambda_tags,
+    api_gw_source_arn                     = "${aws_apigatewayv2_api.webhook.execution_arn}/*/*/${local.webhook_endpoint}"
     ssm_parameter_runner_matcher_config = [
       for p in aws_ssm_parameter.runner_matcher_config : {
         name    = p.name

@@ -57,7 +57,6 @@ resource "aws_lambda_function" "scale_up" {
       var.runner_provider.scale_up.environment_variables,
       local.scale_up_common_environment_variables,
       local.scale_up_ssm_environment_variables,
-      var.storage_provider.scale_up.environment_variables,
     )
   }
 
