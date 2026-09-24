@@ -64,7 +64,8 @@ data "aws_iam_policy_document" "ami_id_ssm" {
     for_each = local.ami_id_ssm_module_managed || local.ami_id_ssm_external ? [1] : []
 
     content {
-      effect    = "Allow"
+      effect = "Allow"
+      # TODO: Validate if "ssm:GetParameters" still needed
       actions   = ["ssm:GetParameter", "ssm:GetParameters"]
       resources = [local.ami_id_ssm_module_managed ? aws_ssm_parameter.runner_ami_id[0].arn : local.ami_id_ssm_parameter_arn]
     }

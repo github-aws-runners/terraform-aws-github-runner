@@ -1,6 +1,8 @@
 # EC2-specific IAM and environment fragments consumed by the common control
 # plane in runner-config.
 data "aws_iam_policy_document" "scale_up" {
+  source_policy_documents = [data.aws_iam_policy_document.ami_id_ssm.json]
+
   statement {
     effect = "Allow"
     actions = [
@@ -78,6 +80,8 @@ data "aws_iam_policy_document" "scale_down" {
 }
 
 data "aws_iam_policy_document" "pool" {
+  source_policy_documents = [data.aws_iam_policy_document.ami_id_ssm.json]
+
   statement {
     effect = "Allow"
     actions = [
@@ -126,8 +130,8 @@ locals {
 
   pool_environment_variables = local.scale_up_environment_variables
 
-  scale_up_iam_policy_json        = merge(data.aws_iam_policy_document.scale_up.json, data.aws_iam_policy_document.ami_id_ssm.json)
+  scale_up_iam_policy_json        = data.aws_iam_policy_document.scale_up.json
   scale_down_iam_policy_json      = data.aws_iam_policy_document.scale_down.json
-  pool_iam_policy_json            = merge(data.aws_iam_policy_document.pool.json, data.aws_iam_policy_document.ami_id_ssm.json)
+  pool_iam_policy_json            = data.aws_iam_policy_document.pool.json
   service_linked_role_policy_json = var.config.create_service_linked_role_spot ? data.aws_iam_policy_document.service_linked_role[0].json : null
 }
