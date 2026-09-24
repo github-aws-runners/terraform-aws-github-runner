@@ -1,8 +1,12 @@
-export const computeProviderTypes = ['ec2'] as const;
+export const computeProvider = {
+  ec2: 'ec2',
+} as const;
+
+export const computeProviderTypes = [computeProvider.ec2] as const;
 
 export type ComputeProviderType = (typeof computeProviderTypes)[number];
 
-export const defaultComputeProvider = 'ec2' satisfies ComputeProviderType;
+export const defaultComputeProvider = computeProvider.ec2 satisfies ComputeProviderType;
 
 export function resolveComputeProviderType(type: unknown): ComputeProviderType {
   if (type === undefined) return defaultComputeProvider;

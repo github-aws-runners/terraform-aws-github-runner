@@ -17,7 +17,7 @@ import {
   TerminateInstancesCommand,
   _InstanceType,
 } from '@aws-sdk/client-ec2';
-import { createChildLogger, tracer } from '@aws-github-runner/aws-powertools-util';
+import { tracer } from '@aws-github-runner/aws-powertools-util';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import moment from 'moment';
 
@@ -25,8 +25,9 @@ import type { RunnerInfo } from '../../../core';
 import { getDefaultBlockDeviceNameFromLaunchTemplate } from './launch-template';
 import type { Ec2RunnerCreateResult, Ec2RunnerFailureCode } from './runner-create-result';
 import type { Ec2ListRunnerFilters, Ec2OverrideConfig, RunnerInputParameters } from './runners.d';
+import { createEc2ComputeProviderLogger } from '../logger';
 
-const logger = createChildLogger('runners');
+const logger = createEc2ComputeProviderLogger('runners');
 
 interface Ec2Filter {
   Name: string;

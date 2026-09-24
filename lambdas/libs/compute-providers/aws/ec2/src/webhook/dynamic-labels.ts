@@ -1,9 +1,9 @@
-import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
+import { createEc2ComputeProviderLogger } from '../../logger';
 
 import type { DynamicLabelProvider, RunnerMatcherConfig } from '../../../../contracts';
 import { violationsAgainstPolicy } from './dynamic-labels-policy';
 
-const logger = createChildLogger('handler');
+const logger = createEc2ComputeProviderLogger('handler');
 
 function resolveEc2DynamicLabelsPolicy(queue: RunnerMatcherConfig) {
   const hasLegacyEc2DynamicLabelsPolicy = Object.prototype.hasOwnProperty.call(
