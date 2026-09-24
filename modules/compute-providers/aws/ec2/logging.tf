@@ -56,7 +56,7 @@ locals {
 
 
 resource "aws_ssm_parameter" "cloudwatch_agent_config_runner" {
-  count = var.config.cloudwatch_agent.enabled ? 1 : 0
+  count = var.storage_provider.aws.ssm != null && var.config.cloudwatch_agent.enabled ? 1 : 0
   name  = "${var.storage_provider.aws.ssm.paths.root}/${var.storage_provider.aws.ssm.paths.config}/cloudwatch_agent_config_runner"
   type  = "String"
   value = var.config.cloudwatch_agent.config != null ? var.config.cloudwatch_agent.config : templatefile("${path.module}/templates/cloudwatch_config.json", {

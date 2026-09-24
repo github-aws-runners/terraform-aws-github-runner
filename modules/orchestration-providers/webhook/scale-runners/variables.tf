@@ -235,14 +235,14 @@ variable "storage_provider" {
   description = "Resolved storage-provider configuration and capabilities for scale-up and scale-down."
   type = object({
     aws = object({
-      ssm = object({
+      ssm = optional(object({
         token_path           = string
         token_path_arn       = string
         config_path          = string
         config_path_arn      = string
         parameter_store_tags = string
         kms_key_id           = optional(string, null)
-      })
+      }), null)
     })
     scale_up = optional(object({
       environment_variables = map(string)
@@ -260,4 +260,5 @@ variable "storage_provider" {
     })
   })
   nullable = false
+
 }

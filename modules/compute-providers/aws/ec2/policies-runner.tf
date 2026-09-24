@@ -4,7 +4,8 @@ data "aws_caller_identity" "current" {}
 
 locals {
   ssm_parameter_arn_prefix = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter"
-  ssm_config_arn           = "${local.ssm_parameter_arn_prefix}${var.storage_provider.aws.ssm.paths.root}/${var.storage_provider.aws.ssm.paths.config}"
+  ec2_instance_arn_prefix  = "arn:${var.aws_partition}:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:instance/"
+  ssm_config_arn           = "${local.ssm_parameter_arn_prefix}${local.ssm_config_path}"
   cloudwatch_config_arn    = "${local.ssm_config_arn}/cloudwatch_agent_config_runner"
 }
 
@@ -17,7 +18,7 @@ data "aws_iam_policy_document" "ssm_parameters" {
       "ssm:GetParameter",
     ]
     resources = [
-      "${local.ssm_parameter_arn_prefix}${var.storage_provider.aws.ssm.paths.root}/${var.storage_provider.aws.ssm.paths.tokens}/*",
+      "${local.ssm_parameter_arn_prefix}${local.ssm_root_path}/${var.storage_provider.aws.ssm.paths.tokens}/*",
     ]
 
     condition {

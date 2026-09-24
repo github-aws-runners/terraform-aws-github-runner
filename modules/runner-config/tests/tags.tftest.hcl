@@ -21,7 +21,7 @@ mock_provider "aws" {
 # The runner archive is injected during packaging, so model the common
 # housekeeper output while testing parent-level tag composition from source.
 override_module {
-  target = module.ssm_housekeeper
+  target = module.runner_config_housekeeper
 }
 
 variables {
@@ -255,7 +255,7 @@ run "layered_component_tags" {
   }
 
   assert {
-    condition = aws_ssm_parameter.runner_agent_mode.tags == tomap({
+    condition = aws_ssm_parameter.runner_agent_mode[0].tags == tomap({
       Name                  = "github-actions-action-runner"
       "ghr:ssm_config_path" = "/github-runner/config"
       precedence            = "ssm-parameter"

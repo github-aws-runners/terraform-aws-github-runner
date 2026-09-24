@@ -238,15 +238,28 @@ variable "matcher_config_parameter_store_tier" {
 }
 
 variable "storage_provider" {
-  description = "Storage-provider configuration used by the webhook resources."
+  description = "Resolved storage-provider marker and provider-owned webhook capabilities."
   type = object({
     aws = object({
-      kms_key_id = optional(string, null)
-      ssm = object({
+      ssm = optional(object({
         paths = object({
           root    = string
           webhook = string
         })
+      }), null)
+    })
+    direct = object({
+      environment_variables = map(string)
+      iam_policy_json       = optional(string, null)
+    })
+    eventbridge = object({
+      webhook = object({
+        environment_variables = map(string)
+        iam_policy_json       = optional(string, null)
+      })
+      dispatcher = object({
+        environment_variables = map(string)
+        iam_policy_json       = optional(string, null)
       })
     })
   })

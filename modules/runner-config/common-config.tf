@@ -4,9 +4,9 @@ locals {
     {
       "Name" = format("%s-action-runner", var.prefix)
     },
-    {
-      "ghr:ssm_config_path" = "${var.storage_provider.aws.ssm.paths.root}/${var.storage_provider.aws.ssm.paths.config}"
-    },
+    var.storage_provider.aws.ssm != null ? {
+      "ghr:ssm_config_path" = local.ssm_config_path
+    } : {},
     var.tags,
   )
 
@@ -14,40 +14,7 @@ locals {
   lambda_tags            = merge(local.common_tags, var.lambda.tags)
   observability_log_tags = merge(local.common_tags, var.observability.logs.tags)
 
-  ssm_tags                    = merge(local.common_tags, var.storage_provider.aws.ssm.tags)
-  ssm_parameter_tags          = merge(local.ssm_tags, var.storage_provider.aws.ssm.parameters.tags)
-  ssm_housekeeper_tags        = merge(local.ssm_tags, var.storage_provider.aws.ssm.housekeeper.tags)
-  ssm_housekeeper_lambda_tags = merge(local.lambda_tags, var.storage_provider.aws.ssm.tags, var.storage_provider.aws.ssm.housekeeper.tags)
-  ssm_housekeeper_log_tags    = merge(local.observability_log_tags, var.storage_provider.aws.ssm.tags, var.storage_provider.aws.ssm.housekeeper.tags)
-
   lambda_role_path            = var.lambda.role.path == null ? "/${var.prefix}/" : var.lambda.role.path
   runner_role_path            = var.runner.iam.path == null ? "/${var.prefix}/" : var.runner.iam.path
   packaged_runners_lambda_zip = "${path.module}/../../lambdas/functions/control-plane/runners.zip"
-  ssm_housekeeper_artifact_s3_selected = (
-    var.storage_provider.aws.ssm.housekeeper.lambda.artifact.s3 != null
-  )
-  ssm_housekeeper_artifact = {
-    zip = local.ssm_housekeeper_artifact_s3_selected ? null : coalesce(
-      var.storage_provider.aws.ssm.housekeeper.lambda.artifact.zip,
-      local.packaged_runners_lambda_zip,
-    )
-    s3 = {
-      bucket         = local.ssm_housekeeper_artifact_s3_selected ? var.lambda.artifact.s3.bucket : null
-      key            = try(var.storage_provider.aws.ssm.housekeeper.lambda.artifact.s3.key, null)
-      object_version = try(var.storage_provider.aws.ssm.housekeeper.lambda.artifact.s3.object_version, null)
-    }
-  }
-  kms_key_id                     = var.storage_provider.aws.ssm.kms_key_id
-  token_path                     = "${var.storage_provider.aws.ssm.paths.root}/${var.storage_provider.aws.ssm.paths.tokens}"
-  arn_ssm_parameters_path_tokens = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.storage_provider.aws.ssm.paths.root}/${var.storage_provider.aws.ssm.paths.tokens}"
-  arn_ssm_parameters_path_config = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.storage_provider.aws.ssm.paths.root}/${var.storage_provider.aws.ssm.paths.config}"
-
-  parameter_store_tags = jsonencode([
-    for key, value in local.ssm_parameter_tags : {
-      Key   = key
-      Value = value
-    }
-  ])
 }
-
-data "aws_caller_identity" "current" {}

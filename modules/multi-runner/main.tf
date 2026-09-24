@@ -16,7 +16,7 @@ locals {
     additional_app_parameter_arns = flatten([
       for p in module.ssm.additional_app_parameters : concat(
         [p.id.arn, p.key_base64.arn],
-        p.installation_id != null ? [p.installation_id.arn] : []
+        p.installation_id != null ? [p.installation_id.arn] : [],
       )
     ])
   }

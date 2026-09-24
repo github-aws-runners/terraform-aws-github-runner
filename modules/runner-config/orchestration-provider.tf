@@ -41,7 +41,7 @@ module "orchestration_webhook" {
   }
   storage_provider = {
     aws = {
-      ssm = {
+      ssm = var.storage_provider.aws.ssm == null ? null : {
         token_path           = local.token_path
         token_path_arn       = local.arn_ssm_parameters_path_tokens
         config_path          = "${var.storage_provider.aws.ssm.paths.root}/${var.storage_provider.aws.ssm.paths.config}"
@@ -50,6 +50,10 @@ module "orchestration_webhook" {
         parameter_store_tags = local.parameter_store_tags
       }
     }
+    scale_up   = var.storage_provider.scale_up
+    scale_down = var.storage_provider.scale_down
+    pool       = var.storage_provider.pool
+    job_retry  = var.storage_provider.job_retry
   }
   observability = var.observability
 

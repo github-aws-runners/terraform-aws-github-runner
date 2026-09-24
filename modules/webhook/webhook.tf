@@ -43,7 +43,7 @@ locals {
 }
 
 resource "aws_ssm_parameter" "runner_matcher_config" {
-  count = local.total_chunks
+  count = var.storage_provider.aws.ssm != null ? local.total_chunks : 0
 
   name  = "${var.storage_provider.aws.ssm.paths.root}/${var.storage_provider.aws.ssm.paths.webhook}/runner-matcher-config${local.total_chunks > 1 ? "-${count.index}" : ""}"
   type  = "String"
@@ -76,13 +76,9 @@ module "direct" {
     lambda_apigateway_access_log_settings = var.webhook_lambda_apigateway_access_log_settings,
     repository_white_list                 = var.repository_white_list,
     queue_selection_strategy              = var.queue_selection_strategy,
-    storage_provider = {
-      aws = {
-        ssm = {
-          kms_key_id = var.storage_provider.aws.kms_key_id
-        }
-      }
-    }
+    storage_provider = merge(var.storage_provider.direct, {
+      aws = var.storage_provider.aws
+    })
     log_level             = var.log_level,
     lambda_runtime        = var.lambda_runtime,
     aws_partition         = var.aws_partition,
@@ -125,13 +121,9 @@ module "eventbridge" {
     lambda_apigateway_access_log_settings = var.webhook_lambda_apigateway_access_log_settings,
     repository_white_list                 = var.repository_white_list,
     queue_selection_strategy              = var.queue_selection_strategy,
-    storage_provider = {
-      aws = {
-        ssm = {
-          kms_key_id = var.storage_provider.aws.kms_key_id
-        }
-      }
-    }
+    storage_provider = merge(var.storage_provider.eventbridge, {
+      aws = var.storage_provider.aws
+    })
     log_level             = var.log_level,
     lambda_runtime        = var.lambda_runtime,
     aws_partition         = var.aws_partition,

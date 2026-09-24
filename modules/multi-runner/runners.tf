@@ -121,7 +121,7 @@ module "runners" {
   iam_overrides = {
     override_instance_profile = each.value.compute_provider.aws.ec2.instance_profile != null
     instance_profile_name     = try(each.value.compute_provider.aws.ec2.instance_profile.name, null)
-    override_runner_role      = each.value.runner.iam.role != null
+    override_runner_role      = try(each.value.runner.iam.role.arn, null) != null
     runner_role_arn           = try(each.value.runner.iam.role.arn, null)
   }
 

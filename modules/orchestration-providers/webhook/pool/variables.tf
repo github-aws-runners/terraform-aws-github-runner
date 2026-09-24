@@ -135,19 +135,20 @@ variable "storage_provider" {
   description = "Resolved storage-provider configuration and capability used by the pool Lambda."
   type = object({
     aws = object({
-      ssm = object({
+      ssm = optional(object({
         token_path           = string
         token_path_arn       = string
         config_path          = string
         config_path_arn      = string
         kms_key_id           = optional(string, null)
         parameter_store_tags = string
-      })
+      }), null)
     })
     environment_variables = optional(map(string), {})
     iam_policy_json       = optional(string, null)
   })
   nullable = false
+
 }
 
 variable "aws_partition" {

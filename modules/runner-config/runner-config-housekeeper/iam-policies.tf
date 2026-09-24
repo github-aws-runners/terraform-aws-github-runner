@@ -35,24 +35,28 @@ data "aws_iam_policy_document" "lambda_xray" {
   }
 }
 
-data "aws_iam_policy_document" "ssm_housekeeper" {
-  statement {
-    effect = "Allow"
-    actions = [
-      "ssm:DeleteParameter",
-      "ssm:GetParametersByPath",
-    ]
-    resources = [var.config.cleanup.parameter_path_arn]
+data "aws_iam_policy_document" "housekeeper" {
+  dynamic "statement" {
+    for_each = var.storage_provider.aws.ssm != null ? [true] : []
+
+    content {
+      effect = "Allow"
+      actions = [
+        "ssm:DeleteParameter",
+        "ssm:GetParametersByPath",
+      ]
+      resources = [var.storage_provider.aws.ssm.cleanup.parameter_path_arn]
+    }
   }
 }
 
-data "aws_iam_policy_document" "ssm_housekeeper_logging" {
+data "aws_iam_policy_document" "housekeeper_logging" {
   statement {
     effect = "Allow"
     actions = [
       "logs:CreateLogStream",
       "logs:PutLogEvents",
     ]
-    resources = ["${aws_cloudwatch_log_group.ssm_housekeeper.arn}*"]
+    resources = ["${aws_cloudwatch_log_group.housekeeper.arn}*"]
   }
 }

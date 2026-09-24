@@ -61,7 +61,7 @@ variable "global_config_storage_provider" {
             dryRun         = optional(bool, false)
           }), {})
         }), {})
-      }), {})
+      }), null)
     }), {})
   })
   default = {}

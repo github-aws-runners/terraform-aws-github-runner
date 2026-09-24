@@ -223,14 +223,14 @@ variable "storage_provider" {
   EOT
   type = object({
     aws = object({
-      ssm = object({
+      ssm = optional(object({
         token_path           = string
         token_path_arn       = string
         config_path          = string
         config_path_arn      = string
         kms_key_id           = optional(string, null)
         parameter_store_tags = string
-      })
+      }), null)
     })
     scale_up = optional(object({
       environment_variables = map(string)

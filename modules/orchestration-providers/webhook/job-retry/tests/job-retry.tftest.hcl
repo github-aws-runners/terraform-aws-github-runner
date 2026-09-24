@@ -230,6 +230,14 @@ run "does_not_enable_partial_vpc_configuration" {
   command = plan
 
   variables {
+    storage_provider = merge(var.storage_provider, {
+      aws = merge(var.storage_provider.aws, {
+        ssm = merge(var.storage_provider.aws.ssm, {
+          kms_key_id = null
+        })
+      })
+    })
+
     config = {
       prefix        = "job-retry-test"
       aws_partition = "aws"

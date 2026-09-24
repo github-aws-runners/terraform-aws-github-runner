@@ -16,11 +16,11 @@ run "computed_external_values_keep_plan_shape_known" {
   # The packaged runner archive is added by the release build, so the computed
   # IAM fixture isolates the two common housekeeper children in a source checkout.
   override_module {
-    target = module.external_iam.module.ssm_housekeeper
+    target = module.external_iam.module.runner_config_housekeeper
   }
 
   override_module {
-    target = module.generated_policy.module.ssm_housekeeper
+    target = module.generated_policy.module.runner_config_housekeeper
   }
 
   assert {

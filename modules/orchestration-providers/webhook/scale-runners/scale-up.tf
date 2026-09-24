@@ -1,3 +1,41 @@
+locals {
+  scale_up_common_environment_variables = {
+    DISABLE_RUNNER_AUTOUPDATE                = var.config.runner.auto_update_disabled
+    ENABLE_EPHEMERAL_RUNNERS                 = var.config.runner.ephemeral
+    ENABLE_JIT_CONFIG                        = var.config.runner.jit_config_enabled
+    ENABLE_JOB_QUEUED_CHECK                  = var.config.scale_up.job_queued_check_enabled
+    ENABLE_METRIC_GITHUB_APP_RATE_LIMIT      = var.config.observability.metrics.enabled && var.config.observability.metrics.metric.github_app_rate_limit.enabled
+    ENABLE_ORGANIZATION_RUNNERS              = var.config.github.organization_runners
+    ENVIRONMENT                              = var.config.prefix
+    GHES_URL                                 = var.config.github.enterprise_server.url
+    USER_AGENT                               = var.config.github.user_agent
+    LOG_LEVEL                                = upper(var.config.observability.logs.level)
+    MINIMUM_RUNNING_TIME_IN_MINUTES          = coalesce(var.config.scale_down.minimum_running_time_in_minutes, local.min_runtime_defaults[var.config.runner.os])
+    NODE_TLS_REJECT_UNAUTHORIZED             = var.config.github.enterprise_server.url != null && !var.config.github.enterprise_server.ssl_verify ? 0 : 1
+    POWERTOOLS_LOGGER_LOG_EVENT              = var.config.observability.logs.level == "debug" ? "true" : "false"
+    POWERTOOLS_METRICS_NAMESPACE             = var.config.observability.metrics.namespace
+    POWERTOOLS_TRACE_ENABLED                 = var.config.observability.tracing.mode != null
+    POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.config.observability.tracing.capture_http_requests
+    POWERTOOLS_TRACER_CAPTURE_ERROR          = var.config.observability.tracing.capture_error
+    RUNNER_LABELS                            = lower(join(",", var.config.runner.labels))
+    RUNNER_GROUP_NAME                        = var.config.runner.group_name
+    RUNNER_NAME_PREFIX                       = var.config.runner.name_prefix
+    COMPUTE_PROVIDER_TYPE                    = var.runner_provider.type
+    RUNNERS_MAXIMUM_COUNT                    = var.config.runner.maximum_count
+    POWERTOOLS_SERVICE_NAME                  = "${var.config.prefix}-scale-up"
+    JOB_RETRY_CONFIG                         = jsonencode(local.job_retry_config)
+  }
+
+  scale_up_ssm_environment_variables = var.storage_provider.aws.ssm != null ? {
+    PARAMETER_GITHUB_APP_ID_NAME         = var.config.github.app_parameters.id.name
+    PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.config.github.app_parameters.key_base64.name
+    PARAMETER_GITHUB_APPS_MANIFEST_NAME  = var.config.github.app_parameters.additional_apps_manifest != null ? var.config.github.app_parameters.additional_apps_manifest.name : ""
+    SSM_TOKEN_PATH                       = var.storage_provider.aws.ssm.token_path
+    SSM_CONFIG_PATH                      = var.storage_provider.aws.ssm.config_path
+    SSM_PARAMETER_STORE_TAGS             = var.storage_provider.aws.ssm.parameter_store_tags
+  } : {}
+}
+
 resource "aws_lambda_function" "scale_up" {
   s3_bucket                      = var.config.lambda.artifact.s3.bucket
   s3_key                         = var.config.lambda.artifact.s3.key
@@ -15,39 +53,12 @@ resource "aws_lambda_function" "scale_up" {
   architectures                  = [var.config.lambda.architecture]
 
   environment {
-    variables = merge(var.runner_provider.scale_up.environment_variables, {
-      DISABLE_RUNNER_AUTOUPDATE                = var.config.runner.auto_update_disabled
-      ENABLE_EPHEMERAL_RUNNERS                 = var.config.runner.ephemeral
-      ENABLE_JIT_CONFIG                        = var.config.runner.jit_config_enabled
-      ENABLE_JOB_QUEUED_CHECK                  = var.config.scale_up.job_queued_check_enabled
-      ENABLE_METRIC_GITHUB_APP_RATE_LIMIT      = var.config.observability.metrics.enabled && var.config.observability.metrics.metric.github_app_rate_limit.enabled
-      ENABLE_ORGANIZATION_RUNNERS              = var.config.github.organization_runners
-      ENVIRONMENT                              = var.config.prefix
-      GHES_URL                                 = var.config.github.enterprise_server.url
-      USER_AGENT                               = var.config.github.user_agent
-      LOG_LEVEL                                = upper(var.config.observability.logs.level)
-      MINIMUM_RUNNING_TIME_IN_MINUTES          = coalesce(var.config.scale_down.minimum_running_time_in_minutes, local.min_runtime_defaults[var.config.runner.os])
-      NODE_TLS_REJECT_UNAUTHORIZED             = var.config.github.enterprise_server.url != null && !var.config.github.enterprise_server.ssl_verify ? 0 : 1
-      POWERTOOLS_LOGGER_LOG_EVENT              = var.config.observability.logs.level == "debug" ? "true" : "false"
-      POWERTOOLS_METRICS_NAMESPACE             = var.config.observability.metrics.namespace
-      POWERTOOLS_TRACE_ENABLED                 = var.config.observability.tracing.mode != null
-      POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.config.observability.tracing.capture_http_requests
-      POWERTOOLS_TRACER_CAPTURE_ERROR          = var.config.observability.tracing.capture_error
-      RUNNER_LABELS                            = lower(join(",", var.config.runner.labels))
-      RUNNER_GROUP_NAME                        = var.config.runner.group_name
-      RUNNER_NAME_PREFIX                       = var.config.runner.name_prefix
-      COMPUTE_PROVIDER_TYPE                    = var.runner_provider.type
-      RUNNERS_MAXIMUM_COUNT                    = var.config.runner.maximum_count
-      POWERTOOLS_SERVICE_NAME                  = "${var.config.prefix}-scale-up"
-      JOB_RETRY_CONFIG                         = jsonencode(local.job_retry_config)
-      }, {
-      PARAMETER_GITHUB_APP_ID_NAME         = var.config.github.app_parameters.id.name
-      PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.config.github.app_parameters.key_base64.name
-      PARAMETER_GITHUB_APPS_MANIFEST_NAME  = var.config.github.app_parameters.additional_apps_manifest != null ? var.config.github.app_parameters.additional_apps_manifest.name : ""
-      SSM_TOKEN_PATH                       = var.storage_provider.aws.ssm.token_path
-      SSM_CONFIG_PATH                      = var.storage_provider.aws.ssm.config_path
-      SSM_PARAMETER_STORE_TAGS             = var.storage_provider.aws.ssm.parameter_store_tags
-    }, var.storage_provider.scale_up.environment_variables)
+    variables = merge(
+      var.runner_provider.scale_up.environment_variables,
+      local.scale_up_common_environment_variables,
+      local.scale_up_ssm_environment_variables,
+      var.storage_provider.scale_up.environment_variables,
+    )
   }
 
   dynamic "vpc_config" {

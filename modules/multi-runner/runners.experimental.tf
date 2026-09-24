@@ -38,7 +38,15 @@ module "runner_configs" {
       job_retry = each.value.orchestration_provider.webhook.job_retry
     }
   }
-  storage_provider = each.value.storage_provider
+  storage_provider = merge(each.value.storage_provider, {
+    aws = {
+      ssm = each.value.storage_provider.aws.ssm
+    }
+    scale_up   = local.storage_provider_capabilities.entries[each.key].scale_up
+    scale_down = local.storage_provider_capabilities.entries[each.key].scale_down
+    pool       = local.storage_provider_capabilities.entries[each.key].pool
+    job_retry  = local.storage_provider_capabilities.entries[each.key].job_retry
+  })
   observability    = each.value.observability
   compute_provider = each.value.compute_provider
 }

@@ -106,11 +106,11 @@ locals {
             ), null)
             managed_policy_arns = try(coalesce(
               v.runner.iam.managed_policy_arns,
-              (v.runner.iam.role != null || local.normalized_config.runner.iam.role != null) ? {} : local.normalized_config.runner.iam.managed_policy_arns,
+              (try(v.runner.iam.role.arn, null) != null || try(local.normalized_config.runner.iam.role.arn, null) != null) ? {} : local.normalized_config.runner.iam.managed_policy_arns,
             ), {})
             additional_trust_policy_json = try(coalesce(
               v.runner.iam.additional_trust_policy_json,
-              (v.runner.iam.role != null || local.normalized_config.runner.iam.role != null) ? null : local.normalized_config.runner.iam.additional_trust_policy_json,
+              (try(v.runner.iam.role.arn, null) != null || try(local.normalized_config.runner.iam.role.arn, null) != null) ? null : local.normalized_config.runner.iam.additional_trust_policy_json,
             ), null)
             path = try(coalesce(
               v.runner.iam.path,

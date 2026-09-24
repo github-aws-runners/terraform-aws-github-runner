@@ -29,12 +29,14 @@ locals {
     var.config.tags,
     {
       "ghr:environment"        = var.prefix
-      "ghr:ssm_config_path"    = "${var.storage_provider.aws.ssm.paths.root}/${var.storage_provider.aws.ssm.paths.config}"
+      "ghr:ssm_config_path"    = local.ssm_config_path
       "ghr:runner_name_prefix" = var.runner.name_prefix
     },
   )
 
   role_path                       = var.runner.iam.path == null ? "/${var.prefix}/" : var.runner.iam.path
+  ssm_root_path                   = var.storage_provider.aws.ssm.paths.root
+  ssm_config_path                 = "${local.ssm_root_path}/${var.storage_provider.aws.ssm.paths.config}"
   instance_profile_path           = var.config.instance_profile_path == null ? "/${var.prefix}/" : var.config.instance_profile_path
   userdata_template               = var.config.user_data.template == null ? local.default_userdata_template[var.runner.os] : var.config.user_data.template
   s3_location_runner_distribution = var.config.binaries_syncer.enabled ? "s3://${try(var.config.binaries_syncer.s3.id, "")}/${try(var.config.binaries_syncer.s3.key, "")}" : ""
@@ -90,7 +92,8 @@ locals {
     hook_job_started   = var.runner.hooks.job_started
     hook_job_completed = var.runner.hooks.job_completed
     start_runner = templatefile(local.userdata_start_runner[var.runner.os], {
-      metadata_tags = var.config.metadata_options != null ? var.config.metadata_options.instance_metadata_tags : "enabled"
+      metadata_tags           = var.config.metadata_options != null ? var.config.metadata_options.instance_metadata_tags : "enabled"
+      enable_cloudwatch_agent = var.config.cloudwatch_agent.enabled
     })
     ghes_url        = var.github.enterprise_server.url
     ghes_ssl_verify = var.github.enterprise_server.ssl_verify
@@ -163,7 +166,7 @@ data "aws_ami" "runner" {
 
 resource "aws_ssm_parameter" "runner_ami_id" {
   count     = local.ami_id_ssm_module_managed ? 1 : 0
-  name      = "${var.storage_provider.aws.ssm.paths.root}/${var.storage_provider.aws.ssm.paths.config}/ami_id"
+  name      = "${local.ssm_config_path}/ami_id"
   type      = "String"
   data_type = "aws:ec2:image"
   value     = data.aws_ami.runner[0].id
