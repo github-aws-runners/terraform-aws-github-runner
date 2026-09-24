@@ -39,8 +39,8 @@ locals {
 
         storage_provider = merge(v.storage_provider, {
           aws = merge(v.storage_provider.aws, {
-            ssm = merge(v.storage_provider.aws.ssm, {
-              kms_key_id = local.normalized_config.storage_provider.aws.ssm.kms_key_id
+            ssm = v.storage_provider.aws.ssm == null ? null : merge(v.storage_provider.aws.ssm, {
+              kms_key_id = try(local.normalized_config.storage_provider.aws.ssm.kms_key_id, null)
             })
           })
         })
