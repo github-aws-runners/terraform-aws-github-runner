@@ -413,12 +413,7 @@ run "does_not_grant_ssm_permissions_when_storage_provider_is_null" {
         for statement in data.aws_iam_policy_document.pool.statement : statement
         if anytrue([for action in statement.actions : startswith(action, "ssm:")])
       ]) == 0
-      && !contains([
-        for statement in jsondecode(data.aws_iam_policy_document.pool_common.source_policy_documents[0]).Statement : statement.Sid
-      ], "WebhookPoolReadGitHubAppParameters")
-      && !contains([
-        for statement in jsondecode(data.aws_iam_policy_document.pool_common.source_policy_documents[0]).Statement : statement.Sid
-      ], "WebhookPoolDecryptParameterStore")
+      && length(regexall("ssm:", data.aws_iam_policy_document.pool_common.source_policy_documents[0])) == 0
     )
     error_message = "A null SSM storage provider must not expose SSM environment variables or permissions."
   }
