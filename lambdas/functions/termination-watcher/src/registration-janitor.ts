@@ -5,11 +5,11 @@ import {
   type RegistrationCleanupProviderConfig,
 } from '@aws-github-runner/compute-providers/registration-cleanup';
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
-import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
+import { createChildLogger, setContext } from '@aws-github-runner/aws-powertools-util';
 import type { Context, SQSEvent, SQSBatchResponse } from 'aws-lambda';
 import type { Octokit } from '@octokit/rest';
 
-import { createRunnerInstallationClient } from './github-app-client';
+import { createRunnerInstallationClient, type InstallationClientCache } from './github-app-client';
 
 const logger = createChildLogger('registration-janitor');
 const confirmationSeconds = 900;
@@ -95,47 +95,83 @@ async function discover(
   config: RegistrationJanitorConfig,
   context: Context,
   provider: RegistrationCleanupProvider,
+  clients: InstallationClientCache,
 ): Promise<void> {
   let candidates = 0;
-  for (const groupId of config.runnerGroupIds) {
-    let failures = 0;
-    for (let page = 1; ; page++) {
-      if (context.getRemainingTimeInMillis() < 10000 || candidates >= config.maxCandidates) return;
-      let runners;
-      try {
-        const client = await createRunnerInstallationClient(config.organization, 'Org', config.ghesApiUrl);
-        runners = await groupPage(client, config, groupId, page);
-        failures = 0;
-      } catch (error) {
-        logger.warn('Skipping unavailable discovery page', { error, groupId, page });
-        // Isolate a broken group while still trying later pages after a transient failure.
-        if (++failures >= 3) break;
-        continue;
-      }
-      for (const runner of runners) {
-        if (context.getRemainingTimeInMillis() < 10000 || candidates >= config.maxCandidates) return;
-        if (runner.status !== 'offline' || runner.busy !== false) continue;
-        try {
-          const resourceId = provider.resourceIdFromRunnerName(runner.name);
-          if (!resourceId) continue;
-          if (await provider.exists(resourceId)) continue;
-          const candidate: Candidate = {
-            runnerId: runner.id,
-            runnerName: runner.name,
-            resourceId,
-            groupId,
-            observedAt: Date.now(),
-            scope: scopeKey(config, provider),
-          };
-          if (config.dryRun) logger.info('Would confirm stale registration', { candidate });
-          else await enqueue(candidate, confirmationSeconds);
-          candidates++;
-        } catch (error) {
-          logger.warn('Skipping unverified candidate', { error, runnerId: runner.id });
-        }
-      }
-      if (runners.length < 100) break;
+  const summary = {
+    pagesScanned: 0,
+    candidatesQueued: 0,
+    dryRunCandidates: 0,
+    existingResources: 0,
+    pageFailures: 0,
+    candidateFailures: 0,
+    stopReason: 'completed',
+  };
+  const shouldStop = () => {
+    if (context.getRemainingTimeInMillis() < 10000) {
+      summary.stopReason = 'deadline';
+      return true;
     }
+    if (candidates >= config.maxCandidates) {
+      summary.stopReason = 'candidate-limit';
+      return true;
+    }
+    return false;
+  };
+  try {
+    for (const groupId of config.runnerGroupIds) {
+      let failures = 0;
+      for (let page = 1; ; page++) {
+        if (shouldStop()) return;
+        let runners;
+        try {
+          const client = await createRunnerInstallationClient(config.organization, 'Org', config.ghesApiUrl, clients);
+          runners = await groupPage(client, config, groupId, page);
+          summary.pagesScanned++;
+          failures = 0;
+        } catch (error) {
+          summary.pageFailures++;
+          logger.warn('Skipping unavailable discovery page', { error, groupId, page });
+          // Isolate a broken group while still trying later pages after a transient failure.
+          if (++failures >= 3) break;
+          continue;
+        }
+        for (const runner of runners) {
+          if (shouldStop()) return;
+          if (runner.status !== 'offline' || runner.busy !== false) continue;
+          try {
+            const resourceId = provider.resourceIdFromRunnerName(runner.name);
+            if (!resourceId) continue;
+            if (await provider.exists(resourceId)) {
+              summary.existingResources++;
+              continue;
+            }
+            const candidate: Candidate = {
+              runnerId: runner.id,
+              runnerName: runner.name,
+              resourceId,
+              groupId,
+              observedAt: Date.now(),
+              scope: scopeKey(config, provider),
+            };
+            if (config.dryRun) {
+              logger.info('Would confirm stale registration', { candidate });
+              summary.dryRunCandidates++;
+            } else {
+              await enqueue(candidate, confirmationSeconds);
+              summary.candidatesQueued++;
+            }
+            candidates++;
+          } catch (error) {
+            summary.candidateFailures++;
+            logger.warn('Skipping unverified candidate', { error, runnerId: runner.id });
+          }
+        }
+        if (runners.length < 100) break;
+      }
+    }
+  } finally {
+    logger.info('Registration discovery finished.', { ...summary, dryRun: config.dryRun });
   }
 }
 
@@ -207,6 +243,8 @@ export async function registrationJanitor(
   event: Partial<SQSEvent>,
   context: Context,
 ): Promise<SQSBatchResponse | void> {
+  setContext(context, 'registration-janitor');
+  const clients: InstallationClientCache = new Map();
   const config = loadConfig();
   const provider = createRegistrationCleanupProvider(config.computeProvider, config.runnerNamePrefix);
   if (event.Records) {
@@ -214,7 +252,7 @@ export async function registrationJanitor(
     for (const record of event.Records) {
       try {
         requireConfirmationTime(context);
-        const client = await createRunnerInstallationClient(config.organization, 'Org', config.ghesApiUrl);
+        const client = await createRunnerInstallationClient(config.organization, 'Org', config.ghesApiUrl, clients);
         await confirm(client, config, JSON.parse(record.body) as Candidate, context, provider);
       } catch (error) {
         logger.warn('Registration confirmation failed; leaving the runner registered', {
@@ -226,5 +264,5 @@ export async function registrationJanitor(
     }
     return { batchItemFailures };
   }
-  await discover(config, context, provider);
+  await discover(config, context, provider, clients);
 }

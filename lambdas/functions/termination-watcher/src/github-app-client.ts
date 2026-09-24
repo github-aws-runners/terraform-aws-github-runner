@@ -145,18 +145,29 @@ async function createInstallationClient(
   return createOctokitInstance(installationAuth.token, ghesApiUrl, appId);
 }
 
+/** Kept by the caller for one invocation; never stores scan progress. */
+export type InstallationClientCache = Map<string, Octokit>;
+
 export async function createRunnerInstallationClient(
   owner: string,
   runnerType: string,
   ghesApiUrl: string,
+  clients?: InstallationClientCache,
 ): Promise<Octokit> {
   const remaining = [...(await getAppCredentials())];
   while (remaining.length) {
     const credential = selectCredential(remaining);
     remaining.splice(remaining.indexOf(credential), 1);
+    // Select against current quota before consulting the cache, so a reused
+    // client never pins a batch to an exhausted or cooling-down App.
+    const key = JSON.stringify([credential.appId, runnerType, owner, ghesApiUrl]);
+    const cached = clients?.get(key);
+    if (cached) return cached;
     try {
       const appClient = await createAuthenticatedClient(ghesApiUrl, credential);
-      return await createInstallationClient(appClient, owner, runnerType, ghesApiUrl, credential);
+      const client = await createInstallationClient(appClient, owner, runnerType, ghesApiUrl, credential);
+      clients?.set(key, client);
+      return client;
     } catch (error) {
       coolDown(credential.appId);
       if (!remaining.length) throw error;
