@@ -40,7 +40,6 @@ locals {
     var.config.lambda.environment_variables,
     local.job_retry_environment_variables,
     local.ssm_environment_variables,
-    var.storage_provider.environment_variables,
   )
 }
 

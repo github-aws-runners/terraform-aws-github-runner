@@ -232,22 +232,6 @@ variable "storage_provider" {
         parameter_store_tags = string
       }), null)
     })
-    scale_up = optional(object({
-      environment_variables = map(string)
-      iam_policy_json       = optional(string, null)
-    }))
-    scale_down = optional(object({
-      environment_variables = map(string)
-      iam_policy_json       = optional(string, null)
-    }))
-    pool = optional(object({
-      environment_variables = map(string)
-      iam_policy_json       = optional(string, null)
-    }))
-    job_retry = optional(object({
-      environment_variables = map(string)
-      iam_policy_json       = optional(string, null)
-    }))
   })
   nullable = false
 }

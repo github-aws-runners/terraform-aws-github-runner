@@ -52,7 +52,6 @@ data "aws_iam_policy_document" "lambda_xray" {
 }
 
 data "aws_iam_policy_document" "job_retry" {
-  source_policy_documents = compact([var.storage_provider.iam_policy_json])
 
   dynamic "statement" {
     for_each = var.storage_provider.aws.ssm != null ? [true] : []

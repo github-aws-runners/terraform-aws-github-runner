@@ -156,8 +156,6 @@ variable "storage_provider" {
         kms_key_id = optional(string, null)
       }), null)
     })
-    environment_variables = optional(map(string), {})
-    iam_policy_json       = optional(string, null)
   })
   nullable = false
 

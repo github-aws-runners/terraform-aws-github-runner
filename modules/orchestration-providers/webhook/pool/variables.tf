@@ -144,8 +144,6 @@ variable "storage_provider" {
         parameter_store_tags = string
       }), null)
     })
-    environment_variables = optional(map(string), {})
-    iam_policy_json       = optional(string, null)
   })
   nullable = false
 

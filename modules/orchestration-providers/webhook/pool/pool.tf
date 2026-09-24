@@ -61,7 +61,6 @@ resource "aws_lambda_function" "pool" {
       var.runner_provider.environment_variables,
       local.common_environment_variables,
       local.ssm_environment_variables,
-      var.storage_provider.environment_variables,
     )
   }
 
@@ -107,7 +106,6 @@ data "aws_iam_policy_document" "pool" {
   source_policy_documents = compact([
     data.aws_iam_policy_document.pool_common.json,
     var.runner_provider.iam_policy_json,
-    var.storage_provider.iam_policy_json,
   ])
 }
 
