@@ -238,15 +238,15 @@ variable "matcher_config_parameter_store_tier" {
 }
 
 variable "storage_provider" {
-  description = "Resolved AWS storage-provider marker used by webhook resources."
+  description = "Storage-provider configuration used by the webhook resources."
   type = object({
     aws = object({
       ssm = optional(object({
+        kms_key_id = optional(string, null)
         paths = object({
           root    = string
           webhook = string
         })
-        kms_key_id = optional(string, null)
       }), null)
     })
   })

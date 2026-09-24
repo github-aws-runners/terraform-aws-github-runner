@@ -28,13 +28,13 @@ variable "config" {
     }), null)
     repository_white_list    = optional(list(string), [])
     queue_selection_strategy = optional(string, "first")
-    storage_provider = optional(object({
-      aws = optional(object({
+    storage_provider = object({
+      aws = object({
         ssm = optional(object({
           kms_key_id = optional(string, null)
         }), null)
-      }), {})
-    }))
+      })
+    })
     log_level           = optional(string, "info")
     lambda_runtime      = optional(string, "nodejs24.x")
     aws_partition       = optional(string, "aws")
