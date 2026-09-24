@@ -495,7 +495,7 @@ run "rejects_external_instance_profile_with_managed_role" {
 
   variables {
     config = {
-            ami = {
+      ami = {
         filter = { state = ["available"] }
         owners = ["amazon"]
         ssm_parameter = {
@@ -533,7 +533,7 @@ run "requires_distribution_object_when_sync_is_enabled" {
 
   variables {
     config = {
-            ami = {
+      ami = {
         filter = { state = ["available"] }
         owners = ["amazon"]
         ssm_parameter = {

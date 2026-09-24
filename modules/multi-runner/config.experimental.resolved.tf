@@ -466,7 +466,7 @@ locals {
                 ssm_parameter = {
                   path = coalesce(
                     try(v.compute_provider.aws.ec2.ami.ssm_parameter.path, null),
-                    "/github-action-runners/${var.prefix}/runners/config",
+                    "/github-action-runners/${var.prefix}/${k}/runners/config",
                   )
                   arn = try(v.compute_provider.aws.ec2.ami.ssm_parameter.arn, null)
                 }
