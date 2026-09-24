@@ -1,3 +1,11 @@
+locals {
+  ssm_environment_variables = var.config.storage_provider.aws.ssm != null ? {
+    PARAMETER_GITHUB_APP_WEBHOOK_SECRET  = var.config.github_app_parameters.webhook_secret.name
+    PARAMETER_RUNNER_MATCHER_CONFIG_PATH = join(":", [for p in var.config.ssm_parameter_runner_matcher_config : p.name])
+    PARAMETER_RUNNER_MATCHER_VERSION     = join(":", [for p in var.config.ssm_parameter_runner_matcher_config : p.version])
+  } : {}
+}
+
 resource "aws_iam_role_policy" "webhook_kms" {
   count = var.config.storage_provider.aws.ssm != null ? 1 : 0
 
@@ -10,19 +18,18 @@ resource "aws_iam_role_policy" "webhook_kms" {
 }
 
 resource "aws_iam_role_policy" "webhook_ssm" {
+  count = var.config.storage_provider.aws.ssm != null ? 1 : 0
+
   name = "publish-ssm-policy"
   role = aws_iam_role.webhook_lambda.name
 
-  policy = var.config.storage_provider.aws.ssm != null ? templatefile("${path.module}/../policies/lambda-ssm.json", {
+  policy = templatefile("${path.module}/../policies/lambda-ssm.json", {
     resource_arns = jsonencode(
       concat(
         [var.config.github_app_parameters.webhook_secret.arn],
         [for p in var.config.ssm_parameter_runner_matcher_config : p.arn]
       )
     )
-    }) : jsonencode({
-    Version   = "2012-10-17"
-    Statement = []
   })
 }
 
@@ -31,10 +38,7 @@ moved {
   to   = aws_iam_role_policy.webhook_kms[0]
 }
 
-locals {
-  ssm_environment_variables = var.config.storage_provider.aws.ssm != null ? {
-    PARAMETER_GITHUB_APP_WEBHOOK_SECRET  = var.config.github_app_parameters.webhook_secret.name
-    PARAMETER_RUNNER_MATCHER_CONFIG_PATH = join(":", [for p in var.config.ssm_parameter_runner_matcher_config : p.name])
-    PARAMETER_RUNNER_MATCHER_VERSION     = join(":", [for p in var.config.ssm_parameter_runner_matcher_config : p.version])
-  } : {}
+moved {
+  from = aws_iam_role_policy.webhook_ssm
+  to   = aws_iam_role_policy.webhook_ssm[0]
 }
