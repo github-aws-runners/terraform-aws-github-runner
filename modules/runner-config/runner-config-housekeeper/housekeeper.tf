@@ -13,7 +13,7 @@ locals {
   common_environment_variables = {
     ENVIRONMENT                              = var.config.prefix
     LOG_LEVEL                                = upper(var.config.observability.logs.level)
-    POWERTOOLS_SERVICE_NAME                  = "${var.config.prefix}-rc-housekeeper"
+    POWERTOOLS_SERVICE_NAME                  = "${var.config.prefix}-ssm-housekeeper"
     POWERTOOLS_TRACE_ENABLED                 = var.config.observability.tracing.mode != null
     POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.config.observability.tracing.capture_http_requests
     POWERTOOLS_TRACER_CAPTURE_ERROR          = var.config.observability.tracing.capture_error
@@ -32,7 +32,7 @@ resource "aws_lambda_function" "housekeeper" {
   s3_object_version = var.config.lambda.artifact.s3.object_version
   filename          = var.config.lambda.artifact.s3.bucket == null ? var.config.lambda.artifact.zip : null
   source_code_hash  = var.config.lambda.artifact.s3.bucket == null ? filebase64sha256(var.config.lambda.artifact.zip) : null
-  function_name     = "${var.config.prefix}-rc-housekeeper"
+  function_name     = "${var.config.prefix}-ssm-housekeeper"
   role              = aws_iam_role.housekeeper.arn
   handler           = "index.runnerConfigHousekeeper"
   runtime           = var.config.lambda.runtime
@@ -72,7 +72,7 @@ resource "aws_cloudwatch_log_group" "housekeeper" {
 }
 
 resource "aws_cloudwatch_event_rule" "housekeeper" {
-  name                = "${var.config.prefix}-rc-housekeeper"
+  name                = "${var.config.prefix}-ssm-housekeeper"
   schedule_expression = var.config.schedule.expression
   state               = var.config.schedule.state
   tags                = var.config.tags.resources
@@ -92,7 +92,7 @@ resource "aws_lambda_permission" "housekeeper" {
 }
 
 resource "aws_iam_role" "housekeeper" {
-  name                 = "${substr("${var.config.prefix}-rc-hk-lambda", 0, 54)}-${substr(md5("${var.config.prefix}-rc-hk-lambda"), 0, 8)}"
+  name                 = "${substr("${var.config.prefix}-ssm-hk-lambda", 0, 54)}-${substr(md5("${var.config.prefix}-ssm-hk-lambda"), 0, 8)}"
   description          = "Lambda role for Runner Config Housekeeper (${var.config.prefix})"
   assume_role_policy   = data.aws_iam_policy_document.lambda_assume_role.json
   path                 = var.config.lambda.role.path

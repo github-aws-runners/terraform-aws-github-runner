@@ -138,30 +138,32 @@ run "preserves_nested_job_retry_configuration" {
     target = data.aws_iam_policy_document.ssm_job_retry
 
     values = {
-      json = jsonencode({
-        Version = "2012-10-17"
-        Statement = [
-          {
-            Sid    = "WebhookJobRetryReadGitHubAppParameters"
-            Effect = "Allow"
-            Action = ["ssm:GetParameter", "ssm:GetParameters"]
-            Resource = [
-              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id",
-              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64",
-              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id-2",
-              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64-2",
-              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/installation-id-2",
-              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/additional-apps-manifest",
-            ]
-          },
-          {
-            Sid      = "WebhookJobRetryDecryptParameterStore"
-            Effect   = "Allow"
-            Action   = ["kms:Decrypt"]
-            Resource = ["arn:aws:kms:eu-west-1:123456789012:key/job-retry-test"]
-          },
-        ]
-      })
+      json = <<-JSON
+        {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "WebhookJobRetryReadGitHubAppParameters",
+              "Effect": "Allow",
+              "Action": ["ssm:GetParameter", "ssm:GetParameters"],
+              "Resource": [
+                "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id",
+                "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64",
+                "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id-2",
+                "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64-2",
+                "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/installation-id-2",
+                "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/additional-apps-manifest"
+              ]
+            },
+            {
+              "Sid": "WebhookJobRetryDecryptParameterStore",
+              "Effect": "Allow",
+              "Action": ["kms:Decrypt"],
+              "Resource": ["arn:aws:kms:eu-west-1:123456789012:key/job-retry-test"]
+            }
+          ]
+        }
+      JSON
     }
   }
 
@@ -296,23 +298,25 @@ run "merges_ssm_job_retry_policy" {
     target = data.aws_iam_policy_document.ssm_job_retry
 
     values = {
-      json = jsonencode({
-        Version = "2012-10-17"
-        Statement = [
-          {
-            Sid      = "WebhookJobRetryReadGitHubAppParameters"
-            Effect   = "Allow"
-            Action   = ["ssm:GetParameter", "ssm:GetParameters"]
-            Resource = ["arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id"]
-          },
-          {
-            Sid      = "WebhookJobRetryDecryptParameterStore"
-            Effect   = "Allow"
-            Action   = ["kms:Decrypt"]
-            Resource = ["arn:aws:kms:eu-west-1:123456789012:key/job-retry-test"]
-          },
-        ]
-      })
+      json = <<-JSON
+        {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "WebhookJobRetryReadGitHubAppParameters",
+              "Effect": "Allow",
+              "Action": ["ssm:GetParameter", "ssm:GetParameters"],
+              "Resource": ["arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id"]
+            },
+            {
+              "Sid": "WebhookJobRetryDecryptParameterStore",
+              "Effect": "Allow",
+              "Action": ["kms:Decrypt"],
+              "Resource": ["arn:aws:kms:eu-west-1:123456789012:key/job-retry-test"]
+            }
+          ]
+        }
+      JSON
     }
   }
 

@@ -57,7 +57,7 @@ jobs:
           - termination-watcher
     services:
       ministack:
-        image: ghcr.io/ministackorg/ministack:1.5.13@sha256:ce3c906f2866ff953ce4c56f06b1fa3e453bc32e41c00de17b5f5a8672c5a42c
+        image: ghcr.io/ministackorg/ministack:1.5.16@sha256:528fbf57148665b5b0c679dc65eac8c33f7e7dded1b80bc151bd85c7420b6cd4
         ports:
           - 4566:4566
         env:

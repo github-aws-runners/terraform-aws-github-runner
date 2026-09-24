@@ -123,10 +123,9 @@ run "provider_supplies_only_compute_specific_pool_configuration" {
     target = data.aws_iam_policy_document.lambda_assume_role_policy
 
     values = {
-      json = jsonencode({
-        Version   = "2012-10-17"
-        Statement = []
-      })
+      json = <<-JSON
+        {"Version":"2012-10-17","Statement":[]}
+      JSON
     }
   }
 
@@ -134,50 +133,52 @@ run "provider_supplies_only_compute_specific_pool_configuration" {
     target = data.aws_iam_policy_document.ssm_pool_common
 
     values = {
-      json = jsonencode({
-        Version = "2012-10-17"
-        Statement = [
-          {
-            Sid    = "WebhookPoolWriteRuntimeParameters"
-            Effect = "Allow"
-            Action = ["ssm:AddTagsToResource", "ssm:PutParameter"]
-            Resource = [
-              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/tokens",
-              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/tokens/*",
-              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config",
-              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config/*",
-            ]
-          },
-          {
-            Sid    = "WebhookPoolReadRunnerConfigParameters"
-            Effect = "Allow"
-            Action = ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"]
-            Resource = [
-              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config",
-              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config/*",
-            ]
-          },
-          {
-            Sid    = "WebhookPoolReadGitHubAppParameters"
-            Effect = "Allow"
-            Action = ["ssm:GetParameter", "ssm:GetParameters"]
-            Resource = [
-              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id",
-              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64",
-              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id-2",
-              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64-2",
-              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/installation-id-2",
-              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/additional-apps-manifest",
-            ]
-          },
-          {
-            Sid      = "WebhookPoolDecryptParameterStore"
-            Effect   = "Allow"
-            Action   = ["kms:Decrypt"]
-            Resource = ["arn:aws:kms:eu-west-1:123456789012:key/pool-test"]
-          },
-        ]
-      })
+      json = <<-JSON
+        {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "WebhookPoolWriteRuntimeParameters",
+              "Effect": "Allow",
+              "Action": ["ssm:AddTagsToResource", "ssm:PutParameter"],
+              "Resource": [
+                "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/tokens",
+                "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/tokens/*",
+                "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config",
+                "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config/*"
+              ]
+            },
+            {
+              "Sid": "WebhookPoolReadRunnerConfigParameters",
+              "Effect": "Allow",
+              "Action": ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"],
+              "Resource": [
+                "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config",
+                "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config/*"
+              ]
+            },
+            {
+              "Sid": "WebhookPoolReadGitHubAppParameters",
+              "Effect": "Allow",
+              "Action": ["ssm:GetParameter", "ssm:GetParameters"],
+              "Resource": [
+                "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id",
+                "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64",
+                "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id-2",
+                "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64-2",
+                "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/installation-id-2",
+                "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/additional-apps-manifest"
+              ]
+            },
+            {
+              "Sid": "WebhookPoolDecryptParameterStore",
+              "Effect": "Allow",
+              "Action": ["kms:Decrypt"],
+              "Resource": ["arn:aws:kms:eu-west-1:123456789012:key/pool-test"]
+            }
+          ]
+        }
+      JSON
     }
   }
 
@@ -250,6 +251,21 @@ run "provider_supplies_only_compute_specific_pool_configuration" {
 
   assert {
     condition = (
+      length(data.aws_iam_policy_document.pool_common.source_policy_documents) == 1
+      && data.aws_iam_policy_document.pool_common.source_policy_documents[0] == data.aws_iam_policy_document.ssm_pool_common.json
+      && data.aws_iam_policy_document.pool.source_policy_documents[0] == data.aws_iam_policy_document.pool_common.json
+      && contains([
+        for statement in jsondecode(data.aws_iam_policy_document.pool_common.source_policy_documents[0]).Statement : statement.Sid
+      ], "WebhookPoolReadGitHubAppParameters")
+      && contains([
+        for statement in jsondecode(data.aws_iam_policy_document.pool_common.source_policy_documents[0]).Statement : statement.Sid
+      ], "WebhookPoolDecryptParameterStore")
+    )
+    error_message = "The pool final policy must retain the SSM source policy and its SSM statements."
+  }
+
+  assert {
+    condition = (
       length(data.aws_iam_policy_document.ssm_pool_common.statement) == 4
       && one([
         for statement in data.aws_iam_policy_document.ssm_pool_common.statement : statement
@@ -305,44 +321,46 @@ run "omits_optional_kms_statement" {
     target = data.aws_iam_policy_document.ssm_pool_common
 
     values = {
-      json = jsonencode({
-        Version = "2012-10-17"
-        Statement = [
-          {
-            Sid    = "WebhookPoolWriteRuntimeParameters"
-            Effect = "Allow"
-            Action = ["ssm:AddTagsToResource", "ssm:PutParameter"]
-            Resource = [
-              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/tokens",
-              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/tokens/*",
-              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config",
-              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config/*",
-            ]
-          },
-          {
-            Sid    = "WebhookPoolReadRunnerConfigParameters"
-            Effect = "Allow"
-            Action = ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"]
-            Resource = [
-              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config",
-              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config/*",
-            ]
-          },
-          {
-            Sid    = "WebhookPoolReadGitHubAppParameters"
-            Effect = "Allow"
-            Action = ["ssm:GetParameter", "ssm:GetParameters"]
-            Resource = [
-              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id",
-              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64",
-              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id-2",
-              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64-2",
-              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/installation-id-2",
-              "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/additional-apps-manifest",
-            ]
-          },
-        ]
-      })
+      json = <<-JSON
+        {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "WebhookPoolWriteRuntimeParameters",
+              "Effect": "Allow",
+              "Action": ["ssm:AddTagsToResource", "ssm:PutParameter"],
+              "Resource": [
+                "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/tokens",
+                "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/tokens/*",
+                "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config",
+                "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config/*"
+              ]
+            },
+            {
+              "Sid": "WebhookPoolReadRunnerConfigParameters",
+              "Effect": "Allow",
+              "Action": ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"],
+              "Resource": [
+                "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config",
+                "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config/*"
+              ]
+            },
+            {
+              "Sid": "WebhookPoolReadGitHubAppParameters",
+              "Effect": "Allow",
+              "Action": ["ssm:GetParameter", "ssm:GetParameters"],
+              "Resource": [
+                "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id",
+                "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64",
+                "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id-2",
+                "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64-2",
+                "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/installation-id-2",
+                "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/additional-apps-manifest"
+              ]
+            }
+          ]
+        }
+      JSON
     }
   }
 
@@ -395,6 +413,12 @@ run "does_not_grant_ssm_permissions_when_storage_provider_is_null" {
         for statement in data.aws_iam_policy_document.pool.statement : statement
         if anytrue([for action in statement.actions : startswith(action, "ssm:")])
       ]) == 0
+      && !contains([
+        for statement in jsondecode(data.aws_iam_policy_document.pool_common.source_policy_documents[0]).Statement : statement.Sid
+      ], "WebhookPoolReadGitHubAppParameters")
+      && !contains([
+        for statement in jsondecode(data.aws_iam_policy_document.pool_common.source_policy_documents[0]).Statement : statement.Sid
+      ], "WebhookPoolDecryptParameterStore")
     )
     error_message = "A null SSM storage provider must not expose SSM environment variables or permissions."
   }
