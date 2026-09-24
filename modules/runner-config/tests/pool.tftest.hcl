@@ -36,7 +36,7 @@ variables {
         ami = {
           filter = { state = ["available"] }
           owners = ["amazon"]
-          id_ssm_parameter = {
+          ssm_parameter = {
             arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/external-ami-id"
           }
           kms_key = null

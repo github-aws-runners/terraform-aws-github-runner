@@ -23,7 +23,7 @@ module "external_iam" {
         subnet_ids     = ["subnet-12345678"]
         instance_types = ["m5.large"]
         ami = {
-          id_ssm_parameter = {
+          ssm_parameter = {
             arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/external-ami-${random_id.external.hex}"
           }
           kms_key = {

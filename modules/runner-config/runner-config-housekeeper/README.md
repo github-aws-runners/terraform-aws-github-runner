@@ -1,3 +1,11 @@
+# Runner-config housekeeper module
+
+> This module is treated as an internal module; breaking changes do not trigger a major release bump.
+
+This provider-neutral child module owns the Lambda function, EventBridge schedule, IAM policies, and CloudWatch log group used to remove expired runner registration parameters from Parameter Store.
+
+The module is an implementation detail of the experimental runner configuration. It is composed by `runner-config` and is not intended to be called directly.
+
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
 
