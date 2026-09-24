@@ -158,4 +158,51 @@ describe('multi-App installation clients', () => {
       random.mockRestore();
     }
   });
+  it('reuses a selected App client within one invocation, while still switching exhausted Apps', async () => {
+    mockGetCredentials.mockResolvedValue([
+      { appId: 1, privateKey: 'one' },
+      { appId: 2, privateKey: 'two' },
+    ]);
+    mockApps.getOrgInstallation.mockResolvedValue({ data: { id: 222 } });
+    const random = vi.spyOn(Math, 'random').mockReturnValue(0);
+    const clients = new Map();
+    try {
+      const first = await createRunnerInstallationClient('test-org', 'Org', '', clients);
+      // Unknown budgets tie; with the same selection, the client is reused.
+      expect(await createRunnerInstallationClient('test-org', 'Org', '', clients)).toBe(first);
+      expect(mockCreateAppAuth).toHaveBeenCalledTimes(2);
+      mockHookAfter.mock.calls[0][1]({ headers: { 'x-ratelimit-remaining': '0' } });
+      const second = await createRunnerInstallationClient('test-org', 'Org', '', clients);
+      expect(await createRunnerInstallationClient('test-org', 'Org', '', clients)).toBe(second);
+      expect(mockCreateAppAuth).toHaveBeenCalledTimes(4);
+      expect(mockApps.getOrgInstallation).toHaveBeenCalledTimes(2);
+      await createRunnerInstallationClient('test-org', 'Org', '', new Map());
+      expect(mockCreateAppAuth).toHaveBeenCalledTimes(6);
+    } finally {
+      random.mockRestore();
+    }
+  });
+
+  it('separates cached clients by owner, runner type, and GHES endpoint', async () => {
+    mockApps.getOrgInstallation.mockResolvedValue({ data: { id: 222 } });
+    mockApps.getRepoInstallation.mockResolvedValue({ data: { id: 333 } });
+    const clients = new Map();
+    await createRunnerInstallationClient('owner', 'Org', '', clients);
+    await createRunnerInstallationClient('other', 'Org', '', clients);
+    await createRunnerInstallationClient('owner/repo', 'Repo', '', clients);
+    await createRunnerInstallationClient('owner', 'Org', 'https://ghe.example/api/v3', clients);
+    expect(clients.size).toBe(4);
+    expect(mockCreateAppAuth).toHaveBeenCalledTimes(8);
+  });
+
+  it('does not cache failed authentication', async () => {
+    const clients = new Map();
+    mockApps.getOrgInstallation
+      .mockRejectedValueOnce(new Error('unavailable'))
+      .mockResolvedValue({ data: { id: 222 } });
+    await expect(createRunnerInstallationClient('owner', 'Org', '', clients)).rejects.toThrow('unavailable');
+    expect(clients.size).toBe(0);
+    await createRunnerInstallationClient('owner', 'Org', '', clients);
+    expect(clients.size).toBe(1);
+  });
 });
