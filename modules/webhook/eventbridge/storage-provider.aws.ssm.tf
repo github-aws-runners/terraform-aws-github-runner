@@ -57,4 +57,9 @@ locals {
     PARAMETER_GITHUB_APP_WEBHOOK_SECRET  = var.config.github_app_parameters.webhook_secret.name
     PARAMETER_RUNNER_MATCHER_CONFIG_PATH = join(":", [for p in var.config.ssm_parameter_runner_matcher_config : p.name])
   } : {}
+
+  ssm_dispatcher_environment_variables = var.config.storage_provider.aws.ssm != null ? {
+    PARAMETER_RUNNER_MATCHER_CONFIG_PATH = join(":", [for p in var.config.ssm_parameter_runner_matcher_config : p.name])
+    PARAMETER_RUNNER_MATCHER_VERSION     = join(":", [for p in var.config.ssm_parameter_runner_matcher_config : p.version])
+  } : {}
 }

@@ -48,13 +48,12 @@ resource "aws_lambda_function" "dispatcher" {
         POWERTOOLS_TRACE_ENABLED                 = var.config.tracing_config.mode != null ? true : false
         POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.config.tracing_config.capture_http_requests
         POWERTOOLS_TRACER_CAPTURE_ERROR          = var.config.tracing_config.capture_error
-        # Parameters required for lambda configuration
-        PARAMETER_RUNNER_MATCHER_CONFIG_PATH = var.config.storage_provider.aws.ssm != null ? join(":", [for p in var.config.ssm_parameter_runner_matcher_config : p.name]) : null
-        PARAMETER_RUNNER_MATCHER_VERSION     = var.config.storage_provider.aws.ssm != null ? join(":", [for p in var.config.ssm_parameter_runner_matcher_config : p.version]) : null # enforce cold start after Changes in SSM parameter
-        REPOSITORY_ALLOW_LIST                = jsonencode(var.config.repository_white_list)
-        QUEUE_SELECTION_STRATEGY             = var.config.queue_selection_strategy
+        REPOSITORY_ALLOW_LIST                    = jsonencode(var.config.repository_white_list)
+        QUEUE_SELECTION_STRATEGY                 = var.config.queue_selection_strategy
       } : k => v if v != null
-    })
+      },
+      local.ssm_dispatcher_environment_variables
+    )
   }
 
   dynamic "vpc_config" {

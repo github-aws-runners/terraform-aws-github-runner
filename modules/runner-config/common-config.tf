@@ -4,9 +4,7 @@ locals {
     {
       "Name" = format("%s-action-runner", var.prefix)
     },
-    var.storage_provider.aws.ssm != null ? {
-      "ghr:ssm_config_path" = local.ssm_config_path
-    } : {},
+    local.ssm_common_tags,
     var.tags,
   )
 

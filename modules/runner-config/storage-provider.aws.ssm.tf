@@ -34,6 +34,10 @@ locals {
       Value = value
     }
   ])
+
+  ssm_common_tags = var.storage_provider.aws.ssm != null ? {
+    "ghr:ssm_config_path" = local.ssm_config_path
+  } : {}
 }
 
 data "aws_caller_identity" "current" {}

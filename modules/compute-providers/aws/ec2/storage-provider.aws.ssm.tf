@@ -68,9 +68,9 @@ locals {
     try(var.storage_provider.aws.ssm.parameters.tags, {}),
   )
 
-  ssm_runner_tags = {
+  ssm_runner_tags = var.storage_provider.aws.ssm != null ? {
     "ghr:ssm_config_path" = local.ssm_config_path
-  }
+  } : {}
 
 }
 

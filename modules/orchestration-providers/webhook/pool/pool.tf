@@ -29,15 +29,6 @@ locals {
     INCLUDE_BUSY_RUNNERS                     = var.config.include_busy_runners
   }
 
-  ssm_environment_variables = var.storage_provider.aws.ssm != null ? {
-    PARAMETER_GITHUB_APP_ID_NAME         = var.config.github_app_parameters.id.name
-    PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.config.github_app_parameters.key_base64.name
-    PARAMETER_GITHUB_APPS_MANIFEST_NAME  = var.config.github_app_parameters.additional_apps_manifest != null ? var.config.github_app_parameters.additional_apps_manifest.name : ""
-    SSM_TOKEN_PATH                       = var.storage_provider.aws.ssm.token_path
-    SSM_CONFIG_PATH                      = var.storage_provider.aws.ssm.config_path
-    SSM_PARAMETER_STORE_TAGS             = var.storage_provider.aws.ssm.parameter_store_tags
-  } : {}
-
   environment_variables = merge(
     var.runner_provider.environment_variables,
     local.common_environment_variables,

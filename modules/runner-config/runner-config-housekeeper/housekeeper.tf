@@ -19,9 +19,11 @@ locals {
     POWERTOOLS_TRACER_CAPTURE_ERROR          = var.config.observability.tracing.capture_error
   }
 
-  ssm_environment_variables = var.storage_provider.aws.ssm != null ? {
-    SSM_CLEANUP_CONFIG = jsonencode(local.cleanup_config)
-  } : {}
+  environment_variables = merge(
+    local.common_environment_variables,
+    local.ssm_environment_variables,
+  )
+
 }
 
 resource "aws_lambda_function" "housekeeper" {
@@ -40,10 +42,7 @@ resource "aws_lambda_function" "housekeeper" {
   architectures     = [var.config.lambda.architecture]
 
   environment {
-    variables = merge(
-      local.common_environment_variables,
-      local.ssm_environment_variables,
-    )
+    variables = local.environment_variables
   }
 
   dynamic "vpc_config" {
