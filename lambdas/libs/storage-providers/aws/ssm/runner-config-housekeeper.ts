@@ -1,9 +1,4 @@
-import {
-  DeleteParameterCommand,
-  GetParametersByPathCommand,
-  SSMClient,
-  type GetParametersByPathCommandOutput,
-} from '@aws-sdk/client-ssm';
+import { DeleteParameterCommand, GetParametersByPathCommand, SSMClient } from '@aws-sdk/client-ssm';
 import { getTracedAWSV3Client } from '@aws-github-runner/aws-powertools-util';
 
 import type { RunnerConfigHousekeeper } from '../../core';
@@ -21,7 +16,7 @@ export function createAwsSsmRunnerConfigHousekeeper(options?: SSMCleanupOptions)
   return new AwsSsmRunnerConfigHousekeeper(options ?? loadCleanupOptions());
 }
 
-export async function cleanSSMTokens(options: SSMCleanupOptions): Promise<void> {
+export async function cleanSSMTokens(options: SSMCleanupOptions, remainingTime = () => Infinity): Promise<void> {
   validateOptions(options);
   logger.info('Cleaning expired runner configurations', {
     minimumDaysOld: options.minimumDaysOld,
@@ -30,63 +25,39 @@ export async function cleanSSMTokens(options: SSMCleanupOptions): Promise<void> 
   });
 
   const client = getTracedAWSV3Client(new SSMClient({ region: process.env.AWS_REGION }));
-  let parameters: GetParametersByPathCommandOutput;
-  try {
-    parameters = await client.send(new GetParametersByPathCommand({ Path: options.tokenPath }));
-    while (parameters.NextToken) {
-      const nextParameters = await client.send(
-        new GetParametersByPathCommand({ Path: options.tokenPath, NextToken: parameters.NextToken }),
-      );
-      parameters.Parameters?.push(...(nextParameters.Parameters ?? []));
-      parameters.NextToken = nextParameters.NextToken;
-    }
-  } catch (error) {
-    logger.error('Failed to list runner configurations', {
-      tokenPath: options.tokenPath,
-      errorNames: getErrorNames(error),
-    });
-    throw error;
-  }
-  logger.info('Found runner configurations', {
-    tokenPath: options.tokenPath,
-    parameterCount: parameters.Parameters?.length ?? 0,
-  });
-
+  let nextToken: string | undefined;
   const minimumDate = new Date();
   minimumDate.setDate(minimumDate.getDate() - options.minimumDaysOld);
-
-  for (const parameter of parameters.Parameters ?? []) {
-    if (parameter.LastModifiedDate && new Date(parameter.LastModifiedDate) < minimumDate) {
-      logger.info('Deleting expired runner configuration', {
-        parameterName: parameter.Name,
-        lastModifiedDate: parameter.LastModifiedDate,
-        dryRun: options.dryRun,
-      });
+  do {
+    if (remainingTime() < 10000) return;
+    const page = await client.send(new GetParametersByPathCommand({ Path: options.tokenPath, NextToken: nextToken }));
+    for (const parameter of page.Parameters ?? []) {
+      if (remainingTime() < 10000) return;
+      if (!parameter.Name || !parameter.LastModifiedDate || !(new Date(parameter.LastModifiedDate) < minimumDate))
+        continue;
+      logger.info('Deleting expired runner configuration', { parameterName: parameter.Name, dryRun: options.dryRun });
       try {
         if (!options.dryRun) {
           await new Promise((resolve) => setTimeout(resolve, 50));
           await client.send(new DeleteParameterCommand({ Name: parameter.Name }));
         }
       } catch (error) {
+        // Failed items remain in the inventory for the next complete sweep.
         logger.warn('Failed to delete expired runner configuration', {
           parameterName: parameter.Name,
           errorNames: getErrorNames(error),
         });
       }
-    } else {
-      logger.debug('Skipping runner configuration that is not expired', {
-        parameterName: parameter.Name,
-        lastModifiedDate: parameter.LastModifiedDate,
-      });
     }
-  }
+    nextToken = page.NextToken;
+  } while (nextToken);
 }
 
 class AwsSsmRunnerConfigHousekeeper implements RunnerConfigHousekeeper {
   constructor(private readonly options: SSMCleanupOptions) {}
 
-  houseKeeper(): Promise<void> {
-    return cleanSSMTokens(this.options);
+  houseKeeper(remainingTime?: () => number): Promise<void> {
+    return cleanSSMTokens(this.options, remainingTime);
   }
 }
 

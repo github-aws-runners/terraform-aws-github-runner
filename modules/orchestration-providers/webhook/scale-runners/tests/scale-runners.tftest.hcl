@@ -237,6 +237,7 @@ run "assembles_provider_neutral_scaling_control_plane" {
       && aws_lambda_function.scale_down.environment[0].variables["RUNNER_BOOT_TIME_IN_MINUTES"] == "12"
       && aws_lambda_function.scale_up.environment[0].variables["MICROVM_CLUSTER"] == "runner-cluster"
       && aws_lambda_function.scale_down.environment[0].variables["MICROVM_CLUSTER"] == "runner-cluster"
+      && aws_lambda_function.scale_down.environment[0].variables["SSM_TOKEN_PATH"] == "/github-runner/tokens"
       && !contains(keys(aws_lambda_function.scale_up.environment[0].variables), "INSTANCE_TYPES")
     )
     error_message = "The common scaling Lambdas must select the compute provider while injecting webhook-owned capacity and boot-time settings."

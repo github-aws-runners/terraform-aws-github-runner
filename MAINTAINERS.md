@@ -48,6 +48,8 @@ The following steps needs to be applied to test a PR
 3. Apply the PR to the deployment. Check output for breaking changes such as destroying resources containing state.
 4. Test the PR by running a workflow
 
+Some PR tests can be run against [MiniStack](tests/ministack/README.md), including the example deployments and webhook and runner lifecycle [smoke tests](tests/ministack/README.md#webhook-and-runner-lifecycle-smoke-test). Use these tests where applicable during PR review. MiniStack test coverage is still being expanded, with additional cases in progress.
+
 ### Security
 
 Act on security issues as soon as possible. If a security issue is reported.
