@@ -148,6 +148,8 @@ variable "storage_provider" {
     - `storage_provider.aws.ssm.paths.config`: Path segment under `paths.root` used for persistent runner configuration.
     - `storage_provider.aws.ssm.kms_key_id`: Optional customer-managed KMS key ARN used by control-plane IAM policies to decrypt shared GitHub App parameters. The ARN may be unknown until apply; null omits the provider-owned KMS statements. It does not select encryption for runtime-created runner parameters.
     - `storage_provider.aws.ssm.tags`: Shared tags for SSM-related resources. These override module-level `tags` and are inherited by parameter and housekeeper resources.
+    - `storage_provider.aws.ssm.parameters.max_concurrent_invocations`: Expected number of concurrent scale-up and pool Lambda invocations writing to Parameter Store. Each invocation paces its writes to a share of the account-wide write-rate limit. The default is `1`.
+    - `storage_provider.aws.ssm.parameters.max_writes_per_second`: Parameter Store write-rate limit to pace against, in writes per second. The default is `40`, the standard-tier limit. Raise it only when the higher-throughput tier is enabled.
     - `storage_provider.aws.ssm.parameters.tags`: Tags for Terraform-managed runner configuration parameters and temporary parameters created by the scale-up and pool Lambdas. These override module-level and `storage_provider.aws.ssm.tags` values with the same key.
     - `storage_provider.aws.ssm.housekeeper.schedule_expression`: EventBridge schedule expression that invokes the SSM housekeeper.
     - `storage_provider.aws.ssm.housekeeper.state`: EventBridge rule state, such as `ENABLED` or `DISABLED`.
@@ -174,7 +176,9 @@ variable "storage_provider" {
         kms_key_id = optional(string, null)
         tags       = optional(map(string), {})
         parameters = optional(object({
-          tags = optional(map(string), {})
+          tags                       = optional(map(string), {})
+          max_concurrent_invocations = optional(number, 1)
+          max_writes_per_second      = optional(number, 40)
         }), {})
         housekeeper = optional(object({
           schedule_expression = optional(string, "rate(1 day)")

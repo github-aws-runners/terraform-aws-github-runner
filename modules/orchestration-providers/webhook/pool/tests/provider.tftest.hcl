@@ -16,6 +16,9 @@ variables {
         config_path_arn      = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config"
         kms_key_id           = "arn:aws:kms:eu-west-1:123456789012:key/pool-test"
         parameter_store_tags = "{}"
+
+        parameter_store_max_concurrent_invocations = 3
+        parameter_store_max_writes_per_second      = 120
       }
     }
   }
@@ -143,7 +146,9 @@ run "provider_supplies_only_compute_specific_pool_configuration" {
 
   assert {
     condition = (
-      aws_lambda_function.pool.environment[0].variables["PARAMETER_GITHUB_APP_ID_NAME"] == "/github-runner/app-id"
+      aws_lambda_function.pool.environment[0].variables["SSM_PARAMETER_STORE_MAX_CONCURRENT_INVOCATIONS"] == "3"
+      && aws_lambda_function.pool.environment[0].variables["SSM_PARAMETER_STORE_MAX_WRITES_PER_SECOND"] == "120"
+      && aws_lambda_function.pool.environment[0].variables["PARAMETER_GITHUB_APP_ID_NAME"] == "/github-runner/app-id"
       && aws_lambda_function.pool.environment[0].variables["PARAMETER_GITHUB_APP_KEY_BASE64_NAME"] == "/github-runner/key-base64"
       && aws_lambda_function.pool.environment[0].variables["PARAMETER_GITHUB_APPS_MANIFEST_NAME"] == "/github-runner/additional-apps-manifest"
       && contains(data.aws_iam_policy_document.pool_common.statement[2].resources, "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id-2")

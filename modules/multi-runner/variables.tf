@@ -451,7 +451,9 @@ variable "multi_runner_config" {
           }), {})
           tags = optional(map(string), {})
           parameters = optional(object({
-            tags = optional(map(string), {})
+            tags                       = optional(map(string), {})
+            max_concurrent_invocations = optional(number, null)
+            max_writes_per_second      = optional(number, null)
           }), {})
           housekeeper = optional(object({
             schedule_expression = optional(string, null)
@@ -1277,4 +1279,16 @@ variable "parameter_store_tags" {
   description = "Map of tags that will be added to all the SSM Parameter Store parameters created by the Lambda function."
   type        = map(string)
   default     = {}
+}
+
+variable "ssm_parameter_store_max_concurrent_invocations" {
+  description = "Expected number of concurrent scale-up/pool lambda invocations writing to Parameter Store, used to pace each invocation's writes to a share of the account-wide write-rate limit. Applies to all runner configurations."
+  type        = number
+  default     = 1
+}
+
+variable "ssm_parameter_store_max_writes_per_second" {
+  description = "Parameter Store write-rate limit to pace against, in writes/second. Defaults to the standard-tier limit; raise this if SSM's higher-throughput tier is enabled (up to several thousand writes/second). Applies to all runner configurations."
+  type        = number
+  default     = 40
 }
