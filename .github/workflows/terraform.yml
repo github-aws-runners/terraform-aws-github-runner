@@ -26,6 +26,7 @@ env:
     modules/download-lambda
     modules/lambda
     modules/multi-runner
+    modules/orchestration-providers/scale-set
     modules/orchestration-providers/webhook
     modules/orchestration-providers/webhook/job-retry
     modules/orchestration-providers/webhook/pool
@@ -52,12 +53,14 @@ env:
     termination-watcher
     microvm-foundation
     multi-runner
+    multi-runner-scale-set
     external-managed-ssm-secrets
   TEST_MODULES: |
     modules/runners
     modules/multi-runner
     modules/compute-providers/aws/microvm
     modules/compute-providers/aws/microvm/trust-policy
+    modules/orchestration-providers/scale-set
 
 jobs:
   verify_modules:

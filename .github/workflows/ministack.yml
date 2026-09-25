@@ -52,6 +52,8 @@ jobs:
           - default
           - ephemeral
           - microvm-foundation
+          - multi-runner
+          - multi-runner-scale-set
           - migration-test
           - multi-runner
           - termination-watcher
