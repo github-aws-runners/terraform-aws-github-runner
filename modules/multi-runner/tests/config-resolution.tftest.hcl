@@ -209,6 +209,7 @@ run "v1_stable_inputs_translate_into_effective_base" {
       && local.resolved_config.multi_runner_config["stable"].runner.group_name == "v1-lane"
       && local.resolved_config.multi_runner_config["stable"].orchestration_provider.webhook.runner.maximum_count == 2
       && toset(local.resolved_config.multi_runner_config["stable"].compute_provider.aws.ec2.instance_types) == toset(["m5.large"])
+      && local.resolved_config.multi_runner_config["stable"].compute_provider.aws.microvm == null
       && toset(local.effective_config.multi_runner_config["stable"].runner.labels) == toset(["linux", "self-hosted", "x64"])
     )
     error_message = "Stable v1 inputs must translate into the effective experimental base without leaking v2 globals."
@@ -450,6 +451,10 @@ run "v2_inputs_do_not_require_legacy_arguments" {
             }
           }
         }
+        runner = {
+          os           = "linux"
+          architecture = "x64"
+        }
         compute_provider = {
           aws = {
             ec2 = {
@@ -538,6 +543,136 @@ run "v2_inputs_reject_legacy_runner_config" {
         }
       }
     }
+  }
+}
+
+run "v2_microvm_inputs_route_to_microvm_provider" {
+  command = plan
+
+  variables {
+    experimental_features = ["multi-runner-v2"]
+
+    global_config = {
+      runner = {
+        os           = "linux"
+        architecture = "arm64"
+      }
+    }
+
+    global_config_github = {
+      app = {
+        key_base64     = "experimental-app-key"
+        id             = "experimental-app-id"
+        webhook_secret = "experimental-webhook-secret"
+      }
+    }
+
+    global_config_lambda = {
+      artifact = {
+        s3 = {
+          bucket = "global-lambda-artifacts"
+        }
+      }
+    }
+
+    global_config_orchestration_provider = {
+      webhook = {
+        eventbridge = {
+          enabled = false
+        }
+        runner = {
+          ephemeral          = true
+          jit_config_enabled = true
+        }
+        lambda = {
+          artifact = {
+            s3 = {
+              key = "global-runners.zip"
+            }
+          }
+          webhook = {
+            artifact = {
+              s3 = {
+                key = "global-webhook.zip"
+              }
+            }
+          }
+        }
+      }
+    }
+
+    global_config_storage_provider = {
+      aws = {
+        ssm = {
+          housekeeper = {
+            lambda = {
+              artifact = {
+                s3 = {
+                  key = "global-housekeeper.zip"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    global_config_compute_provider = {
+      aws = {
+        microvm = {
+          image_arn     = "arn:aws:lambda:eu-west-1:123456789012:microvm-image:global"
+          image_version = "7"
+        }
+      }
+    }
+
+    multi_runner_config = {
+      microvm = {
+        runner = {
+          name_prefix = "microvm-"
+        }
+        orchestration_provider = {
+          webhook = {
+            matcherConfig = {
+              labelMatchers = [["microvm"]]
+            }
+          }
+        }
+        compute_provider = {
+          aws = {
+            microvm = {
+              image_version = "8"
+            }
+          }
+        }
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      local.use_v2_config
+      && keys(local.resolved_config.multi_runner_config) == ["microvm"]
+      && local.resolved_config.multi_runner_config["microvm"].runner.os == "linux"
+      && local.resolved_config.multi_runner_config["microvm"].runner.architecture == "arm64"
+      && local.resolved_config.multi_runner_config["microvm"].compute_provider.aws.ec2 == null
+      && local.resolved_config.multi_runner_config["microvm"].compute_provider.aws.microvm.image_arn == "arn:aws:lambda:eu-west-1:123456789012:microvm-image:global"
+      && local.resolved_config.multi_runner_config["microvm"].compute_provider.aws.microvm.image_version == "8"
+      && local.runner_matcher_config["microvm"].computeProvider == "microvm"
+      && local.effective_config.orchestration_provider.webhook.lambda.webhook.artifact.s3.key == "global-webhook.zip"
+    )
+    error_message = "Experimental MicroVM lanes must resolve Linux ARM64 settings, inherit global provider values, and place the webhook artifact key under lambda.webhook.artifact."
+  }
+
+  assert {
+    condition = (
+      length(module.runners) == 0
+      && keys(module.runner_configs) == ["microvm"]
+      && output.runners_map_v2["microvm"].provider.aws.ec2 == null
+      && output.runners_map_v2["microvm"].provider.aws.microvm.image_arn == "arn:aws:lambda:eu-west-1:123456789012:microvm-image:global"
+      && output.runners_map_v2["microvm"].provider.aws.microvm.image_version == "8"
+    )
+    error_message = "Experimental MicroVM lanes must route through module.runner_configs and expose the MicroVM provider contract without an EC2 provider."
   }
 }
 
@@ -721,6 +856,13 @@ run "mixed_webhook_and_scale_set_lanes_create_webhook_queues_only_for_webhook" {
       }
     }
 
+    global_config = {
+      runner = {
+        os           = "linux"
+        architecture = "x64"
+      }
+    }
+
     multi_runner_config = {
       webhook = {
         orchestration_provider = {
@@ -789,15 +931,20 @@ run "scale_set_lane_requires_owner_for_non_enterprise_registration" {
 
     global_config_github = {
       app = {
-        key_base64     = "experimental-app-key"
-        id             = "experimental-app-id"
-        webhook_secret = "experimental-webhook-secret"
+        key_base64      = "experimental-app-key"
+        id              = "experimental-app-id"
+        installation_id = "12345"
+        webhook_secret  = "experimental-webhook-secret"
       }
       runner_registration_level = "organization"
     }
 
     multi_runner_config = {
       scale = {
+        runner = {
+          os           = "linux"
+          architecture = "x64"
+        }
         orchestration_provider = {
           webhook = null
           scale_set = {
@@ -810,6 +957,57 @@ run "scale_set_lane_requires_owner_for_non_enterprise_registration" {
               instance_types = ["m5.large"]
               vpc_id         = "vpc-scale-set"
               subnet_ids     = ["subnet-scale-set"]
+              binaries_syncer = {
+                enabled = false
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  expect_failures = [terraform_data.validate_v2]
+}
+
+run "ec2_lane_requires_runner_os_and_architecture" {
+  command = plan
+
+  plan_options {
+    target = [terraform_data.validate_v2]
+  }
+
+  variables {
+    experimental_features = ["multi-runner-v2"]
+
+    global_config_github = {
+      app = {
+        key_base64      = "experimental-app-key"
+        id              = "experimental-app-id"
+        installation_id = "12345"
+        webhook_secret  = "experimental-webhook-secret"
+      }
+      runner_owner              = "example"
+      runner_registration_level = "organization"
+    }
+
+    multi_runner_config = {
+      scale = {
+        orchestration_provider = {
+          webhook = null
+          scale_set = {
+            name = "scale-missing-runner-platform"
+          }
+        }
+        compute_provider = {
+          aws = {
+            ec2 = {
+              instance_types = ["m5.large"]
+              vpc_id         = "vpc-scale-set"
+              subnet_ids     = ["subnet-scale-set"]
+              binaries_syncer = {
+                enabled = false
+              }
             }
           }
         }
@@ -936,6 +1134,11 @@ run "v2_lane_requires_exactly_one_orchestration_provider" {
     multi_runner_config = {
       missing = {
         orchestration_provider = {}
+
+        runner = {
+          os           = "linux"
+          architecture = "x64"
+        }
         compute_provider = {
           aws = {
             ec2 = {
@@ -969,6 +1172,10 @@ run "v2_lane_rejects_multiple_orchestration_providers" {
           scale_set = {
             name = "multiple-providers"
           }
+        }
+        runner = {
+          os           = "linux"
+          architecture = "x64"
         }
         compute_provider = {
           aws = {
