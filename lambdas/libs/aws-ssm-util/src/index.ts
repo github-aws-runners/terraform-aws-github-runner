@@ -165,9 +165,9 @@ export async function putParameter(
   parameter_name: string,
   parameter_value: string,
   secure: boolean,
-  options: { overwrite?: boolean;  tags?: Tag[]; ttlSeconds?: number } = {},
+  options: { overwrite?: boolean; tags?: Tag[]; ttlSeconds?: number } = {},
 ): Promise<void> {
-  if (options.overwrite!== undefined && options.overwrite && options.tags !== undefined) {
+  if (options.overwrite !== undefined && options.overwrite && options.tags !== undefined) {
     throw new Error('SSM parameter tags cannot be supplied when overwriting an existing parameter');
   }
 
