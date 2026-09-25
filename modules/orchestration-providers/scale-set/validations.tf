@@ -266,11 +266,11 @@ resource "terraform_data" "validate_runtime" {
   lifecycle {
     precondition {
       condition = (
-        var.container.image == null ? true : (
-          length(trimspace(var.container.image)) > 0 &&
-          length(regexall("[[:space:]]", var.container.image)) == 0
-      ))
-      error_message = "Container image references must be non-empty and cannot contain whitespace."
+        var.container.image != null &&
+        length(trimspace(var.container.image)) > 0 &&
+        length(regexall("[[:space:]]", var.container.image)) == 0
+      )
+      error_message = "container.image must be set to a non-empty image reference without whitespace; the module has no mutable default image."
     }
 
     precondition {
@@ -364,9 +364,9 @@ resource "terraform_data" "validate_runtime" {
       condition = (
         contains(["STANDARD", "INFREQUENT_ACCESS"], var.logging.log_group_class) &&
         contains([1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653], var.logging.retention_in_days) &&
-        (var.logging.kms_key_arn == null ? true : can(regex("^arn:[^:]+:kms:[^:]+:[0-9]{12}:key/.+$", var.logging.kms_key_arn)))
+        (var.logging.kms_key_id == null ? true : can(regex("^arn:[^:]+:kms:[^:]+:[0-9]{12}:key/.+$", var.logging.kms_key_id)))
       )
-      error_message = "logging must use a supported class and retention period; kms_key_arn must be a KMS key ARN when set."
+      error_message = "logging must use a supported class and retention period; kms_key_id must be a KMS ARN when set."
     }
   }
 }

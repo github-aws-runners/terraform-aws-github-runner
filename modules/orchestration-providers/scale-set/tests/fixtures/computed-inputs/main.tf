@@ -16,6 +16,10 @@ module "subject" {
 
   prefix = "computed-test"
 
+  container = {
+    image = "ghcr.io/github-aws-runners/terraform-aws-github-runner-scale-set-service@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  }
+
   runner_configs = {
     computed = {
       github = {

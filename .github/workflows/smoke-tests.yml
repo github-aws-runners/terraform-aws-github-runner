@@ -112,6 +112,8 @@ jobs:
         image: ghcr.io/ministackorg/ministack:1.5.16@sha256:9813da34285a0760477c761c1c03717e0290d259213c0ca97f551fefd87b292d
         ports:
           - 4566:4566
+        # MiniStack launches nested service containers for the integration smoke test.
+        # This digest-pinned, non-fork workflow is the narrowly scoped Docker-daemon exception.
         options: >-
           --add-host=host.docker.internal:host-gateway
           --volume /var/run/docker.sock:/var/run/docker.sock
