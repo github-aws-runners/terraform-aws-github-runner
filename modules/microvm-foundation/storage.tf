@@ -8,6 +8,8 @@ resource "aws_s3_bucket" "artifacts" {
   #checkov:skip=CKV2_AWS_62:The publisher uploads artifacts synchronously and no event-driven consumer requires S3 notifications.
   bucket = var.artifact_bucket_name
   tags   = var.tags
+
+  force_destroy = var.force_destroy_artifact_bucket
 }
 
 resource "aws_s3_bucket_ownership_controls" "artifacts" {
