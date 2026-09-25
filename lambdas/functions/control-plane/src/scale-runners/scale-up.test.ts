@@ -3,6 +3,7 @@ import { performance } from 'perf_hooks';
 
 import { controlPlaneProviderRegistry } from '../control-plane-providers';
 import * as ghAuth from '../github/auth';
+import * as rateLimitModule from '../github/rate-limit';
 import { createStartRunnerConfig } from './github-runner';
 import { publishRetryMessage } from './job-retry';
 import * as scaleUpModule from './scale-up';
@@ -338,6 +339,13 @@ describe('scaleUp with GHES', () => {
         org: TEST_DATA_SINGLE.repositoryOwner,
       });
       expect(mockOctokit.actions.createRegistrationTokenForRepo).not.toBeCalled();
+    });
+
+    it('reports the GitHub App rate limit from the registration token response', async () => {
+      process.env.ENABLE_EPHEMERAL_RUNNERS = 'false';
+      const metricSpy = vi.spyOn(rateLimitModule, 'metricGitHubAppRateLimit');
+      await scaleUpModule.scaleUp(TEST_DATA);
+      expect(metricSpy).toHaveBeenCalledWith({ 'x-ratelimit-remaining': '4999', 'x-ratelimit-limit': '5000' }, 0);
     });
 
     it('creates a runner with labels in a specific group', async () => {
@@ -2330,6 +2338,10 @@ function defaultOctokitMockImpl() {
   const mockTokenReturnValue = {
     data: {
       token: '1234abcd',
+    },
+    headers: {
+      'x-ratelimit-remaining': '4999',
+      'x-ratelimit-limit': '5000',
     },
   };
   const mockInstallationIdReturnValueOrgs = {
