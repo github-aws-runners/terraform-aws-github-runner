@@ -37,15 +37,15 @@ resource "terraform_data" "validate_config" {
 
     precondition {
       condition = !(
-        var.ssm.housekeeper.lambda.artifact.zip != null &&
-        var.ssm.housekeeper.lambda.artifact.s3 != null
+        var.storage_provider.aws.ssm.housekeeper.lambda.artifact.zip != null &&
+        var.storage_provider.aws.ssm.housekeeper.lambda.artifact.s3 != null
       )
       error_message = "ssm.housekeeper.lambda.artifact must select at most one of zip or s3."
     }
 
     precondition {
       condition = (
-        var.ssm.housekeeper.lambda.artifact.s3 == null ||
+        var.storage_provider.aws.ssm.housekeeper.lambda.artifact.s3 == null ||
         var.lambda.artifact.s3.bucket != null
       )
       error_message = "lambda.artifact.s3.bucket must be set when ssm.housekeeper.lambda.artifact.s3 is selected."
@@ -90,7 +90,12 @@ resource "terraform_data" "validate_config" {
         for provider_name, provider_config in var.orchestration_provider : provider_name
         if provider_config != null
       ]) == 1
-      error_message = "Exactly one orchestration provider must be configured. Supported providers: webhook."
+      error_message = "Exactly one orchestration provider must be configured. Supported providers: webhook and scale_set."
+    }
+
+    precondition {
+      condition     = var.orchestration_provider.scale_set == null ? true : local.provider_contract.capabilities.scale_set != null
+      error_message = "The selected compute provider must expose a scale_set capability when scale_set orchestration is selected."
     }
 
     precondition {

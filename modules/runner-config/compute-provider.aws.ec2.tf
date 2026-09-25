@@ -21,9 +21,9 @@ module "compute_aws_ec2" {
       managed_policy_arns = local.common_runner_managed_policy_arns
     })
   })
-  github        = var.github
-  ssm           = var.ssm
-  observability = var.observability
+  github           = var.github
+  observability    = var.observability
+  storage_provider = var.storage_provider
 }
 
 moved {

@@ -26,7 +26,7 @@ resource "aws_lambda_function" "pool" {
   tags                           = merge(var.config.tags, var.config.lambda_tags)
 
   environment {
-    variables = {
+    variables = merge({
       AMI_ID_SSM_PARAMETER_NAME                      = var.config.ami_id_ssm_parameter_name
       DISABLE_RUNNER_AUTOUPDATE                      = var.config.runner.disable_runner_autoupdate
       ENABLE_EPHEMERAL_RUNNERS                       = var.config.runner.ephemeral
@@ -66,7 +66,9 @@ resource "aws_lambda_function" "pool" {
       SCALE_ERRORS                                   = jsonencode(var.config.runner.scale_errors)
       USE_DEDICATED_HOST                             = var.config.runner.use_dedicated_host
       INCLUDE_BUSY_RUNNERS                           = var.config.include_busy_runners
-    }
+      }, var.config.ssm_ttl_seconds.tokens != null ? {
+      SSM_TOKEN_TTL_SECONDS = tostring(var.config.ssm_ttl_seconds.tokens)
+    } : {})
   }
 
   dynamic "vpc_config" {

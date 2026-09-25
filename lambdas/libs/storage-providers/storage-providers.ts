@@ -8,6 +8,8 @@ import { loadRunnerConfigConsumerConfigFromEnvironment } from './runner-config-c
 import { loadSsmParameterStoreTagsFromEnvironment } from './aws/ssm/parameter-store-tags';
 import { resolveRunnerConfigStorageProvider, runnerConfigStorageProvider } from './provider';
 
+import { parseSsmTokenTtlSeconds } from './aws/ssm/token-ttl';
+
 type Environment = Readonly<Record<string, string | undefined>>;
 
 const logger = createChildLogger('storage-providers');
@@ -19,6 +21,7 @@ export function createStorageProviders(environment: Environment = process.env): 
   }
 
   const tokenPath = required(environment.SSM_TOKEN_PATH, 'SSM_TOKEN_PATH');
+  const tokenTtlSeconds = parseSsmTokenTtlSeconds(environment.SSM_TOKEN_TTL_SECONDS);
   const configPath = required(environment.SSM_CONFIG_PATH, 'SSM_CONFIG_PATH');
   const parameterStoreTags = loadSsmParameterStoreTagsFromEnvironment(environment);
   const consumerConfig = loadRunnerConfigConsumerConfigFromEnvironment(environment);
@@ -31,6 +34,7 @@ export function createStorageProviders(environment: Environment = process.env): 
   return {
     runnerConfig: createAwsSsmRunnerConfigStore({
       tokenPath,
+      tokenTtlSeconds,
       parameterStoreTags,
       maxWritesPerSecond: resolveMaxWritesPerSecond(environment.SSM_PARAMETER_STORE_MAX_WRITES_PER_SECOND),
     }),

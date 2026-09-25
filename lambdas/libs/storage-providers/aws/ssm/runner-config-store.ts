@@ -5,6 +5,8 @@ import type {} from './environment';
 import { createAwsSsmStorageLogger, getErrorNames } from './logger';
 import { loadSsmParameterStoreTagsFromEnvironment } from './parameter-store-tags';
 
+import { parseSsmTokenTtlSeconds } from './token-ttl';
+
 const logger = createAwsSsmStorageLogger('runner-config-store');
 
 // SSM Parameter Store's standard-tier default; accounts that enabled the higher-throughput tier
@@ -18,6 +20,7 @@ export function resolveMaxWritesPerSecond(rawValue: string | undefined): number 
 
 export interface AwsSsmRunnerConfigStoreConfig {
   tokenPath: string;
+  tokenTtlSeconds?: number;
   parameterStoreTags: ReadonlyArray<Readonly<{ Key: string; Value: string }>>;
   maxWritesPerSecond?: number;
 }
@@ -38,6 +41,7 @@ export function createAwsSsmRunnerConfigStore(config?: AwsSsmRunnerConfigStoreCo
 
   return new AwsSsmRunnerConfigStore({
     tokenPath,
+    tokenTtlSeconds: parseSsmTokenTtlSeconds(process.env.SSM_TOKEN_TTL_SECONDS),
     parameterStoreTags: loadSsmParameterStoreTagsFromEnvironment(),
     maxWritesPerSecond: resolveMaxWritesPerSecond(process.env.SSM_PARAMETER_STORE_MAX_WRITES_PER_SECOND),
   });
@@ -59,6 +63,7 @@ class AwsSsmRunnerConfigStore implements RunnerConfigStore {
 
     try {
       await putParameter(parameterName, record.value, true, {
+        ttlSeconds: this.config.tokenTtlSeconds,
         tags: [
           ...(options.metadata ?? []).map(({ key, value }) => ({ Key: key, Value: value })),
           ...this.config.parameterStoreTags,

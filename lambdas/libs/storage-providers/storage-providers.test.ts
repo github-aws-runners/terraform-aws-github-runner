@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { createAwsSsmRunnerConfigStore } from './aws/ssm/runner-config-store';
+
 import { createStorageProviders } from './storage-providers';
 import { createAwsSsmRunnerConfigStore } from './aws/ssm/runner-config-store';
 
@@ -22,6 +24,7 @@ describe('createStorageProviders', () => {
     const environment = Object.freeze({
       RUNNER_CONFIG_STORAGE_PROVIDER: 'AWS_SSM',
       SSM_TOKEN_PATH: '/runners/tokens',
+      SSM_TOKEN_TTL_SECONDS: '3600',
       SSM_CONFIG_PATH: '/runners/config',
       SSM_PARAMETER_STORE_TAGS: JSON.stringify([{ Key: 'Environment', Value: 'test' }]),
       PARAMETER_GITHUB_APP_ID_NAME: 'app-id',
@@ -34,6 +37,7 @@ describe('createStorageProviders', () => {
 
     const storage = createStorageProviders(environment);
 
+    expect(createAwsSsmRunnerConfigStore).toHaveBeenCalledWith(expect.objectContaining({ tokenTtlSeconds: 3600 }));
     expect(storage).toEqual({
       runnerConfig: expect.any(Object),
       runnerGroupCache: expect.any(Object),
@@ -55,5 +59,13 @@ describe('createStorageProviders', () => {
     createStorageProviders(environment);
 
     expect(createAwsSsmRunnerConfigStore).toHaveBeenCalledWith(expect.objectContaining({ maxWritesPerSecond: 10000 }));
+  });
+
+  it('rejects an invalid token TTL before creating a storage provider', () => {
+    vi.clearAllMocks();
+    expect(() =>
+      createStorageProviders({ SSM_TOKEN_PATH: '/runners/tokens', SSM_TOKEN_TTL_SECONDS: 'not-a-number' }),
+    ).toThrow('SSM_TOKEN_TTL_SECONDS must be a positive number');
+    expect(createAwsSsmRunnerConfigStore).not.toHaveBeenCalled();
   });
 });
