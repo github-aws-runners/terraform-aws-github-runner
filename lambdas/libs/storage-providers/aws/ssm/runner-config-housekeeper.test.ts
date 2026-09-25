@@ -59,9 +59,48 @@ describe('clean SSM tokens / JIT config', () => {
       Array.from({ length: Math.ceil(count / 10) }, (_, i) => Math.min(10, count - i * 10)),
     );
     expect(batches.flat()).toEqual(parameters.map((parameter) => parameter.Name));
-    for (const call of mockSSMClient.commandCalls(GetParametersByPathCommand)) {
-      expect(call.args[0].input.MaxResults).toBe(10);
-    }
+  });
+
+  it('combines 46 eligible names across 100 mixed parameters into four full batches and a final six', async () => {
+    const eligibleCounts = [3, 6, 4, 7, 2, 5, 3, 6, 4, 6];
+    const parameters = eligibleCounts.flatMap((count, page) =>
+      Array.from({ length: 10 }, (_, i) => ({
+        Name: `${tokenPath}i-${page * 10 + i}`,
+        LastModifiedDate: (i * 3) % 10 < count ? old : now,
+      })),
+    );
+    const eligibleNames = parameters.filter((parameter) => parameter.LastModifiedDate === old).map((p) => p.Name);
+    mockSSMClient.on(GetParametersByPathCommand).callsFake((input) => {
+      const offset = Number(input.NextToken ?? 0);
+      // Full batches must be deleted before listing continues.
+      const seenEligible = eligibleCounts.slice(0, offset / 10).reduce((sum, count) => sum + count, 0);
+      expect(mockSSMClient.commandCalls(DeleteParametersCommand)).toHaveLength(Math.floor(seenEligible / 10));
+      return {
+        Parameters: parameters.slice(offset, offset + 10),
+        NextToken: offset + 10 < parameters.length ? String(offset + 10) : undefined,
+      };
+    });
+    await clean();
+    const batches = mockSSMClient.commandCalls(DeleteParametersCommand).map((call) => call.args[0].input.Names!);
+    expect(mockSSMClient).toHaveReceivedCommandTimes(GetParametersByPathCommand, 10);
+    expect(batches.map((batch) => batch.length)).toEqual([10, 10, 10, 10, 6]);
+    expect(batches.flat()).toEqual(eligibleNames);
+  });
+
+  it('flushes a partial batch when an empty final page has no next token', async () => {
+    mockSSMClient
+      .on(GetParametersByPathCommand)
+      .resolvesOnce({ Parameters: staleParameters(6), NextToken: 'last' })
+      .callsFake(() => {
+        expect(mockSSMClient).toHaveReceivedCommandTimes(DeleteParametersCommand, 0);
+        return {};
+      });
+    await clean();
+    expect(mockSSMClient).toHaveReceivedCommandTimes(GetParametersByPathCommand, 2);
+    expect(mockSSMClient).toHaveReceivedCommandTimes(DeleteParametersCommand, 1);
+    expect(mockSSMClient).toHaveReceivedCommandWith(DeleteParametersCommand, {
+      Names: staleParameters(6).map((parameter) => parameter.Name),
+    });
   });
 
   it('filters young, boundary-age and incomplete parameters across listing pages', async () => {
@@ -80,9 +119,10 @@ describe('clean SSM tokens / JIT config', () => {
       .resolvesOnce({ Parameters: [{ Name: 'old-on-second-page', LastModifiedDate: old }] });
     await clean();
     expect(mockSSMClient).toHaveReceivedCommandWith(GetParametersByPathCommand, { Path: tokenPath, NextToken: 'next' });
-    expect(mockSSMClient).toHaveReceivedCommandTimes(DeleteParametersCommand, 2);
-    expect(mockSSMClient).toHaveReceivedCommandWith(DeleteParametersCommand, { Names: [`${tokenPath}i-0`] });
-    expect(mockSSMClient).toHaveReceivedCommandWith(DeleteParametersCommand, { Names: ['old-on-second-page'] });
+    expect(mockSSMClient).toHaveReceivedCommandTimes(DeleteParametersCommand, 1);
+    expect(mockSSMClient).toHaveReceivedCommandWith(DeleteParametersCommand, {
+      Names: [`${tokenPath}i-0`, 'old-on-second-page'],
+    });
   });
 
   it('does not delete in dry-run mode', async () => {
@@ -153,17 +193,18 @@ describe('clean SSM tokens / JIT config', () => {
     expect(mockSSMClient).toHaveReceivedCommandWith(DeleteParametersCommand, { Names: [`${tokenPath}i-0`] });
   });
 
-  it('deletes the current page before fetching the next page, even if that listing fails', async () => {
+  it('flushes buffered names before propagating a later listing failure', async () => {
     mockSSMClient
       .on(GetParametersByPathCommand)
       .resolvesOnce({ Parameters: staleParameters(1), NextToken: 'next' })
       .callsFake(() => {
-        expect(mockSSMClient).toHaveReceivedCommandWith(DeleteParametersCommand, { Names: [`${tokenPath}i-0`] });
+        expect(mockSSMClient).toHaveReceivedCommandTimes(DeleteParametersCommand, 0);
         throw new Error('Later listing failed');
       });
     const result = expect(cleanSSMTokens(options)).rejects.toThrow('Later listing failed');
     await vi.runAllTimersAsync();
     await result;
+    expect(mockSSMClient).toHaveReceivedCommandWith(DeleteParametersCommand, { Names: [`${tokenPath}i-0`] });
   });
 
   it('does not start listing with less than ten seconds remaining', async () => {
@@ -179,6 +220,20 @@ describe('clean SSM tokens / JIT config', () => {
     });
     await clean({}, () => remaining);
     expect(mockSSMClient).toHaveReceivedCommandTimes(GetParametersByPathCommand, 1);
+    expect(mockSSMClient).toHaveReceivedCommandTimes(DeleteParametersCommand, 0);
+  });
+
+  it('leaves a buffered partial batch for the next run when a later page exhausts runtime', async () => {
+    let remaining = 60000;
+    mockSSMClient
+      .on(GetParametersByPathCommand)
+      .resolvesOnce({ Parameters: staleParameters(6), NextToken: 'last' })
+      .callsFake(() => {
+        remaining = 9999;
+        return {};
+      });
+    await clean({}, () => remaining);
+    expect(mockSSMClient).toHaveReceivedCommandTimes(GetParametersByPathCommand, 2);
     expect(mockSSMClient).toHaveReceivedCommandTimes(DeleteParametersCommand, 0);
   });
 
