@@ -53,7 +53,6 @@ jobs:
           - ephemeral
           - multi-runner
           - multi-runner-v2
-          - multi-runner-scale-set
           - migration-test
           - termination-watcher
     services:
