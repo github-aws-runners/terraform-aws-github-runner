@@ -62,6 +62,26 @@ export function loadEc2ProviderConfig(): Ec2ProviderConfig {
   };
 }
 
+function resolveCapacityType(config: CreateEC2RunnerConfig): CreateEC2RunnerConfig {
+  const { TargetCapacityType, ...overrides } = config.ec2OverrideConfig ?? {};
+  let targetCapacityType = config.ec2instanceCriteria.targetCapacityType;
+
+  if (TargetCapacityType && config.useDedicatedHost) {
+    if (TargetCapacityType === 'spot') {
+      logger.warn('Dedicated hosts do not support spot, the capacity type label is ignored.');
+    }
+  } else if (TargetCapacityType) {
+    targetCapacityType = TargetCapacityType;
+    if (TargetCapacityType === 'on-demand') delete overrides.MaxPrice;
+  }
+
+  return {
+    ...config,
+    ec2instanceCriteria: { ...config.ec2instanceCriteria, targetCapacityType },
+    ec2OverrideConfig: Object.keys(overrides).length > 0 ? overrides : undefined,
+  };
+}
+
 export async function createRunners(
   ec2Operations: Ec2RunnerResourceOperations,
   githubRunnerConfig: CreateGitHubRunnerConfig,
@@ -74,7 +94,7 @@ export async function createRunners(
 ): Promise<CreateRunnerResult> {
   let result: CreateRunnerResult;
   try {
-    const { scaleErrors, ...ec2CreateConfig } = ec2RunnerConfig;
+    const { scaleErrors, ...ec2CreateConfig } = resolveCapacityType(ec2RunnerConfig);
     const ec2Result = await ec2Operations.create({
       ...ec2CreateConfig,
       runnerType: githubRunnerConfig.runnerType,

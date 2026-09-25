@@ -412,6 +412,83 @@ describe('scaleUp with GHES', () => {
       );
     });
 
+    describe('capacity type label', () => {
+      it('creates an on-demand runner in a spot pool and keeps the label out of the fleet overrides', async () => {
+        await createProviderRunners({ labels: ['self-hosted', 'ghr-ec2-capacity-type:on-demand'] });
+
+        expect(mockCreateRunner).toHaveBeenCalledWith(
+          expect.objectContaining({
+            ec2instanceCriteria: expect.objectContaining({ targetCapacityType: 'on-demand' }),
+            ec2OverrideConfig: undefined,
+          }),
+        );
+      });
+
+      it('creates a spot runner in an on-demand pool', async () => {
+        process.env.INSTANCE_TARGET_CAPACITY_TYPE = 'on-demand';
+
+        await createProviderRunners({ labels: ['self-hosted', 'ghr-ec2-capacity-type:spot'] });
+
+        expect(mockCreateRunner).toHaveBeenCalledWith(
+          expect.objectContaining({
+            ec2instanceCriteria: expect.objectContaining({ targetCapacityType: 'spot' }),
+            ec2OverrideConfig: undefined,
+          }),
+        );
+      });
+
+      it('keeps the pool capacity type when the label is not set', async () => {
+        await createProviderRunners({ labels: ['self-hosted', 'ghr-ec2-priority:1'] });
+
+        expect(mockCreateRunner).toHaveBeenCalledWith(
+          expect.objectContaining({
+            ec2instanceCriteria: expect.objectContaining({ targetCapacityType: 'spot' }),
+          }),
+        );
+      });
+
+      it('does not pass the max price for an on-demand runner', async () => {
+        await createProviderRunners({
+          labels: ['self-hosted', 'ghr-ec2-capacity-type:on-demand', 'ghr-ec2-max-price:0.50', 'ghr-ec2-priority:1'],
+        });
+
+        expect(mockCreateRunner).toHaveBeenCalledWith(expect.objectContaining({ ec2OverrideConfig: { Priority: 1 } }));
+      });
+
+      it('passes the max price for a spot runner', async () => {
+        await createProviderRunners({
+          labels: ['self-hosted', 'ghr-ec2-capacity-type:spot', 'ghr-ec2-max-price:0.50'],
+        });
+
+        expect(mockCreateRunner).toHaveBeenCalledWith(
+          expect.objectContaining({ ec2OverrideConfig: { MaxPrice: '0.50' } }),
+        );
+      });
+
+      it('ignores the label for dedicated hosts', async () => {
+        process.env.USE_DEDICATED_HOST = 'true';
+        process.env.INSTANCE_TARGET_CAPACITY_TYPE = 'on-demand';
+
+        await createProviderRunners({ labels: ['self-hosted', 'ghr-ec2-capacity-type:spot'] });
+
+        expect(mockCreateRunner).toHaveBeenCalledWith(
+          expect.objectContaining({
+            useDedicatedHost: true,
+            ec2instanceCriteria: expect.objectContaining({ targetCapacityType: 'on-demand' }),
+            ec2OverrideConfig: undefined,
+          }),
+        );
+      });
+
+      it('rejects an unsupported value before runner creation', async () => {
+        await expect(
+          createProviderRunners({ labels: ['self-hosted', 'ghr-ec2-capacity-type:reserved'] }),
+        ).rejects.toThrow(InvalidRunnerLabelsError);
+
+        expect(mockCreateRunner).not.toHaveBeenCalled();
+      });
+    });
+
     it('includes ec2OverrideConfig with priority and weighted capacity when specified', async () => {
       await createProviderRunners({
         baseRunnerLabels: 'base-label',
@@ -474,6 +551,16 @@ describe('scaleUp with GHES', () => {
           },
         }),
       ).not.toThrow();
+    });
+
+    it.each(['spot', 'on-demand'] as const)('accepts the %s capacity type', (TargetCapacityType) => {
+      expect(() => validateEc2OverrideConfig({ TargetCapacityType })).not.toThrow();
+    });
+
+    it('rejects an unsupported capacity type', () => {
+      expect(() => validateEc2OverrideConfig({ TargetCapacityType: 'reserved' as unknown as 'spot' })).toThrow(
+        InvalidRunnerLabelsError,
+      );
     });
 
     it('rejects instance type with instance requirements', () => {
@@ -645,6 +732,15 @@ describe('parseEc2OverrideConfig', () => {
     it('should parse availability-zone-id label', () => {
       const result = parseEc2OverrideConfig(['ghr-ec2-availability-zone-id:use1-az1']);
       expect(result?.AvailabilityZoneId).toBe('use1-az1');
+    });
+
+    it('should parse capacity-type label', () => {
+      expect(parseEc2OverrideConfig(['ghr-ec2-capacity-type:spot'])?.TargetCapacityType).toBe('spot');
+      expect(parseEc2OverrideConfig(['ghr-ec2-capacity-type:on-demand'])?.TargetCapacityType).toBe('on-demand');
+    });
+
+    it('should parse capacity-type label case-insensitively', () => {
+      expect(parseEc2OverrideConfig(['ghr-ec2-capacity-type:On-Demand'])?.TargetCapacityType).toBe('on-demand');
     });
 
     it('should parse max-price label', () => {

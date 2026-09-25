@@ -560,6 +560,7 @@ When `use_dedicated_host = true`, runner instances are launched with `RunInstanc
 | Label                                | Description                | Example value    | EC2 Fleet | Dedicated host |
 | ------------------------------------ | -------------------------- | ---------------- | --------- | -------------- |
 | `ghr-ec2-instance-type:<type>`       | Set specific instance type | `c5.xlarge`      | Yes       | Yes            |
+| `ghr-ec2-capacity-type:<type>`       | Set the capacity type      | `on-demand`      | Yes       | No             |
 | `ghr-ec2-max-price:<price>`          | Set maximum spot price     | `0.10`           | Yes       | No             |
 | `ghr-ec2-subnet-id:<id>`             | Set subnet ID              | `subnet-abc123`  | Yes       | Yes            |
 | `ghr-ec2-availability-zone:<zone>`   | Set availability zone      | `us-east-1a`     | Yes       | Yes            |
@@ -567,6 +568,27 @@ When `use_dedicated_host = true`, runner instances are launched with `RunInstanc
 | `ghr-ec2-weighted-capacity:<number>` | Set weighted capacity      | `2`              | Yes       | No             |
 | `ghr-ec2-priority:<number>`          | Set launch priority        | `1`              | Yes       | No             |
 | `ghr-ec2-image-id:<ami-id>`          | Override AMI ID            | `ami-0abcdef123` | Yes       | Yes            |
+
+##### Capacity type
+
+`ghr-ec2-capacity-type` selects spot or on-demand for the runner created for a job. It overrides `instance_target_capacity_type` of the runner configuration. Only `spot` and `on-demand` are accepted. Any other value is rejected and the job is not retried.
+
+- With `use_dedicated_host = true` the label is ignored, because `RunInstances` does not support spot. A `spot` value writes a warning to the log.
+- `ghr-ec2-max-price` only applies to spot. It is not passed to the fleet request when the capacity type is `on-demand`.
+- On-demand failover (`enable_on_demand_failover_for_errors`) follows the capacity type of the request. It applies to jobs that use spot and never to jobs that use on-demand.
+- Tags for spot requests are defined in the launch template, and only when the default capacity type is spot without on-demand failover. A spot request created for a job that overrides the capacity type in another configuration does not get these tags.
+
+To allow only spot, restrict the key in the dynamic labels policy:
+
+```hcl
+aws_dynamic_labels_policy = {
+  restricted_keys = {
+    "capacity-type" = {
+      allowed = ["spot"]
+    }
+  }
+}
+```
 
 ##### Instance Requirements — vCPU & Memory
 

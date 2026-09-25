@@ -42,6 +42,13 @@ describe('violationsAgainstPolicy', () => {
     expect(v[0].label).toBe('ghr-ec2-image-id:ami-1');
   });
 
+  it('restricts the capacity type to spot', () => {
+    const policy: Ec2DynamicLabelsPolicy = { restricted_keys: { 'capacity-type': { allowed: ['spot'] } } };
+    const v = violationsAgainstPolicy(['ghr-ec2-capacity-type:spot', 'ghr-ec2-capacity-type:on-demand'], policy);
+    expect(v).toHaveLength(1);
+    expect(v[0].label).toBe('ghr-ec2-capacity-type:on-demand');
+  });
+
   it('restricted key allowed glob with `*`', () => {
     const policy: Ec2DynamicLabelsPolicy = { restricted_keys: { 'instance-type': { allowed: ['m5.*', 'c5.*'] } } };
     const v = violationsAgainstPolicy(['ghr-ec2-instance-type:m5.large', 'ghr-ec2-instance-type:r5.large'], policy);
