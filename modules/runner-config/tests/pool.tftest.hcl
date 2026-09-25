@@ -74,7 +74,6 @@ variables {
             key = "runners/linux/actions-runner.tar.gz"
           }
         }
-        ssm_enabled = true
       }
     }
   }
