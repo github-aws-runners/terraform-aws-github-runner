@@ -124,8 +124,13 @@ run "does_not_create_cloudwatch_policy_when_disabled_with_ssm" {
         }
         kms_key = null
       }
-      vpc_id     = "vpc-12345678"
-      subnet_ids = ["subnet-12345678"]
+      vpc_id         = "vpc-12345678"
+      subnet_ids     = ["subnet-12345678"]
+      instance_types = ["m5.large"]
+      binaries_syncer = {
+        enabled = false
+        s3      = null
+      }
       cloudwatch_agent = {
         enabled = false
       }
@@ -177,8 +182,13 @@ run "does_not_create_cloudwatch_policy_when_disabled_without_ssm" {
         }
         kms_key = null
       }
-      vpc_id     = "vpc-12345678"
-      subnet_ids = ["subnet-12345678"]
+      vpc_id         = "vpc-12345678"
+      subnet_ids     = ["subnet-12345678"]
+      instance_types = ["m5.large"]
+      binaries_syncer = {
+        enabled = false
+        s3      = null
+      }
       cloudwatch_agent = {
         enabled = false
       }
