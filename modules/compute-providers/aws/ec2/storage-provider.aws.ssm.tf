@@ -54,7 +54,7 @@ data "aws_iam_policy_document" "ssm_cloudwatch" {
       "ssm:GetParameter",
     ]
     resources = [
-      aws_ssm_parameter.cloudwatch_agent_config_runner[0].arn,
+      "${aws_ssm_parameter.cloudwatch_agent_config_runner[0].arn}/*",
     ]
   }
 }
