@@ -3,12 +3,12 @@ import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest/vitest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { warn } = vi.hoisted(() => ({ warn: vi.fn() }));
+const { info, warn } = vi.hoisted(() => ({ info: vi.fn(), warn: vi.fn() }));
 vi.mock('./logger', async (importOriginal) => {
   const original = await importOriginal<typeof import('./logger')>();
   return {
     ...original,
-    createAwsSsmStorageLogger: () => ({ info: vi.fn(), debug: vi.fn(), warn, error: vi.fn() }),
+    createAwsSsmStorageLogger: () => ({ info, debug: vi.fn(), warn, error: vi.fn() }),
   };
 });
 
@@ -44,9 +44,10 @@ describe('clean SSM tokens / JIT config', () => {
     vi.useFakeTimers();
     vi.setSystemTime(now);
     warn.mockClear();
+    info.mockClear();
     mockSSMClient.reset();
     mockSSMClient.on(GetParametersByPathCommand).resolves({ Parameters: staleParameters(1) });
-    mockSSMClient.on(DeleteParametersCommand).resolves({});
+    mockSSMClient.on(DeleteParametersCommand).callsFake((input) => ({ DeletedParameters: input.Names }));
   });
   afterEach(() => vi.useRealTimers());
 
@@ -59,6 +60,44 @@ describe('clean SSM tokens / JIT config', () => {
       Array.from({ length: Math.ceil(count / 10) }, (_, i) => Math.min(10, count - i * 10)),
     );
     expect(batches.flat()).toEqual(parameters.map((parameter) => parameter.Name));
+  });
+
+  it('logs only AWS-confirmed deletions and summarizes mixed batch outcomes', async () => {
+    mockPages(25);
+    mockSSMClient
+      .on(DeleteParametersCommand)
+      .resolvesOnce({
+        DeletedParameters: staleParameters(9).map((p) => p.Name),
+        InvalidParameters: [`${tokenPath}i-9`],
+      })
+      .rejectsOnce(new Error('Rate exceeded'))
+      .callsFake((input) => ({ DeletedParameters: input.Names }));
+    await clean();
+    const successes = info.mock.calls.filter(
+      ([message]) => message === 'Successfully deleted expired runner configuration batch',
+    );
+    expect(successes).toHaveLength(2);
+    expect(successes.map(([, fields]) => fields)).toEqual([{ deletedCount: 9 }, { deletedCount: 5 }]);
+    expect(info).toHaveBeenCalledWith('Runner configuration cleanup summary', {
+      attempted: 25,
+      deleted: 14,
+      failed: 11,
+      skipped: 0,
+      pending: 0,
+      dryRun: false,
+      tokenPath,
+      status: 'completed',
+    });
+  });
+
+  it('does not infer successful deletions from an empty AWS response', async () => {
+    mockSSMClient.on(DeleteParametersCommand).resolves({});
+    await clean();
+    expect(info).not.toHaveBeenCalledWith('Successfully deleted expired runner configuration batch', expect.anything());
+    expect(info).toHaveBeenCalledWith(
+      'Runner configuration cleanup summary',
+      expect.objectContaining({ attempted: 1, deleted: 0 }),
+    );
   });
 
   it('combines 46 eligible names across 100 mixed parameters into four full batches and a final six', async () => {
@@ -129,6 +168,11 @@ describe('clean SSM tokens / JIT config', () => {
     await clean({ dryRun: true });
     expect(mockSSMClient).toHaveReceivedCommandTimes(DeleteParametersCommand, 0);
     expect(vi.getTimerCount()).toBe(0);
+    expect(info).not.toHaveBeenCalledWith('Successfully deleted expired runner configuration batch', expect.anything());
+    expect(info).toHaveBeenCalledWith(
+      'Runner configuration cleanup summary',
+      expect.objectContaining({ attempted: 0, deleted: 0, failed: 0, dryRun: true }),
+    );
   });
 
   it.each([undefined, [], [{ Name: 'young', LastModifiedDate: now }]])(
@@ -205,11 +249,19 @@ describe('clean SSM tokens / JIT config', () => {
     await vi.runAllTimersAsync();
     await result;
     expect(mockSSMClient).toHaveReceivedCommandWith(DeleteParametersCommand, { Names: [`${tokenPath}i-0`] });
+    expect(info).toHaveBeenCalledWith(
+      'Runner configuration cleanup summary',
+      expect.objectContaining({ status: 'listing-failed', attempted: 1, deleted: 1 }),
+    );
   });
 
   it('does not start listing with less than ten seconds remaining', async () => {
     await clean({}, () => 9999);
     expect(mockSSMClient.calls()).toHaveLength(0);
+    expect(info).toHaveBeenCalledWith(
+      'Runner configuration cleanup summary',
+      expect.objectContaining({ status: 'runtime-limit', attempted: 0, deleted: 0 }),
+    );
   });
 
   it('does not delete when listing consumes the remaining time', async () => {
