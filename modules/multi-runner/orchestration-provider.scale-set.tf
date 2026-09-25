@@ -7,17 +7,17 @@ locals {
           app_id = {
             name        = local.primary_app_id.name
             arn         = local.primary_app_id.arn
-            kms_key_arn = local.effective_config.storage_provider.aws.ssm.kms_key_id
+            kms_key_arn = try(local.effective_config.storage_provider.aws.ssm.kms_key_id, null)
           }
           private_key = {
             name        = local.primary_app_key_base64.name
             arn         = local.primary_app_key_base64.arn
-            kms_key_arn = local.effective_config.storage_provider.aws.ssm.kms_key_id
+            kms_key_arn = try(local.effective_config.storage_provider.aws.ssm.kms_key_id, null)
           }
           installation_id = local.primary_app_installation_id == null ? null : {
             name        = local.primary_app_installation_id.name
             arn         = local.primary_app_installation_id.arn
-            kms_key_arn = local.effective_config.storage_provider.aws.ssm.kms_key_id
+            kms_key_arn = try(local.effective_config.storage_provider.aws.ssm.kms_key_id, null)
           }
         }
         runner_owner              = local.effective_config.github.runner_owner
