@@ -5,6 +5,18 @@ mock_provider "aws" {
     }
   }
 
+  mock_data "aws_partition" {
+    defaults = {
+      partition = "aws"
+    }
+  }
+
+  mock_data "aws_region" {
+    defaults = {
+      region = "eu-west-1"
+    }
+  }
+
   mock_data "aws_iam_policy_document" {
     defaults = {
       json = "{\"Version\":\"2012-10-17\",\"Statement\":[]}"
@@ -65,9 +77,10 @@ variables {
 
   global_config_github = {
     app = {
-      key_base64     = "experimental-app-key"
-      id             = "experimental-app-id"
-      webhook_secret = "experimental-webhook-secret"
+      key_base64      = "experimental-app-key"
+      id              = "experimental-app-id"
+      installation_id = "experimental-app-installation"
+      webhook_secret  = "experimental-webhook-secret"
     }
   }
 
@@ -404,6 +417,8 @@ run "v2_inputs_resolve_lane_over_global" {
       && keys(module.runner_configs) == ["lane"]
       && length(output.runners_map) == 0
       && keys(output.runners_map_v2) == ["lane"]
+      && keys(aws_sqs_queue.queued_builds) == ["lane"]
+      && keys(aws_sqs_queue_policy.build_queue_policy) == ["lane"]
     )
     error_message = "Experimental v2 configurations must route through module.runner_configs and skip the legacy runners module."
   }
@@ -524,4 +539,440 @@ run "v2_inputs_reject_legacy_runner_config" {
       }
     }
   }
+}
+
+run "scale_set_only_lane_omits_webhook_queues" {
+  command = plan
+
+  override_resource {
+    target = module.ssm.aws_ssm_parameter.github_app_id
+    values = {
+      arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/test/app/github_app_id"
+    }
+  }
+
+  override_resource {
+    target = module.ssm.aws_ssm_parameter.github_app_key_base64
+    values = {
+      arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/test/app/github_app_key_base64"
+    }
+  }
+
+  override_resource {
+    target = module.ssm.aws_ssm_parameter.github_app_installation_id
+    values = {
+      arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/test/app/github_app_installation_id"
+    }
+  }
+
+  variables {
+    experimental_features = ["multi-runner-v2"]
+
+    global_config_github = {
+      app = {
+        key_base64      = "experimental-app-key"
+        id              = "experimental-app-id"
+        installation_id = "experimental-app-installation"
+        webhook_secret  = "experimental-webhook-secret"
+      }
+      runner_owner              = "example"
+      runner_registration_level = "organization"
+    }
+
+    global_config_orchestration_provider = {
+      webhook = {
+        eventbridge = {
+          enabled = false
+        }
+        lambda = {
+          artifact = {
+            s3 = {
+              key = "scale-runners.zip"
+            }
+          }
+          webhook = {
+            artifact = {
+              s3 = {
+                key = "scale-webhook.zip"
+              }
+            }
+          }
+        }
+      }
+      scale_set = {
+        network = {
+          vpc_id     = "vpc-scale-set"
+          subnet_ids = ["subnet-scale-set"]
+        }
+      }
+    }
+
+    multi_runner_config = {
+      scale = {
+        runner = {
+          os           = "linux"
+          architecture = "x64"
+        }
+        orchestration_provider = {
+          webhook = null
+          scale_set = {
+            name = "scale-only"
+          }
+        }
+        compute_provider = {
+          aws = {
+            ec2 = {
+              instance_types = ["m5.large"]
+              vpc_id         = "vpc-scale-set"
+              subnet_ids     = ["subnet-scale-set"]
+              binaries_syncer = {
+                enabled = false
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      local.resolved_config.multi_runner_config["scale"].orchestration_provider.webhook == null
+      && local.resolved_config.multi_runner_config["scale"].orchestration_provider.scale_set.name == "scale-only"
+      && keys(aws_sqs_queue.queued_builds) == []
+      && keys(aws_sqs_queue_policy.build_queue_policy) == []
+      && keys(aws_sqs_queue.queued_builds_dlq) == []
+      && keys(aws_sqs_queue_policy.build_queue_dlq_policy) == []
+      && length(module.orchestration_scale_set) == 1
+    )
+    error_message = "A scale-set-only lane must not create or access webhook SQS resources."
+  }
+}
+
+run "mixed_webhook_and_scale_set_lanes_create_webhook_queues_only_for_webhook" {
+  command = plan
+
+  override_resource {
+    target = module.ssm.aws_ssm_parameter.github_app_id
+    values = {
+      arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/test/app/github_app_id"
+    }
+  }
+
+  override_resource {
+    target = module.ssm.aws_ssm_parameter.github_app_key_base64
+    values = {
+      arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/test/app/github_app_key_base64"
+    }
+  }
+
+  override_resource {
+    target = module.ssm.aws_ssm_parameter.github_app_installation_id
+    values = {
+      arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/test/app/github_app_installation_id"
+    }
+  }
+
+  variables {
+    experimental_features = ["multi-runner-v2"]
+
+    global_config_github = {
+      app = {
+        key_base64      = "experimental-app-key"
+        id              = "experimental-app-id"
+        installation_id = "experimental-app-installation"
+        webhook_secret  = "experimental-webhook-secret"
+      }
+      runner_owner              = "example"
+      runner_registration_level = "organization"
+    }
+
+    global_config_orchestration_provider = {
+      webhook = {
+        eventbridge = {
+          enabled = false
+        }
+        lambda = {
+          artifact = {
+            s3 = {
+              key = "mixed-runners.zip"
+            }
+          }
+          webhook = {
+            artifact = {
+              s3 = {
+                key = "mixed-webhook.zip"
+              }
+            }
+          }
+        }
+      }
+      scale_set = {
+        network = {
+          vpc_id     = "vpc-scale-set"
+          subnet_ids = ["subnet-scale-set"]
+        }
+      }
+    }
+
+    multi_runner_config = {
+      webhook = {
+        orchestration_provider = {
+          webhook = {
+            matcherConfig = {
+              labelMatchers = [["self-hosted", "linux", "x64"]]
+            }
+          }
+          scale_set = null
+        }
+        compute_provider = {
+          aws = {
+            ec2 = {
+              instance_types = ["m5.large"]
+              vpc_id         = "vpc-webhook"
+              subnet_ids     = ["subnet-webhook"]
+              binaries_syncer = {
+                enabled = false
+              }
+            }
+          }
+        }
+      }
+      scale = {
+        orchestration_provider = {
+          webhook = null
+          scale_set = {
+            name = "scale-mixed"
+          }
+        }
+        compute_provider = {
+          aws = {
+            ec2 = {
+              instance_types = ["m5.large"]
+              vpc_id         = "vpc-scale-set"
+              subnet_ids     = ["subnet-scale-set"]
+              binaries_syncer = {
+                enabled = false
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      keys(aws_sqs_queue.queued_builds) == ["webhook"]
+      && keys(aws_sqs_queue_policy.build_queue_policy) == ["webhook"]
+      && keys(module.runner_configs) == ["scale", "webhook"]
+    )
+    error_message = "Mixed provider lanes must create webhook queues only for the webhook lane while routing both lanes through v2 runner configs."
+  }
+}
+
+run "scale_set_lane_requires_owner_for_non_enterprise_registration" {
+  command = plan
+
+  plan_options {
+    target = [terraform_data.validate_v2]
+  }
+
+  variables {
+    experimental_features = ["multi-runner-v2"]
+
+    global_config_github = {
+      app = {
+        key_base64     = "experimental-app-key"
+        id             = "experimental-app-id"
+        webhook_secret = "experimental-webhook-secret"
+      }
+      runner_registration_level = "organization"
+    }
+
+    multi_runner_config = {
+      scale = {
+        orchestration_provider = {
+          webhook = null
+          scale_set = {
+            name = "scale-missing-owner"
+          }
+        }
+        compute_provider = {
+          aws = {
+            ec2 = {
+              instance_types = ["m5.large"]
+              vpc_id         = "vpc-scale-set"
+              subnet_ids     = ["subnet-scale-set"]
+            }
+          }
+        }
+      }
+    }
+  }
+
+  expect_failures = [terraform_data.validate_v2]
+}
+
+run "scale_set_lane_requires_installation_id" {
+  command = plan
+
+  plan_options {
+    target = [terraform_data.validate_v2]
+  }
+
+  variables {
+    experimental_features = ["multi-runner-v2"]
+
+    global_config_github = {
+      app = {
+        key_base64     = "experimental-app-key"
+        id             = "experimental-app-id"
+        webhook_secret = "experimental-webhook-secret"
+      }
+      runner_owner              = "example"
+      runner_registration_level = "organization"
+    }
+
+    multi_runner_config = {
+      scale = {
+        runner = {
+          os           = "linux"
+          architecture = "x64"
+        }
+        orchestration_provider = {
+          webhook = null
+          scale_set = {
+            name = "scale-missing-installation"
+          }
+        }
+        compute_provider = {
+          aws = {
+            ec2 = {
+              instance_types = ["m5.large"]
+              vpc_id         = "vpc-scale-set"
+              subnet_ids     = ["subnet-scale-set"]
+            }
+          }
+        }
+      }
+    }
+  }
+
+  expect_failures = [terraform_data.validate_v2]
+}
+
+run "scale_set_queue_for_each_keys_are_plan_known" {
+  command = plan
+
+  plan_options {
+    target = [aws_sqs_queue.queued_builds, aws_sqs_queue.queued_builds_dlq]
+  }
+
+  variables {
+    experimental_features = ["multi-runner-v2"]
+
+    global_config_orchestration_provider = {
+      scale_set = {
+        network = {
+          vpc_id     = "vpc-scale-set"
+          subnet_ids = ["subnet-scale-set"]
+        }
+      }
+    }
+
+    multi_runner_config = {
+      scale = {
+        orchestration_provider = {
+          webhook = null
+          scale_set = {
+            name = "scale-plan-known"
+          }
+        }
+        compute_provider = {
+          aws = {
+            ec2 = {
+              instance_types = ["m5.large"]
+              vpc_id         = "vpc-scale-set"
+              subnet_ids     = ["subnet-scale-set"]
+              binaries_syncer = {
+                enabled = false
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      keys(aws_sqs_queue.queued_builds) == []
+      && keys(aws_sqs_queue.queued_builds_dlq) == []
+    )
+    error_message = "Webhook queue for_each keys must be known and empty for a scale-set-only plan."
+  }
+}
+
+run "v2_lane_requires_exactly_one_orchestration_provider" {
+  command = plan
+
+  plan_options {
+    target = [terraform_data.validate_v2]
+  }
+
+  variables {
+    experimental_features = ["multi-runner-v2"]
+
+    multi_runner_config = {
+      missing = {
+        orchestration_provider = {}
+        compute_provider = {
+          aws = {
+            ec2 = {
+              instance_types = ["m5.large"]
+              vpc_id         = "vpc-missing-provider"
+              subnet_ids     = ["subnet-missing-provider"]
+            }
+          }
+        }
+      }
+    }
+  }
+
+  expect_failures = [terraform_data.validate_v2]
+}
+
+run "v2_lane_rejects_multiple_orchestration_providers" {
+  command = plan
+
+  plan_options {
+    target = [terraform_data.validate_v2]
+  }
+
+  variables {
+    experimental_features = ["multi-runner-v2"]
+
+    multi_runner_config = {
+      multiple = {
+        orchestration_provider = {
+          webhook = {}
+          scale_set = {
+            name = "multiple-providers"
+          }
+        }
+        compute_provider = {
+          aws = {
+            ec2 = {
+              instance_types = ["m5.large"]
+              vpc_id         = "vpc-multiple-providers"
+              subnet_ids     = ["subnet-multiple-providers"]
+            }
+          }
+        }
+      }
+    }
+  }
+
+  expect_failures = [terraform_data.validate_v2]
 }

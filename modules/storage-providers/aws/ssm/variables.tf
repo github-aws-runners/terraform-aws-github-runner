@@ -17,6 +17,11 @@ variable "github_app" {
       arn  = string
       name = string
     }))
+    installation_id = optional(string)
+    installation_id_ssm = optional(object({
+      arn  = string
+      name = string
+    }))
     webhook_secret = optional(string)
     webhook_secret_ssm = optional(object({
       arn  = string

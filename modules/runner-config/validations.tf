@@ -90,7 +90,12 @@ resource "terraform_data" "validate_config" {
         for provider_name, provider_config in var.orchestration_provider : provider_name
         if provider_config != null
       ]) == 1
-      error_message = "Exactly one orchestration provider must be configured. Supported providers: webhook."
+      error_message = "Exactly one orchestration provider must be configured. Supported providers: webhook and scale_set."
+    }
+
+    precondition {
+      condition     = var.orchestration_provider.scale_set == null ? true : local.provider_contract.capabilities.scale_set != null
+      error_message = "The selected compute provider must expose a scale_set capability when scale_set orchestration is selected."
     }
 
     precondition {
