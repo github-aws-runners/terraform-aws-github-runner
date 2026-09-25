@@ -22,7 +22,7 @@ case "$iac_binary" in
     ;;
 esac
 case "$example" in
-  base | prebuilt | default | ephemeral | multi-runner | multi-runner-webhook | microvm-foundation)
+  base | prebuilt | default | ephemeral | multi-runner | multi-runner-webhook | microvm-foundation | multi-runner-scale-set)
     use_tfvars=true
     ;;
   migration-test)
@@ -32,7 +32,7 @@ case "$example" in
     use_tfvars=false
     ;;
   *)
-  echo "Supported examples for the runner are: base, prebuilt, default, ephemeral, multi-runner, multi-runner-webhook, microvm-foundation, migration-test, termination-watcher" >&2
+  echo "Supported examples for the runner are: base, prebuilt, default, ephemeral, multi-runner, multi-runner-webhook, microvm-foundation, multi-runner-scale-set, migration-test, termination-watcher" >&2
   exit 64
   ;;
 esac
@@ -40,7 +40,7 @@ esac
 case "$action" in
   init | plan | apply | destroy | output) ;;
   *)
-    echo "Usage: $0 {init|plan|apply|destroy|output} {base|prebuilt|default|ephemeral|multi-runner|multi-runner-webhook|microvm-foundation|migration-test|termination-watcher} [TFVARS_FILE]" >&2
+    echo "Usage: $0 {init|plan|apply|destroy|output} {base|prebuilt|default|ephemeral|multi-runner|multi-runner-webhook|microvm-foundation|multi-runner-scale-set|migration-test|termination-watcher} [TFVARS_FILE]" >&2
     exit 64
     ;;
 esac
@@ -369,6 +369,11 @@ $lambda_zip"
     multi-runner-webhook)
       create_ami_fixture "ministack-webhook-linux-x64" x86_64 >/dev/null
       ;;
+    multi-runner-scale-set)
+      create_ami_fixture "ministack-scale-set-linux-x64" x86_64 >/dev/null
+      create_ami_fixture "ministack-scale-set-linux-arm64" arm64 >/dev/null
+      create_ami_fixture "ministack-scale-set-windows-x64" x86_64 >/dev/null
+      ;;
   esac
 }
 
@@ -396,15 +401,15 @@ case "$action" in
     ;;
   plan)
     iac_init
-    iac_example plan -input=false -parallelism=1
+    iac_example plan -input=false -parallelism=1 -compact-warnings
     ;;
   apply)
     iac_init
-    iac_example apply -auto-approve -input=false -parallelism=1
+    iac_example apply -auto-approve -input=false -parallelism=1 -compact-warnings
     ;;
   destroy)
     iac_init
-    iac_example destroy -auto-approve -input=false -parallelism=1
+    iac_example destroy -auto-approve -input=false -parallelism=1 -compact-warnings
     ;;
   output)
     iac_init

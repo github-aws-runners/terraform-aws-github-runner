@@ -241,6 +241,9 @@ Terraform deployment and temporary variables are needed for investigation.
 | `microvm.py` | MicroVM discovery, metadata assertions, image build, hook handoff, and termination |
 | `common.py` | Terraform, AWS CLI, HTTP, MockServer, checklist, and cleanup plumbing |
 | `fixtures/` | Static GitHub API and workflow-job test data |
+| `smoke_scale_set/scale_set.py` | ECS scale-set image deployment, controller protocol, and provider-neutral scale-up/down flow |
+| `smoke_scale_set/provider.py` | Compute-provider interface for scale-set runner setup and lifecycle assertions |
+| `smoke_scale_set/ec2.py` | EC2 runner discovery, ownership checks, and scale-down polling |
 
 ## Troubleshooting
 
@@ -264,3 +267,39 @@ container is ready at:
 curl --fail --request POST \
   http://127.0.0.1:8080/aws/lambda-microvms/runtime/v1/ready
 ```
+
+## ECS scale-set integration smoke
+
+The scale-set controller has a separate Python smoke module because it tests
+the ECS controller and its GitHub Actions scale-set protocol rather than the
+webhook, pool, or lifecycle-hook chain above. Run it with:
+
+```sh
+python3 tests/ministack/run-scale-set-integration.py
+```
+
+The existing `run-scale-set-integration.sh` CI entry point is a compatibility
+launcher for the Python CLI. The smoke initializes the MockServer expectations,
+builds and pushes the controller image to MiniStack ECR, prepares temporary
+GitHub App test inputs, and applies `multi-runner-scale-set` through
+`run-example.sh` so the example's MiniStack fixtures are managed consistently.
+It then checks the SSM reconciler manifest, ECS task definition and log group,
+controller runtime log markers, GitHub API protocol routes, and the created
+scale-set EC2 runner. For scale-down it changes the reconciler minimum to zero,
+deploys a fresh controller task revision, and waits for the runner to terminate
+and the controller session DELETE request to reach MockServer.
+
+Both Python entry points write `ministack-smoke-checklist.txt` and
+`ministack-smoke.log` by default. Set `MINISTACK_SMOKE_CHECKLIST_FILE` and
+`MINISTACK_SMOKE_LOG_FILE` to choose other paths. Use `--keep-deployment` (or
+`MINISTACK_SMOKE_KEEP_DEPLOYMENT=1`) to retain the Terraform inputs and
+deployment for debugging; the temporary GitHub App private key is still
+removed during cleanup.
+
+`smoke_scale_set/scale_set.py` owns the ECS scale-set workflow. Its
+`ScaleSetProvider` interface isolates compute-provider setup and runner
+assertions in `smoke_scale_set/provider.py`; `smoke_scale_set/ec2.py` is the
+current adapter. To add another compute provider, implement that interface and
+register its slug in the CLI, then configure the scale-set fixture to select
+that provider's scale-set capability. The provider-neutral controller,
+MockServer, checklist, and cleanup flow stays shared.
