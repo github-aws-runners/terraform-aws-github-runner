@@ -79,10 +79,10 @@ nav:
       - Update Webhook: modules/internal/webhook-github-app.md
   - Examples:
     - Overview: examples/index.md
+    - Multi Runner scale-set: examples/multi-runner-scale-set.md
     - Default: examples/default.md
     - Multi Runner: examples/multi-runner.md
     - Multi Runner v2: examples/multi-runner-v2.md
-    - Multi Runner scale-set: examples/multi-runner-scale-set.md
     - Ephemeral: examples/ephemeral.md
     - External managed secrets: examples/external-managed-ssm-secrets.md
     - Custom AMI: examples/prebuilt.md
