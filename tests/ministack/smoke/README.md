@@ -275,13 +275,12 @@ the ECS controller and its GitHub Actions scale-set protocol rather than the
 webhook, pool, or lifecycle-hook chain above. Run it with:
 
 ```sh
-python3 tests/ministack/run-scale-set-integration.py
+python3 tests/ministack/run-scale-set-smoke.py
 ```
 
-The existing `run-scale-set-integration.sh` CI entry point is a compatibility
-launcher for the Python CLI. The smoke initializes the MockServer expectations,
-builds and pushes the controller image to MiniStack ECR, prepares temporary
-GitHub App test inputs, and applies `multi-runner-scale-set` through
+The smoke initializes the MockServer expectations, builds and pushes the
+controller image to MiniStack ECR, prepares temporary GitHub App test inputs,
+and applies `multi-runner-scale-set` through
 `run-example.sh` so the example's MiniStack fixtures are managed consistently.
 It then checks the SSM reconciler manifest, ECS task definition and log group,
 controller runtime log markers, GitHub API protocol routes, and the created
@@ -289,8 +288,22 @@ scale-set EC2 runner. For scale-down it changes the reconciler minimum to zero,
 deploys a fresh controller task revision, and waits for the runner to terminate
 and the controller session DELETE request to reach MockServer.
 
+MiniStack must have its Docker engine socket mounted at `/var/run/docker.sock`.
+ECS task metadata can report a task as running without this socket, but MiniStack
+cannot start the controller's Docker container for the smoke to inspect.
+The controller reaches MockServer at `https://host.docker.internal:1080` by
+default to satisfy the GitHub Enterprise URL contract; MockServer supports HTTP
+and HTTPS on the same port. Set `MINISTACK_GITHUB_MOCK_HOST` and
+`MINISTACK_GITHUB_MOCK_PORT` when the Docker host or MockServer port differs.
+The smoke process itself uses `MINISTACK_GITHUB_MOCK_URL` (default
+`http://127.0.0.1:1080`) to load and verify the MockServer expectations.
+
 Both Python entry points write `ministack-smoke-checklist.txt` and
-`ministack-smoke.log` by default. Set `MINISTACK_SMOKE_CHECKLIST_FILE` and
+`ministack-smoke.log` by default. Progress and checklist updates are printed
+to stdout; detailed subprocess output goes to the log and is printed only when
+a command fails. Polling commands are kept out of the detailed log; controller
+and ECS/Docker state is recorded once when startup times out. Set
+`MINISTACK_SMOKE_CHECKLIST_FILE` and
 `MINISTACK_SMOKE_LOG_FILE` to choose other paths. Use `--keep-deployment` (or
 `MINISTACK_SMOKE_KEEP_DEPLOYMENT=1`) to retain the Terraform inputs and
 deployment for debugging; the temporary GitHub App private key is still
@@ -303,3 +316,8 @@ current adapter. To add another compute provider, implement that interface and
 register its slug in the CLI, then configure the scale-set fixture to select
 that provider's scale-set capability. The provider-neutral controller,
 MockServer, checklist, and cleanup flow stays shared.
+
+The `run-scale-set-smoke.py` entry point follows the webhook runner's context
+lifecycle: it passes `--keep-deployment` into `ScaleSetSmokeContext`, initializes
+the checklist, records failures, and always runs cleanup and writes the final
+checklist status.

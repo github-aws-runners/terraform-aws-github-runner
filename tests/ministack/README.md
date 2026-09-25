@@ -99,7 +99,7 @@ value before the MicroVM is scaled down.
 Build the two real Lambda distributions, start MockServer and MiniStack, and run:
 
 ```sh
-(cd lambdas && yarn install --frozen-lockfile)
+(cd lambdas && yarn install --immutable)
 (cd lambdas && yarn workspace @aws-github-runner/webhook dist)
 (cd lambdas && yarn workspace @aws-github-runner/control-plane dist)
 # Run both provider lanes in one deployment. MockServer must already be running
@@ -144,8 +144,10 @@ container runtime. When MiniStack is exposed on a non-default local port, use a
 host address reachable from its container for `AWS_ENDPOINT_URL`, for example
 `AWS_ENDPOINT_URL=http://<host-ip>:14568`, instead of `localhost`.
 
-The workflow also runs `run-scale-set-integration.sh`. It applies the
-`multi-runner-scale-set` example and verifies the managed ECS controller,
-Fargate task hardening, scale-set environment contract, and reconciler SSM
-parameter through MiniStack's AWS-compatible APIs. It does not send webhook
-events or exercise webhook scale-up, scale-down, or pool handlers.
+The separate scale-set smoke runs with
+`python3 tests/ministack/run-scale-set-smoke.py`. It builds and publishes the
+controller image, applies the `multi-runner-scale-set` example, then checks the
+ECS controller protocol and EC2 runner scale-up and scale-down. MiniStack must
+have its Docker engine socket mounted at `/var/run/docker.sock` so ECS can start
+the controller container; without it the ECS API may report tasks without
+creating Docker containers.

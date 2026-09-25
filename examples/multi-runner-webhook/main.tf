@@ -26,11 +26,18 @@ module "runners" {
 
   global_config_github = {
     app = {
-      key_base64     = var.github_app.key_base64
-      id             = var.github_app.id
-      webhook_secret = var.github_app.webhook_secret
+      key_base64      = var.github_app.key_base64
+      id              = var.github_app.id
+      installation_id = var.github_app.installation_id
+      webhook_secret  = var.github_app.webhook_secret
     }
-    enterprise_server = var.github_enterprise_server
+    enterprise_server = {
+      url        = var.github.url
+      ssl_verify = var.github.ssl_verify
+    }
+    runner_owner              = var.github.runner_owner
+    runner_registration_level = var.github.registration_level
+
   }
 
   global_config_lambda = {
@@ -81,6 +88,16 @@ module "runners" {
             zip = var.webhook_lambda_zip
           }
         }
+      }
+    }
+    scale_set = {
+      grouping = {
+        strategy = "runner_config"
+      }
+      container = var.scale_set.container
+      network = {
+        vpc_id     = module.base.vpc.vpc_id
+        subnet_ids = module.base.vpc.private_subnets
       }
     }
   }
@@ -136,6 +153,32 @@ module "runners" {
                 "instance-type" = { allowed = ["m5.*"] }
               }
             }
+          }
+        }
+      }
+      compute_provider = {
+        aws = {
+          ec2 = {
+            instance_types = var.compute_provider.aws.ec2.instance_types
+            ami            = var.compute_provider.aws.ec2.ami
+          }
+        }
+      }
+    }
+    ec2_scalet_set = {
+      runner = {
+        os           = "linux"
+        architecture = "x64"
+        name_prefix  = "ec2_scalet_set-"
+        extra_labels = ["self-hosted", "linux", "x64", "ec2", "scale-set"]
+      }
+      orchestration_provider = {
+        scale_set = {
+          name = var.scale_set.name
+          runner = {
+            min_runners          = var.scale_set.min_runners
+            max_runners          = 10
+            boot_time_in_minutes = 10
           }
         }
       }

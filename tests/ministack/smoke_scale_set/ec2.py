@@ -7,18 +7,18 @@ from typing import TYPE_CHECKING, Any
 from .provider import ScaleSetRunner
 
 if TYPE_CHECKING:
-    from .scale_set import ScaleSetSmoke
+    from .scale_set import ScaleSetSmokeContext
 
 
 class Ec2ScaleSetProvider:
     slug = "ec2"
     display_name = "EC2"
 
-    def configure_tfvars(self, smoke: ScaleSetSmoke, source: str) -> str:
+    def configure_tfvars(self, smoke: ScaleSetSmokeContext, source: str) -> str:
         # The current scale-set fixture configures its runner lane for EC2.
         return source
 
-    def _instances(self, smoke: ScaleSetSmoke, *, runner_only: bool) -> list[dict[str, Any]]:
+    def _instances(self, smoke: ScaleSetSmokeContext, *, runner_only: bool) -> list[dict[str, Any]]:
         response = smoke.aws("ec2", "describe-instances") or {}
         expected = {
             "ghr:Application": "github-action-runner",
@@ -41,7 +41,7 @@ class Ec2ScaleSetProvider:
                         matches.append(instance)
         return matches
 
-    def wait_for_runner(self, smoke: ScaleSetSmoke) -> ScaleSetRunner:
+    def wait_for_runner(self, smoke: ScaleSetSmokeContext) -> ScaleSetRunner:
         def find_runner() -> ScaleSetRunner | None:
             matches = self._instances(smoke, runner_only=True)
             if len(matches) == 1 and matches[0].get("InstanceId"):
@@ -52,7 +52,7 @@ class Ec2ScaleSetProvider:
         smoke.progress(f"[PASS] MiniStack created and registered scale-set EC2 runner {runner.identifier}")
         return runner
 
-    def verify_runner(self, smoke: ScaleSetSmoke, runner: ScaleSetRunner) -> None:
+    def verify_runner(self, smoke: ScaleSetSmokeContext, runner: ScaleSetRunner) -> None:
         response = smoke.aws("ec2", "describe-instances", "--instance-ids", runner.identifier) or {}
         try:
             instance = response["Reservations"][0]["Instances"][0]
@@ -72,7 +72,7 @@ class Ec2ScaleSetProvider:
             if tags.get(key) != value:
                 raise RuntimeError(f"Unexpected EC2 runner tag {key}: expected {value}, got {tags.get(key)}")
 
-    def wait_for_scale_down(self, smoke: ScaleSetSmoke) -> None:
+    def wait_for_scale_down(self, smoke: ScaleSetSmokeContext) -> None:
         smoke.wait_for(lambda: not self._instances(smoke, runner_only=False),
                        "all scale-set EC2 runners to terminate")
         smoke.progress("[PASS] scale-set EC2 runner was terminated after the minimum changed to zero")

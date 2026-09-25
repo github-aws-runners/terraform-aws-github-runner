@@ -163,13 +163,9 @@ jobs:
         with:
           platforms: arm64
 
-      - name: Mark repository as safe
-        shell: sh
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-
       - name: Run scale-set ECS/MockServer smoke test
         env:
           MINISTACK_GITHUB_MOCK_HOST: mockserver
           MINISTACK_GITHUB_MOCK_PORT: "1080"
           MINISTACK_GITHUB_MOCK_URL: ${{ steps.mockserver.outputs.url }}
-        run: sh tests/ministack/run-scale-set-integration.sh        
+        run: python3 tests/ministack/run-scale-set-smoke.py
