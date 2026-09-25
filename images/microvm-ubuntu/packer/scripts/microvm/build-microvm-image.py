@@ -256,7 +256,7 @@ def microvm_client(session: Any, region: str) -> Any:
     except Exception as error:
         if type(error).__name__ == 'UnknownServiceError':
             raise BuildError(
-                'AWS_DATA_PATH must contain the Lambda MicroVM service model'
+                'Version of boto3 must contain the Lambda MicroVM service model'
             ) from error
         raise
 
