@@ -97,4 +97,4 @@ jobs:
           cache-from: type=gha,scope=scale-set-service
 
       - name: Run scale-set service image smoke test
-        run: ./.github/scripts/scale-set-container-smoke-test.sh
+        run: ./tests/scale-set-container-smoke-test.sh
