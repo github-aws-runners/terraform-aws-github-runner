@@ -31,38 +31,50 @@ export async function cleanSSMTokens(options: SSMCleanupOptions, remainingTime =
   let nextToken: string | undefined;
   const minimumDate = new Date();
   minimumDate.setDate(minimumDate.getDate() - options.minimumDaysOld);
-  do {
-    if (remainingTime() < 10000) return;
-    const page = await client.send(
-      new GetParametersByPathCommand({ Path: options.tokenPath, NextToken: nextToken, MaxResults: DELETE_BATCH_SIZE }),
-    );
-    const names: string[] = [];
-    for (const parameter of page.Parameters ?? []) {
-      if (remainingTime() < 10000) return;
-      if (!parameter.Name || !parameter.LastModifiedDate || !(new Date(parameter.LastModifiedDate) < minimumDate))
-        continue;
-      logger.info('Deleting expired runner configuration', { parameterName: parameter.Name, dryRun: options.dryRun });
-      names.push(parameter.Name);
-    }
-    if (!options.dryRun && names.length) {
-      if (remainingTime() < 10000) return;
-      await new Promise((resolve) => setTimeout(resolve, DELETE_BATCH_DELAY_MS));
-      if (remainingTime() < 10000) return;
-      try {
-        // SDK retries handle retryable failures; exhausted batches remain for the next sweep.
-        const result = await client.send(new DeleteParametersCommand({ Names: names }));
-        if (result.InvalidParameters?.length) {
-          logger.warn('Runner configurations were not deleted', { parameterNames: result.InvalidParameters });
-        }
-      } catch (error) {
-        logger.warn('Failed to delete expired runner configuration batch', {
-          parameterNames: names,
-          errorNames: getErrorNames(error),
-        });
+  const pendingNames: string[] = [];
+
+  async function flushPendingNames(): Promise<boolean> {
+    if (!pendingNames.length) return true;
+    if (remainingTime() < 10000) return false;
+    await new Promise((resolve) => setTimeout(resolve, DELETE_BATCH_DELAY_MS));
+    if (remainingTime() < 10000) return false;
+    const names = pendingNames.splice(0, DELETE_BATCH_SIZE);
+    try {
+      // SDK retries handle retryable failures; exhausted batches remain for the next sweep.
+      const result = await client.send(new DeleteParametersCommand({ Names: names }));
+      if (result.InvalidParameters?.length) {
+        logger.warn('Runner configurations were not deleted', { parameterNames: result.InvalidParameters });
       }
+    } catch (error) {
+      logger.warn('Failed to delete expired runner configuration batch', {
+        parameterNames: names,
+        errorNames: getErrorNames(error),
+      });
     }
-    nextToken = page.NextToken;
-  } while (nextToken);
+    return true;
+  }
+
+  try {
+    do {
+      if (remainingTime() < 10000) return;
+      const page = await client.send(new GetParametersByPathCommand({ Path: options.tokenPath, NextToken: nextToken }));
+      for (const parameter of page.Parameters ?? []) {
+        if (remainingTime() < 10000) return;
+        if (!parameter.Name || !parameter.LastModifiedDate || !(new Date(parameter.LastModifiedDate) < minimumDate))
+          continue;
+        logger.info('Deleting expired runner configuration', { parameterName: parameter.Name, dryRun: options.dryRun });
+        if (!options.dryRun) {
+          pendingNames.push(parameter.Name);
+          if (pendingNames.length === DELETE_BATCH_SIZE && !(await flushPendingNames())) return;
+        }
+      }
+      nextToken = page.NextToken;
+    } while (nextToken);
+  } finally {
+    // Flush a partial batch at the end or on a listing error, if runtime permits.
+    // Otherwise the remaining parameters will be rediscovered by the next invocation.
+    await flushPendingNames();
+  }
 }
 
 class AwsSsmRunnerConfigHousekeeper implements RunnerConfigHousekeeper {
