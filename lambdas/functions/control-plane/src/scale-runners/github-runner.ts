@@ -69,6 +69,8 @@ async function getGithubRunnerRegistrationToken(githubRunnerConfig: CreateGitHub
           repo: githubRunnerConfig.runnerOwner.split('/')[1],
         });
 
+  metricGitHubAppRateLimit(registrationToken.headers, githubRunnerConfig.appIndex);
+
   return registrationToken.data.token;
 }
 

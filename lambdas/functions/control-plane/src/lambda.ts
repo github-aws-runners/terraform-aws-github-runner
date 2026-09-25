@@ -124,7 +124,7 @@ export async function runnerConfigHousekeeper(event: unknown, context: Context):
   const housekeeper = createRunnerConfigHousekeeper();
 
   try {
-    await housekeeper.houseKeeper();
+    await housekeeper.houseKeeper(() => context.getRemainingTimeInMillis());
   } catch (e) {
     logger.error(`${(e as Error).message}`, { error: e as Error });
   }
