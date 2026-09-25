@@ -29,7 +29,7 @@ resource "aws_lambda_function" "scale_up" {
   architectures                  = [var.lambda_architecture]
   depends_on                     = [aws_cloudwatch_log_group.scale_up]
   environment {
-    variables = merge({
+    variables = {
       AMI_ID_SSM_PARAMETER_NAME                = local.ami_id_ssm_parameter_name
       DISABLE_RUNNER_AUTOUPDATE                = var.disable_runner_autoupdate
       ENABLE_EPHEMERAL_RUNNERS                 = var.enable_ephemeral_runners
@@ -71,9 +71,7 @@ resource "aws_lambda_function" "scale_up" {
       SCALE_ERRORS                             = jsonencode(var.scale_errors)
       JOB_RETRY_CONFIG                         = jsonencode(local.job_retry_config)
       USE_DEDICATED_HOST                       = var.use_dedicated_host
-      }, var.ssm_ttl_seconds.tokens != null ? {
-      SSM_TOKEN_TTL_SECONDS = tostring(var.ssm_ttl_seconds.tokens)
-    } : {})
+    }
   }
 
   dynamic "vpc_config" {

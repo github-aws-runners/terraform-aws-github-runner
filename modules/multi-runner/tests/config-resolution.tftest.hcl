@@ -582,12 +582,16 @@ run "v2_microvm_inputs_route_to_microvm_provider" {
       }
     }
 
-    global_config_ssm = {
-      housekeeper = {
-        lambda = {
-          artifact = {
-            s3 = {
-              key = "global-housekeeper.zip"
+    global_config_storage_provider = {
+      aws = {
+        ssm = {
+          housekeeper = {
+            lambda = {
+              artifact = {
+                s3 = {
+                  key = "global-housekeeper.zip"
+                }
+              }
             }
           }
         }
@@ -635,6 +639,7 @@ run "v2_microvm_inputs_route_to_microvm_provider" {
       && local.resolved_config.multi_runner_config["microvm"].compute_provider.aws.ec2 == null
       && local.resolved_config.multi_runner_config["microvm"].compute_provider.aws.microvm.image_arn == "arn:aws:lambda:eu-west-1:123456789012:microvm-image:global"
       && local.resolved_config.multi_runner_config["microvm"].compute_provider.aws.microvm.image_version == "8"
+      && local.runner_matcher_config["microvm"].computeProvider == "microvm"
       && local.effective_config.orchestration_provider.webhook.lambda.webhook.artifact.s3.key == "global-webhook.zip"
     )
     error_message = "Experimental MicroVM lanes must resolve Linux ARM64 settings, inherit global provider values, and place the webhook artifact key under lambda.webhook.artifact."
