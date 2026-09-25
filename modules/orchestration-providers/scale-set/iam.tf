@@ -188,23 +188,31 @@ data "aws_iam_policy_document" "execution" {
     resources = ["${aws_cloudwatch_log_group.controller[each.key].arn}:*"]
   }
 
-  statement {
-    sid    = "PullPrivateEcrImage"
-    effect = "Allow"
-    actions = [
-      "ecr:BatchCheckLayerAvailability",
-      "ecr:BatchGetImage",
-      "ecr:GetDownloadUrlForLayer",
-    ]
-    resources = ["*"]
+  dynamic "statement" {
+    for_each = local.uses_private_ecr ? [local.private_ecr_repository_arn] : []
+
+    content {
+      sid    = "PullPrivateEcrImage"
+      effect = "Allow"
+      actions = [
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:BatchGetImage",
+        "ecr:GetDownloadUrlForLayer",
+      ]
+      resources = [statement.value]
+    }
   }
 
-  statement {
-    # ECR does not support resource-level permissions for authorization tokens.
-    sid       = "AuthorizePrivateEcrPull"
-    effect    = "Allow"
-    actions   = ["ecr:GetAuthorizationToken"]
-    resources = ["*"]
+  dynamic "statement" {
+    for_each = local.uses_private_ecr ? [true] : []
+
+    content {
+      # ECR does not support resource-level permissions for authorization tokens.
+      sid       = "AuthorizePrivateEcrPull"
+      effect    = "Allow"
+      actions   = ["ecr:GetAuthorizationToken"]
+      resources = ["*"]
+    }
   }
 }
 

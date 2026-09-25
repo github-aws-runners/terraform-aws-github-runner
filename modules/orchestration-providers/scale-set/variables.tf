@@ -97,7 +97,7 @@ variable "grouping" {
 }
 
 variable "container" {
-  description = "Scale-set controller image and runtime settings. A null image uses the internal official convenience image; production callers should use the release digest. Filesystem and Linux capability hardening are enforced by the module; health_path is fixed at /healthz, the ECS liveness endpoint."
+  description = "Scale-set controller image and runtime settings. image is required because the module has no mutable default image; use an immutable release digest whenever possible. Filesystem and Linux capability hardening are enforced by the module; health_path is fixed at /healthz, the ECS liveness endpoint."
   type = object({
     image                             = optional(string, null)
     user                              = optional(string, "10001:10001")
@@ -167,7 +167,7 @@ variable "ecs" {
 
 variable "network" {
   description = <<-EOT
-    Private Fargate networking. Tasks never receive public IP addresses and the managed security groups have no ingress. HTTPS egress defaults to IPv4 Internet access because GitHub endpoints cannot be represented as security-group destinations; route it through controlled NAT, firewall, or proxy infrastructure when required.
+    Private Fargate networking. Tasks never receive public IP addresses and the managed security groups have no ingress. HTTPS egress defaults to full IPv4 Internet access for reachability. GitHub publishes outbound ranges at `https://api.github.com/meta`; restrict egress to those ranges, a NAT gateway, firewall, or proxy when your security posture requires it.
   EOT
   type = object({
     vpc_id     = string
@@ -181,10 +181,10 @@ variable "network" {
 }
 
 variable "logging" {
-  description = "CloudWatch Logs configuration. CloudWatch encrypts logs at rest with an AWS-owned key by default; set `kms_key_arn` to use a customer-managed key."
+  description = "CloudWatch Logs configuration. CloudWatch encrypts logs at rest with an AWS-owned key by default; set `kms_key_id` to a customer-managed key ID or ARN."
   type = object({
-    retention_in_days = optional(number, 30)
-    kms_key_arn       = optional(string, null)
+    retention_in_days = optional(number, 180)
+    kms_key_id        = optional(string, null)
     log_group_class   = optional(string, "STANDARD")
     tags              = optional(map(string), {})
   })
