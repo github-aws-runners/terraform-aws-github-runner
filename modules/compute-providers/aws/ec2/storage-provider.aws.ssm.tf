@@ -45,6 +45,20 @@ data "aws_iam_policy_document" "ssm_parameters" {
   }
 }
 
+data "aws_iam_policy_document" "ssm_cloudwatch" {
+  count = var.storage_provider.aws.ssm != null && var.config.cloudwatch_agent.enabled ? 1 : 0
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "ssm:GetParameter",
+    ]
+    resources = [
+      aws_ssm_parameter.cloudwatch_agent_config_runner[0].arn,
+    ]
+  }
+}
+
 locals {
   ssm_runner_inline_policies = var.storage_provider.aws.ssm != null ? {
     ssm_parameters = {
@@ -57,10 +71,10 @@ locals {
 
 # runner config
 locals {
-  ssm_root_path            = var.storage_provider.aws.ssm.paths.root
-  ssm_config_path          = "${local.ssm_root_path}/${var.storage_provider.aws.ssm.paths.config}"
+  ssm_root_path            = try(var.storage_provider.aws.ssm.paths.root, null)
+  ssm_config_path          = local.ssm_root_path == null ? null : "${local.ssm_root_path}/${var.storage_provider.aws.ssm.paths.config}"
   ssm_parameter_arn_prefix = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter"
-  ssm_config_arn           = "${local.ssm_parameter_arn_prefix}${local.ssm_config_path}"
+  ssm_config_arn           = local.ssm_config_path == null ? null : "${local.ssm_parameter_arn_prefix}${local.ssm_config_path}"
 
   ssm_parameter_tags = merge(
     local.provider_tags,

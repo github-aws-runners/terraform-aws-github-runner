@@ -95,7 +95,7 @@ cleanup() {
 
   if [ "$exit_code" -ne 0 ]; then
     echo "ERROR: runner-start-failed with exit code $exit_code occurred on $error_location"
-    create_xray_error_segment "$SEGMENT" "runner-start-failed with exit code $exit_code occurred on $error_location - $error_lineno"
+    create_xray_error_segment "$${SEGMENT:-}" "runner-start-failed with exit code $exit_code occurred on $error_location - $error_lineno"
   fi
   # allows to flush the cloud watch logs and traces
   sleep 10

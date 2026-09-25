@@ -104,6 +104,10 @@ data "aws_iam_policy_document" "terminate_self" {
 data "aws_iam_policy_document" "cloudwatch" {
   count = var.config.cloudwatch_agent.enabled ? 1 : 0
 
+  source_policy_documents = var.storage_provider.aws.ssm != null ? [
+    data.aws_iam_policy_document.ssm_cloudwatch[0].json
+  ] : []
+
   statement {
     effect = "Allow"
     actions = [

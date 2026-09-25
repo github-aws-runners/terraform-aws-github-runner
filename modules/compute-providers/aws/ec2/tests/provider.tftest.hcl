@@ -19,6 +19,12 @@ mock_provider "aws" {
       account_id = "123456789012"
     }
   }
+
+  mock_resource "aws_ssm_parameter" {
+    defaults = {
+      arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/provider-test/config/cloudwatch_agent_config_runner"
+    }
+  }
 }
 
 override_data {
@@ -88,6 +94,109 @@ variables {
         }
       }
     }
+  }
+}
+
+run "merges_ssm_cloudwatch_policy_when_enabled" {
+  command = plan
+
+  assert {
+    condition = (
+      length(data.aws_iam_policy_document.cloudwatch) == 1
+      && length(data.aws_iam_policy_document.ssm_cloudwatch) == 1
+      && length(data.aws_iam_policy_document.cloudwatch[0].source_policy_documents) == 1
+      && contains(data.aws_iam_policy_document.cloudwatch[0].statement[0].actions, "cloudwatch:PutMetricData")
+    )
+    error_message = "An enabled CloudWatch agent with SSM must merge the SSM CloudWatch policy document."
+  }
+}
+
+run "does_not_create_cloudwatch_policy_when_disabled_with_ssm" {
+  command = plan
+
+  variables {
+    config = {
+      ami = {
+        filter = { state = ["available"] }
+        owners = ["amazon"]
+        ssm_parameter = {
+          arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/ami-id"
+        }
+        kms_key = null
+      }
+      vpc_id     = "vpc-12345678"
+      subnet_ids = ["subnet-12345678"]
+      cloudwatch_agent = {
+        enabled = false
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      length(data.aws_iam_policy_document.cloudwatch) == 0
+      && length(data.aws_iam_policy_document.ssm_cloudwatch) == 0
+      && !contains(keys(output.provider.policies.runner.inline_policies), "cloudwatch")
+    )
+    error_message = "A disabled CloudWatch agent must not create or attach CloudWatch policies, even with SSM enabled."
+  }
+}
+
+run "does_not_merge_ssm_cloudwatch_policy_without_ssm" {
+  command = plan
+
+  variables {
+    storage_provider = {
+      aws = {
+        ssm = null
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      length(data.aws_iam_policy_document.cloudwatch) == 1
+      && length(data.aws_iam_policy_document.ssm_cloudwatch) == 0
+      && length(data.aws_iam_policy_document.cloudwatch[0].source_policy_documents) == 0
+      && contains(data.aws_iam_policy_document.cloudwatch[0].statement[0].actions, "cloudwatch:PutMetricData")
+    )
+    error_message = "An enabled CloudWatch agent without SSM must retain only its base CloudWatch policy."
+  }
+}
+
+run "does_not_create_cloudwatch_policy_when_disabled_without_ssm" {
+  command = plan
+
+  variables {
+    config = {
+      ami = {
+        filter = { state = ["available"] }
+        owners = ["amazon"]
+        ssm_parameter = {
+          arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/ami-id"
+        }
+        kms_key = null
+      }
+      vpc_id     = "vpc-12345678"
+      subnet_ids = ["subnet-12345678"]
+      cloudwatch_agent = {
+        enabled = false
+      }
+    }
+    storage_provider = {
+      aws = {
+        ssm = null
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      length(data.aws_iam_policy_document.cloudwatch) == 0
+      && length(data.aws_iam_policy_document.ssm_cloudwatch) == 0
+      && !contains(keys(output.provider.policies.runner.inline_policies), "cloudwatch")
+    )
+    error_message = "A disabled CloudWatch agent without SSM must not create any CloudWatch policy."
   }
 }
 
