@@ -9,14 +9,16 @@ locals {
     PARAMETER_GITHUB_APP_ID_NAME         = var.config.github_app_parameters.id.name
     PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.config.github_app_parameters.key_base64.name
     GHES_URL                             = var.config.ghes_url != null ? var.config.ghes_url : ""
+    }, var.config.github_app_parameters.additional_apps_manifest == null ? {} : {
+    PARAMETER_GITHUB_APPS_MANIFEST_NAME = var.config.github_app_parameters.additional_apps_manifest.name
     }, length(aws_sqs_queue.deregister_retry) > 0 ? {
     DEREGISTER_RETRY_QUEUE_URL = aws_sqs_queue.deregister_retry[0].url
   } : {}) : {}
 
-  ssm_parameter_arns = local.enable_runner_deregistration ? [
+  ssm_parameter_arns = local.enable_runner_deregistration ? concat([
     var.config.github_app_parameters.id.arn,
     var.config.github_app_parameters.key_base64.arn,
-  ] : []
+  ], var.config.github_app_parameters.additional_apps_manifest == null ? [] : [var.config.github_app_parameters.additional_apps_manifest.arn], var.config.github_app_parameters.additional_app_parameter_arns) : []
 
   environment_variables = {
     ENABLE_METRICS_SPOT_WARNING = var.config.metrics != null ? var.config.metrics.enable && var.config.metrics.metric.enable_spot_termination_warning : false

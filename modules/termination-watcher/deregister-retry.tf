@@ -99,7 +99,7 @@ resource "aws_iam_role_policy" "deregister_retry_ssm" {
     Statement = [
       {
         Effect   = "Allow"
-        Action   = ["ssm:GetParameter"]
+        Action   = ["ssm:GetParameter", "ssm:GetParameters"]
         Resource = local.ssm_parameter_arns
       }
     ]
