@@ -31,7 +31,7 @@ env:
     modules/orchestration-providers/webhook/scale-runners
     modules/runner-binaries-syncer
     modules/runner-config
-    modules/runner-config/ssm-housekeeper
+    modules/runner-config/runner-config-housekeeper
     modules/runners
     modules/runners/job-retry
     modules/runners/pool
@@ -54,8 +54,16 @@ env:
     multi-runner-scale-set
     external-managed-ssm-secrets
   TEST_MODULES: |
+    modules/compute-providers/aws/ec2
+    modules/compute-providers/aws/ec2/trust-policy
     modules/runners
     modules/multi-runner
+    modules/orchestration-providers/webhook
+    modules/orchestration-providers/webhook/job-retry
+    modules/orchestration-providers/webhook/pool
+    modules/orchestration-providers/webhook/scale-runners
+    modules/runner-config
+    modules/runner-config/runner-config-housekeeper
     modules/orchestration-providers/scale-set
 
 jobs:
@@ -240,6 +248,14 @@ jobs:
           mkdir -p "$HOME/.terraform.d/plugin"
           echo "TF_PLUGIN_CACHE_DIR=$HOME/.terraform.d/plugin" >> "$GITHUB_ENV"
 
+      - name: "Fake zip files" # Validate will fail if it cannot find the zip files
+        run: |
+          touch lambdas/functions/webhook/webhook.zip
+          touch lambdas/functions/control-plane/runners.zip
+          touch lambdas/functions/gh-agent-syncer/runner-binaries-syncer.zip
+          touch lambdas/functions/ami-housekeeper/ami-housekeeper.zip
+          touch lambdas/functions/termination-watcher/termination-watcher.zip
+
       - name: Setup Terraform
         if: matrix.iac.command == 'terraform'
         uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
@@ -372,6 +388,14 @@ jobs:
         run: |
           mkdir -p "$HOME/.terraform.d/plugin"
           echo "TF_PLUGIN_CACHE_DIR=$HOME/.terraform.d/plugin" >> "$GITHUB_ENV"
+
+      - name: "Fake zip files" # Validate will fail if it cannot find the zip files
+        run: |
+          touch lambdas/functions/webhook/webhook.zip
+          touch lambdas/functions/control-plane/runners.zip
+          touch lambdas/functions/gh-agent-syncer/runner-binaries-syncer.zip
+          touch lambdas/functions/ami-housekeeper/ami-housekeeper.zip
+          touch lambdas/functions/termination-watcher/termination-watcher.zip
 
       - name: Setup Terraform
         if: matrix.iac.command == 'terraform'

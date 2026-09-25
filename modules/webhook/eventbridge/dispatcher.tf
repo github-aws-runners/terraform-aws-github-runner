@@ -48,13 +48,12 @@ resource "aws_lambda_function" "dispatcher" {
         POWERTOOLS_TRACE_ENABLED                 = var.config.tracing_config.mode != null ? true : false
         POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.config.tracing_config.capture_http_requests
         POWERTOOLS_TRACER_CAPTURE_ERROR          = var.config.tracing_config.capture_error
-        # Parameters required for lambda configuration
-        PARAMETER_RUNNER_MATCHER_CONFIG_PATH = join(":", [for p in var.config.ssm_parameter_runner_matcher_config : p.name])
-        PARAMETER_RUNNER_MATCHER_VERSION     = join(":", [for p in var.config.ssm_parameter_runner_matcher_config : p.version]) # enforce cold start after Changes in SSM parameter
-        REPOSITORY_ALLOW_LIST                = jsonencode(var.config.repository_white_list)
-        QUEUE_SELECTION_STRATEGY             = var.config.queue_selection_strategy
+        REPOSITORY_ALLOW_LIST                    = jsonencode(var.config.repository_white_list)
+        QUEUE_SELECTION_STRATEGY                 = var.config.queue_selection_strategy
       } : k => v if v != null
-    })
+      },
+      local.ssm_dispatcher_environment_variables
+    )
   }
 
   dynamic "vpc_config" {
@@ -119,28 +118,6 @@ resource "aws_iam_role_policy" "dispatcher_sqs" {
 
   policy = templatefile("${path.module}/../policies/lambda-publish-sqs-policy.json", {
     sqs_resource_arns = jsonencode(var.config.sqs_job_queues_arns)
-  })
-}
-
-resource "aws_iam_role_policy" "dispatcher_kms" {
-  name = "kms-policy"
-  role = aws_iam_role.dispatcher_lambda.name
-
-  policy = templatefile("${path.module}/../policies/lambda-kms.json", {
-    kms_key_arn = var.config.storage_provider.aws.ssm.kms_key_id != null ? var.config.storage_provider.aws.ssm.kms_key_id : "arn:${var.config.aws_partition}:kms:::CMK_NOT_IN_USE"
-  })
-}
-
-resource "aws_iam_role_policy" "dispatcher_ssm" {
-  name = "publish-ssm-policy"
-  role = aws_iam_role.dispatcher_lambda.name
-
-  policy = templatefile("${path.module}/../policies/lambda-ssm.json", {
-    resource_arns = jsonencode(
-      concat(
-        [for p in var.config.ssm_parameter_runner_matcher_config : p.arn]
-      )
-    )
   })
 }
 

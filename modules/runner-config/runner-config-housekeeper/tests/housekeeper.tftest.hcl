@@ -7,42 +7,49 @@ mock_provider "aws" {
 
   mock_resource "aws_iam_role" {
     defaults = {
-      arn = "arn:aws:iam::123456789012:role/ssm-housekeeper-test"
+      arn = "arn:aws:iam::123456789012:role/housekeeper-test"
     }
   }
 
   mock_resource "aws_lambda_function" {
     defaults = {
-      arn = "arn:aws:lambda:eu-west-1:123456789012:function:ssm-housekeeper-test"
+      arn = "arn:aws:lambda:eu-west-1:123456789012:function:housekeeper-test"
     }
   }
 
   mock_resource "aws_cloudwatch_event_rule" {
     defaults = {
-      arn = "arn:aws:events:eu-west-1:123456789012:rule/ssm-housekeeper-test"
+      arn = "arn:aws:events:eu-west-1:123456789012:rule/housekeeper-test"
     }
   }
 
   mock_resource "aws_cloudwatch_log_group" {
     defaults = {
-      arn = "arn:aws:logs:eu-west-1:123456789012:log-group:/aws/lambda/ssm-housekeeper-test"
+      arn = "arn:aws:logs:eu-west-1:123456789012:log-group:/aws/lambda/housekeeper-test"
     }
   }
 }
 
 variables {
+  storage_provider = {
+    aws = {
+      ssm = {
+        cleanup = {
+          token_path         = "/custom/runner/tokens"
+          parameter_path_arn = "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/custom/runner/tokens*"
+          minimum_days_old   = 7
+          dry_run            = true
+        }
+      }
+    }
+  }
+
   config = {
-    prefix        = "ssm-housekeeper-test"
+    prefix        = "housekeeper-test"
     aws_partition = "aws-us-gov"
     schedule = {
       expression = "rate(6 hours)"
       state      = "DISABLED"
-    }
-    cleanup = {
-      token_path         = "/custom/runner/tokens"
-      parameter_path_arn = "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/custom/runner/tokens*"
-      minimum_days_old   = 7
-      dry_run            = true
     }
     lambda = {
       artifact = {
@@ -112,24 +119,24 @@ run "configures_schedule_cleanup_and_outputs" {
 
   assert {
     condition = (
-      aws_cloudwatch_event_rule.ssm_housekeeper.schedule_expression == "rate(6 hours)" &&
-      aws_cloudwatch_event_rule.ssm_housekeeper.state == "DISABLED"
+      aws_cloudwatch_event_rule.housekeeper.schedule_expression == "rate(6 hours)" &&
+      aws_cloudwatch_event_rule.housekeeper.state == "DISABLED"
     )
     error_message = "The housekeeper EventBridge rule must use the configured schedule and state."
   }
 
   assert {
     condition = (
-      jsondecode(aws_lambda_function.ssm_housekeeper.environment[0].variables["SSM_CLEANUP_CONFIG"]).tokenPath == "/custom/runner/tokens" &&
-      jsondecode(aws_lambda_function.ssm_housekeeper.environment[0].variables["SSM_CLEANUP_CONFIG"]).minimumDaysOld == 7 &&
-      jsondecode(aws_lambda_function.ssm_housekeeper.environment[0].variables["SSM_CLEANUP_CONFIG"]).dryRun
+      jsondecode(aws_lambda_function.housekeeper.environment[0].variables["SSM_CLEANUP_CONFIG"]).tokenPath == "/custom/runner/tokens" &&
+      jsondecode(aws_lambda_function.housekeeper.environment[0].variables["SSM_CLEANUP_CONFIG"]).minimumDaysOld == 7 &&
+      jsondecode(aws_lambda_function.housekeeper.environment[0].variables["SSM_CLEANUP_CONFIG"]).dryRun
     )
     error_message = "The Lambda cleanup configuration must preserve the configured path override, age, and dry-run setting."
   }
 
   assert {
     condition = contains(
-      data.aws_iam_policy_document.ssm_housekeeper.statement[0].resources,
+      data.aws_iam_policy_document.housekeeper.statement[0].resources,
       "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/custom/runner/tokens*",
     )
     error_message = "The housekeeper IAM policy must authorize the same overridden Parameter Store path supplied to the Lambda."
@@ -159,12 +166,29 @@ run "configures_schedule_cleanup_and_outputs" {
 
   assert {
     condition = (
-      length(aws_lambda_function.ssm_housekeeper.vpc_config) == 0 &&
-      length(aws_iam_role_policy_attachment.ssm_housekeeper_vpc_execution_role) == 0 &&
-      length(aws_lambda_function.ssm_housekeeper.tracing_config) == 0 &&
-      length(aws_iam_role_policy.ssm_housekeeper_xray) == 0
+      length(aws_lambda_function.housekeeper.vpc_config) == 0 &&
+      length(aws_iam_role_policy_attachment.housekeeper_vpc_execution_role) == 0 &&
+      length(aws_lambda_function.housekeeper.tracing_config) == 0 &&
+      length(aws_iam_role_policy.housekeeper_xray) == 0
     )
     error_message = "Empty VPC configuration and disabled tracing must not create their optional Lambda or IAM configuration."
+  }
+}
+
+run "omits_ssm_cleanup_configuration_without_ssm" {
+  command = plan
+
+  variables {
+    storage_provider = {
+      aws = {
+        ssm = null
+      }
+    }
+  }
+
+  assert {
+    condition     = !contains(keys(aws_lambda_function.housekeeper.environment[0].variables), "SSM_CLEANUP_CONFIG")
+    error_message = "The housekeeper Lambda must not publish SSM cleanup configuration when SSM is not selected."
   }
 }
 
@@ -172,18 +196,25 @@ run "enables_vpc_and_xray_together" {
   command = plan
 
   variables {
+    storage_provider = {
+      aws = {
+        ssm = {
+          cleanup = {
+            token_path         = "/github-runner/tokens"
+            parameter_path_arn = "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/tokens*"
+            minimum_days_old   = 1
+            dry_run            = false
+          }
+        }
+      }
+    }
+
     config = {
-      prefix        = "ssm-housekeeper-vpc-test"
+      prefix        = "housekeeper-vpc-test"
       aws_partition = "aws-us-gov"
       schedule = {
         expression = "rate(1 day)"
         state      = "ENABLED"
-      }
-      cleanup = {
-        token_path         = "/github-runner/tokens"
-        parameter_path_arn = "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/tokens*"
-        minimum_days_old   = 1
-        dry_run            = false
       }
       lambda = {
         artifact = {
@@ -229,23 +260,23 @@ run "enables_vpc_and_xray_together" {
 
   assert {
     condition = (
-      length(aws_lambda_function.ssm_housekeeper.vpc_config) == 1 &&
-      aws_lambda_function.ssm_housekeeper.vpc_config[0].subnet_ids == toset(["subnet-12345678"]) &&
-      aws_lambda_function.ssm_housekeeper.vpc_config[0].security_group_ids == toset(["sg-12345678"]) &&
-      length(aws_iam_role_policy_attachment.ssm_housekeeper_vpc_execution_role) == 1 &&
-      aws_iam_role_policy_attachment.ssm_housekeeper_vpc_execution_role[0].policy_arn == "arn:aws-us-gov:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+      length(aws_lambda_function.housekeeper.vpc_config) == 1 &&
+      aws_lambda_function.housekeeper.vpc_config[0].subnet_ids == toset(["subnet-12345678"]) &&
+      aws_lambda_function.housekeeper.vpc_config[0].security_group_ids == toset(["sg-12345678"]) &&
+      length(aws_iam_role_policy_attachment.housekeeper_vpc_execution_role) == 1 &&
+      aws_iam_role_policy_attachment.housekeeper_vpc_execution_role[0].policy_arn == "arn:aws-us-gov:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
     )
     error_message = "A complete VPC configuration must configure the Lambda and attach the partition-aware VPC execution policy."
   }
 
   assert {
     condition = (
-      length(aws_lambda_function.ssm_housekeeper.tracing_config) == 1 &&
-      aws_lambda_function.ssm_housekeeper.tracing_config[0].mode == "Active" &&
-      length(aws_iam_role_policy.ssm_housekeeper_xray) == 1 &&
-      aws_lambda_function.ssm_housekeeper.environment[0].variables["POWERTOOLS_TRACE_ENABLED"] == "true" &&
-      aws_lambda_function.ssm_housekeeper.environment[0].variables["POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS"] == "true" &&
-      aws_lambda_function.ssm_housekeeper.environment[0].variables["POWERTOOLS_TRACER_CAPTURE_ERROR"] == "true"
+      length(aws_lambda_function.housekeeper.tracing_config) == 1 &&
+      aws_lambda_function.housekeeper.tracing_config[0].mode == "Active" &&
+      length(aws_iam_role_policy.housekeeper_xray) == 1 &&
+      aws_lambda_function.housekeeper.environment[0].variables["POWERTOOLS_TRACE_ENABLED"] == "true" &&
+      aws_lambda_function.housekeeper.environment[0].variables["POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS"] == "true" &&
+      aws_lambda_function.housekeeper.environment[0].variables["POWERTOOLS_TRACER_CAPTURE_ERROR"] == "true"
     )
     error_message = "Active tracing must configure Lambda tracing, X-Ray IAM permissions, and tracing-helper environment variables."
   }

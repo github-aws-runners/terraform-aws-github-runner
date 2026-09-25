@@ -165,7 +165,7 @@ variable "storage_provider" {
   EOT
   type = object({
     aws = object({
-      ssm = object({
+      ssm = optional(object({
         paths = object({
           root   = string
           tokens = string
@@ -197,7 +197,7 @@ variable "storage_provider" {
             dryRun         = optional(bool, false)
           }), {})
         }), {})
-      })
+      }), null)
     })
   })
 

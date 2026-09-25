@@ -6,10 +6,6 @@ variable "config" {
     - `aws_partition`: AWS partition used to construct IAM policy ARNs.
     - `schedule.expression`: EventBridge schedule expression that invokes the housekeeper.
     - `schedule.state`: State of the EventBridge rule.
-    - `cleanup.token_path`: Parameter Store token path supplied to the Lambda.
-    - `cleanup.parameter_path_arn`: IAM resource ARN matching `cleanup.token_path`.
-    - `cleanup.minimum_days_old`: Minimum parameter age before deletion.
-    - `cleanup.dry_run`: Reports eligible parameters without deleting them when true.
     - `lambda.artifact.zip`: Resolved local control-plane archive.
     - `lambda.artifact.s3.bucket`: Optional S3 bucket containing the Lambda archive.
     - `lambda.artifact.s3.key`: Object key of the Lambda archive.
@@ -36,12 +32,6 @@ variable "config" {
     schedule = object({
       expression = string
       state      = string
-    })
-    cleanup = object({
-      token_path         = string
-      parameter_path_arn = string
-      minimum_days_old   = number
-      dry_run            = bool
     })
     lambda = object({
       artifact = object({
@@ -86,6 +76,32 @@ variable "config" {
       resources = map(string)
       lambda    = map(string)
       log_group = map(string)
+    })
+  })
+
+  nullable = false
+}
+
+variable "storage_provider" {
+  description = <<-EOT
+    Storage-provider selection used to gate provider-specific housekeeper IAM statements.
+
+    - `aws.ssm.cleanup.token_path`: Parameter Store token path supplied to the Lambda.
+    - `aws.ssm.cleanup.parameter_path_arn`: IAM resource ARN matching `aws.ssm.cleanup.token_path`.
+    - `aws.ssm.cleanup.minimum_days_old`: Minimum parameter age before deletion.
+    - `aws.ssm.cleanup.dry_run`: Reports eligible parameters without deleting them when true.
+  EOT
+
+  type = object({
+    aws = object({
+      ssm = optional(object({
+        cleanup = object({
+          token_path         = string
+          parameter_path_arn = string
+          minimum_days_old   = number
+          dry_run            = bool
+        })
+      }), null)
     })
   })
 

@@ -29,14 +29,11 @@ locals {
     INCLUDE_BUSY_RUNNERS                     = var.config.include_busy_runners
   }
 
-  ssm_environment_variables = {
-    PARAMETER_GITHUB_APP_ID_NAME         = var.config.github_app_parameters.id.name
-    PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.config.github_app_parameters.key_base64.name
-    PARAMETER_GITHUB_APPS_MANIFEST_NAME  = var.config.github_app_parameters.additional_apps_manifest != null ? var.config.github_app_parameters.additional_apps_manifest.name : ""
-    SSM_TOKEN_PATH                       = var.storage_provider.aws.ssm.token_path
-    SSM_CONFIG_PATH                      = var.storage_provider.aws.ssm.config_path
-    SSM_PARAMETER_STORE_TAGS             = var.storage_provider.aws.ssm.parameter_store_tags
-  }
+  environment_variables = merge(
+    var.runner_provider.environment_variables,
+    local.common_environment_variables,
+    local.ssm_environment_variables,
+  )
 }
 
 resource "aws_lambda_function" "pool" {
@@ -57,12 +54,7 @@ resource "aws_lambda_function" "pool" {
   tags                           = merge(var.config.tags, var.config.lambda_tags)
 
   environment {
-    variables = merge(
-      var.runner_provider.environment_variables,
-      local.common_environment_variables,
-      local.ssm_environment_variables,
-      var.storage_provider.environment_variables,
-    )
+    variables = local.environment_variables
   }
 
   dynamic "vpc_config" {
@@ -107,7 +99,6 @@ data "aws_iam_policy_document" "pool" {
   source_policy_documents = compact([
     data.aws_iam_policy_document.pool_common.json,
     var.runner_provider.iam_policy_json,
-    var.storage_provider.iam_policy_json,
   ])
 }
 

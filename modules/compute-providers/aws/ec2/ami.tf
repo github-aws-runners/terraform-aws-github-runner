@@ -1,0 +1,127 @@
+locals {
+  # Handle AMI configuration
+  ami_config = var.config.ami != null ? var.config.ami : {
+    filter        = local.default_ami[var.runner.os]
+    owners        = ["amazon"]
+    ssm_parameter = null
+    kms_key       = null
+  }
+
+  default_ssm_parameter_path = "/github-action-runners/${var.prefix}/runners/config"
+  ami_ssm_parameter_path     = try(local.ami_config.ssm_parameter.path, null) != null ? local.ami_config.ssm_parameter.path : local.default_ssm_parameter_path
+  ami_kms_key_enabled        = local.ami_config.kms_key != null
+  ami_kms_key_arn            = local.ami_kms_key_enabled ? local.ami_config.kms_key.arn : null
+  ami_filter                 = merge(local.default_ami[var.runner.os], local.ami_config.filter)
+
+  # The path is plan-known and distinguishes an external parameter (ARN only)
+  # from a provider-managed parameter (explicit path or omitted configuration).
+  ami_id_ssm_external       = local.ami_config.ssm_parameter != null && try(local.ami_config.ssm_parameter.path, null) == null
+  ami_id_ssm_module_managed = !local.ami_id_ssm_external
+  ami_id_ssm_parameter_arn  = local.ami_id_ssm_external ? local.ami_config.ssm_parameter.arn : null
+  # Extract parameter name from ARN (format: arn:aws:ssm:region:account:parameter/path/to/param)
+  ami_id_ssm_parameter_name = local.ami_id_ssm_external ? try(regex("parameter(/.+)$", local.ami_id_ssm_parameter_arn)[0], null) : null
+
+  image_id = local.ami_id_ssm_module_managed ? "resolve:ssm:${aws_ssm_parameter.runner_ami_id[0].arn}" : local.ami_id_ssm_external ? "resolve:ssm:${local.ami_id_ssm_parameter_arn}" : data.aws_ami.runner[0].id
+}
+
+data "aws_ami" "runner" {
+  count = local.ami_id_ssm_external ? 0 : 1
+
+  most_recent = "true"
+
+  dynamic "filter" {
+    for_each = local.ami_filter
+    content {
+      name   = filter.key
+      values = filter.value
+    }
+  }
+
+  owners = local.ami_config.owners
+}
+
+resource "aws_ssm_parameter" "runner_ami_id" {
+  count     = local.ami_id_ssm_module_managed ? 1 : 0
+  name      = "${local.ami_ssm_parameter_path}/ami_id"
+  type      = "String"
+  data_type = "aws:ec2:image"
+  value     = data.aws_ami.runner[0].id
+
+  tags = merge(
+    local.provider_tags,
+    local.ssm_parameter_tags,
+    {
+      # Remove parentheses from AMI name to comply with AWS tag constraints
+      "ghr:ami_name" = replace(data.aws_ami.runner[0].name, "/[()]/", "")
+    },
+    {
+      "ghr:ami_creation_date" = data.aws_ami.runner[0].creation_date
+    },
+    {
+      "ghr:ami_deprecation_time" = data.aws_ami.runner[0].deprecation_time
+    }
+  )
+}
+
+data "aws_iam_policy_document" "ami_id_ssm" {
+
+
+  dynamic "statement" {
+    for_each = local.ami_id_ssm_module_managed || local.ami_id_ssm_external ? [1] : []
+
+    content {
+      effect    = "Allow"
+      sid       = "AllowSSMParameterRead"
+      actions   = ["ssm:GetParameters"]
+      resources = [local.ami_id_ssm_module_managed ? aws_ssm_parameter.runner_ami_id[0].arn : local.ami_id_ssm_parameter_arn]
+    }
+  }
+
+  dynamic "statement" {
+    for_each = local.ami_kms_key_enabled ? [local.ami_kms_key_arn] : []
+
+    content {
+      effect    = "Allow"
+      sid       = "AllowKMSKeyUsage"
+      actions   = ["kms:DescribeKey", "kms:ReEncrypt*", "kms:Decrypt"]
+      resources = [statement.value]
+    }
+  }
+
+  dynamic "statement" {
+    for_each = local.ami_kms_key_enabled ? [local.ami_kms_key_arn] : []
+
+    content {
+      effect    = "Allow"
+      sid       = "AllowKMSKeyGrant"
+      actions   = ["kms:CreateGrant"]
+      resources = [statement.value]
+
+      condition {
+        test     = "Bool"
+        variable = "aws:ViaAWSService"
+        values   = ["true"]
+      }
+    }
+  }
+}
+
+data "aws_iam_policy_document" "ami_id_ssm_parameter_read" {
+  count = local.ami_id_ssm_external ? 1 : 0
+
+  statement {
+    effect    = "Allow"
+    sid       = "AllowSSMParameterRead"
+    actions   = ["ssm:GetParameter"]
+    resources = [local.ami_id_ssm_parameter_arn]
+  }
+}
+
+resource "aws_iam_policy" "ami_id_ssm_parameter_read" {
+  count       = local.ami_id_ssm_external ? 1 : 0
+  name        = "${var.prefix}-ami-id-ssm-parameter-read"
+  path        = local.role_path
+  description = "Allows for reading ${var.prefix} GitHub runner AMI ID from an SSM parameter"
+  tags        = local.provider_tags
+  policy      = data.aws_iam_policy_document.ami_id_ssm_parameter_read[0].json
+}

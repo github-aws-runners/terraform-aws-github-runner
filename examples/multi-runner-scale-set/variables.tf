@@ -61,8 +61,9 @@ variable "ami" {
   type = map(object({
     filter = optional(map(list(string)), { state = ["available"] })
     owners = optional(list(string), ["amazon"])
-    id_ssm_parameter = optional(object({
-      arn = string
+    ssm_parameter = optional(object({
+      path = optional(string, null)
+      arn  = optional(string, null)
     }), null)
     kms_key = optional(object({
       arn = string

@@ -1,12 +1,25 @@
 repos:
   - repo: https://github.com/antonbabenko/pre-commit-terraform
-    rev: v1.96.2
+    rev: 581213484f4262600d17c71e272176d4eb6724a5  # frozen: v1.109.0
     hooks:
       - id: terraform_fmt
       - id: terraform_tflint
         args:
           - --args=--config=__GIT_WORKING_DIR__/.tflint.hcl --var-file __GIT_WORKING_DIR__/.github/lint/tflint.tfvars
+      - id: terraform_validate
+        name: Terraform · Validate
+        always_run: true
+        args:
+          - --hook-config=--retry-once-with-cleanup=true
+          - --tf-init-args=-backend=false
+          - --hook-config=--tf-path=terraform          
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c  # frozen: v6.0.0
     hooks:
       - id: check-merge-conflict
+  - repo: https://github.com/hadolint/hadolint
+    rev: 2eece55955ced00200be9729e9728cb7dacca505  # frozen: v2.15.1
+    hooks:
+      - id: hadolint
+        name: Docker · Linter
+        exclude: (docs/operations/repo-blueprints/)

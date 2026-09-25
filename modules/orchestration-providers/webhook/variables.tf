@@ -223,42 +223,14 @@ variable "storage_provider" {
   EOT
   type = object({
     aws = object({
-      ssm = object({
+      ssm = optional(object({
         token_path           = string
         token_path_arn       = string
         config_path          = string
         config_path_arn      = string
         kms_key_id           = optional(string, null)
         parameter_store_tags = string
-      })
-    })
-    scale_up = optional(object({
-      environment_variables = map(string)
-      iam_policy_json       = optional(string, null)
-      }), {
-      environment_variables = {}
-      iam_policy_json       = null
-    })
-    scale_down = optional(object({
-      environment_variables = map(string)
-      iam_policy_json       = optional(string, null)
-      }), {
-      environment_variables = {}
-      iam_policy_json       = null
-    })
-    pool = optional(object({
-      environment_variables = map(string)
-      iam_policy_json       = optional(string, null)
-      }), {
-      environment_variables = {}
-      iam_policy_json       = null
-    })
-    job_retry = optional(object({
-      environment_variables = map(string)
-      iam_policy_json       = optional(string, null)
-      }), {
-      environment_variables = {}
-      iam_policy_json       = null
+      }), null)
     })
   })
   nullable = false

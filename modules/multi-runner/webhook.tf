@@ -20,7 +20,6 @@ locals {
     }
   }
 
-  webhook_storage_kms_key_arn = local.effective_config.storage_provider.aws.ssm.kms_key_id
 }
 
 module "webhook" {
@@ -29,11 +28,11 @@ module "webhook" {
   tags   = local.tags
   storage_provider = {
     aws = {
-      kms_key_id = local.webhook_storage_kms_key_arn
-      ssm = {
+      ssm = try(local.effective_config.storage_provider.aws.ssm, null) == null ? null : {
+        kms_key_id = try(local.effective_config.storage_provider.aws.ssm.kms_key_id, null)
         paths = {
           root    = local.ssm_root_path
-          webhook = local.effective_config.storage_provider.aws.ssm.paths.webhook
+          webhook = try(local.effective_config.storage_provider.aws.ssm.paths.webhook, "webhook")
         }
       }
     }

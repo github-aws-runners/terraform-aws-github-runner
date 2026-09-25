@@ -11,6 +11,32 @@ mock_provider "aws" {
     }
   }
 
+  mock_resource "aws_iam_policy" {
+    defaults = {
+      arn = "arn:aws:iam::123456789012:policy/runner-test"
+    }
+  }
+
+  mock_resource "aws_lambda_function" {
+    defaults = {
+      arn = "arn:aws:lambda:eu-west-1:123456789012:function:runner-test"
+    }
+  }
+
+  mock_resource "aws_sqs_queue" {
+    defaults = {
+      arn = "arn:aws:sqs:eu-west-1:123456789012:runner-test"
+      id  = "https://sqs.eu-west-1.amazonaws.com/123456789012/runner-test"
+      url = "https://sqs.eu-west-1.amazonaws.com/123456789012/runner-test"
+    }
+  }
+
+  mock_resource "aws_cloudwatch_event_rule" {
+    defaults = {
+      arn = "arn:aws:events:eu-west-1:123456789012:rule/runner-test"
+    }
+  }
+
   mock_resource "aws_ssm_parameter" {
     defaults = {
       arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config"
@@ -21,7 +47,7 @@ mock_provider "aws" {
 # The runner archive is injected during packaging, so model the common
 # housekeeper output while testing parent-level tag composition from source.
 override_module {
-  target = module.ssm_housekeeper
+  target = module.runner_config_housekeeper
 }
 
 variables {
@@ -41,7 +67,7 @@ variables {
         ami = {
           filter = { state = ["available"] }
           owners = ["amazon"]
-          id_ssm_parameter = {
+          ssm_parameter = {
             arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/external-ami-id"
           }
           kms_key = null
@@ -255,7 +281,7 @@ run "layered_component_tags" {
   }
 
   assert {
-    condition = aws_ssm_parameter.runner_agent_mode.tags == tomap({
+    condition = aws_ssm_parameter.runner_agent_mode[0].tags == tomap({
       Name                  = "github-actions-action-runner"
       "ghr:ssm_config_path" = "/github-runner/config"
       precedence            = "ssm-parameter"

@@ -4,6 +4,38 @@ mock_provider "aws" {
       json = "{\"Version\":\"2012-10-17\",\"Statement\":[]}"
     }
   }
+
+  mock_resource "aws_iam_role" {
+    defaults = {
+      arn = "arn:aws:iam::123456789012:role/runner-test"
+    }
+  }
+
+  mock_resource "aws_iam_policy" {
+    defaults = {
+      arn = "arn:aws:iam::123456789012:policy/runner-test"
+    }
+  }
+
+  mock_resource "aws_lambda_function" {
+    defaults = {
+      arn = "arn:aws:lambda:eu-west-1:123456789012:function:runner-test"
+    }
+  }
+
+  mock_resource "aws_sqs_queue" {
+    defaults = {
+      arn = "arn:aws:sqs:eu-west-1:123456789012:runner-test"
+      id  = "https://sqs.eu-west-1.amazonaws.com/123456789012/runner-test"
+      url = "https://sqs.eu-west-1.amazonaws.com/123456789012/runner-test"
+    }
+  }
+
+  mock_resource "aws_cloudwatch_event_rule" {
+    defaults = {
+      arn = "arn:aws:events:eu-west-1:123456789012:rule/runner-test"
+    }
+  }
 }
 
 run "computed_external_values_keep_plan_shape_known" {
@@ -16,11 +48,11 @@ run "computed_external_values_keep_plan_shape_known" {
   # The packaged runner archive is added by the release build, so the computed
   # IAM fixture isolates the two common housekeeper children in a source checkout.
   override_module {
-    target = module.external_iam.module.ssm_housekeeper
+    target = module.external_iam.module.runner_config_housekeeper
   }
 
   override_module {
-    target = module.generated_policy.module.ssm_housekeeper
+    target = module.generated_policy.module.runner_config_housekeeper
   }
 
   assert {

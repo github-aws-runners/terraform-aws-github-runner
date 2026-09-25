@@ -11,6 +11,32 @@ mock_provider "aws" {
     }
   }
 
+  mock_resource "aws_iam_policy" {
+    defaults = {
+      arn = "arn:aws:iam::123456789012:policy/runner-test"
+    }
+  }
+
+  mock_resource "aws_lambda_function" {
+    defaults = {
+      arn = "arn:aws:lambda:eu-west-1:123456789012:function:runner-test"
+    }
+  }
+
+  mock_resource "aws_sqs_queue" {
+    defaults = {
+      arn = "arn:aws:sqs:eu-west-1:123456789012:runner-test"
+      id  = "https://sqs.eu-west-1.amazonaws.com/123456789012/runner-test"
+      url = "https://sqs.eu-west-1.amazonaws.com/123456789012/runner-test"
+    }
+  }
+
+  mock_resource "aws_cloudwatch_event_rule" {
+    defaults = {
+      arn = "arn:aws:events:eu-west-1:123456789012:rule/runner-test"
+    }
+  }
+
   mock_resource "aws_ssm_parameter" {
     defaults = {
       arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/ami-id"
@@ -21,7 +47,7 @@ mock_provider "aws" {
 # The runner archive is injected during packaging, so isolate the common
 # housekeeper child in source-checkout tests where that build artifact is absent.
 override_module {
-  target = module.ssm_housekeeper
+  target = module.runner_config_housekeeper
 }
 
 variables {
@@ -36,7 +62,7 @@ variables {
         ami = {
           filter = { state = ["available"] }
           owners = ["amazon"]
-          id_ssm_parameter = {
+          ssm_parameter = {
             arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/external-ami-id"
           }
           kms_key = null
@@ -160,8 +186,8 @@ run "plan_with_pool_enabled" {
 
   assert {
     condition = (
-      aws_ssm_parameter.runner_agent_mode.value == "ephemeral"
-      && aws_ssm_parameter.jit_config_enabled.value == "true"
+      aws_ssm_parameter.runner_agent_mode[0].value == "ephemeral"
+      && aws_ssm_parameter.jit_config_enabled[0].value == "true"
     )
     error_message = "Runner-config must serialize the webhook provider's resolved lifecycle contract without duplicating its JIT fallback."
   }
@@ -492,6 +518,11 @@ run "external_runner_role_and_profile_remain_external" {
     compute_provider = {
       aws = {
         ec2 = {
+          ami = {
+            ssm_parameter = {
+              path = "/github-runner/provider-test/ami"
+            }
+          }
           vpc_id         = "vpc-12345678"
           subnet_ids     = ["subnet-12345678"]
           instance_types = ["m5.large"]

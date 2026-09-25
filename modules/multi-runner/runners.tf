@@ -34,7 +34,7 @@ module "runners" {
   ami = try(each.value.compute_provider.aws.ec2.ami == null ? null : {
     filter               = each.value.compute_provider.aws.ec2.ami.filter
     owners               = each.value.compute_provider.aws.ec2.ami.owners
-    id_ssm_parameter_arn = try(each.value.compute_provider.aws.ec2.ami.id_ssm_parameter.arn, null)
+    id_ssm_parameter_arn = try(each.value.compute_provider.aws.ec2.ami.ssm_parameter.arn, null)
     kms_key_arn          = try(each.value.compute_provider.aws.ec2.ami.kms_key.arn, null)
   }, null)
 
@@ -121,7 +121,7 @@ module "runners" {
   iam_overrides = {
     override_instance_profile = each.value.compute_provider.aws.ec2.instance_profile != null
     instance_profile_name     = try(each.value.compute_provider.aws.ec2.instance_profile.name, null)
-    override_runner_role      = each.value.runner.iam.role != null
+    override_runner_role      = try(each.value.runner.iam.role.arn, null) != null
     runner_role_arn           = try(each.value.runner.iam.role.arn, null)
   }
 
