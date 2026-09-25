@@ -40,8 +40,19 @@ locals {
     )
   }
 
-  official_container_image = "ghcr.io/github-aws-runners/terraform-aws-github-runner-scale-set-service:latest"
-  resolved_container_image = coalesce(var.container.image, local.official_container_image)
+  resolved_container_image = var.container.image
+  private_ecr_image_match = try(regex(
+    "^([0-9]{12})\\.dkr\\.ecr\\.([a-z0-9-]+)\\.amazonaws\\.com(\\.cn)?/([A-Za-z0-9._/-]+)([:@].+)?$",
+    var.container.image,
+  ), [])
+  uses_private_ecr = length(local.private_ecr_image_match) > 0
+  private_ecr_repository_arn = local.uses_private_ecr ? format(
+    "arn:%s:ecr:%s:%s:repository/%s",
+    data.aws_partition.current.partition,
+    local.private_ecr_image_match[1],
+    local.private_ecr_image_match[0],
+    local.private_ecr_image_match[3],
+  ) : null
 
   resolved_health_check_command = var.container.health_check_command != null ? var.container.health_check_command : [
     "CMD",

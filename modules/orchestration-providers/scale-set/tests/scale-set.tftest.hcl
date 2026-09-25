@@ -39,6 +39,10 @@ mock_provider "aws" {
 variables {
   prefix = "scale-set-test"
 
+  container = {
+    image = "ghcr.io/github-aws-runners/terraform-aws-github-runner-scale-set-service@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  }
+
   runner_configs = {
     linux-small = {
       github = {
@@ -224,7 +228,7 @@ variables {
   }
 
   logging = {
-    kms_key_arn = "arn:aws:kms:eu-west-1:123456789012:key/22222222-2222-2222-2222-222222222222"
+    kms_key_id = "arn:aws:kms:eu-west-1:123456789012:key/22222222-2222-2222-2222-222222222222"
   }
 
   tags = {
@@ -283,7 +287,7 @@ run "groups_by_compute_provider_and_hardens_each_task" {
     condition = alltrue([
       for task in values(aws_ecs_task_definition.controller) : (
         length(jsondecode(task.container_definitions)) == 1 &&
-        jsondecode(task.container_definitions)[0].image == "ghcr.io/github-aws-runners/terraform-aws-github-runner-scale-set-service:latest" &&
+        jsondecode(task.container_definitions)[0].image == "ghcr.io/github-aws-runners/terraform-aws-github-runner-scale-set-service@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" &&
         jsondecode(task.container_definitions)[0].versionConsistency == "enabled" &&
         jsondecode(task.container_definitions)[0].readonlyRootFilesystem &&
         !jsondecode(task.container_definitions)[0].privileged &&
@@ -363,7 +367,7 @@ run "groups_by_compute_provider_and_hardens_each_task" {
       length(aws_security_group.controller["ec2"].egress) == 1 &&
       one(aws_security_group.controller["ec2"].egress).from_port == 443 &&
       one(aws_security_group.controller["ec2"].egress).to_port == 443 &&
-      aws_cloudwatch_log_group.controller["ec2"].kms_key_id == var.logging.kms_key_arn
+      aws_cloudwatch_log_group.controller["ec2"].kms_key_id == var.logging.kms_key_id
     )
     error_message = "Controller networking must have no ingress and only HTTPS egress, and logs must honor customer-managed encryption."
   }
@@ -396,7 +400,9 @@ run "groups_by_compute_provider_and_hardens_each_task" {
       && contains(flatten([for statement in data.aws_iam_policy_document.task["ec2"].statement : statement.actions]), "sts:AssumeRole") &&
       !contains(flatten([for statement in data.aws_iam_policy_document.task["ec2"].statement : statement.resources]), "arn:aws:ssm:eu-west-1:123456789012:parameter/scale-set-test/runners/config/ami_id") &&
       contains(flatten([for statement in data.aws_iam_policy_document.compute["ec2/linux-small"].statement : statement.actions]), "ssm:GetParameters") &&
-      contains(flatten([for statement in data.aws_iam_policy_document.compute["ec2/linux-small"].statement : statement.resources]), "arn:aws:ssm:eu-west-1:123456789012:parameter/scale-set-test/runners/config/ami_id")
+      contains(flatten([for statement in data.aws_iam_policy_document.compute["ec2/linux-small"].statement : statement.resources]), "arn:aws:ssm:eu-west-1:123456789012:parameter/scale-set-test/runners/config/ami_id") &&
+      !contains(flatten([for statement in data.aws_iam_policy_document.execution["ec2"].statement : statement.actions]), "ecr:GetAuthorizationToken") &&
+      !contains(flatten([for statement in data.aws_iam_policy_document.execution["ec2"].statement : statement.actions]), "ecr:BatchGetImage")
     )
     error_message = "Controller IAM must contain only controller permissions, while provider permissions such as AMI SSM reads must be attached to the compute role."
   }
@@ -437,7 +443,7 @@ run "grants_execution_role_ecr_pull_permissions" {
     condition = (
       contains(flatten([
         for statement in data.aws_iam_policy_document.execution["ec2"].statement : statement.resources
-      ]), "*") &&
+      ]), "arn:aws:ecr:eu-west-1:999999999999:repository/scale-set-controller") &&
       contains(flatten([
         for statement in data.aws_iam_policy_document.execution["ec2"].statement : statement.actions
       ]), "ecr:GetAuthorizationToken") &&
@@ -451,8 +457,18 @@ run "grants_execution_role_ecr_pull_permissions" {
         for statement in data.aws_iam_policy_document.execution["ec2"].statement : statement.actions
       ]), "ecr:GetDownloadUrlForLayer")
     )
-    error_message = "The ECS execution role must have wildcard ECR pull permissions, including the authorization-token permission."
+    error_message = "Private ECR images must receive repository-scoped layer-pull permissions and the unavoidable wildcard authorization-token permission."
   }
+}
+
+run "requires_explicit_container_image" {
+  command = plan
+
+  variables {
+    container = {}
+  }
+
+  expect_failures = [terraform_data.validate_runtime]
 }
 
 run "supports_exact_custom_groups" {
