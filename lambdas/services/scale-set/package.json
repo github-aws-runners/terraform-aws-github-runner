@@ -26,8 +26,8 @@
     "@aws-github-runner/github-actions-scale-set": "*",
     "@aws-sdk/client-ssm": "^3.1009.0",
     "@aws-sdk/credential-providers": "^3.1009.0",
-    "@octokit/auth-app": "8.2.0",
-    "@octokit/request": "^9.2.2",
+    "@octokit/auth-app": "8.3.1",
+    "@octokit/request": "^10.0.16",
     "undici": "^6.19.2"
   },
   "nx": {
