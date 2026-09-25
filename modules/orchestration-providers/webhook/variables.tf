@@ -219,6 +219,8 @@ variable "storage_provider" {
     - `storage_provider.aws.ssm.config_path_arn`: ARN of the runner-configuration Parameter Store path.
     - `storage_provider.aws.ssm.kms_key_id`: Optional KMS key used to decrypt shared parameters.
     - `storage_provider.aws.ssm.parameter_store_tags`: JSON-encoded tags applied to runtime parameters.
+    - `storage_provider.aws.ssm.parameter_store_max_concurrent_invocations`: Expected number of concurrent scale-up and pool Lambda invocations writing to Parameter Store, used to pace writes.
+    - `storage_provider.aws.ssm.parameter_store_max_writes_per_second`: Parameter Store write-rate limit, in writes per second, that runtime writes are paced against.
     - `scale_up`, `scale_down`, `pool`, and `job_retry`: Provider-owned environment variables and IAM policy fragments.
   EOT
   type = object({
@@ -230,6 +232,9 @@ variable "storage_provider" {
         config_path_arn      = string
         kms_key_id           = optional(string, null)
         parameter_store_tags = string
+
+        parameter_store_max_concurrent_invocations = optional(number, 1)
+        parameter_store_max_writes_per_second      = optional(number, 40)
       })
     })
     scale_up = optional(object({

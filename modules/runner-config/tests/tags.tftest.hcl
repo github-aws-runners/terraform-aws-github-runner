@@ -163,6 +163,8 @@ variables {
             precedence = "ssm-parameter"
             parameter  = "yes"
           }
+          max_concurrent_invocations = 5
+          max_writes_per_second      = 500
         }
         housekeeper = {
           tags = {
@@ -187,6 +189,14 @@ variables {
 
 run "layered_component_tags" {
   command = plan
+
+  assert {
+    condition = (
+      module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["SSM_PARAMETER_STORE_MAX_CONCURRENT_INVOCATIONS"] == "5"
+      && module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["SSM_PARAMETER_STORE_MAX_WRITES_PER_SECOND"] == "500"
+    )
+    error_message = "The Parameter Store pacing settings must reach the scale-up Lambda environment."
+  }
 
   assert {
     condition     = module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["LOG_LEVEL"] == "DEBUG"

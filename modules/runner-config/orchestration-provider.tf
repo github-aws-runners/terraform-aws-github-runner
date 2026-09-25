@@ -47,12 +47,14 @@ module "orchestration_webhook" {
   storage_provider = {
     aws = {
       ssm = {
-        token_path           = local.token_path
-        token_path_arn       = local.arn_ssm_parameters_path_tokens
-        config_path          = "${var.storage_provider.aws.ssm.paths.root}/${var.storage_provider.aws.ssm.paths.config}"
-        config_path_arn      = local.arn_ssm_parameters_path_config
-        kms_key_id           = local.kms_key_id
-        parameter_store_tags = local.parameter_store_tags
+        token_path                                 = local.token_path
+        token_path_arn                             = local.arn_ssm_parameters_path_tokens
+        config_path                                = "${var.storage_provider.aws.ssm.paths.root}/${var.storage_provider.aws.ssm.paths.config}"
+        config_path_arn                            = local.arn_ssm_parameters_path_config
+        kms_key_id                                 = local.kms_key_id
+        parameter_store_tags                       = local.parameter_store_tags
+        parameter_store_max_concurrent_invocations = var.storage_provider.aws.ssm.parameters.max_concurrent_invocations
+        parameter_store_max_writes_per_second      = var.storage_provider.aws.ssm.parameters.max_writes_per_second
       }
     }
   }

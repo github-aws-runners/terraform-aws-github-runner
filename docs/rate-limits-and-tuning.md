@@ -84,6 +84,14 @@ Rate limits are **disabled by default** on GitHub Enterprise Server and must be 
 
 Each runner instance requires one `PutParameter` call for its JIT config. This is account-wide, not per-invocation or per-pool: several pools' scale-up/pool lambdas can each individually look fine while their combined writes exceed the account limit. The module paces its own writes to stay under a configured ceiling — `ssm_parameter_store_max_writes_per_second` (default `40`, matching the standard tier) — dividing the per-write delay across `ssm_parameter_store_max_concurrent_invocations` (default `1`), which should reflect how many scale-up/pool invocations across all pools can realistically run at the same time.
 
+Where to set the two values:
+
+| Module | Setting |
+| ------ | ------- |
+| Root module | `ssm_parameter_store_max_writes_per_second` and `ssm_parameter_store_max_concurrent_invocations` |
+| Multi-runner (v1 inputs) | The same two variables, applied to all runner configurations |
+| Multi-runner (v2 inputs) | `global_config_storage_provider.aws.ssm.parameters.max_writes_per_second` and `max_concurrent_invocations` for all runner configurations. A runner configuration can override either value under its own `storage_provider.aws.ssm.parameters`. |
+
 **Higher throughput mode** raises the ceiling:
 
 ```bash
