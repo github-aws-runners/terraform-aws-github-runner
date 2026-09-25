@@ -3,8 +3,9 @@ locals {
     "ghr:environment" = var.prefix
   })
 
-  primary_app_id         = coalesce(local.effective_config.github.app.id_ssm, module.ssm.parameters.github_app_id)
-  primary_app_key_base64 = coalesce(local.effective_config.github.app.key_base64_ssm, module.ssm.parameters.github_app_key_base64)
+  primary_app_id              = coalesce(local.effective_config.github.app.id_ssm, module.ssm.parameters.github_app_id)
+  primary_app_key_base64      = coalesce(local.effective_config.github.app.key_base64_ssm, module.ssm.parameters.github_app_key_base64)
+  primary_app_installation_id = try(coalesce(local.effective_config.github.app.installation_id_ssm, module.ssm.parameters.github_app_installation_id), null)
 
   github_app_parameters = {
     id             = local.primary_app_id
@@ -22,7 +23,7 @@ locals {
   }
 
   ssm_root_path = trimsuffix(coalesce(
-    local.effective_config.ssm.paths.root,
+    local.effective_config.storage_provider.aws.ssm.paths.root,
     "/github-action-runners/${var.prefix}",
   ), "/")
 }

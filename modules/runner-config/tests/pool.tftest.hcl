@@ -48,7 +48,6 @@ variables {
             key = "runners/linux/actions-runner.tar.gz"
           }
         }
-        ssm_enabled = true
       }
     }
   }
@@ -119,11 +118,15 @@ variables {
     }
   }
 
-  ssm = {
-    paths = {
-      root   = "/github-runner"
-      tokens = "tokens"
-      config = "config"
+  storage_provider = {
+    aws = {
+      ssm = {
+        paths = {
+          root   = "/github-runner"
+          tokens = "tokens"
+          config = "config"
+        }
+      }
     }
   }
 
@@ -284,18 +287,22 @@ run "housekeeper_uses_component_s3_artifact" {
   command = plan
 
   variables {
-    ssm = {
-      paths = {
-        root   = "/github-runner"
-        tokens = "tokens"
-        config = "config"
-      }
-      housekeeper = {
-        lambda = {
-          artifact = {
-            s3 = {
-              key            = "housekeeper/runner-config.zip"
-              object_version = "housekeeper-version"
+    storage_provider = {
+      aws = {
+        ssm = {
+          paths = {
+            root   = "/github-runner"
+            tokens = "tokens"
+            config = "config"
+          }
+          housekeeper = {
+            lambda = {
+              artifact = {
+                s3 = {
+                  key            = "housekeeper/runner-config.zip"
+                  object_version = "housekeeper-version"
+                }
+              }
             }
           }
         }
@@ -318,16 +325,20 @@ run "housekeeper_uses_component_local_zip" {
   command = plan
 
   variables {
-    ssm = {
-      paths = {
-        root   = "/github-runner"
-        tokens = "tokens"
-        config = "config"
-      }
-      housekeeper = {
-        lambda = {
-          artifact = {
-            zip = "README.md"
+    storage_provider = {
+      aws = {
+        ssm = {
+          paths = {
+            root   = "/github-runner"
+            tokens = "tokens"
+            config = "config"
+          }
+          housekeeper = {
+            lambda = {
+              artifact = {
+                zip = "README.md"
+              }
+            }
           }
         }
       }
@@ -349,18 +360,22 @@ run "rejects_conflicting_housekeeper_artifacts" {
   command = plan
 
   variables {
-    ssm = {
-      paths = {
-        root   = "/github-runner"
-        tokens = "tokens"
-        config = "config"
-      }
-      housekeeper = {
-        lambda = {
-          artifact = {
-            zip = "README.md"
-            s3 = {
-              key = "housekeeper/runner-config.zip"
+    storage_provider = {
+      aws = {
+        ssm = {
+          paths = {
+            root   = "/github-runner"
+            tokens = "tokens"
+            config = "config"
+          }
+          housekeeper = {
+            lambda = {
+              artifact = {
+                zip = "README.md"
+                s3 = {
+                  key = "housekeeper/runner-config.zip"
+                }
+              }
             }
           }
         }
@@ -386,17 +401,21 @@ run "rejects_housekeeper_s3_without_common_bucket" {
         }
       }
     }
-    ssm = {
-      paths = {
-        root   = "/github-runner"
-        tokens = "tokens"
-        config = "config"
-      }
-      housekeeper = {
-        lambda = {
-          artifact = {
-            s3 = {
-              key = "housekeeper/runner-config.zip"
+    storage_provider = {
+      aws = {
+        ssm = {
+          paths = {
+            root   = "/github-runner"
+            tokens = "tokens"
+            config = "config"
+          }
+          housekeeper = {
+            lambda = {
+              artifact = {
+                s3 = {
+                  key = "housekeeper/runner-config.zip"
+                }
+              }
             }
           }
         }
