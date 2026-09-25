@@ -161,8 +161,6 @@ export async function addParameterTags(parameter_name: string, tags: Tag[]): Pro
 
 export const SSM_ADVANCED_TIER_THRESHOLD = 4000;
 
-type PutParameterOptions = { overwrite: true; tags?: never } | { overwrite?: false | undefined; tags?: Tag[] };
-
 export async function putParameter(
   parameter_name: string,
   parameter_value: string,

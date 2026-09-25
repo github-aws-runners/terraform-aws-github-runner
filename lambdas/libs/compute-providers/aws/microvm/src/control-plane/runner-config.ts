@@ -27,28 +27,18 @@ const MICROVM_METADATA_CONTEXT_TAG_KEYS = new Set([
 ]);
 
 export interface MicrovmRunHookPayloadV1 {
-  imageArn?: string;
-  imageVersion?: string;
+  imageArn: string;
+  imageVersion: string;
   runnerConfigSsmPath: string;
   runnerTokenSsmPath: string;
   version: 1;
 }
 
 export function createMicrovmRunHookPayload(payload: Omit<MicrovmRunHookPayloadV1, 'version'>): string {
-  const hasImageArn = payload.imageArn !== undefined;
-  const hasImageVersion = payload.imageVersion !== undefined;
-  if (hasImageArn !== hasImageVersion) {
-    throw new Error('MicroVM hook payload image ARN and version must be provided together');
-  }
-
   return JSON.stringify({
     version: 1,
-    ...(hasImageArn
-      ? {
-          imageArn: payload.imageArn,
-          imageVersion: payload.imageVersion,
-        }
-      : {}),
+    imageArn: payload.imageArn,
+    imageVersion: payload.imageVersion,
     runnerConfigSsmPath: payload.runnerConfigSsmPath,
     runnerTokenSsmPath: payload.runnerTokenSsmPath,
   } satisfies MicrovmRunHookPayloadV1);
@@ -140,12 +130,8 @@ export async function createMicrovmRunners(
     nonRetryableErrorCount: 0,
   };
   const runHookPayload = createMicrovmRunHookPayload({
-    ...(config.imageVersion !== undefined
-      ? {
-          imageArn: config.imageIdentifier,
-          imageVersion: config.imageVersion,
-        }
-      : {}),
+    imageArn: config.imageIdentifier,
+    imageVersion: config.imageVersion,
     runnerConfigSsmPath: normalizedRunnerConfigPath,
     runnerTokenSsmPath: normalizedRunnerTokenPath,
   });

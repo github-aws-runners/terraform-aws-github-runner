@@ -7,10 +7,10 @@ const cleanEnv = process.env;
 beforeEach(() => {
   process.env = { ...cleanEnv };
   process.env.MICROVM_IMAGE_ARN = 'arn:aws:lambda:eu-west-1:123456789012:microvm-image:runner';
+  process.env.MICROVM_IMAGE_VERSION = '2.0';
   process.env.MICROVM_EXECUTION_ROLE_ARN = 'arn:aws:iam::123456789012:role/microvm-runner';
   process.env.MICROVM_METADATA_SSM_PATH = '/github-action-runners/unit-test/microvm-metadata/';
   process.env.SSM_TOKEN_PATH = '/github-action-runners/unit-test/token/';
-  delete process.env.MICROVM_IMAGE_VERSION;
   delete process.env.MICROVM_INGRESS_NETWORK_CONNECTORS;
   delete process.env.MICROVM_EGRESS_NETWORK_CONNECTORS;
   delete process.env.MICROVM_LOG_GROUP;
@@ -20,7 +20,7 @@ describe('loadMicrovmProviderConfig', () => {
   it('loads required values and applies optional defaults', () => {
     expect(loadMicrovmProviderConfig()).toEqual({
       imageIdentifier: process.env.MICROVM_IMAGE_ARN,
-      imageVersion: undefined,
+      imageVersion: '2.0',
       executionRoleArn: process.env.MICROVM_EXECUTION_ROLE_ARN,
       ingressNetworkConnectors: undefined,
       egressNetworkConnectors: undefined,
@@ -46,6 +46,7 @@ describe('loadMicrovmProviderConfig', () => {
 
   it.each([
     ['MICROVM_IMAGE_ARN', 'MICROVM_IMAGE_ARN'],
+    ['MICROVM_IMAGE_VERSION', 'MICROVM_IMAGE_VERSION'],
     ['MICROVM_EXECUTION_ROLE_ARN', 'MICROVM_EXECUTION_ROLE_ARN'],
     ['MICROVM_METADATA_SSM_PATH', 'MICROVM_METADATA_SSM_PATH'],
     ['SSM_TOKEN_PATH', 'SSM_TOKEN_PATH'],

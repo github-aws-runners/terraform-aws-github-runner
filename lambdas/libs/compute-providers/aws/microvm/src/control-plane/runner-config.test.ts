@@ -97,24 +97,6 @@ describe('createMicrovmRunHookPayload', () => {
       runnerTokenSsmPath: '/runner/token',
     });
   });
-
-  it('requires the image ARN and version to be provided together', () => {
-    expect(() =>
-      createMicrovmRunHookPayload({
-        imageArn,
-        runnerConfigSsmPath,
-        runnerTokenSsmPath,
-      }),
-    ).toThrow('MicroVM hook payload image ARN and version must be provided together');
-  });
-
-  it('omits image metadata when no explicit image version is selected', () => {
-    expect(JSON.parse(createMicrovmRunHookPayload({ runnerConfigSsmPath, runnerTokenSsmPath }))).toEqual({
-      version: 1,
-      runnerConfigSsmPath,
-      runnerTokenSsmPath,
-    });
-  });
 });
 
 describe('createMicrovmRunners', () => {
@@ -150,6 +132,7 @@ describe('createMicrovmRunners', () => {
   it('rejects a metadata path that overlaps the JIT token path', async () => {
     vi.mocked(loadMicrovmProviderConfig).mockReturnValue({
       imageIdentifier: imageArn,
+      imageVersion: '2.0',
       executionRoleArn: 'arn:aws:iam::123456789012:role/microvm-runner',
       metadataSsmPath: '/github-action-runners/unit-test/token/metadata',
       runnerTokenSsmPath,
