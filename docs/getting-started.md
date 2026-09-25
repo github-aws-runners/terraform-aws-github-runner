@@ -1,12 +1,32 @@
 # Getting started
 
-Terraform examples are available for different use-cases for example multiple runners, ephemeral runners, and windows. For more details see the [examples](examples/index.md).
+Terraform examples are available for different use cases, including multiple
+runners, ephemeral runners, and Windows. See the [examples](examples/index.md).
+
+## Recommended starting point: Scale Set example
+
+For a complete deployment example, start with the
+[multi-runner scale-set example](examples/multi-runner-scale-set.md). It shows
+the experimental v2 interface with webhook-managed lanes and one GitHub
+Actions scale-set lane. Follow its README for prerequisites, GitHub App
+configuration, secret handling, deployment, a smoke-test workflow, and cleanup.
+
+The example creates a VPC with a NAT gateway, an ECS Fargate controller, and
+runner infrastructure. Review the Terraform plan and AWS costs before applying.
+The v2 interface and scale-set orchestration are experimental; review the
+[security boundaries](security.md#scale-set-security-boundaries) and validate
+them before production use.
+
+The setup instructions below describe the existing webhook and EC2 module
+workflow. They remain available for deployments using that interface.
 
 The module supports two main scenarios for creating runners. Repository level runners will be dedicated to only one repository, no other repository can use the runner. At the organization level you can use the runner(s) for all repositories within the organization. See [GitHub self-hosted runner instructions](https://help.github.com/en/actions/hosting-your-own-runners/about-self-hosted-runners) for more information. Before starting the deployment you have to choose one option.
 
 The setup guide below is a generic direction. There are many choices you can make, and there is no right way. For example, we deploy ephemeral runners for both Linux and Windows with packer pre-built AMI's that are automatically updated. Deployment is done with GitHub actions, Terragrunt and terraform. We sync the lambda to AWS S3. For the major fleet we have a tiny pool to let start jobs quickly.
 
-## Required tools
+## Existing webhook and EC2 setup
+
+### Required tools
 
 The following tools are a minimum requirement. We advise to deploy the stack via a CI/CD pipeline.
 
@@ -16,7 +36,7 @@ The following tools are a minimum requirement. We advise to deploy the stack via
 - AWS cli (optional)
 - Node and yarn to build the lambdas (or download via Release).
 
-## Setup guide
+### Setup guide
 
 The setup consists of running Terraform to create all AWS resources and manually configuring the GitHub App. The Terraform module requires configuration from the GitHub App and the GitHub App requires output from Terraform. Therefore you first create the GitHub App and configure the basics, then run Terraform, and afterwards finalize the configuration of the GitHub App.
 

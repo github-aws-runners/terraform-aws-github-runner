@@ -1,39 +1,112 @@
 # Multi-runner scale-set example
 
-This example demonstrates the experimental multi-runner v2 interface. Shared
-defaults are configured with `global_config*` variables, while
-each runner lane uses `multi_runner_config` for its matcher,
-runner lifecycle, and compute-provider settings.
+This is the recommended end-to-end example for trying the experimental
+multi-runner v2 and GitHub Actions scale-set integration. It creates four
+runner lanes in one deployment:
 
-The example creates four lanes from one deployment:
-
-- Linux ARM64 Amazon Linux runners.
-- Ephemeral Linux x64 Amazon Linux runners with job retry enabled.
+- Linux ARM64 Amazon Linux runners managed by the webhook provider.
+- Ephemeral Linux x64 Amazon Linux runners managed by the webhook provider.
 - Linux x64 runners managed by a GitHub Actions scale set.
-- Windows x64 Server Core 2022 runners.
+- Windows x64 Server Core 2022 runners managed by the webhook provider.
 
-The v2 interface keeps provider-owned settings inside the selected provider
-configuration. For example, VPC and subnet settings are under
-`global_config_compute_provider.aws.ec2`, while the per-lane
-instance types and AMI filter are under each lane's compute provider block.
+The v2 interface puts shared settings in `global_config*` and lane-specific
+settings in `multi_runner_config`. For example, the VPC and subnets are shared
+under `global_config_compute_provider.aws.ec2`; each lane selects its own
+instance types and AMI filter.
 
-The scale-set lane uses `orchestration_provider.scale_set`. Its controller
-network is configured under the global scale-set block and its GitHub
-installation ID is provided by `var.github_app`.
+> **Experimental:** This example uses the experimental v2 interface and
+> experimental scale-set orchestration. Do not treat it as a production
+> deployment without reviewing the [security boundaries](../../docs/security.md)
+> and validating the configuration for your environment.
 
-Configure the GitHub App variables before applying:
+## Prerequisites
+
+- Terraform 1.5.6 or later.
+- AWS credentials with permission to create the resources in this example, in
+  a region with at least two availability zones.
+- A GitHub App installed in the target organization. Grant the permissions
+  `Actions: read`, `Checks: read`, and `Metadata: read` on repositories, plus
+  `Self-hosted runners: read and write` for the organization. Subscribe the App
+  to `workflow_job` events.
+- Access for the target repository to use the runner group selected by the
+  example (the default is `Default`).
+- An immutable scale-set service image digest from a project release. The
+  release notes publish the digest; see the [image verification instructions](../../docs/security.md#attestation).
+- GitHub CLI (`gh`) available to Terraform's local provisioner. The example
+  updates the GitHub App webhook URL and secret during apply.
+
+The example creates a VPC with a NAT gateway, an ECS Fargate scale-set
+controller, and runner infrastructure. AWS charges apply while the resources
+exist; the NAT gateway and data transfer can incur charges even when no runner
+job is active. Review the generated Terraform plan before applying.
+
+## Configure and deploy
+
+Copy the example variables file and edit the local copy with your values. The
+copy is ignored by Git so the GitHub App private key is not committed:
+
+```bash
+cp secrets.auto.tfvars.example secrets.auto.tfvars
+```
+
+Set the App ID, installation ID, and base64-encoded private key in
+`secrets.auto.tfvars`. Set the organization name, environment name, scale-set
+name, and immutable controller image digest there too. Keep the private key out
+of shell history and source control. Terraform state contains sensitive input
+values, so use a secured state backend for deployments beyond local evaluation.
+To encode the App private key, run `base64 < app.private-key.pem | tr -d '\n'`
+and paste the output into `key_base64`. Obtain the controller image digest from
+the release notes; do not use a mutable image tag.
+
+Then initialize and review the plan:
 
 ```bash
 terraform init
-terraform apply \
-  -var='github_app={id="123456",key_base64="...",installation_id="123456789"}' \
-  -var='github={runner_owner="example",registration_level="organization"}' \
-  -var='scale_set={name="linux-scale-set",container={image="ghcr.io/github-aws-runners/terraform-aws-github-runner-scale-set-service@sha256:<release-digest>"}}'
+terraform plan
 ```
 
-The `github_app` value is sensitive and should be supplied through a secure
-variable source in real deployments rather than committed to configuration.
-The GitHub App must be installed for the configured GitHub account.
+Apply only after checking the resources and cost implications:
+
+```bash
+terraform apply
+```
+
+The example configures the GitHub App webhook as part of apply. The App must
+already be installed for the organization and have the permissions described
+above.
+
+## Verify a runner
+
+After apply, add a workflow to a repository covered by the App installation and
+runner group. The scale-set lane uses the labels `self-hosted`, `linux`, `x64`,
+and `scale-set`:
+
+```yaml
+name: Scale-set runner smoke test
+on: workflow_dispatch
+jobs:
+  verify:
+    runs-on: [self-hosted, linux, x64, scale-set]
+    steps:
+      - run: echo "Running on the scale-set lane"
+```
+
+Dispatch the workflow and confirm it starts on the scale-set runner. For
+failures, inspect the controller's CloudWatch log group from the
+`scale_set.controller_groups` output, then check the EC2 instance and SSM
+parameters created for the lane.
+
+## Clean up
+
+Destroy the example when finished. This removes the VPC, NAT gateway,
+controller, and runner resources created by this configuration:
+
+```bash
+terraform destroy
+```
+
+The GitHub App itself is not deleted. Review the App webhook settings if you
+plan to reuse the App elsewhere.
 
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
