@@ -340,6 +340,9 @@ run "empty_v2_map_translates_stable_inputs" {
           instance_types        = ["m5.large"]
           runners_maximum_count = 2
           runner_group_name     = "stable-group"
+          ssm_ttl_seconds = {
+            tokens = 3600
+          }
           runner_iam_role_managed_policy_arns = [
             "arn:aws:iam::123456789012:policy/stable-runner",
           ]
@@ -439,6 +442,7 @@ run "empty_v2_map_translates_stable_inputs" {
   assert {
     condition = (
       local.normalized_config.multi_runner_config["stable"].runner.os == "linux"
+      && local.effective_config.multi_runner_config["stable"].storage_provider.aws.ssm.ttl_seconds.tokens == 3600
       && local.normalized_config.multi_runner_config["stable"].runner.architecture == "x64"
       && local.normalized_config.multi_runner_config["stable"].runner.group_name == "stable-group"
       && local.normalized_config.multi_runner_config["stable"].runner.iam.managed_policy_arns["legacy-0"] == "arn:aws:iam::123456789012:policy/stable-runner"
@@ -490,6 +494,13 @@ run "non_empty_v2_map_is_authoritative" {
 
     multi_runner_config = {
       experimental = {
+        storage_provider = {
+          aws = {
+            ssm = {
+              ttl_seconds = { tokens = 7200 }
+            }
+          }
+        }
         orchestration_provider = {
           webhook = {
             matcherConfig = {
@@ -513,6 +524,7 @@ run "non_empty_v2_map_is_authoritative" {
       local.use_v2_config
       && toset(keys(local.normalized_config.multi_runner_config)) == toset(["experimental"])
       && local.normalized_config.tags.source == "experimental"
+      && local.effective_config.multi_runner_config["experimental"].storage_provider.aws.ssm.ttl_seconds.tokens == 7200
       && toset(local.normalized_config.multi_runner_config["experimental"].compute_provider.aws.ec2.instance_types) == toset(["c7g.large"])
       && flatten(local.normalized_config.multi_runner_config["experimental"].orchestration_provider.webhook.matcherConfig.labelMatchers) == ["experimental"]
     )
