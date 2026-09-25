@@ -38,7 +38,9 @@ locals {
       url        = var.ghes_url
       ssl_verify = var.ghes_ssl_verify
     }
-    user_agent = var.user_agent
+    runner_owner              = null
+    runner_registration_level = "organization"
+    user_agent                = var.user_agent
   }
 
   stable_to_v2_lambda = {
@@ -181,6 +183,7 @@ locals {
         encryption = var.queue_encryption
       }
     }
+    scale_set = null
   }
 
   stable_to_v2_observability = {
@@ -432,6 +435,7 @@ locals {
             }
           }
         }
+        scale_set = null
       }
 
       storage_provider = {

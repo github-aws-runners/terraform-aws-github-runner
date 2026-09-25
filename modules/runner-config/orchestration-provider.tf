@@ -7,11 +7,16 @@ locals {
   orchestration_provider_type = one(keys(local.orchestration_providers))
 
   orchestration_provider_enabled = {
-    webhook = local.orchestration_provider_type == "webhook"
+    webhook   = local.orchestration_provider_type == "webhook"
+    scale_set = local.orchestration_provider_type == "scale_set"
   }
 
   orchestration_provider_runner_lifecycle = {
     webhook = one(module.orchestration_webhook[*].runner_lifecycle)
+    scale_set = {
+      ephemeral          = true
+      jit_config_enabled = true
+    }
   }[local.orchestration_provider_type]
 }
 
