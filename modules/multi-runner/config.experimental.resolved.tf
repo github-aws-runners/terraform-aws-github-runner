@@ -295,6 +295,7 @@ locals {
               tags = merge(local.normalized_config.orchestration_provider.webhook.queue.tags, v.orchestration_provider.webhook.queue.tags)
             })
           })
+          scale_set = v.orchestration_provider.scale_set
         }
 
         storage_provider = merge(v.storage_provider, {
