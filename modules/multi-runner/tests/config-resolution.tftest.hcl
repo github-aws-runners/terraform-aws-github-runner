@@ -735,6 +735,9 @@ run "scale_set_only_lane_omits_webhook_queues" {
         }
       }
       scale_set = {
+        container = {
+          image = "ghcr.io/github-aws-runners/terraform-aws-github-runner-scale-set-service@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
         network = {
           vpc_id     = "vpc-scale-set"
           subnet_ids = ["subnet-scale-set"]
@@ -843,6 +846,9 @@ run "mixed_webhook_and_scale_set_lanes_create_webhook_queues_only_for_webhook" {
         }
       }
       scale_set = {
+        container = {
+          image = "ghcr.io/github-aws-runners/terraform-aws-github-runner-scale-set-service@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
         network = {
           vpc_id     = "vpc-scale-set"
           subnet_ids = ["subnet-scale-set"]
@@ -1072,6 +1078,9 @@ run "scale_set_queue_for_each_keys_are_plan_known" {
 
     global_config_orchestration_provider = {
       scale_set = {
+        container = {
+          image = "ghcr.io/github-aws-runners/terraform-aws-github-runner-scale-set-service@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
         network = {
           vpc_id     = "vpc-scale-set"
           subnet_ids = ["subnet-scale-set"]
