@@ -31,7 +31,6 @@ describe('GitHub App credentials', () => {
           ['/app/key', encodedKey('abc')],
         ]),
       ),
-      put: vi.fn(),
     };
     await expect(loadGitHubAppCredentials(references, store)).resolves.toMatchObject({
       appId: '123',
@@ -86,7 +85,6 @@ describe('GitHub App credentials', () => {
           ['/app/key', encodedKey('abc')],
         ]),
       ),
-      put: vi.fn(),
     };
     const appAuth = vi.fn().mockResolvedValue({ token: 'app-jwt' });
     const installationAuth = vi
@@ -114,7 +112,7 @@ describe('GitHub App credentials', () => {
     expect(installationAuth).toHaveBeenCalledWith({ type: 'installation', installationId: 456 });
     expect(appAuth).toHaveBeenCalledTimes(1);
     expect(fetchImplementation).toHaveBeenCalledTimes(1);
-    expect(store.put).toHaveBeenCalledWith('/app/installation', '456');
+    expect(store.get).toHaveBeenCalledWith(['/app/id', '/app/installation', '/app/key']);
     expect(fetchImplementation).toHaveBeenCalledWith(
       expect.objectContaining({
         href: 'https://api.github.com/app/installations?per_page=100&page=1',
@@ -133,7 +131,6 @@ describe('GitHub App credentials', () => {
           ['/app/key', encodedKey('abc')],
         ]),
       ),
-      put: vi.fn(),
     };
     const appAuth = vi.fn().mockResolvedValue({ token: 'app-jwt' });
     const installationAuth = vi

@@ -23,7 +23,6 @@ async function main(): Promise<void> {
     groupName: manifest.groupName,
     revision: manifest.revision,
     reconcilerCount: manifest.reconcilers.length,
-    runnerConfigNames: manifest.reconcilers.map(({ runnerConfigName }) => runnerConfigName),
   });
   logger.debug('scale_set_controller_reconcilers_loaded', {
     groupName: manifest.groupName,
