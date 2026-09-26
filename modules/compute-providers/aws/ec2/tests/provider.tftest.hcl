@@ -1,7 +1,7 @@
 mock_provider "aws" {
   mock_data "aws_iam_policy_document" {
     defaults = {
-      json = "{}"
+      json = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":[\"ssm:GetParameter\",\"ssm:GetParameters\"],\"Resource\":\"arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/ami-id\"}]}"
     }
   }
 
@@ -263,11 +263,11 @@ run "separates_control_plane_contract_from_ec2_resources" {
 
   assert {
     condition = (
-      contains(output.provider.capabilities.scale_set.iam_statements.read_ami_parameter.actions, "ssm:GetParameter")
-      && contains(output.provider.capabilities.scale_set.iam_statements.read_ami_parameter.actions, "ssm:GetParameters")
-      && contains(output.provider.capabilities.scale_set.iam_statements.read_ami_parameter.resources, "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/ami-id")
+      strcontains(output.provider.capabilities.scale_set.iam_statements.ssm_parameters, "ssm:GetParameter")
+      && strcontains(output.provider.capabilities.scale_set.iam_statements.ssm_parameters, "ssm:GetParameters")
+      && strcontains(output.provider.capabilities.scale_set.iam_statements.ssm_parameters, "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/ami-id")
     )
-    error_message = "The scale-set compute role must read an external AMI parameter with both single and batched SSM actions."
+    error_message = "The grouped scale-set SSM policy must read an external AMI parameter with both single and batched SSM actions."
   }
 
   assert {
@@ -344,10 +344,10 @@ run "includes_managed_ami_read_in_scale_set_contract" {
 
   assert {
     condition = (
-      contains(output.provider.capabilities.scale_set.iam_statements.read_ami_parameter.actions, "ssm:GetParameters")
-      && output.provider.capabilities.scale_set.iam_statements.read_ami_parameter.resources != toset([])
+      strcontains(output.provider.capabilities.scale_set.iam_statements.ssm_parameters, "ssm:GetParameters")
+      && strcontains(output.provider.capabilities.scale_set.iam_statements.ssm_parameters, ":parameter/")
     )
-    error_message = "The scale-set compute role must read the module-managed AMI parameter."
+    error_message = "The grouped scale-set SSM policy must read the module-managed AMI parameter."
   }
 }
 
