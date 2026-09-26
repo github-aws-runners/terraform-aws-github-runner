@@ -54,9 +54,17 @@ env:
     multi-runner-scale-set
     external-managed-ssm-secrets
   TEST_MODULES: |
-    modules/runners
+    modules/compute-providers/aws/ec2
+    modules/compute-providers/aws/ec2/trust-policy
     modules/multi-runner
     modules/orchestration-providers/scale-set
+    modules/orchestration-providers/webhook
+    modules/orchestration-providers/webhook/job-retry
+    modules/orchestration-providers/webhook/pool
+    modules/orchestration-providers/webhook/scale-runners
+    modules/runner-config
+    modules/runner-config/ssm-housekeeper
+    modules/runners
 
 jobs:
   verify_modules:
