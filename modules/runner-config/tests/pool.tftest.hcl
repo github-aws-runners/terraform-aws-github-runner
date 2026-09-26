@@ -606,11 +606,7 @@ run "rejects_empty_compute_provider" {
     compute_provider = {}
   }
 
-  plan_options {
-    target = [terraform_data.validate_config]
-  }
-
-  expect_failures = [terraform_data.validate_config]
+  expect_failures = [var.compute_provider]
 }
 
 run "rejects_empty_aws_compute_provider_namespace" {
@@ -622,11 +618,7 @@ run "rejects_empty_aws_compute_provider_namespace" {
     }
   }
 
-  plan_options {
-    target = [terraform_data.validate_config]
-  }
-
-  expect_failures = [terraform_data.validate_config]
+  expect_failures = [var.compute_provider]
 }
 
 run "job_retry_uses_common_runner_configuration_identity" {
