@@ -101,16 +101,6 @@ data "aws_iam_policy_document" "pool" {
   }
 }
 
-data "aws_iam_policy_document" "service_linked_role" {
-  count = var.config.create_service_linked_role_spot ? 1 : 0
-
-  statement {
-    effect    = "Allow"
-    actions   = ["iam:CreateServiceLinkedRole"]
-    resources = ["arn:${var.aws_partition}:iam::*:role/aws-service-role/*"]
-  }
-}
-
 locals {
   scale_up_environment_variables = {
     AMI_ID_SSM_PARAMETER_NAME            = local.ami_id_ssm_parameter_name

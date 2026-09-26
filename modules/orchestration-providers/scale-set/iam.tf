@@ -128,25 +128,7 @@ resource "aws_iam_role" "compute" {
 data "aws_iam_policy_document" "compute" {
   for_each = local.compute_role_configs
 
-  dynamic "statement" {
-    for_each = local.reconciler_compute_iam_statements[each.key]
-
-    content {
-      effect    = "Allow"
-      actions   = statement.value.actions
-      resources = statement.value.resources
-
-      dynamic "condition" {
-        for_each = statement.value.conditions
-
-        content {
-          test     = condition.value.test
-          variable = condition.value.variable
-          values   = condition.value.values
-        }
-      }
-    }
-  }
+  source_policy_documents = values(local.reconciler_compute_iam_statements[each.key])
 }
 
 resource "aws_iam_role_policy" "compute" {

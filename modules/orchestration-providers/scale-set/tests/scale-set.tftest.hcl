@@ -96,14 +96,22 @@ variables {
               EC2_CONTROLLER_MODE = "grouped"
             }
             iam_statements = {
-              run_instances = {
-                actions   = ["ec2:RunInstances"]
-                resources = ["arn:aws:ec2:eu-west-1:123456789012:launch-template/lt-small"]
-              }
-              read_ami = {
-                actions   = ["ssm:GetParameters"]
-                resources = ["arn:aws:ssm:eu-west-1:123456789012:parameter/scale-set-test/runners/config/ami_id"]
-              }
+              run_instances = jsonencode({
+                Version = "2012-10-17"
+                Statement = [{
+                  Effect   = "Allow"
+                  Action   = ["ec2:RunInstances"]
+                  Resource = ["arn:aws:ec2:eu-west-1:123456789012:launch-template/lt-small"]
+                }]
+              })
+              read_ami = jsonencode({
+                Version = "2012-10-17"
+                Statement = [{
+                  Effect   = "Allow"
+                  Action   = ["ssm:GetParameters"]
+                  Resource = ["arn:aws:ssm:eu-west-1:123456789012:parameter/scale-set-test/runners/config/ami_id"]
+                }]
+              })
             }
           }
         }
@@ -163,10 +171,14 @@ variables {
               EC2_CONTROLLER_MODE = "grouped"
             }
             iam_statements = {
-              run_instances = {
-                actions   = ["ec2:RunInstances"]
-                resources = ["arn:aws:ec2:eu-west-1:123456789012:launch-template/lt-large"]
-              }
+              run_instances = jsonencode({
+                Version = "2012-10-17"
+                Statement = [{
+                  Effect   = "Allow"
+                  Action   = ["ec2:RunInstances"]
+                  Resource = ["arn:aws:ec2:eu-west-1:123456789012:launch-template/lt-large"]
+                }]
+              })
             }
           }
         }
@@ -207,10 +219,14 @@ variables {
           scale_set = {
             configuration_json = jsonencode({ image_arn = "arn:aws:lambda:eu-west-1:123456789012:runtime-management-config:microvm" })
             iam_statements = {
-              run_microvm = {
-                actions   = ["lambda:InvokeFunction"]
-                resources = ["arn:aws:lambda:eu-west-1:123456789012:function:microvm"]
-              }
+              run_microvm = jsonencode({
+                Version = "2012-10-17"
+                Statement = [{
+                  Effect   = "Allow"
+                  Action   = ["lambda:InvokeFunction"]
+                  Resource = ["arn:aws:lambda:eu-west-1:123456789012:function:microvm"]
+                }]
+              })
             }
           }
         }
