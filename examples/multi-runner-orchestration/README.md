@@ -1,14 +1,13 @@
-# Multi-runner webhook example
+# Multi-runner orchestration example
 
-This example exercises the shared experimental multi-runner v2 webhook path
-with EC2 and Lambda MicroVM compute. The runner lanes, webhook orchestration,
-Lambda artifacts, and GitHub configuration are common; provider-owned inputs
-are grouped under `compute_provider`.
+This example exercises the experimental multi-runner v2 webhook path with EC2
+and Lambda MicroVM compute, plus a GitHub Actions scale-set lane. The webhook
+and scale-set lanes share the same deployment, VPC, and GitHub App configuration.
+Provider-owned inputs are grouped under `compute_provider`.
 
-The example creates both an EC2 lane and a Lambda MicroVM lane behind the same
-webhook endpoint. The MiniStack smoke test sends matching jobs to each lane in
-sequence, so adding another provider means adding another lane and provider
-specific lifecycle assertions to the same deployment.
+The example creates webhook-managed EC2 and Lambda MicroVM lanes behind one
+webhook endpoint, and an EC2 GitHub Actions scale-set lane. The MiniStack smoke
+test exercises all three lanes in one deployment.
 
 The runner-control and webhook Lambda archives are explicit inputs:
 
@@ -17,6 +16,12 @@ terraform apply \
   -var='runners_lambda_zip=/path/to/runners.zip' \
   -var='webhook_lambda_zip=/path/to/webhook.zip'
 ```
+
+## Scale-set configuration
+
+Set `scale_set.name` and provide an immutable controller image through
+`scale_set.container.image`. The GitHub App installation must be authorized for
+the configured runner owner and group.
 
 ## MicroVM prerequisites
 
@@ -85,9 +90,10 @@ or execution-role setup steps.
 | <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS Region where the runner control plane and compute provider resources are deployed. | `string` | `"eu-west-1"` | no |
 | <a name="input_compute_provider"></a> [compute\_provider](#input\_compute\_provider) | Provider-specific settings for the EC2 and MicroVM runner lanes. | <pre>object({<br/>    aws = object({<br/>      ec2 = object({<br/>        instance_types = list(string)<br/>        ami = object({<br/>          filter = optional(map(list(string)), { state = ["available"] })<br/>          owners = optional(list(string), ["amazon"])<br/>          id_ssm_parameter = optional(object({<br/>            arn = string<br/>          }), null)<br/>          kms_key = optional(object({<br/>            arn = string<br/>          }), null)<br/>        })<br/>      })<br/>      microvm = object({<br/>        image_arn                  = string<br/>        image_version              = optional(string, null)<br/>        ingress_network_connectors = optional(list(string), [])<br/>        egress_network_connectors  = list(string)<br/>      })<br/>    })<br/>  })</pre> | n/a | yes |
 | <a name="input_environment"></a> [environment](#input\_environment) | Name prefix for the example resources. | `string` | n/a | yes |
-| <a name="input_github_app"></a> [github\_app](#input\_github\_app) | GitHub App credentials used by the webhook orchestration provider. | <pre>object({<br/>    id             = string<br/>    key_base64     = string<br/>    webhook_secret = string<br/>  })</pre> | n/a | yes |
-| <a name="input_github_enterprise_server"></a> [github\_enterprise\_server](#input\_github\_enterprise\_server) | Optional GitHub Enterprise Server endpoint used by the smoke-test API mock. | <pre>object({<br/>    url        = string<br/>    ssl_verify = bool<br/>  })</pre> | `null` | no |
+| <a name="input_github"></a> [github](#input\_github) | Optional GitHub endpoint and scale-set ownership settings. | <pre>object({<br/>    url                = optional(string, null)<br/>    ssl_verify         = optional(bool, true)<br/>    runner_owner       = optional(string, null)<br/>    registration_level = optional(string, "organization")<br/>  })</pre> | `{}` | no |
+| <a name="input_github_app"></a> [github\_app](#input\_github\_app) | GitHub App ID, base64-encoded private key, and installation ID. | <pre>object({<br/>    id              = string<br/>    key_base64      = string<br/>    installation_id = optional(string, null)<br/>    webhook_secret  = string<br/>  })</pre> | n/a | yes |
 | <a name="input_runners_lambda_zip"></a> [runners\_lambda\_zip](#input\_runners\_lambda\_zip) | Local ZIP file for the runner-control Lambda. | `string` | n/a | yes |
+| <a name="input_scale_set"></a> [scale\_set](#input\_scale\_set) | GitHub Actions scale-set configuration. | <pre>object({<br/>    name              = string<br/>    runner_group_name = optional(string, "Default")<br/>    min_runners       = optional(number, 0)<br/>    container = optional(object({<br/>      image = optional(string, null)<br/>    }), {})<br/>  })</pre> | n/a | yes |
 | <a name="input_webhook_lambda_zip"></a> [webhook\_lambda\_zip](#input\_webhook\_lambda\_zip) | Local ZIP file for the webhook Lambda. | `string` | n/a | yes |
 
 ## Outputs

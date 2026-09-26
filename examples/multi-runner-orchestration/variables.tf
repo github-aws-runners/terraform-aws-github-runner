@@ -10,23 +10,28 @@ variable "environment" {
 }
 
 variable "github_app" {
-  description = "GitHub App credentials used by the webhook orchestration provider."
-  sensitive   = true
+  description = "GitHub App ID, base64-encoded private key, and installation ID."
 
   type = object({
-    id             = string
-    key_base64     = string
-    webhook_secret = string
+    id              = string
+    key_base64      = string
+    installation_id = optional(string, null)
+    webhook_secret  = string
   })
+  sensitive = true
 }
 
-variable "github_enterprise_server" {
-  description = "Optional GitHub Enterprise Server endpoint used by the smoke-test API mock."
+variable "github" {
+  description = "Optional GitHub endpoint and scale-set ownership settings."
+
   type = object({
-    url        = string
-    ssl_verify = bool
+    url                = optional(string, null)
+    ssl_verify         = optional(bool, true)
+    runner_owner       = optional(string, null)
+    registration_level = optional(string, "organization")
   })
-  default = null
+
+  default = {}
 }
 
 variable "runners_lambda_zip" {
@@ -64,5 +69,18 @@ variable "compute_provider" {
         egress_network_connectors  = list(string)
       })
     })
+  })
+}
+
+variable "scale_set" {
+  description = "GitHub Actions scale-set configuration."
+
+  type = object({
+    name              = string
+    runner_group_name = optional(string, "Default")
+    min_runners       = optional(number, 0)
+    container = optional(object({
+      image = optional(string, null)
+    }), {})
   })
 }

@@ -29,3 +29,7 @@ secrets.auto.tfvars
 
 node_modules/
 site/
+
+__pycache__/
+ministack-smoke-checklist.txt
+ministack-smoke.log
