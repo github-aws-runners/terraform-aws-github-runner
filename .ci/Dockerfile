@@ -8,7 +8,7 @@ RUN apt-get update \
 FROM build as lambdas
 COPY lambdas /lambdas
 RUN --mount=type=cache,target=/work/node_modules,id=lambdas \
-        yarn install --frozen-lockfile && yarn dist && \
+        yarn install --immutable --mode=skip-build && yarn dist && \
         find . -name "*.zip" -exec cp {} . \;
 
 FROM scratch as final

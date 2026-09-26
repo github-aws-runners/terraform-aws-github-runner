@@ -22,7 +22,7 @@ case "$iac_binary" in
     ;;
 esac
 case "$example" in
-  base | prebuilt | default | ephemeral | multi-runner | multi-runner-webhook | microvm-foundation | multi-runner-scale-set)
+  base | prebuilt | default | ephemeral | multi-runner | multi-runner-orchestration | microvm-foundation)
     use_tfvars=true
     ;;
   migration-test)
@@ -32,15 +32,14 @@ case "$example" in
     use_tfvars=false
     ;;
   *)
-  echo "Supported examples for the runner are: base, prebuilt, default, ephemeral, multi-runner, multi-runner-webhook, microvm-foundation, multi-runner-scale-set, migration-test, termination-watcher" >&2
-  exit 64
-  ;;
+    echo "Supported examples for the runner are: base, prebuilt, default, ephemeral, multi-runner, multi-runner-orchestration, microvm-foundation, migration-test, termination-watcher" >&2
+    exit 64
+    ;;
 esac
 
 case "$action" in
   init | plan | apply | destroy | output) ;;
   *)
-    echo "Usage: $0 {init|plan|apply|destroy|output} {base|prebuilt|default|ephemeral|multi-runner|multi-runner-webhook|microvm-foundation|multi-runner-scale-set|migration-test|termination-watcher} [TFVARS_FILE]" >&2
     exit 64
     ;;
 esac
@@ -366,13 +365,8 @@ $lambda_zip"
         "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-arm64" \
         "ami-0abcdef1234567890"
       ;;
-    multi-runner-webhook)
+    multi-runner-orchestration)
       create_ami_fixture "ministack-webhook-linux-x64" x86_64 >/dev/null
-      ;;
-    multi-runner-scale-set)
-      create_ami_fixture "ministack-scale-set-linux-x64" x86_64 >/dev/null
-      create_ami_fixture "ministack-scale-set-linux-arm64" arm64 >/dev/null
-      create_ami_fixture "ministack-scale-set-windows-x64" x86_64 >/dev/null
       ;;
   esac
 }

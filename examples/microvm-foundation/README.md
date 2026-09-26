@@ -32,7 +32,7 @@ The deployment order is:
    outputs and the released lifecycle-hook ZIP. The image builder uses the
    **build role**.
 4. Deploy the runner control plane, such as
-   `examples/multi-runner-webhook`, with the published image ARN/version. The
+   `examples/multi-runner-orchestration`, with the published image ARN/version. The
    control plane resolves the **execution role** from the runner configuration
    and passes it to `RunMicrovm` when it starts a job.
 

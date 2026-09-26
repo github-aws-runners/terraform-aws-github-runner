@@ -10,7 +10,7 @@ Lambda MicroVMs. The runner control plane receives demand, obtains the
 one-time runner configuration, starts a MicroVM from a published image, and
 passes the runtime execution role to the MicroVM.
 
-The repository includes a combined [multi-runner webhook example](examples/multi-runner-webhook.md)
+The repository includes a combined [multi-runner orchestration example](examples/multi-runner-orchestration.md)
 that places EC2 and Lambda MicroVM lanes behind one webhook endpoint. The
 provider-specific lifecycle checks are shared where possible, so the same
 deployment can validate both providers.
@@ -82,9 +82,34 @@ The lifecycle-hook server is part of the image artifact. Updating the hook
 server therefore requires building/releasing the artifact and publishing a
 new compatible image before deploying that image version to the runner lane.
 
+## Image boot and runner lifecycle
+
+The image starts its processes in two layers:
+
+1. Docker starts the S6 overlay (`/init`). The image configures internal
+   services, including the CloudWatch Agent, as S6 services. The internal
+   services startup script validates the requested service names, exposes the
+   MicroVM ID and runner-configuration SSM path to S6, and starts the configured
+   services.
+2. The image command runs `image-entrypoint.sh`, which executes the Actions
+   runner's Node binary with `/opt/microvm/server.js`. That Node process is the
+   HTTP endpoint for the AWS Lambda MicroVM lifecycle hooks.
+
+When AWS sends the `run` hook, the server validates the request and passes the
+MicroVM ID and `runHookPayload` to the lifecycle handler. The payload identifies
+the SSM-backed runner configuration; the hook consumes the one-time JIT runner
+configuration from SSM, then starts `/opt/actions-runner/run.sh` with that
+configuration. The runner starts as the unprivileged `runner` user, and the
+hook waits for the process launch handoff before acknowledging the request.
+
+The `terminate` hook stops the runner process. The server also handles the
+runtime's readiness, validation, resume, and suspend hooks. After the runner
+exits, the hook cleans up and the Node server shuts down, allowing the MicroVM
+to finish its lifecycle.
+
 ## Combined EC2 and MicroVM deployment
 
-The [multi-runner webhook example](examples/multi-runner-webhook.md) accepts
+The [multi-runner orchestration example](examples/multi-runner-orchestration.md) accepts
 explicit `runners_lambda_zip` and `webhook_lambda_zip` inputs and configures
 both compute providers behind one webhook. Its MicroVM settings require a
 published image:
@@ -125,5 +150,5 @@ build the foundation, lifecycle-hook artifact, or MicroVM image for you.
 - [MicroVM foundation](examples/microvm-foundation.md)
 - [MicroVM image build README](https://github.com/github-aws-runners/terraform-aws-github-runner/blob/main/images/microvm-ubuntu/README.md)
 - [Lifecycle-hook service README](https://github.com/github-aws-runners/terraform-aws-github-runner/blob/main/lambdas/services/microvm-lifecycle-hooks/README.md)
-- [Multi-runner webhook](examples/multi-runner-webhook.md)
+- [Multi-runner orchestration](examples/multi-runner-orchestration.md)
 - [MicroVM foundation module](modules/public/microvm-foundation.md)

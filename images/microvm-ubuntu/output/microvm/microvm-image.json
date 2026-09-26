@@ -1,0 +1,18 @@
+{
+  "artifactSha256": "e2a764c8cf009c590cb4cc333de367f573ab2d1642e9f1aa08b03be64b2f40cd",
+  "artifactUri": "s3://ministack-microvm-artifacts-eu-west-1/lambda-microvms/artifacts/e2a764c8cf009c590cb4cc333de367f573ab2d1642e9f1aa08b03be64b2f40cd.zip",
+  "egressNetworkConnectorArn": "arn:aws:lambda:eu-west-1:000000000000:network-connector:ministack",
+  "imageArn": "arn:aws:lambda:eu-west-1:000000000000:microvm-image/micro-ubuntu24",
+  "imageState": "UPDATED",
+  "imageVersion": "3",
+  "logGroup": "/aws/lambda/microvms/ubuntu24",
+  "logStream": "micro-ubuntu24/ministack-smoke",
+  "name": "micro-ubuntu24",
+  "operation": "update",
+  "region": "eu-west-1",
+  "releaseVersion": "",
+  "sourceRevision": "42e753ab1dbd",
+  "state": "SUCCESSFUL",
+  "status": "ACTIVE",
+  "ubuntuBaseImage": "000000000000.dkr.ecr.eu-west-1.amazonaws.com/base-ubuntu24@sha256:11dc1ccb427f0464a2369e645454c272bb0baece7357c892ba69d313b3a332cf"
+}
