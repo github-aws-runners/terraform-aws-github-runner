@@ -46,6 +46,11 @@ jobs:
         env:
           MINISTACK_ACCOUNT_ID: "000000000000"
           MINISTACK_REGION: eu-west-1
+      mockserver:
+        image: mockserver/mockserver:7.6.0@sha256:80b3b1a26f3553d0c81a3f3896b5b7274c17b2a2e52f0fd2b28e246bc9efa290
+        ports:
+          - 1080:1080
+        options: --network-alias=host.docker.internal
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
@@ -72,13 +77,6 @@ jobs:
       - name: Build Lambda distributions for smoke tests
         run: |
           ./.ci/build.sh
-
-      - name: Start MockServer
-        uses: mock-server/setup-mockserver@24612c2ccef1f83d587f331ed77cc5cef441e0b1 # v1.0.0
-        with:
-          version: '7.6.0@sha256:80b3b1a26f3553d0c81a3f3896b5b7274c17b2a2e52f0fd2b28e246bc9efa290'
-          port: '1080'
-          startup-timeout: '60'
 
       - name: Install boto3
         run: python3 -m pip install --upgrade boto3 botocore
