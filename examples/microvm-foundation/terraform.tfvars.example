@@ -1,0 +1,8 @@
+aws_region = "eu-west-1"
+artifact_bucket_name = "microvm-foundation-artifacts-eu-west-1"
+
+# Add the private ECR repository that contains the regional Ubuntu base image
+# when the image build pulls from ECR.
+# ecr_repository_arns = [
+#   "arn:aws:ecr:eu-west-1:123456789012:repository/actions-runner-base-image",
+# ]

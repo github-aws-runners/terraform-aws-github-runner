@@ -6,7 +6,9 @@ The MiniStack workflow runs the `base`, `prebuilt`, `default`, `ephemeral`,
 with Terraform 1.5.6 and the latest Terraform release, and with OpenTofu 1.11
 and the latest OpenTofu release.
 The examples with input variables get their inputs from their own tfvars files
-in this directory. The `termination-watcher` example has no input variables
+in this directory. The `microvm-foundation` example uses the reusable `base`
+example module to create its VPC and private subnets, then wires those outputs
+into the MicroVM Network Connector. The `termination-watcher` example has no input variables
 and uses the configuration checked into the example itself. No override files,
 setup module, or Terraform fixture configuration is checked in. The helper
 creates and removes a temporary AMI override for `default` and
