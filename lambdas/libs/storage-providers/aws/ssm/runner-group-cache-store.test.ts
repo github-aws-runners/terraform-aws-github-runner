@@ -53,7 +53,7 @@ describe('aws_ssm runner group cache store', () => {
   });
 
   it('returns undefined when ParameterNotFound is wrapped by the SSM provider', async () => {
-    const cause = Object.assign(new Error('missing'), { name: 'ParameterNotFound' });
+    const cause = Object.assign(new Error('ParameterNotFound'), { __type: 'ParameterNotFound' });
     getParameterMock.mockRejectedValue(
       Object.assign(new Error('failed to get parameter'), { name: 'GetParameterError', cause }),
     );
@@ -64,7 +64,7 @@ describe('aws_ssm runner group cache store', () => {
       expect.objectContaining({
         runnerGroupName: 'Default',
         parameterName: '/runner/config/runner-group/Default',
-        errorNames: ['GetParameterError', 'ParameterNotFound'],
+        errorNames: ['GetParameterError', 'Error', 'ParameterNotFound'],
       }),
     );
   });
