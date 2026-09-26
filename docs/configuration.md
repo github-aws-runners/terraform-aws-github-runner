@@ -367,7 +367,7 @@ The scale-set lane itself defaults to `runner.group_name = "Default"`,
 name, runner owner, and GitHub App SSM references in the lane; credential values
 are not placed in the controller manifest.
 
-The [multi-runner scale-set example](multi-runner-scale-set.md) shows how these
+The [multi-runner orchestration example](examples/multi-runner-orchestration.md) shows how these
 provider-specific settings coexist with webhook lanes in the same v2
 `multi_runner_config` map.
 

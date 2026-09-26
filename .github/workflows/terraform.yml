@@ -53,7 +53,7 @@ env:
     termination-watcher
     microvm-foundation
     multi-runner
-    multi-runner-scale-set
+    multi-runner-orchestration
     external-managed-ssm-secrets
   TEST_MODULES: |
     modules/runners

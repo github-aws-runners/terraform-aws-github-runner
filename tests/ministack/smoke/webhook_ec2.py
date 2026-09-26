@@ -5,7 +5,7 @@ import json
 from typing import Any
 
 from .common import SmokeContext
-from .provider import RunnerResource
+from .webhook_provider import RunnerResource
 
 
 class Ec2Provider:

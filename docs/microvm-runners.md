@@ -10,7 +10,7 @@ Lambda MicroVMs. The runner control plane receives demand, obtains the
 one-time runner configuration, starts a MicroVM from a published image, and
 passes the runtime execution role to the MicroVM.
 
-The repository includes a combined [multi-runner webhook example](examples/multi-runner-webhook.md)
+The repository includes a combined [multi-runner orchestration example](examples/multi-runner-orchestration.md)
 that places EC2 and Lambda MicroVM lanes behind one webhook endpoint. The
 provider-specific lifecycle checks are shared where possible, so the same
 deployment can validate both providers.
@@ -109,7 +109,7 @@ to finish its lifecycle.
 
 ## Combined EC2 and MicroVM deployment
 
-The [multi-runner webhook example](examples/multi-runner-webhook.md) accepts
+The [multi-runner orchestration example](examples/multi-runner-orchestration.md) accepts
 explicit `runners_lambda_zip` and `webhook_lambda_zip` inputs and configures
 both compute providers behind one webhook. Its MicroVM settings require a
 published image:
@@ -150,5 +150,5 @@ build the foundation, lifecycle-hook artifact, or MicroVM image for you.
 - [MicroVM foundation](examples/microvm-foundation.md)
 - [MicroVM image build README](https://github.com/github-aws-runners/terraform-aws-github-runner/blob/main/images/microvm-ubuntu/README.md)
 - [Lifecycle-hook service README](https://github.com/github-aws-runners/terraform-aws-github-runner/blob/main/lambdas/services/microvm-lifecycle-hooks/README.md)
-- [Multi-runner webhook](examples/multi-runner-webhook.md)
+- [Multi-runner orchestration](examples/multi-runner-orchestration.md)
 - [MicroVM foundation module](modules/public/microvm-foundation.md)

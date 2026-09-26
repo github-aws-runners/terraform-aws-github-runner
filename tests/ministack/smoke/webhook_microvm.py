@@ -6,7 +6,7 @@ import shutil
 from typing import Any
 
 from .common import SmokeContext
-from .provider import RunnerResource
+from .webhook_provider import RunnerResource
 
 MICROVM_HOOK_CONTAINER = "microvm-lifecycle-hook"
 MICROVM_HOOK_PORT = 8080

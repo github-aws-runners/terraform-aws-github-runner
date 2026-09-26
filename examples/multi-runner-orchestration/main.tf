@@ -171,6 +171,7 @@ module "runners" {
         architecture = "x64"
         name_prefix  = "ec2_scalet_set-"
         extra_labels = ["self-hosted", "linux", "x64", "ec2", "scale-set"]
+        group_name   = var.scale_set.runner_group_name
       }
       orchestration_provider = {
         scale_set = {

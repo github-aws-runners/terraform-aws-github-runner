@@ -1,14 +1,13 @@
-# Multi-runner webhook example
+# Multi-runner orchestration example
 
-This example exercises the shared experimental multi-runner v2 webhook path
-with EC2 and Lambda MicroVM compute. The runner lanes, webhook orchestration,
-Lambda artifacts, and GitHub configuration are common; provider-owned inputs
-are grouped under `compute_provider`.
+This example exercises the experimental multi-runner v2 webhook path with EC2
+and Lambda MicroVM compute, plus a GitHub Actions scale-set lane. The webhook
+and scale-set lanes share the same deployment, VPC, and GitHub App configuration.
+Provider-owned inputs are grouped under `compute_provider`.
 
-The example creates both an EC2 lane and a Lambda MicroVM lane behind the same
-webhook endpoint. The MiniStack smoke test sends matching jobs to each lane in
-sequence, so adding another provider means adding another lane and provider
-specific lifecycle assertions to the same deployment.
+The example creates webhook-managed EC2 and Lambda MicroVM lanes behind one
+webhook endpoint, and an EC2 GitHub Actions scale-set lane. The MiniStack smoke
+test exercises all three lanes in one deployment.
 
 The runner-control and webhook Lambda archives are explicit inputs:
 
@@ -17,6 +16,12 @@ terraform apply \
   -var='runners_lambda_zip=/path/to/runners.zip' \
   -var='webhook_lambda_zip=/path/to/webhook.zip'
 ```
+
+## Scale-set configuration
+
+Set `scale_set.name` and provide an immutable controller image through
+`scale_set.container.image`. The GitHub App installation must be authorized for
+the configured runner owner and group.
 
 ## MicroVM prerequisites
 

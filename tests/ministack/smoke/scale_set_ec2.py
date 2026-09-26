@@ -1,29 +1,27 @@
-"""EC2 compute-provider adapter for the scale-set controller smoke test."""
+"""EC2 adapter for scale-set runner lifecycle assertions."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from .provider import ScaleSetRunner
+from .scale_set_provider import ScaleSetRunner
 
 if TYPE_CHECKING:
-    from .scale_set import ScaleSetSmokeContext
+    from .scale_set_scenario import ScaleSetScenario
 
 
 class Ec2ScaleSetProvider:
     slug = "ec2"
     display_name = "EC2"
+    group_name = "ec2_scalet_set"
+    runner_name = "ec2_scalet_set"
 
-    def configure_tfvars(self, smoke: ScaleSetSmokeContext, source: str) -> str:
-        # The current scale-set fixture configures its runner lane for EC2.
-        return source
-
-    def _instances(self, smoke: ScaleSetSmokeContext, *, runner_only: bool) -> list[dict[str, Any]]:
+    def _instances(self, smoke: ScaleSetScenario, *, runner_only: bool) -> list[dict[str, Any]]:
         response = smoke.aws("ec2", "describe-instances") or {}
         expected = {
             "ghr:Application": "github-action-runner",
             "ghr:created_by": "scale-set-service",
-            "ghr:environment": f"{smoke.environment_name}-linux-scale-set",
+            "ghr:environment": f"{smoke.environment_name}-{smoke.group_name}",
             "ghr:Type": "Org",
             "ghr:Owner": "example",
         }
@@ -37,11 +35,12 @@ class Ec2ScaleSetProvider:
                     continue
                 tags = {tag.get("Key"): tag.get("Value") for tag in instance.get("Tags", [])}
                 if all(tags.get(key) == value for key, value in expected.items()):
-                    if not runner_only or tags.get("ghr:runner_name", "").startswith("scale-set-"):
+                    runner_prefix = "ec2_scalet_set-"
+                    if not runner_only or tags.get("ghr:runner_name", "").startswith(runner_prefix):
                         matches.append(instance)
         return matches
 
-    def wait_for_runner(self, smoke: ScaleSetSmokeContext) -> ScaleSetRunner:
+    def wait_for_runner(self, smoke: ScaleSetScenario) -> ScaleSetRunner:
         def find_runner() -> ScaleSetRunner | None:
             matches = self._instances(smoke, runner_only=True)
             if len(matches) == 1 and matches[0].get("InstanceId"):
@@ -49,10 +48,10 @@ class Ec2ScaleSetProvider:
             return None
 
         runner = smoke.wait_for(find_runner, "one config-published scale-set EC2 runner")
-        smoke.progress(f"[PASS] MiniStack created and registered scale-set EC2 runner {runner.identifier}")
+        smoke.progress(f"MiniStack created and registered scale-set EC2 runner {runner.identifier}")
         return runner
 
-    def verify_runner(self, smoke: ScaleSetSmokeContext, runner: ScaleSetRunner) -> None:
+    def verify_runner(self, smoke: ScaleSetScenario, runner: ScaleSetRunner) -> None:
         response = smoke.aws("ec2", "describe-instances", "--instance-ids", runner.identifier) or {}
         try:
             instance = response["Reservations"][0]["Instances"][0]
@@ -62,7 +61,7 @@ class Ec2ScaleSetProvider:
         expected = {
             "ghr:Application": "github-action-runner",
             "ghr:created_by": "scale-set-service",
-            "ghr:environment": f"{smoke.environment_name}-linux-scale-set",
+            "ghr:environment": f"{smoke.environment_name}-{smoke.group_name}",
             "ghr:Type": "Org",
             "ghr:Owner": "example",
             "ghr:scale_set_state": "config-published",
@@ -72,7 +71,10 @@ class Ec2ScaleSetProvider:
             if tags.get(key) != value:
                 raise RuntimeError(f"Unexpected EC2 runner tag {key}: expected {value}, got {tags.get(key)}")
 
-    def wait_for_scale_down(self, smoke: ScaleSetSmokeContext) -> None:
+    def wait_for_scale_down(self, smoke: ScaleSetScenario) -> None:
         smoke.wait_for(lambda: not self._instances(smoke, runner_only=False),
                        "all scale-set EC2 runners to terminate")
-        smoke.progress("[PASS] scale-set EC2 runner was terminated after the minimum changed to zero")
+        smoke.progress("Scale-set EC2 runner was terminated after the minimum changed to zero")
+
+
+provider = Ec2ScaleSetProvider()

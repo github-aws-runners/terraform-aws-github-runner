@@ -1,53 +1,44 @@
-# MiniStack webhook smoke test
+# MiniStack combined smoke test
 
-This directory contains the provider-neutral smoke-test harness for the
-`multi-runner-webhook` example. It exercises the complete webhook lifecycle
-against MiniStack and a GitHub API MockServer without calling GitHub.
+This directory contains the provider-neutral webhook harness for the
+`multi-runner-orchestration` example. The combined entry point also runs the ECS
+scale-set controller against that same Terraform deployment. Tests use
+MiniStack and a GitHub API MockServer without calling GitHub.
 
-The test can run the EC2 provider, the MicroVM provider, or both providers in a
-single Terraform deployment.
+The combined smoke runs webhook EC2, webhook MicroVM, and scale-set EC2 by
+default. Scale-set MicroVM coverage is still WIP.
 
 ## Entry point
 
 Run the harness from the repository root:
 
 ```sh
-python3 tests/ministack/run-webhook-smoke.py [all|ec2|microvm]
+python3 tests/ministack/run-ministack-smoke.py [--webhook-provider all|ec2|microvm]
 ```
 
 The default is `all`. Use `--keep-deployment` to retain the temporary Terraform
 variables and deployed resources after a failure:
 
 ```sh
-MINISTACK_GITHUB_MOCK_URL=http://localhost:1080 \
-  python3 tests/ministack/run-webhook-smoke.py --keep-deployment
+python3 tests/ministack/run-ministack-smoke.py --keep-deployment
 ```
 
 The ordinary smoke test requires MiniStack on `AWS_ENDPOINT_URL` and an
-already-running MockServer exposed through `MINISTACK_GITHUB_MOCK_URL`.
+already-running MockServer listening on localhost:1080.
 
 Step progress is written to the test step. Detailed subprocess output is
 tee'd to `MINISTACK_SMOKE_LOG_FILE` (default: `ministack-smoke.log`) and is
-printed to the test step only when a command fails. The checklist and command
-log are separate files: use `MINISTACK_SMOKE_CHECKLIST_FILE` for assertion
-status and the log file for Terraform, Packer, Docker, and AWS CLI output.
+printed to the test step only when a command fails. The smoke runner writes command output to `ministack-smoke.log`, including
+Terraform, Packer, Docker, and AWS CLI output.
 
 ## Complete execution flow
 
-### 1. Select providers and create the checklist
+### 1. Select providers
 
-`run-webhook-smoke.py` creates one `SmokeContext`, selects the requested
-providers, and initializes `ministack-smoke-checklist.txt`. Each checklist item
-is marked as the corresponding assertion passes.
-
-The checklist records:
-
-- webhook acceptance;
-- the webhook, EventBridge, dispatcher, SQS, and scale-up chain;
-- standard and dynamic scale-up routes and resources;
-- pool routes and resources;
-- standard, dynamic, and pool scale-down;
-- MicroVM hook consumption when the hook URL is enabled.
+`run-ministack-smoke.py` creates one `SmokeContext`, selects the requested
+webhook and scale-set providers, publishes the scale-set controller image, and
+applies `multi-runner-orchestration` once before running each selected
+scenario.
 
 ### 2. Configure MockServer
 
@@ -77,12 +68,12 @@ temporary variables also point Terraform at the real Lambda ZIPs:
 The key and temporary variables are removed during cleanup unless
 `--keep-deployment` is used.
 
-### 4. Apply the `multi-runner-webhook` example
+### 4. Apply the `multi-runner-orchestration` example
 
 The harness invokes:
 
 ```sh
-tests/ministack/run-example.sh apply multi-runner-webhook <temporary-tfvars>
+tests/ministack/run-example.sh apply multi-runner-orchestration <temporary-tfvars>
 ```
 
 This deploys the webhook, dispatcher, scale-up, scale-down, pool, EC2, and
@@ -98,7 +89,7 @@ MiniStack routes the request correctly.
 
 Each provider adds the runner-group and JIT configuration expectations required
 by its scale-up Lambda. The MicroVM provider keeps this logic in
-`microvm.py`; EC2 keeps its equivalent provider setup in `ec2.py`.
+`webhook_microvm.py`; EC2 keeps its equivalent provider setup in `webhook_ec2.py`.
 
 The JIT value is an internal MockServer fixture value. It is returned by the
 mock GitHub API, written by the scale-up Lambda to MiniStack SSM, and consumed
@@ -127,8 +118,7 @@ When the `microvm` provider is selected, the harness automatically builds and
 starts the lifecycle-hook container on `127.0.0.1:8080`:
 
 ```sh
-MINISTACK_GITHUB_MOCK_URL=http://localhost:1080 \
-  python3 tests/ministack/run-webhook-smoke.py microvm
+python3 tests/ministack/run-ministack-smoke.py --webhook-provider microvm
 ```
 
 When enabled, `MicrovmProvider.configure()` builds and starts the local image
@@ -221,11 +211,10 @@ assertions.
 
 On success or failure, the harness:
 
-- marks the checklist as `cleanup`, `passed`, or `failed`;
 - removes the local MicroVM Docker container when used;
 - terminates discovered EC2 instances;
 - terminates discovered MicroVMs;
-- destroys the `multi-runner-webhook` Terraform deployment;
+- destroys the `multi-runner-orchestration` Terraform deployment;
 - removes temporary variables and response files.
 
 Use `--keep-deployment` or `MINISTACK_SMOKE_KEEP_DEPLOYMENT=1` when the
@@ -235,28 +224,22 @@ Terraform deployment and temporary variables are needed for investigation.
 
 | File | Responsibility |
 | --- | --- |
-| `lifecycle.py` | Shared standard, dynamic, pool, and scale-down scenarios |
-| `provider.py` | Provider interface and resource abstraction |
-| `ec2.py` | EC2 discovery, tag assertions, and termination |
-| `microvm.py` | MicroVM discovery, metadata assertions, image build, hook handoff, and termination |
-| `common.py` | Terraform, AWS CLI, HTTP, MockServer, checklist, and cleanup plumbing |
-| `fixtures/` | Static GitHub API and workflow-job test data |
-| `smoke_scale_set/scale_set.py` | ECS scale-set image deployment, controller protocol, and provider-neutral scale-up/down flow |
-| `smoke_scale_set/provider.py` | Compute-provider interface for scale-set runner setup and lifecycle assertions |
-| `smoke_scale_set/ec2.py` | EC2 runner discovery, ownership checks, and scale-down polling |
+| `webhook_scenario.py` | Shared standard, dynamic, pool, and scale-down scenarios |
+| `webhook_provider.py` | Provider interface and resource abstraction |
+| `webhook_ec2.py` | EC2 discovery, tag assertions, and termination |
+| `webhook_microvm.py` | MicroVM discovery, metadata assertions, image build, hook handoff, and termination |
+| `common.py` | Terraform, AWS CLI, HTTP, MockServer, and cleanup plumbing |
+| `fixtures/` | GitHub API, workflow-job, and scale-set controller fixtures |
+| `scale_set_scenario.py` | ECS scale-set image deployment and controller protocol scenario |
+| `scale_set_provider.py` | Provider interface for scale-set runner lifecycle assertions |
+| `scale_set_ec2.py` | EC2 runner discovery, ownership checks, and scale-down polling |
 
 ## Troubleshooting
-
-The checklist is the first artifact to inspect:
-
-```sh
-cat ministack-smoke-checklist.txt
-```
 
 For a retained deployment, inspect Terraform state and outputs from:
 
 ```sh
-terraform -chdir=examples/multi-runner-webhook output
+terraform -chdir=examples/multi-runner-orchestration output
 ```
 
 If a route assertion times out, check the relevant Lambda log group and the
@@ -270,54 +253,48 @@ curl --fail --request POST \
 
 ## ECS scale-set integration smoke
 
-The scale-set controller has a separate Python smoke module because it tests
-the ECS controller and its GitHub Actions scale-set protocol rather than the
-webhook, pool, or lifecycle-hook chain above. Run it with:
+The combined entry point runs the ECS controller protocol after the selected
+webhook scenarios. It builds and publishes the controller image, configures
+the same `multi-runner-webhook` deployment with the `ec2_scalet_set` lane, and
+applies Terraform once:
 
 ```sh
-python3 tests/ministack/run-scale-set-smoke.py
+python3 tests/ministack/run-ministack-smoke.py
 ```
 
-The smoke initializes the MockServer expectations, builds and pushes the
-controller image to MiniStack ECR, prepares temporary GitHub App test inputs,
-and applies `multi-runner-scale-set` through
-`run-example.sh` so the example's MiniStack fixtures are managed consistently.
-It then checks the SSM reconciler manifest, ECS task definition and log group,
+It checks the SSM reconciler manifest, ECS task definition and log group,
 controller runtime log markers, GitHub API protocol routes, and the created
 scale-set EC2 runner. For scale-down it changes the reconciler minimum to zero,
 deploys a fresh controller task revision, and waits for the runner to terminate
-and the controller session DELETE request to reach MockServer.
+and the controller session DELETE request to reach MockServer. Scale-set
+MicroVM coverage is WIP.
 
 MiniStack must have its Docker engine socket mounted at `/var/run/docker.sock`.
 ECS task metadata can report a task as running without this socket, but MiniStack
 cannot start the controller's Docker container for the smoke to inspect.
-The controller reaches MockServer at `https://host.docker.internal:1080` by
-default to satisfy the GitHub Enterprise URL contract; MockServer supports HTTP
-and HTTPS on the same port. Set `MINISTACK_GITHUB_MOCK_HOST` and
-`MINISTACK_GITHUB_MOCK_PORT` when the Docker host or MockServer port differs.
-The smoke process itself uses `MINISTACK_GITHUB_MOCK_URL` (default
-`http://127.0.0.1:1080`) to load and verify the MockServer expectations.
+The controller reaches MockServer at `https://host.docker.internal:1080` to
+satisfy the GitHub Enterprise URL contract; MockServer supports HTTP and HTTPS
+on the same port. The smoke process loads and verifies expectations at
+`http://localhost:1080`. Both addresses and port 1080 are fixed in the runner.
 
-Both Python entry points write `ministack-smoke-checklist.txt` and
-`ministack-smoke.log` by default. Progress and checklist updates are printed
-to stdout; detailed subprocess output goes to the log and is printed only when
-a command fails. Polling commands are kept out of the detailed log; controller
-and ECS/Docker state is recorded once when startup times out. Set
-`MINISTACK_SMOKE_CHECKLIST_FILE` and
-`MINISTACK_SMOKE_LOG_FILE` to choose other paths. Use `--keep-deployment` (or
+The combined entry point writes `ministack-smoke.log` once for the full run.
+Progress is printed to stdout; detailed subprocess output goes to the log and
+is printed only when a command fails. Polling commands are kept out of the
+detailed log; controller and ECS/Docker state is recorded once when startup
+times out. Set `MINISTACK_SMOKE_LOG_FILE` to choose another log path. Use
+`--keep-deployment` (or
 `MINISTACK_SMOKE_KEEP_DEPLOYMENT=1`) to retain the Terraform inputs and
 deployment for debugging; the temporary GitHub App private key is still
 removed during cleanup.
 
-`smoke_scale_set/scale_set.py` owns the ECS scale-set workflow. Its
-`ScaleSetProvider` interface isolates compute-provider setup and runner
-assertions in `smoke_scale_set/provider.py`; `smoke_scale_set/ec2.py` is the
-current adapter. To add another compute provider, implement that interface and
-register its slug in the CLI, then configure the scale-set fixture to select
-that provider's scale-set capability. The provider-neutral controller,
-MockServer, checklist, and cleanup flow stays shared.
+Both scenario modules use the same provider-adapter pattern. The webhook
+scenario exposes `run(context, provider)`; the scale-set scenario exposes
+`prepare(context, provider)` and `run(context, provider, image_reference)`
+because it must publish its controller image and load MockServer fixtures
+before applying the shared Terraform deployment. The `ScaleSetProvider`
+interface in `scale_set_provider.py` isolates runner discovery and lifecycle
+checks; `scale_set_ec2.py` is the current adapter. Add future scale-set compute
+providers as adapters implementing this interface. The shared `SmokeContext`
+owns commands, logging, and deployment cleanup.
 
-The `run-scale-set-smoke.py` entry point follows the webhook runner's context
-lifecycle: it passes `--keep-deployment` into `ScaleSetSmokeContext`, initializes
-the checklist, records failures, and always runs cleanup and writes the final
-checklist status.
+`run-ministack-smoke.py` owns the shared deployment lifecycle and logging.

@@ -8,6 +8,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import shlex
 import subprocess
 import sys
@@ -15,16 +16,17 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+import zipfile
 from pathlib import Path
 from typing import Any, Iterator
 from urllib.parse import urlsplit, urlunsplit
 
 class SmokeContext:
-    def __init__(self, script_dir: Path, *, keep_deployment: bool = False) -> None:
+    def __init__(self, script_dir: Path, *, microvm_enabled: bool, keep_deployment: bool = False) -> None:
         self.script_dir = script_dir
         self.fixture_dir = Path(__file__).parent / "fixtures"
         self.source_root = script_dir.parent.parent
-        self.example_root = self.source_root / "examples" / "multi-runner-webhook"
+        self.example_root = self.source_root / "examples" / "multi-runner-orchestration"
         self.aws_endpoint = os.environ.get("AWS_ENDPOINT_URL", "http://localhost:4566")
         self.region = os.environ.get("AWS_DEFAULT_REGION", "eu-west-1")
         self.environment = os.environ.copy()
@@ -34,9 +36,9 @@ class SmokeContext:
         self.environment.setdefault("AWS_REGION", self.region)
         self.environment.setdefault("AWS_ENDPOINT_URL", self.aws_endpoint)
         self.environment.setdefault("AWS_EC2_METADATA_DISABLED", "true")
-        self.mock_host = os.environ.get("MINISTACK_GITHUB_MOCK_HOST", "host.docker.internal")
-        self.mock_url = os.environ.get("MINISTACK_GITHUB_MOCK_URL")
-        self.mock_port = int(os.environ.get("MINISTACK_GITHUB_MOCK_PORT", "0") or 0)
+        self.mock_host = "host.docker.internal"
+        self.mock_port = 1080
+        self.mock_url = "http://localhost:1080"
         self.tfvars_path: Path | None = None
         self.webhook_endpoint = ""
         self.webhook_secret = ""
@@ -44,29 +46,18 @@ class SmokeContext:
         self.discovered_microvm_ids: list[str] = []
         self.before_microvm_ids: set[str] = set()
         self.response_path = Path(tempfile.mkstemp(prefix="ministack-smoke-response.")[1])
-        self.checklist_path = Path(os.environ.get("MINISTACK_SMOKE_CHECKLIST_FILE", "ministack-smoke-checklist.txt"))
+        self.microvm_enabled = microvm_enabled
         self.log_path = Path(os.environ.get("MINISTACK_SMOKE_LOG_FILE", "ministack-smoke.log"))
-        self.checklist: dict[str, list[dict[str, str | bool]]] = {}
-        self.checklist_failure = ""
         self.keep_deployment = keep_deployment or os.environ.get("MINISTACK_SMOKE_KEEP_DEPLOYMENT") == "1"
         self.step_depth = 0
-
-    def _redact_log(self, value: str) -> str:
-        for secret in (
-            self.webhook_secret,
-            self.environment.get("AWS_ACCESS_KEY_ID", ""),
-            self.environment.get("AWS_SECRET_ACCESS_KEY", ""),
-        ):
-            if secret:
-                value = value.replace(secret, "[REDACTED]")
-        return value
+        self.progress(f"Writing smoke command output to {self.log_path}")
 
     def _append_log(self, value: str) -> None:
         if not value:
             return
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
         with self.log_path.open("a", encoding="utf-8") as log_file:
-            log_file.write(self._redact_log(value))
+            log_file.write(value)
 
     def progress(self, message: str) -> None:
         line = f"{'  ' * self.step_depth}{message}"
@@ -111,12 +102,15 @@ class SmokeContext:
         stream: bool = False,
         cwd: Path | None = None,
         log_output: bool = True,
+        input_text: str | None = None,
+        log_command: bool = True,
     ) -> subprocess.CompletedProcess[str]:
         if not stream:
             try:
                 result = subprocess.run(
                     command,
                     check=check,
+                    input=input_text,
                     text=True,
                     capture_output=True,
                     env=self.environment,
@@ -124,10 +118,10 @@ class SmokeContext:
                 )
             except subprocess.CalledProcessError as error:
                 if log_output:
-                    self._log_command_output(command, error.stdout, error.stderr)
+                    self._log_command_output(command, error.stdout, error.stderr, include_command=log_command)
                 raise
             if log_output:
-                self._log_command_output(command, result.stdout, result.stderr)
+                self._log_command_output(command, result.stdout, result.stderr, include_command=log_command)
             return result
 
         log_file = self.log_path.open("a", encoding="utf-8") if log_output else None
@@ -148,13 +142,13 @@ class SmokeContext:
 
         output: list[str] = []
         try:
-            if log_file is not None:
-                log_file.write(self._redact_log(f"\n$ {shlex.join(command)}\n"))
+            if log_file is not None and log_command:
+                log_file.write(f"\n$ {shlex.join(command)}\n")
             assert process.stdout is not None
             for line in process.stdout:
                 output.append(line)
                 if log_file is not None:
-                    log_file.write(self._redact_log(line))
+                    log_file.write(line)
                     log_file.flush()
             return_code = process.wait()
         finally:
@@ -164,7 +158,7 @@ class SmokeContext:
         result = subprocess.CompletedProcess(command, return_code, "".join(output), None)
         if check and return_code != 0:
             self.progress(f"Command failed: {shlex.join(command)}")
-            sys.stdout.write(self._redact_log(result.stdout))
+            sys.stdout.write(result.stdout)
             sys.stdout.flush()
             raise subprocess.CalledProcessError(return_code, command, output=result.stdout)
         return result
@@ -205,73 +199,18 @@ class SmokeContext:
         except (TimeoutError, urllib.error.URLError) as error:
             return 0, str(error)
 
-    def wait_for(self, predicate, description: str, attempts: int = 60) -> Any:
+    def wait_for(self, predicate, description: str, attempts: int = 60, interval: int = 2) -> Any:
         for attempt in range(1, attempts + 1):
             result = predicate()
             if result:
                 return result
             if attempt == 1 or attempt % 10 == 0:
                 self.progress(f"Still waiting for {description} ({attempt}/{attempts})")
-            time.sleep(2)
+            time.sleep(interval)
         raise RuntimeError(f"Timed out waiting for {description}")
 
-    def initialize_checklist(self, providers: list[str]) -> None:
-        checks = (
-            ("webhook", "API Gateway accepted the signed workflow_job webhook (HTTP 201)"),
-            ("chain", "Webhook, EventBridge, dispatcher, SQS, and scale-up logs contain the workflow job"),
-            ("scale_up_standard_routes", "Standard scale-up called every expected GitHub API route"),
-            ("scale_up_standard_resource", "Standard scale-up created the expected compute resource"),
-            ("scale_up_dynamic_routes", "Dynamic-label scale-up called every expected GitHub API route"),
-            ("scale_up_dynamic_resource", "Dynamic-label scale-up created the expected compute resource"),
-            ("pool_routes", "Pool called every expected GitHub API route"),
-            ("pool_resource", "Pool created the expected compute resource"),
-            ("scale_down_standard", "Scale-down removed the standard runner and compute resource"),
-            ("scale_down_dynamic", "Scale-down removed the dynamic-label runner and compute resource"),
-            ("scale_down_pool", "Scale-down removed the pool runner and compute resource"),
-        )
-        if "microvm" in providers:
-            checks += (("microvm_hook", "MicroVM lifecycle hook consumed SSM and handed off the JIT runner"),)
-        self.checklist = {
-            provider: [{"key": key, "label": label, "passed": False} for key, label in checks]
-            for provider in providers
-        }
-        self._write_checklist("running")
-        self.progress(f"Writing smoke checklist to {self.checklist_path}")
-        self.progress(f"Writing smoke command output to {self.log_path}")
-
-    def mark_check(self, provider: str, key: str) -> None:
-        for check in self.checklist.get(provider, []):
-            if check["key"] == key:
-                check["passed"] = True
-                break
-        self._write_checklist("running")
-
-    def record_checklist_failure(self, error: BaseException) -> None:
-        self.checklist_failure = f"{type(error).__name__}: {error}"
-
-    def finish_checklist(self, passed: bool) -> None:
-        self._write_checklist("passed" if passed else "failed")
-
-    def update_checklist_status(self, status: str) -> None:
-        self._write_checklist(status)
-
-    def _write_checklist(self, status: str) -> None:
-        lines = [f"MiniStack multi-runner-webhook smoke checklist", f"Status: {status}"]
-        if self.checklist_failure:
-            lines.append(f"Failure: {self.checklist_failure}")
-        for provider, checks in self.checklist.items():
-            lines.append("")
-            lines.append(f"[{provider}]")
-            lines.extend(f"  [{'x' if check['passed'] else ' '}] {check['label']}" for check in checks)
-        self.checklist_path.parent.mkdir(parents=True, exist_ok=True)
-        self.checklist_path.write_text("\n".join(lines) + "\n")
-
     def configure_mockserver(self) -> None:
-        if not self.mock_url:
-            raise RuntimeError("MINISTACK_GITHUB_MOCK_URL must point to an already-running MockServer")
-        self.progress(f"Using external MockServer at {self.mock_url}")
-        if not self.mock_port:
-            self.mock_port = urlsplit(self.mock_url).port or 1080
+        self.progress(f"Using MockServer at {self.mock_url}")
         self.wait_for(lambda: self.http("PUT", f"{self.mock_url}/mockserver/status")[0] < 300, "MockServer")
         expectations = json.loads((self.fixture_dir / "github-api-expectations.json").read_text())
         for expectation in expectations:
@@ -359,9 +298,9 @@ class SmokeContext:
                 f"Webhook smoke request failed with HTTP {status} at {endpoint} "
                 f"(Host: {parsed_endpoint.netloc}): {body}"
             ) from error
-        if status != 201:
+        if status not in (200, 201):
             raise RuntimeError(f"Webhook smoke request failed with HTTP {status}")
-        self.progress(f"Webhook {delivery_id} accepted with HTTP 201")
+        self.progress(f"Webhook {delivery_id} accepted with HTTP {status}")
 
     def wait_for_log(self, group: str, marker: str, description: str) -> None:
         self.progress(f"Waiting for {description} ({group})")
@@ -498,41 +437,73 @@ class SmokeContext:
         self.verify_route("POST", "/api/v3/app/installations/123/access_tokens", f"{provider} pool requested a GitHub token")
         self.verify_route("GET", "/api/v3/orgs/test-owner/actions/runners", f"{provider} pool listed organization runners")
 
-    def prepare(self) -> None:
-        self.progress("Preparing multi-runner-webhook smoke deployment")
+    def prepare(self, *, scale_set_image: str) -> None:
+        self.progress("Preparing multi-runner-orchestration smoke deployment")
         commands = ("aws", "openssl", "terraform")
         for command in commands:
             self.command(command)
-        self.configure_mockserver()
         key_path = Path(tempfile.mkstemp(prefix="ministack-smoke-key.")[1])
         try:
             self.run(["openssl", "genpkey", "-algorithm", "RSA", "-pkeyopt", "rsa_keygen_bits:2048", "-out", str(key_path)], check=True)
             key = base64.b64encode(key_path.read_bytes()).decode()
         finally:
             key_path.unlink(missing_ok=True)
-        source = self.script_dir / "multi-runner-webhook.tfvars"
-        text = source.read_text().replace('key_base64     = "ministack-invalid-key"', f'key_base64     = "{key}"')
+        source = self.script_dir / "multi-runner-orchestration.tfvars"
+        text = source.read_text()
+        text, replacements = re.subn(
+            r'(?m)^([ \t]*key_base64[ \t]*=[ \t]*)"[^"]*"',
+            lambda match: f'{match.group(1)}"{key}"',
+            text,
+            count=1,
+        )
+        if replacements != 1:
+            raise RuntimeError("Could not find github_app.key_base64 in the MiniStack tfvars fixture")
+        if "MINISTACK_SCALE_SET_IMAGE" not in text:
+            raise RuntimeError("Scale-set image placeholder is missing from the MiniStack tfvars fixture")
+        text = text.replace("MINISTACK_SCALE_SET_IMAGE", scale_set_image)
+        lambda_archives = (
+            ("runners_lambda_zip", "runners.zip", "lambdas/functions/control-plane/runners.zip"),
+            ("webhook_lambda_zip", "webhook.zip", "lambdas/functions/webhook/webhook.zip"),
+        )
+        for variable, filename, function_path in lambda_archives:
+            candidates = (
+                self.source_root / "lambda_output" / filename,
+                self.source_root / function_path,
+            )
+            archive = next((candidate for candidate in candidates if candidate.is_file()), None)
+            if archive is None:
+                raise RuntimeError(
+                    f"Missing {filename}; run .ci/build.sh before the MiniStack smoke test"
+                )
+            if not zipfile.is_zipfile(archive):
+                raise RuntimeError(
+                    f"Invalid or empty {filename} at {archive}; run .ci/build.sh before the MiniStack smoke test"
+                )
+            with zipfile.ZipFile(archive) as archive_file:
+                if not archive_file.namelist():
+                    raise RuntimeError(
+                        f"Empty {filename} at {archive}; run .ci/build.sh before the MiniStack smoke test"
+                    )
+            assignment = f'{variable} = "{archive}"'
+            text, replacements = re.subn(
+                rf"(?m)^{re.escape(variable)}\s*=.*$",
+                lambda _: assignment,
+                text,
+                count=1,
+            )
+            if not replacements:
+                text += f"\n{assignment}\n"
         self.tfvars_path = Path(tempfile.mkstemp(prefix="terraform-aws-github-runner-smoke.")[1])
-        additions = [
-            "github_enterprise_server = {",
-            f'  url        = "http://{self.mock_host}:{self.mock_port}"',
-            "  ssl_verify = false",
-            "}",
-        ]
-        if "runners_lambda_zip" not in text:
-            additions.append(f'runners_lambda_zip = "{self.source_root / "lambdas/functions/control-plane/runners.zip"}"')
-        if "webhook_lambda_zip" not in text:
-            additions.append(f'webhook_lambda_zip = "{self.source_root / "lambdas/functions/webhook/webhook.zip"}"')
-        self.tfvars_path.write_text(text + "\n" + "\n".join(additions) + "\n")
-        self.progress("Applying multi-runner-webhook Terraform example")
+        self.tfvars_path.write_text(text + "\n")
+        self.progress("Applying multi-runner-orchestration Terraform example")
         self.run(
-            [str(self.source_root / "tests/ministack/run-example.sh"), "apply", "multi-runner-webhook", str(self.tfvars_path)],
+            [str(self.source_root / "tests/ministack/run-example.sh"), "apply", "multi-runner-orchestration", str(self.tfvars_path)],
             stream=True,
         )
         self.webhook_endpoint = self.terraform("output", "-raw", "webhook_endpoint")
         self.webhook_secret = self.terraform("output", "-raw", "webhook_secret", log_output=False)
         self.wait_for_webhook_route()
-        self.progress("Deployment ready; starting provider lifecycle checks")
+        self.progress("Deployment ready")
 
     def wait_for_webhook_route(self) -> None:
         hostname = urlsplit(self.webhook_endpoint).hostname
@@ -553,8 +524,7 @@ class SmokeContext:
         self.wait_for(route_ready, "API Gateway POST /webhook route", attempts=30)
 
     def cleanup(self) -> None:
-        self.update_checklist_status("cleanup")
-        if "microvm" in self.checklist:
+        if self.microvm_enabled:
             self.progress("MicroVM lifecycle hook container logs (last 200 lines):")
             self.run(
                 ["docker", "logs", "--timestamps", "--tail", "200", "microvm-lifecycle-hook"],
@@ -575,12 +545,12 @@ class SmokeContext:
         if self.tfvars_path and self.keep_deployment:
             self.progress(f"Terraform deployment retained; tfvars file: {self.tfvars_path}")
         elif self.tfvars_path:
-            self.progress("Destroying multi-runner-webhook Terraform deployment")
+            self.progress("Destroying multi-runner-orchestration Terraform deployment")
             self.run(
                 [
                     str(self.source_root / "tests/ministack/run-example.sh"),
                     "destroy",
-                    "multi-runner-webhook",
+                    "multi-runner-orchestration",
                     str(self.tfvars_path),
                 ],
                 stream=True,
