@@ -228,8 +228,12 @@ run "omits_optional_kms_statement" {
   command = plan
 
   variables {
-    config = merge(var.config, {
-      kms_key_id = null
+    storage_provider = merge(var.storage_provider, {
+      aws = merge(var.storage_provider.aws, {
+        ssm = merge(var.storage_provider.aws.ssm, {
+          kms_key_id = null
+        })
+      })
     })
   }
 

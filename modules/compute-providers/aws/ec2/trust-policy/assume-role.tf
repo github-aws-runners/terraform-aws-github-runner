@@ -13,6 +13,8 @@ data "aws_iam_policy_document" "default" {
 data "aws_iam_policy_document" "assume_role" {
   source_policy_documents = compact([
     data.aws_iam_policy_document.default.json,
-    var.additional_trust_policy_json,
+    var.additional_trust_policy_json != null && can(jsondecode(var.additional_trust_policy_json))
+    ? var.additional_trust_policy_json
+    : null,
   ])
 }

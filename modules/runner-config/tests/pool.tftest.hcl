@@ -33,6 +33,7 @@ variables {
         vpc_id         = "vpc-12345678"
         subnet_ids     = ["subnet-12345678"]
         instance_types = ["m5.large"]
+        ssm_enabled    = true
         ami = {
           filter = { state = ["available"] }
           owners = ["amazon"]
