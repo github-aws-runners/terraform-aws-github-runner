@@ -415,8 +415,8 @@ run "groups_by_compute_provider_and_hardens_each_task" {
       contains(flatten([for statement in data.aws_iam_policy_document.task["ec2"].statement : statement.resources]), "arn:aws:ssm:eu-west-1:123456789012:parameter/scale-set-test/scale-set-controller/ec2/*")
       && contains(flatten([for statement in data.aws_iam_policy_document.task["ec2"].statement : statement.actions]), "sts:AssumeRole") &&
       !contains(flatten([for statement in data.aws_iam_policy_document.task["ec2"].statement : statement.resources]), "arn:aws:ssm:eu-west-1:123456789012:parameter/scale-set-test/runners/config/ami_id") &&
-      contains(flatten([for statement in data.aws_iam_policy_document.compute["ec2/linux-small"].statement : statement.actions]), "ssm:GetParameters") &&
-      contains(flatten([for statement in data.aws_iam_policy_document.compute["ec2/linux-small"].statement : statement.resources]), "arn:aws:ssm:eu-west-1:123456789012:parameter/scale-set-test/runners/config/ami_id") &&
+      strcontains(data.aws_iam_policy_document.compute["ec2/linux-small"].json, "ssm:GetParameters") &&
+      strcontains(data.aws_iam_policy_document.compute["ec2/linux-small"].json, "arn:aws:ssm:eu-west-1:123456789012:parameter/scale-set-test/runners/config/ami_id") &&
       !contains(flatten([for statement in data.aws_iam_policy_document.execution["ec2"].statement : statement.actions]), "ecr:GetAuthorizationToken") &&
       !contains(flatten([for statement in data.aws_iam_policy_document.execution["ec2"].statement : statement.actions]), "ecr:BatchGetImage")
     )

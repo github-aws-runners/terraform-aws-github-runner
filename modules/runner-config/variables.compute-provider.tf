@@ -296,4 +296,12 @@ variable "compute_provider" {
     }), {})
   })
 
+  validation {
+    condition = length([
+      for provider_key, provider_config in {
+        aws_ec2 = var.compute_provider.aws.ec2
+      } : provider_key if provider_config != null
+    ]) == 1
+    error_message = "Exactly one compute-provider block must be set. Supported compute-provider blocks: aws.ec2."
+  }
 }
