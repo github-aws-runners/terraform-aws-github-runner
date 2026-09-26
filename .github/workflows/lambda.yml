@@ -32,17 +32,23 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
       - name: Install dependencies
         run: yarn install --frozen-lockfile
+
       - name: Run prettier
         run: yarn format-check
+
       - name: Run linter
         run: yarn lint
+
       - name: Run tests
         id: test
         run: yarn test
+
       - name: Build distribution
         run: yarn build
+
       - name: Upload coverage report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: ${{ failure() }}
@@ -50,3 +56,45 @@ jobs:
           name: coverage-reports
           path: ./**/coverage
           retention-days: 5
+
+  scale-set-container:
+    name: Build scale-set service container
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Build scale-set service image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: ./lambdas/services/scale-set/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: false
+          cache-from: type=gha,scope=scale-set-service
+          cache-to: type=gha,mode=max,scope=scale-set-service
+
+      - name: Build scale-set service image for smoke test
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: ./lambdas/services/scale-set/Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: scale-set-service:smoke-test
+          cache-from: type=gha,scope=scale-set-service
+
+      - name: Run scale-set service image smoke test
+        run: ./tests/scale-set-container-smoke-test.sh

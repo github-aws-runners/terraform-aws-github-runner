@@ -130,7 +130,7 @@ function fixture(options: {
     }),
     random: () => 0,
     closeSignal: () => new AbortController().signal,
-    parameterStore: { get: vi.fn().mockResolvedValue(new Map()), put: vi.fn() },
+    parameterStore: { get: vi.fn().mockResolvedValue(new Map()) },
     createComputeProviderCredentials: vi.fn(),
   };
   return { client, computeProvider, dependencies };
@@ -170,7 +170,6 @@ describe('ScaleSetReconciler', () => {
     expect(client.getRunnerGroupByName).toHaveBeenCalledWith('runner-group', { signal: abort.signal });
     expect(client.getRunnerScaleSet).toHaveBeenCalledWith(7, 'linux', { signal: abort.signal });
     expect(client.setSystemInfo).toHaveBeenCalledWith(expect.objectContaining({ scaleSetId: 42 }));
-    expect(dependencies.parameterStore.put).toHaveBeenCalledWith('/runner/group-id', '7');
     expect(dependencies.logger.info).toHaveBeenCalledWith(
       'scale_set_compute_provider_created',
       expect.objectContaining({ computeProviderType: 'ec2' }),

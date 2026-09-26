@@ -239,8 +239,8 @@ variable "global_config_orchestration_provider" {
         }), {})
       }), {})
       logging = optional(object({
-        retention_in_days = optional(number, 30)
-        kms_key_arn       = optional(string, null)
+        retention_in_days = optional(number, 180)
+        kms_key_id        = optional(string, null)
         log_group_class   = optional(string, "STANDARD")
         tags              = optional(map(string), {})
       }), {})

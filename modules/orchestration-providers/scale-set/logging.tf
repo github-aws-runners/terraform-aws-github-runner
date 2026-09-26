@@ -3,7 +3,7 @@ resource "aws_cloudwatch_log_group" "controller" {
 
   name              = "/aws/ecs/${local.group_resource_names[each.key]}"
   retention_in_days = var.logging.retention_in_days
-  kms_key_id        = var.logging.kms_key_arn
+  kms_key_id        = var.logging.kms_key_id
   log_group_class   = var.logging.log_group_class
 
   tags = merge(

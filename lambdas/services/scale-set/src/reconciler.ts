@@ -143,7 +143,7 @@ export class ScaleSetReconciler {
       this.log('error', 'scale_set_reconciler_initialization_failed', {
         computeProviderType: this.config.computeProvider.type,
         ...httpErrorLogAttributes(error),
-        error: errorLogAttributes(error),
+        error,
       });
       return;
     }
@@ -210,11 +210,11 @@ export class ScaleSetReconciler {
           this.log('info', 'scale_set_reconciler_retry_stopped', {
             retryable: false,
             reason: 'fatal_error',
-            error: errorLogAttributes(error),
+            error,
           });
           this.log('error', 'scale_set_reconciler_failed', {
             ...httpErrorLogAttributes(error),
-            error: errorLogAttributes(error),
+            error,
           });
           return;
         }
@@ -257,9 +257,6 @@ export class ScaleSetReconciler {
         );
       }
       runnerGroupId = runnerGroup.id;
-      if (cachedRunnerGroupId === undefined && this.config.runnerGroupIdParameterName !== undefined) {
-        await this.dependencies.parameterStore.put?.(this.config.runnerGroupIdParameterName, String(runnerGroupId));
-      }
       this.log('info', 'scale_set_runner_group_resolved', {
         runnerConfigName: this.config.runnerConfigName,
         runnerGroupName: this.config.runnerGroupName,
@@ -508,7 +505,7 @@ export class ScaleSetReconciler {
         computeProviderType: this.config.computeProvider.type,
         desiredRunners: request.desiredRunners,
         busyRunners: request.busyRunners,
-        error: errorLogAttributes(error),
+        error,
       });
       throw new ScaleSetProviderReconciliationError(undefined, { cause: error });
     }
@@ -725,19 +722,5 @@ function httpErrorLogAttributes(error: unknown): Record<string, unknown> {
     requestUrl: error.url,
     requestStatus: error.status,
     requestCode: error.code,
-  };
-}
-
-function errorLogAttributes(error: unknown, depth = 0): Record<string, unknown> {
-  if (!(error instanceof Error)) return { message: String(error) };
-  if (depth >= 3) return { name: error.name, message: error.message, cause: '[TRUNCATED]' };
-
-  const errorWithMetadata = error as Error & { code?: unknown; status?: unknown; cause?: unknown };
-  return {
-    name: error.name,
-    message: error.message,
-    ...(typeof errorWithMetadata.code === 'string' ? { code: errorWithMetadata.code } : {}),
-    ...(typeof errorWithMetadata.status === 'number' ? { status: errorWithMetadata.status } : {}),
-    ...(errorWithMetadata.cause === undefined ? {} : { cause: errorLogAttributes(errorWithMetadata.cause, depth + 1) }),
   };
 }

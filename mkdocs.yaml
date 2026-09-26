@@ -62,6 +62,8 @@ nav:
   - Security: security.md
   - Architecture decisions:
     - MiniStack for integration tests: adr/0001-use-ministack-for-terraform-integration-tests.md
+    - Runner orchestration provider boundary: adr/002-runner-orchestration-provider-boundary.md
+    - Scale-set resource ownership: adr/003-scale-set-resource-ownership.md
   - Modules:
     - Runners (main): modules/runners.md
     - Submodules (public):
@@ -80,6 +82,7 @@ nav:
     - Default: examples/default.md
     - Multi Runner: examples/multi-runner.md
     - Multi Runner v2: examples/multi-runner-v2.md
+    - Multi Runner scale-set: examples/multi-runner-scale-set.md
     - Ephemeral: examples/ephemeral.md
     - External managed secrets: examples/external-managed-ssm-secrets.md
     - Custom AMI: examples/prebuilt.md
