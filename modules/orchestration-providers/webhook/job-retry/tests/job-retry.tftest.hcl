@@ -14,6 +14,14 @@ mock_provider "aws" {
 }
 
 variables {
+  storage_provider = {
+    aws = {
+      ssm = {
+        kms_key_id = "arn:aws:kms:eu-west-1:123456789012:key/job-retry-test"
+      }
+    }
+  }
+
   config = {
     prefix        = "job-retry-test"
     aws_partition = "aws"
@@ -89,9 +97,6 @@ variables {
       encryption = {
         sqs_managed_sse_enabled = true
       }
-    }
-    ssm = {
-      kms_key_id = "arn:aws:kms:eu-west-1:123456789012:key/job-retry-test"
     }
     observability = {
       logs = {
@@ -281,7 +286,6 @@ run "does_not_enable_partial_vpc_configuration" {
           sqs_managed_sse_enabled = true
         }
       }
-      ssm = {}
       observability = {
         logs = {
           level             = "info"

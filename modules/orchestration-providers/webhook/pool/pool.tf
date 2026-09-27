@@ -15,9 +15,6 @@ locals {
     USER_AGENT                               = var.config.user_agent
     LOG_LEVEL                                = upper(var.config.lambda.log_level)
     NODE_TLS_REJECT_UNAUTHORIZED             = var.config.ghes.url != null && !var.config.ghes.ssl_verify ? 0 : 1
-    PARAMETER_GITHUB_APP_ID_NAME             = var.config.github_app_parameters.id.name
-    PARAMETER_GITHUB_APP_KEY_BASE64_NAME     = var.config.github_app_parameters.key_base64.name
-    PARAMETER_GITHUB_APPS_MANIFEST_NAME      = var.config.github_app_parameters.additional_apps_manifest != null ? var.config.github_app_parameters.additional_apps_manifest.name : ""
     POWERTOOLS_LOGGER_LOG_EVENT              = var.config.lambda.log_level == "debug" ? "true" : "false"
     RUNNER_LABELS                            = lower(join(",", var.config.runner.labels))
     RUNNER_GROUP_NAME                        = var.config.runner.group_name
@@ -25,14 +22,20 @@ locals {
     RUNNER_OWNER                             = var.config.runner.pool_owner
     RUNNER_BOOT_TIME_IN_MINUTES              = var.config.runner.boot_time_in_minutes
     RUNNERS_MAXIMUM_COUNT                    = var.config.runners_maximum_count
-    SSM_TOKEN_PATH                           = var.config.ssm_token_path
-    SSM_CONFIG_PATH                          = var.config.ssm_config_path
     POWERTOOLS_SERVICE_NAME                  = "${var.config.prefix}-pool"
     POWERTOOLS_TRACE_ENABLED                 = var.tracing_config.mode != null ? true : false
     POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.tracing_config.capture_http_requests
     POWERTOOLS_TRACER_CAPTURE_ERROR          = var.tracing_config.capture_error
-    SSM_PARAMETER_STORE_TAGS                 = var.config.lambda.parameter_store_tags
     INCLUDE_BUSY_RUNNERS                     = var.config.include_busy_runners
+  }
+
+  ssm_environment_variables = {
+    PARAMETER_GITHUB_APP_ID_NAME         = var.config.github_app_parameters.id.name
+    PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.config.github_app_parameters.key_base64.name
+    PARAMETER_GITHUB_APPS_MANIFEST_NAME  = var.config.github_app_parameters.additional_apps_manifest != null ? var.config.github_app_parameters.additional_apps_manifest.name : ""
+    SSM_TOKEN_PATH                       = var.storage_provider.aws.ssm.token_path
+    SSM_CONFIG_PATH                      = var.storage_provider.aws.ssm.config_path
+    SSM_PARAMETER_STORE_TAGS             = var.storage_provider.aws.ssm.parameter_store_tags
   }
 }
 
@@ -54,7 +57,12 @@ resource "aws_lambda_function" "pool" {
   tags                           = merge(var.config.tags, var.config.lambda_tags)
 
   environment {
-    variables = merge(var.runner_provider.environment_variables, local.common_environment_variables)
+    variables = merge(
+      var.runner_provider.environment_variables,
+      local.common_environment_variables,
+      local.ssm_environment_variables,
+      var.storage_provider.environment_variables,
+    )
   }
 
   dynamic "vpc_config" {
@@ -96,10 +104,11 @@ resource "aws_iam_role_policy" "pool" {
 }
 
 data "aws_iam_policy_document" "pool" {
-  source_policy_documents = [
+  source_policy_documents = compact([
     data.aws_iam_policy_document.pool_common.json,
     var.runner_provider.iam_policy_json,
-  ]
+    var.storage_provider.iam_policy_json,
+  ])
 }
 
 resource "aws_iam_role_policy" "pool_logging" {

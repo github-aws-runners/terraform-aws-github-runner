@@ -1344,6 +1344,7 @@ function expectedCreateFleetRequest(expectedValues: ExpectedFleetRequestValues):
       Key: 'ghr:created_by',
       Value: expectedValues.source,
     },
+    { Key: 'ghr:environment', Value: ENVIRONMENT },
     { Key: 'ghr:Type', Value: expectedValues.type },
     { Key: 'ghr:Owner', Value: REPO_NAME },
   ];
@@ -1519,6 +1520,7 @@ describe('create runner with useDedicatedHost', () => {
           Tags: [
             { Key: 'ghr:Application', Value: 'github-action-runner' },
             { Key: 'ghr:created_by', Value: 'scale-up-lambda' },
+            { Key: 'ghr:environment', Value: ENVIRONMENT },
             { Key: 'ghr:Type', Value: 'Org' },
             { Key: 'ghr:Owner', Value: REPO_NAME },
           ],
@@ -1528,6 +1530,7 @@ describe('create runner with useDedicatedHost', () => {
           Tags: [
             { Key: 'ghr:Application', Value: 'github-action-runner' },
             { Key: 'ghr:created_by', Value: 'scale-up-lambda' },
+            { Key: 'ghr:environment', Value: ENVIRONMENT },
             { Key: 'ghr:Type', Value: 'Org' },
             { Key: 'ghr:Owner', Value: REPO_NAME },
           ],
@@ -1567,6 +1570,7 @@ describe('create runner with useDedicatedHost', () => {
           Tags: [
             { Key: 'ghr:Application', Value: 'github-action-runner' },
             { Key: 'ghr:created_by', Value: 'scale-up-lambda' },
+            { Key: 'ghr:environment', Value: ENVIRONMENT },
             { Key: 'ghr:Type', Value: 'Org' },
             { Key: 'ghr:Owner', Value: REPO_NAME },
           ],
@@ -1576,6 +1580,7 @@ describe('create runner with useDedicatedHost', () => {
           Tags: [
             { Key: 'ghr:Application', Value: 'github-action-runner' },
             { Key: 'ghr:created_by', Value: 'scale-up-lambda' },
+            { Key: 'ghr:environment', Value: ENVIRONMENT },
             { Key: 'ghr:Type', Value: 'Org' },
             { Key: 'ghr:Owner', Value: REPO_NAME },
           ],
@@ -1702,6 +1707,7 @@ describe('create runner with useDedicatedHost', () => {
           Tags: [
             { Key: 'ghr:Application', Value: 'github-action-runner' },
             { Key: 'ghr:created_by', Value: 'scale-up-lambda' },
+            { Key: 'ghr:environment', Value: ENVIRONMENT },
             { Key: 'ghr:Type', Value: 'Org' },
             { Key: 'ghr:Owner', Value: REPO_NAME },
           ],
@@ -1711,6 +1717,7 @@ describe('create runner with useDedicatedHost', () => {
           Tags: [
             { Key: 'ghr:Application', Value: 'github-action-runner' },
             { Key: 'ghr:created_by', Value: 'scale-up-lambda' },
+            { Key: 'ghr:environment', Value: ENVIRONMENT },
             { Key: 'ghr:Type', Value: 'Org' },
             { Key: 'ghr:Owner', Value: REPO_NAME },
           ],

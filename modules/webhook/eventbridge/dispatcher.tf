@@ -40,7 +40,7 @@ resource "aws_lambda_function" "dispatcher" {
   depends_on        = [aws_cloudwatch_log_group.dispatcher]
 
   environment {
-    variables = {
+    variables = merge({
       for k, v in {
         LOG_LEVEL                                = upper(var.config.log_level)
         POWERTOOLS_LOGGER_LOG_EVENT              = var.config.log_level == "debug" ? "true" : "false"
@@ -54,7 +54,7 @@ resource "aws_lambda_function" "dispatcher" {
         REPOSITORY_ALLOW_LIST                = jsonencode(var.config.repository_white_list)
         QUEUE_SELECTION_STRATEGY             = var.config.queue_selection_strategy
       } : k => v if v != null
-    }
+    })
   }
 
   dynamic "vpc_config" {
@@ -127,7 +127,7 @@ resource "aws_iam_role_policy" "dispatcher_kms" {
   role = aws_iam_role.dispatcher_lambda.name
 
   policy = templatefile("${path.module}/../policies/lambda-kms.json", {
-    kms_key_arn = var.config.kms_key_arn != null ? var.config.kms_key_arn : "arn:${var.config.aws_partition}:kms:::CMK_NOT_IN_USE"
+    kms_key_arn = var.config.storage_provider.aws.ssm.kms_key_id != null ? var.config.storage_provider.aws.ssm.kms_key_id : "arn:${var.config.aws_partition}:kms:::CMK_NOT_IN_USE"
   })
 }
 

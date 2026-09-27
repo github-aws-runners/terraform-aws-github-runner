@@ -1,5 +1,10 @@
 import { Webhooks } from '@octokit/webhooks';
-import { getParameter } from '@aws-github-runner/aws-ssm-util';
+import {
+  getGitHubWebhookSecretStore,
+  getRunnerMatcherConfigStore,
+  type GitHubWebhookSecretStore,
+  type RunnerMatcherConfigStore,
+} from '@aws-github-runner/storage-providers';
 
 import nock from 'nock';
 
@@ -15,9 +20,15 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 vi.mock('../sqs');
 vi.mock('../eventbridge');
 vi.mock('../runners/dispatch');
-vi.mock('@aws-github-runner/aws-ssm-util');
+vi.mock('@aws-github-runner/storage-providers');
 
 const GITHUB_APP_WEBHOOK_SECRET = 'TEST_SECRET';
+const githubWebhookSecretStore = {
+  get: vi.fn(),
+} satisfies GitHubWebhookSecretStore;
+const runnerMatcherConfigStore = {
+  get: vi.fn(),
+} satisfies RunnerMatcherConfigStore;
 
 const cleanEnv = process.env;
 
@@ -32,7 +43,7 @@ describe('handle GitHub webhook events', () => {
     nock.disableNetConnect();
     vi.clearAllMocks();
 
-    mockSSMResponse();
+    mockConfigResponse();
   });
 
   describe('handle and dispatch webhook events to build queues', () => {
@@ -284,9 +295,7 @@ describe('Check message size (checkBodySize)', () => {
   });
 });
 
-function mockSSMResponse() {
-  process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH = '/path/to/matcher/config';
-  process.env.PARAMETER_GITHUB_APP_WEBHOOK_SECRET = '/path/to/webhook/secret';
+function mockConfigResponse() {
   const matcherConfig = [
     {
       id: '1',
@@ -297,13 +306,8 @@ function mockSSMResponse() {
       },
     },
   ];
-  vi.mocked(getParameter).mockImplementation(async (paramPath: string) => {
-    if (paramPath === '/path/to/matcher/config') {
-      return JSON.stringify(matcherConfig);
-    }
-    if (paramPath === '/path/to/webhook/secret') {
-      return GITHUB_APP_WEBHOOK_SECRET;
-    }
-    throw new Error('Parameter not found');
-  });
+  vi.mocked(getGitHubWebhookSecretStore).mockReturnValue(githubWebhookSecretStore);
+  vi.mocked(getRunnerMatcherConfigStore).mockReturnValue(runnerMatcherConfigStore);
+  githubWebhookSecretStore.get.mockResolvedValue(GITHUB_APP_WEBHOOK_SECRET);
+  runnerMatcherConfigStore.get.mockResolvedValue(JSON.stringify(matcherConfig));
 }

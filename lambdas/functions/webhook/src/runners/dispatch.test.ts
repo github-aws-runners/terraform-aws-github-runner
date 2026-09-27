@@ -1,5 +1,5 @@
-import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import { selectDynamicLabelQueue } from '@aws-github-runner/compute-providers/webhook';
+import { getRunnerMatcherConfigStore, type RunnerMatcherConfigStore } from '@aws-github-runner/storage-providers';
 
 import nock from 'nock';
 import { WorkflowJobEvent } from '@octokit/webhooks-types';
@@ -14,12 +14,14 @@ import { logger } from '@aws-github-runner/aws-powertools-util';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 vi.mock('../sqs');
-vi.mock('@aws-github-runner/aws-ssm-util');
+vi.mock('@aws-github-runner/storage-providers');
 vi.mock('@aws-github-runner/compute-providers/webhook', () => ({
   selectDynamicLabelQueue: vi.fn(),
 }));
 
-const GITHUB_APP_WEBHOOK_SECRET = 'TEST_SECRET';
+const runnerMatcherConfigStore = {
+  get: vi.fn(),
+} satisfies RunnerMatcherConfigStore;
 
 const cleanEnv = process.env;
 
@@ -37,7 +39,6 @@ describe('Dispatcher', () => {
     vi.clearAllMocks();
     vi.resetAllMocks();
 
-    mockSSMResponse();
     config = await createConfig(undefined, runnerConfig);
   });
 
@@ -242,7 +243,7 @@ describe('Dispatcher', () => {
     it('rejects an invalid strategy at config load', async () => {
       process.env.QUEUE_SELECTION_STRATEGY = 'bogus';
       ConfigDispatcher.reset();
-      mockSSMResponse(twoExactMatches);
+      mockMatcherConfigResponse(twoExactMatches);
       await expect(ConfigDispatcher.load()).rejects.toThrow(/queue selection strategy/i);
     });
   });
@@ -394,16 +395,9 @@ describe('Dispatcher', () => {
   });
 });
 
-function mockSSMResponse(runnerConfigInput?: RunnerConfig) {
-  process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH = '/github-runner/runner-matcher-config';
-  const mockedGet = vi.mocked(getParameter);
-  mockedGet.mockImplementation((parameter_name) => {
-    const value =
-      parameter_name == '/github-runner/runner-matcher-config'
-        ? JSON.stringify(runnerConfigInput ?? runnerConfig)
-        : GITHUB_APP_WEBHOOK_SECRET;
-    return Promise.resolve(value);
-  });
+function mockMatcherConfigResponse(runnerConfigInput?: RunnerConfig) {
+  vi.mocked(getRunnerMatcherConfigStore).mockReturnValue(runnerMatcherConfigStore);
+  runnerMatcherConfigStore.get.mockResolvedValue(JSON.stringify(runnerConfigInput ?? runnerConfig));
 }
 
 async function createConfig(repositoryAllowList?: string[], runnerConfig?: RunnerConfig): Promise<ConfigDispatcher> {
@@ -411,6 +405,6 @@ async function createConfig(repositoryAllowList?: string[], runnerConfig?: Runne
     process.env.REPOSITORY_ALLOW_LIST = JSON.stringify(repositoryAllowList);
   }
   ConfigDispatcher.reset();
-  mockSSMResponse(runnerConfig);
+  mockMatcherConfigResponse(runnerConfig);
   return await ConfigDispatcher.load();
 }
