@@ -241,13 +241,13 @@ variable "storage_provider" {
   description = "Storage-provider configuration used by the webhook resources."
   type = object({
     aws = object({
-      kms_key_id = optional(string, null)
-      ssm = object({
+      ssm = optional(object({
+        kms_key_id = optional(string, null)
         paths = object({
           root    = string
           webhook = string
         })
-      })
+      }), null)
     })
   })
   nullable = false

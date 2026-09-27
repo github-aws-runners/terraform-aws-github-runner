@@ -53,13 +53,7 @@ module "scale_runners" {
     }
   }
 
-  storage_provider = {
-    aws = {
-      ssm = local.resolved_config.storage_provider.aws.ssm
-    }
-    scale_up   = local.resolved_config.storage_provider.scale_up
-    scale_down = local.resolved_config.storage_provider.scale_down
-  }
+  storage_provider = local.resolved_config.storage_provider
 
   runner_provider = {
     type       = var.runner_provider.type

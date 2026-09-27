@@ -19,7 +19,7 @@ mock_provider "aws" {
 
   mock_data "aws_iam_policy_document" {
     defaults = {
-      json = "{\"Version\":\"2012-10-17\",\"Statement\":[]}"
+      json = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":[\"ssm:GetParameters\"],\"Resource\":\"arn:aws:ssm:eu-west-1:123456789012:parameter/scale-set-test/runners/config/ami_id\"}]}"
     }
   }
 
@@ -100,14 +100,22 @@ variables {
               EC2_CONTROLLER_MODE = "grouped"
             }
             iam_statements = {
-              run_instances = {
-                actions   = ["ec2:RunInstances"]
-                resources = ["arn:aws:ec2:eu-west-1:123456789012:launch-template/lt-small"]
-              }
-              read_ami = {
-                actions   = ["ssm:GetParameters"]
-                resources = ["arn:aws:ssm:eu-west-1:123456789012:parameter/scale-set-test/runners/config/ami_id"]
-              }
+              run_instances = jsonencode({
+                Version = "2012-10-17"
+                Statement = [{
+                  Effect   = "Allow"
+                  Action   = ["ec2:RunInstances"]
+                  Resource = ["arn:aws:ec2:eu-west-1:123456789012:launch-template/lt-small"]
+                }]
+              })
+              read_ami = jsonencode({
+                Version = "2012-10-17"
+                Statement = [{
+                  Effect   = "Allow"
+                  Action   = ["ssm:GetParameters"]
+                  Resource = ["arn:aws:ssm:eu-west-1:123456789012:parameter/scale-set-test/runners/config/ami_id"]
+                }]
+              })
             }
           }
         }
@@ -167,10 +175,14 @@ variables {
               EC2_CONTROLLER_MODE = "grouped"
             }
             iam_statements = {
-              run_instances = {
-                actions   = ["ec2:RunInstances"]
-                resources = ["arn:aws:ec2:eu-west-1:123456789012:launch-template/lt-large"]
-              }
+              run_instances = jsonencode({
+                Version = "2012-10-17"
+                Statement = [{
+                  Effect   = "Allow"
+                  Action   = ["ec2:RunInstances"]
+                  Resource = ["arn:aws:ec2:eu-west-1:123456789012:launch-template/lt-large"]
+                }]
+              })
             }
           }
         }
@@ -211,10 +223,14 @@ variables {
           scale_set = {
             configuration_json = jsonencode({ image_arn = "arn:aws:lambda:eu-west-1:123456789012:runtime-management-config:microvm" })
             iam_statements = {
-              run_microvm = {
-                actions   = ["lambda:InvokeFunction"]
-                resources = ["arn:aws:lambda:eu-west-1:123456789012:function:microvm"]
-              }
+              run_microvm = jsonencode({
+                Version = "2012-10-17"
+                Statement = [{
+                  Effect   = "Allow"
+                  Action   = ["lambda:InvokeFunction"]
+                  Resource = ["arn:aws:lambda:eu-west-1:123456789012:function:microvm"]
+                }]
+              })
             }
           }
         }
@@ -399,8 +415,8 @@ run "groups_by_compute_provider_and_hardens_each_task" {
       contains(flatten([for statement in data.aws_iam_policy_document.task["ec2"].statement : statement.resources]), "arn:aws:ssm:eu-west-1:123456789012:parameter/scale-set-test/scale-set-controller/ec2/*")
       && contains(flatten([for statement in data.aws_iam_policy_document.task["ec2"].statement : statement.actions]), "sts:AssumeRole") &&
       !contains(flatten([for statement in data.aws_iam_policy_document.task["ec2"].statement : statement.resources]), "arn:aws:ssm:eu-west-1:123456789012:parameter/scale-set-test/runners/config/ami_id") &&
-      contains(flatten([for statement in data.aws_iam_policy_document.compute["ec2/linux-small"].statement : statement.actions]), "ssm:GetParameters") &&
-      contains(flatten([for statement in data.aws_iam_policy_document.compute["ec2/linux-small"].statement : statement.resources]), "arn:aws:ssm:eu-west-1:123456789012:parameter/scale-set-test/runners/config/ami_id") &&
+      strcontains(data.aws_iam_policy_document.compute["ec2/linux-small"].json, "ssm:GetParameters") &&
+      strcontains(data.aws_iam_policy_document.compute["ec2/linux-small"].json, "arn:aws:ssm:eu-west-1:123456789012:parameter/scale-set-test/runners/config/ami_id") &&
       !contains(flatten([for statement in data.aws_iam_policy_document.execution["ec2"].statement : statement.actions]), "ecr:GetAuthorizationToken") &&
       !contains(flatten([for statement in data.aws_iam_policy_document.execution["ec2"].statement : statement.actions]), "ecr:BatchGetImage")
     )
