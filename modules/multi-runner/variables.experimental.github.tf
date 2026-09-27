@@ -13,6 +13,10 @@ variable "global_config_github" {
         id_ssm: "SSM parameter containing the GitHub App ID."
         id_ssm.arn: "ARN of the SSM parameter containing the GitHub App ID."
         id_ssm.name: "Name of the SSM parameter containing the GitHub App ID."
+        installation_id: "GitHub App installation ID for the primary scale-set installation."
+        installation_id_ssm: "SSM parameter containing the primary GitHub App installation ID."
+        installation_id_ssm.arn: "ARN of the SSM parameter containing the primary GitHub App installation ID."
+        installation_id_ssm.name: "Name of the SSM parameter containing the primary GitHub App installation ID."
         webhook_secret: "GitHub App webhook secret."
         webhook_secret_ssm: "SSM parameter containing the GitHub App webhook secret."
         webhook_secret_ssm.arn: "ARN of the SSM parameter containing the GitHub App webhook secret."
@@ -33,6 +37,8 @@ variable "global_config_github" {
       additional_apps.installation_id_ssm.name: "Name of the SSM parameter containing an additional App installation ID."
       enterprise_server.url: "GitHub Enterprise Server URL."
       enterprise_server.ssl_verify: "Whether to verify the GitHub Enterprise Server TLS certificate."
+      runner_owner: "GitHub organization or owner/repository path for organization- or repository-level scale-set registration."
+      runner_registration_level: "GitHub scale-set registration scope: organization or repository."
       user_agent: "User-Agent value sent with GitHub API requests."
     }
   EOT
@@ -45,6 +51,11 @@ variable "global_config_github" {
       }))
       id = optional(string)
       id_ssm = optional(object({
+        arn  = string
+        name = string
+      }))
+      installation_id = optional(string)
+      installation_id_ssm = optional(object({
         arn  = string
         name = string
       }))
@@ -66,7 +77,9 @@ variable "global_config_github" {
       url        = optional(string, null)
       ssl_verify = optional(bool, true)
     }), {})
-    user_agent = optional(string, "github-aws-runners")
+    runner_owner              = optional(string, null)
+    runner_registration_level = optional(string, "organization")
+    user_agent                = optional(string, "github-aws-runners")
   })
   default = {}
 }

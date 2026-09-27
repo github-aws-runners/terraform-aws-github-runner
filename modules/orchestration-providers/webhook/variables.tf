@@ -209,16 +209,59 @@ variable "lambda" {
   })
 }
 
-variable "ssm" {
-  description = "Resolved Parameter Store paths, optional decrypt key, and runtime parameter tags."
+variable "storage_provider" {
+  description = <<-EOT
+    Resolved storage-provider values and optional provider-owned Lambda capabilities.
+
+    - `storage_provider.aws.ssm.token_path`: Resolved Parameter Store path for registration tokens.
+    - `storage_provider.aws.ssm.token_path_arn`: ARN of the registration-token Parameter Store path.
+    - `storage_provider.aws.ssm.config_path`: Resolved Parameter Store path for runner configuration.
+    - `storage_provider.aws.ssm.config_path_arn`: ARN of the runner-configuration Parameter Store path.
+    - `storage_provider.aws.ssm.kms_key_id`: Optional KMS key used to decrypt shared parameters.
+    - `storage_provider.aws.ssm.parameter_store_tags`: JSON-encoded tags applied to runtime parameters.
+    - `scale_up`, `scale_down`, `pool`, and `job_retry`: Provider-owned environment variables and IAM policy fragments.
+  EOT
   type = object({
-    token_path           = string
-    token_path_arn       = string
-    config_path          = string
-    config_path_arn      = string
-    kms_key_id           = optional(string, null)
-    parameter_store_tags = string
+    aws = object({
+      ssm = object({
+        token_path           = string
+        token_path_arn       = string
+        config_path          = string
+        config_path_arn      = string
+        kms_key_id           = optional(string, null)
+        parameter_store_tags = string
+      })
+    })
+    scale_up = optional(object({
+      environment_variables = map(string)
+      iam_policy_json       = optional(string, null)
+      }), {
+      environment_variables = {}
+      iam_policy_json       = null
+    })
+    scale_down = optional(object({
+      environment_variables = map(string)
+      iam_policy_json       = optional(string, null)
+      }), {
+      environment_variables = {}
+      iam_policy_json       = null
+    })
+    pool = optional(object({
+      environment_variables = map(string)
+      iam_policy_json       = optional(string, null)
+      }), {
+      environment_variables = {}
+      iam_policy_json       = null
+    })
+    job_retry = optional(object({
+      environment_variables = map(string)
+      iam_policy_json       = optional(string, null)
+      }), {
+      environment_variables = {}
+      iam_policy_json       = null
+    })
   })
+  nullable = false
 }
 
 variable "observability" {

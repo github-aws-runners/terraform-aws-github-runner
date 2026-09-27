@@ -17,7 +17,9 @@ To be able to support a number of use-cases, the module has quite a lot of confi
 
 ## AWS SSM Parameters
 
-The module uses the AWS System Manager Parameter Store to store configuration for the runners, as well as registration tokens and secrets for the Lambdas. Paths for the parameters can be configured via the variable `ssm_paths`. The location of the configuration parameters is retrieved by the runners via the instance tag `ghr:ssm_config_path`. The following default paths will be used. Tokens or JIT config stored in the token path will be deleted after retrieval by instance, data not deleted after a day will be deleted by a SSM housekeeper lambda.
+The module uses the AWS System Manager Parameter Store to store configuration for the runners, as well as registration tokens and secrets for the Lambdas. Paths for the parameters can be configured via the variable `ssm_paths`. The location of the configuration parameters is retrieved by the runners via the instance tag `ghr:ssm_config_path`. The following default paths will be used. Tokens or JIT config stored in the token path will be deleted after retrieval by instance, data not deleted after a day will be deleted by a SSM housekeeper lambda. Alternatively you can set `ssm_ttl_seconds.tokens` to attach a native SSM expiration policy to the token / JIT config parameters so SSM deletes leftovers itself after the TTL passes. Be aware that parameter policies require the Advanced parameter tier for every token parameter, which incurs additional costs, and that expiration is enforced asynchronously by SSM. The housekeeper lambda remains active as a backstop.
+
+For the experimental multi-runner configuration, set `multi_runner_config.<lane>.storage_provider.aws.ssm.ttl_seconds.tokens` to configure the token TTL. Stable configurations use `ssm_ttl_seconds.tokens` (under `runner_config` for multi-runner lanes); it is translated to the same nested setting. An omitted TTL leaves native expiration disabled.
 
 Furthermore, to accommodate larger JIT configurations or other stored values, the module implements automatic tier selection for SSM parameters:
 
@@ -293,6 +295,81 @@ In case the setup does not work as intended, trace the events through this seque
 - Registered instances should show up in the Settings - Actions page of the repository or organization (depending on the installation mode).
 
 ## Experimental features
+
+### GitHub Actions runner scale-set orchestration
+
+Scale-set orchestration is an experimental multi-runner v2 provider for
+workloads that should use GitHub's runner scale-set message protocol instead of
+webhook-driven Lambda scaling. Select it inside the lane's
+`multi_runner_config.<name>.orchestration_provider` block and pair it with a
+compute provider that implements the scale-set capability contract. The
+controller runs as one ECS Fargate task per resolved controller group and
+reconciles the configured scale sets continuously.
+
+Use scale-set orchestration when the GitHub scale-set API and a long-lived
+controller are the desired ownership model. Continue using webhook
+orchestration when the existing `workflow_job` event, SQS, and Lambda lifecycle
+are the better fit. The two modes must not manage the same runner lane.
+
+The scale-set module resolves GitHub scale sets by their configured name. When
+a named scale set is absent, the controller registers it in the resolved
+runner group and reconciles its system labels at runtime. The TypeScript
+controller is the component that configures GitHub; Terraform never calls the
+GitHub scale-set API. Terraform destroy removes the AWS controller and stops
+reconciliation, but does not issue a GitHub delete. The module requires an
+explicit controller image, preferably an immutable digest. The task reads GitHub App credentials
+and optional discovery-cache values from SSM but does not write discovered IDs
+back to SSM. See the [scale-set provider reference](https://github.com/github-aws-runners/terraform-aws-github-runner/blob/main/modules/orchestration-providers/scale-set/README.md)
+for the complete input schema.
+
+#### Scale-set options and defaults
+
+Set these values under
+`global_config_orchestration_provider.scale_set`. Per-lane scale-set values
+under `multi_runner_config.<lane>.orchestration_provider.scale_set` override
+the corresponding lane settings. The controller image is represented as
+optional in the Terraform type for normalization, but validation requires a
+non-empty value; use an immutable digest.
+
+| Option | Default | Purpose |
+| --- | --- | --- |
+| `grouping.strategy` | `compute_provider` | Pack reconcilers by compute-provider type; use `runner_config` or `custom` to create narrower task/IAM boundaries. |
+| `container.image` | none; required | Controller image reference. Prefer a release digest. |
+| `container.user` | `10001:10001` | Numeric non-root UID/GID used by the application container. |
+| `container.health_port` | `8080` | ECS health-check port. |
+| `container.health_path` | `/healthz` | ECS liveness endpoint; `/readyz` is an application readiness signal. |
+| `container.health_check_command` | `null` | Use the image health check unless an explicit ECS command is required. |
+| `container.health_check_interval` / `timeout` / `retries` | `30` / `5` / `3` | ECS container health-check timing. |
+| `container.health_check_start_period` | `30` | Startup grace period for the ECS health check. |
+| `container.health_stale_after_seconds` | `180` | Controller health staleness threshold. |
+| `container.shutdown_timeout_seconds` | `110` | Controller shutdown grace period. |
+| `container.session_close_timeout_seconds` | `10` | Message-session close timeout. |
+| `container.reconnect_initial_backoff_seconds` / `max` | `1` / `30` | Bounds for reconnect backoff. |
+| `container.stop_timeout_seconds` | `120` | ECS container stop timeout. |
+| `config_store.path_prefix` / `tier` | derived / `Standard` | SSM path prefix and parameter tier for non-secret reconciler configuration. |
+| `ecs.cluster.mode` | `managed` | Create a cluster or use an external cluster. |
+| `ecs.cluster.container_insights` | `true` | Enable ECS container insights on a managed cluster. |
+| `ecs.task.cpu` / `memory` | `512` / `1024` | Fargate task CPU units and memory MiB. |
+| `ecs.task.cpu_architecture` | `X86_64` | Fargate task architecture. |
+| `ecs.task.ephemeral_storage` | `null` | Use the Fargate platform default unless a size is supplied. |
+| `ecs.service.platform_version` | `LATEST` | ECS Fargate platform version. |
+| `ecs.iam.path` / `permissions_boundary` | `/` / `null` | IAM role path and optional permissions boundary. |
+| `network.vpc_id` / `subnet_ids` | required | Private subnets in which the controller service runs. |
+| `network.https_egress.ipv4_cidrs` | `0.0.0.0/0` | Default HTTPS reachability; restrict through GitHub Meta API ranges, NAT, firewall, or proxy as required. |
+| `network.https_egress.ipv6_cidrs` | `[]` | IPv6 HTTPS egress destinations. |
+| `logging.retention_in_days` / `kms_key_id` | `180` / `null` | CloudWatch log retention and optional customer-managed KMS key ID, alias, or ARN. |
+| `logging.log_group_class` | `STANDARD` | CloudWatch log-group class. |
+| `tags` | `{}` | Tags applied to scale-set resources. |
+
+The scale-set lane itself defaults to `runner.group_name = "Default"`,
+`runner.min_runners = 0`, `runner.max_runners = 10`, and
+`runner.boot_time_in_minutes = 10`. Configure the GitHub scope, scale-set
+name, runner owner, and GitHub App SSM references in the lane; credential values
+are not placed in the controller manifest.
+
+The [multi-runner scale-set example](multi-runner-scale-set.md) shows how these
+provider-specific settings coexist with webhook lanes in the same v2
+`multi_runner_config` map.
 
 ### macOS Runners
 

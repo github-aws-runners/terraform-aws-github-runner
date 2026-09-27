@@ -167,6 +167,52 @@ describe('Test getParameter and putParameter', () => {
       Tier: expectedTier,
     });
   });
+
+  it('Puts parameters without an expiration policy when no TTL is given', async () => {
+    // Arrange
+    mockSSMClient.on(PutParameterCommand).resolves({ $metadata: { httpStatusCode: 200 } });
+
+    // Act
+    await putParameter('testParam', 'test', false);
+
+    // Assert
+    expect(mockSSMClient).toHaveReceivedCommandWith(PutParameterCommand, {
+      Name: 'testParam',
+      Value: 'test',
+      Type: 'String',
+      Tier: 'Standard',
+      Policies: undefined,
+    });
+  });
+
+  it('Puts parameters with an expiration policy and forces Advanced tier when a TTL is given', async () => {
+    // Arrange
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+    mockSSMClient.on(PutParameterCommand).resolves({ $metadata: { httpStatusCode: 200 } });
+
+    try {
+      // Act
+      await putParameter('testParam', 'test', true, { ttlSeconds: 3600 });
+
+      // Assert
+      expect(mockSSMClient).toHaveReceivedCommandWith(PutParameterCommand, {
+        Name: 'testParam',
+        Value: 'test',
+        Type: 'SecureString',
+        Tier: 'Advanced',
+        Policies: JSON.stringify([
+          {
+            Type: 'Expiration',
+            Version: '1.0',
+            Attributes: { Timestamp: '2026-01-01T01:00:00.000Z' },
+          },
+        ]),
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe('Test getParameters (batch)', () => {

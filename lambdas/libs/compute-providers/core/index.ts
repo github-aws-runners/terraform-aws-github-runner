@@ -6,7 +6,7 @@ export interface ComputeProvider {
   type: ComputeProviderType;
 }
 
-export type RunnerSource = 'scale-up-lambda' | 'pool-lambda';
+export type RunnerSource = 'scale-up-lambda' | 'pool-lambda' | 'scale-set-service';
 export type RunnerType = 'Org' | 'Repo';
 
 export interface CreateGitHubRunnerConfig {

@@ -5,7 +5,7 @@ import { request } from '@octokit/request';
 import { Instance } from '@aws-sdk/client-ec2';
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
-import { getParameter } from '@aws-github-runner/aws-ssm-util';
+import { createCommonStorage, type GitHubAppCredential } from '@aws-github-runner/storage-providers';
 import type { EndpointDefaults } from '@octokit/types';
 import type { Config } from './ConfigResolver';
 
@@ -21,6 +21,8 @@ const sqsClient = new SQSClient({ region: process.env.AWS_REGION });
 
 const logger = createChildLogger('deregister');
 
+let appCredentialsPromise: Promise<GitHubAppCredential> | undefined;
+
 export function createThrottleOptions() {
   return {
     onRateLimit: (_retryAfter: number, options: Required<EndpointDefaults>) => {
@@ -34,12 +36,27 @@ export function createThrottleOptions() {
   };
 }
 
-async function getAppCredentials(): Promise<{ appId: number; privateKey: string }> {
-  const appId = parseInt(await getParameter(process.env.PARAMETER_GITHUB_APP_ID_NAME!));
-  const privateKey = Buffer.from(await getParameter(process.env.PARAMETER_GITHUB_APP_KEY_BASE64_NAME!), 'base64')
-    .toString()
-    .replace('/[\\n]/g', String.fromCharCode(10));
-  return { appId, privateKey };
+async function loadAppCredentials(): Promise<GitHubAppCredential> {
+  const credentials = await createCommonStorage().githubAppCredentials.get();
+  const credential = credentials[0];
+  if (!credential) {
+    throw new Error('No GitHub App credentials found');
+  }
+  return credential;
+}
+
+function getAppCredentials(): Promise<GitHubAppCredential> {
+  if (!appCredentialsPromise) {
+    appCredentialsPromise = loadAppCredentials().catch((error: unknown) => {
+      appCredentialsPromise = undefined;
+      throw error;
+    });
+  }
+  return appCredentialsPromise;
+}
+
+export function resetAppCredentialsCache(): void {
+  appCredentialsPromise = undefined;
 }
 
 function createOctokitInstance(token: string, ghesApiUrl: string): Octokit {

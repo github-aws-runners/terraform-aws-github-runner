@@ -38,7 +38,9 @@ locals {
       url        = var.ghes_url
       ssl_verify = var.ghes_ssl_verify
     }
-    user_agent = var.user_agent
+    runner_owner              = null
+    runner_registration_level = "organization"
+    user_agent                = var.user_agent
   }
 
   stable_to_v2_lambda = {
@@ -56,6 +58,46 @@ locals {
     role = {
       path                 = null
       permissions_boundary = null
+    }
+  }
+
+  stable_to_v2_storage_provider = {
+    aws = {
+      ssm = {
+        paths = {
+          root    = "/${var.ssm_paths.root}/${var.prefix}"
+          app     = var.ssm_paths.app
+          webhook = var.ssm_paths.webhook
+          tokens  = "${var.ssm_paths.runners}/tokens"
+          config  = "${var.ssm_paths.runners}/config"
+        }
+        kms_key_id = var.kms_key_arn
+        tags       = {}
+        parameters = {
+          tags = var.parameter_store_tags
+        }
+        housekeeper = {
+          schedule_expression = var.runners_ssm_housekeeper.schedule_expression
+          state               = var.runners_ssm_housekeeper.enabled ? "ENABLED" : "DISABLED"
+          tags                = {}
+          lambda = {
+            artifact = {
+              zip = var.lambda_s3_bucket == null ? var.runners_lambda_zip : null
+              s3 = var.lambda_s3_bucket == null ? null : {
+                key            = var.runners_lambda_s3_key
+                object_version = var.runners_lambda_s3_object_version
+              }
+            }
+            memory_size = var.runners_ssm_housekeeper.lambda_memory_size
+            timeout     = var.runners_ssm_housekeeper.lambda_timeout
+          }
+          config = {
+            tokenPath      = var.runners_ssm_housekeeper.config.tokenPath
+            minimumDaysOld = var.runners_ssm_housekeeper.config.minimumDaysOld
+            dryRun         = var.runners_ssm_housekeeper.config.dryRun
+          }
+        }
+      }
     }
   }
 
@@ -141,42 +183,7 @@ locals {
         encryption = var.queue_encryption
       }
     }
-  }
-
-  stable_to_v2_ssm = {
-    paths = {
-      root    = "/${var.ssm_paths.root}/${var.prefix}"
-      app     = var.ssm_paths.app
-      webhook = var.ssm_paths.webhook
-      tokens  = "${var.ssm_paths.runners}/tokens"
-      config  = "${var.ssm_paths.runners}/config"
-    }
-    kms_key_id = var.kms_key_arn
-    tags       = {}
-    parameters = {
-      tags = var.parameter_store_tags
-    }
-    housekeeper = {
-      schedule_expression = var.runners_ssm_housekeeper.schedule_expression
-      state               = var.runners_ssm_housekeeper.enabled ? "ENABLED" : "DISABLED"
-      tags                = {}
-      lambda = {
-        artifact = {
-          zip = var.lambda_s3_bucket == null ? var.runners_lambda_zip : null
-          s3 = var.lambda_s3_bucket == null ? null : {
-            key            = var.runners_lambda_s3_key
-            object_version = var.runners_lambda_s3_object_version
-          }
-        }
-        memory_size = var.runners_ssm_housekeeper.lambda_memory_size
-        timeout     = var.runners_ssm_housekeeper.lambda_timeout
-      }
-      config = {
-        tokenPath      = var.runners_ssm_housekeeper.config.tokenPath
-        minimumDaysOld = var.runners_ssm_housekeeper.config.minimumDaysOld
-        dryRun         = var.runners_ssm_housekeeper.config.dryRun
-      }
-    }
+    scale_set = null
   }
 
   stable_to_v2_observability = {
@@ -427,34 +434,42 @@ locals {
             }
           }
         }
+        scale_set = null
       }
 
-      ssm = {
-        paths = {
-          root   = null
-          tokens = null
-          config = null
-        }
-        tags = {}
-        parameters = {
-          tags = {}
-        }
-        housekeeper = {
-          schedule_expression = null
-          state               = null
-          tags                = {}
-          lambda = {
-            artifact = {
-              zip = null
-              s3  = null
+      storage_provider = {
+        aws = {
+          ssm = {
+            ttl_seconds = {
+              tokens = v.runner_config.ssm_ttl_seconds.tokens
             }
-            memory_size = null
-            timeout     = null
-          }
-          config = {
-            tokenPath      = null
-            minimumDaysOld = null
-            dryRun         = null
+            paths = {
+              root   = null
+              tokens = null
+              config = null
+            }
+            tags = {}
+            parameters = {
+              tags = {}
+            }
+            housekeeper = {
+              schedule_expression = null
+              state               = null
+              tags                = {}
+              lambda = {
+                artifact = {
+                  zip = null
+                  s3  = null
+                }
+                memory_size = null
+                timeout     = null
+              }
+              config = {
+                tokenPath      = null
+                minimumDaysOld = null
+                dryRun         = null
+              }
+            }
           }
         }
       }

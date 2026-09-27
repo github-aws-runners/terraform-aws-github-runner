@@ -10,6 +10,24 @@ changed to v2.
 This procedure is intended for an existing deployment that uses the
 multi-runner v1 configuration.
 
+## Choose the orchestration provider before migrating
+
+State migration only changes Terraform addresses; it does not convert a
+webhook lane into a scale-set lane or create a GitHub scale set. Keep a lane on
+`orchestration_provider.webhook` when it should continue using `workflow_job`
+events, SQS, and Lambda scaling. Select the experimental scale-set provider when
+the lane should use a long-running ECS controller and GitHub's runner scale-set
+message protocol.
+
+For a scale-set lane, authorize the GitHub scale-set API for the configured
+scope and configure the scale-set and runner-group names in v2. The controller
+resolves those names and may register a missing scale set. The TypeScript
+controller owns the GitHub API operations; Terraform only provisions AWS and
+never calls the GitHub scale-set API.
+Provide an explicit immutable controller image, verify private networking and
+HTTPS egress, and ensure the selected compute provider implements the scale-set
+capability contract before applying the migrated configuration.
+
 ## Before you start
 
 - Use the migration script from the same repository revision as the v2 module

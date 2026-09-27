@@ -7,6 +7,19 @@ mock_provider "aws" {
 }
 
 variables {
+  storage_provider = {
+    aws = {
+      ssm = {
+        token_path           = "/github-runner/tokens"
+        token_path_arn       = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/tokens"
+        config_path          = "/github-runner/config"
+        config_path_arn      = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config"
+        kms_key_id           = "arn:aws:kms:eu-west-1:123456789012:key/pool-test"
+        parameter_store_tags = "{}"
+      }
+    }
+  }
+
   config = {
     lambda = {
       log_level                      = "info"
@@ -24,7 +37,6 @@ variables {
       timeout                        = 60
       zip                            = "runners.zip"
       subnet_ids                     = []
-      parameter_store_tags           = "{}"
       principals = [{
         type        = "AWS"
         identifiers = ["arn:aws:iam::123456789012:role/local-testing"]
@@ -73,16 +85,11 @@ variables {
       schedule_expression_timezone = "UTC"
       size                         = 2
     }]
-    include_busy_runners           = false
-    role_permissions_boundary      = null
-    kms_key_id                     = "arn:aws:kms:eu-west-1:123456789012:key/pool-test"
-    role_path                      = "/"
-    ssm_token_path                 = "/github-runner/tokens"
-    ssm_token_path_arn             = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/tokens"
-    ssm_config_path                = "/github-runner/config"
-    arn_ssm_parameters_path_config = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config"
-    lambda_tags                    = {}
-    user_agent                     = "terraform-aws-github-runner"
+    include_busy_runners      = false
+    role_permissions_boundary = null
+    role_path                 = "/"
+    lambda_tags               = {}
+    user_agent                = "terraform-aws-github-runner"
   }
 
   runner_provider = {

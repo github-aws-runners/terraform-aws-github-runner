@@ -354,26 +354,31 @@ variable "github" {
   nullable = false
 }
 
-variable "ssm" {
+variable "storage_provider" {
   description = <<-EOT
-    Parameter Store paths and tag scopes available to compute-provider bootstrap resources.
+    Storage-provider configuration available to compute-provider bootstrap resources.
 
-    - `paths.root`: Root Parameter Store path for the runner configuration.
-    - `paths.tokens`: Path segment used for registration tokens and just-in-time configuration.
-    - `paths.config`: Path segment used for persistent runner and provider configuration.
-    - `tags`: Shared SSM tags that override module-level `tags`.
-    - `parameters.tags`: Parameter-specific tags that override module-level and shared SSM tags.
+    - `aws.ssm`: AWS Systems Manager Parameter Store configuration, when SSM is selected.
+    - `aws.ssm.paths.root`: Root Parameter Store path for the runner configuration.
+    - `aws.ssm.paths.tokens`: Path segment used for registration tokens and just-in-time configuration.
+    - `aws.ssm.paths.config`: Path segment used for persistent runner and provider configuration.
+    - `aws.ssm.tags`: Shared SSM tags that override module-level `tags`.
+    - `aws.ssm.parameters.tags`: Parameter-specific tags that override module-level and shared SSM tags.
   EOT
   type = object({
-    paths = object({
-      root   = string
-      tokens = string
-      config = string
+    aws = object({
+      ssm = object({
+        paths = object({
+          root   = string
+          tokens = string
+          config = string
+        })
+        tags = optional(map(string), {})
+        parameters = optional(object({
+          tags = optional(map(string), {})
+        }), {})
+      })
     })
-    tags = optional(map(string), {})
-    parameters = optional(object({
-      tags = optional(map(string), {})
-    }), {})
   })
 
   nullable = false
