@@ -222,11 +222,18 @@ run "includes_managed_ami_read_in_scale_set_contract" {
   command = plan
 
   variables {
-    config = merge(var.config, {
-      ami = merge(var.config.ami, {
+    config = {
+      vpc_id         = "vpc-12345678"
+      subnet_ids     = ["subnet-12345678"]
+      instance_types = ["m5.large"]
+      binaries_syncer = {
+        enabled = false
+        s3      = null
+      }
+      ami = {
         id_ssm_parameter = null
-      })
-    })
+      }
+    }
   }
 
   assert {

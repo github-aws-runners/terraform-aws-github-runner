@@ -16,6 +16,31 @@ mock_provider "aws" {
       arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/ami-id"
     }
   }
+
+  mock_resource "aws_iam_policy" {
+    defaults = {
+      arn = "arn:aws:iam::123456789012:policy/mock-policy"
+    }
+  }
+
+  mock_resource "aws_lambda_function" {
+    defaults = {
+      arn = "arn:aws:lambda:eu-west-1:123456789012:function:mock-function"
+    }
+  }
+
+  mock_resource "aws_sqs_queue" {
+    defaults = {
+      arn = "arn:aws:sqs:eu-west-1:123456789012:mock-queue"
+    }
+  }
+
+  mock_resource "aws_cloudwatch_event_rule" {
+    defaults = {
+      arn = "arn:aws:events:eu-west-1:123456789012:rule/mock-event-rule"
+    }
+  }
+
 }
 
 # The runner archive is injected during packaging, so isolate the common
