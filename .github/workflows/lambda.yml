@@ -83,6 +83,15 @@ jobs:
           file: ./lambdas/services/scale-set/Dockerfile
           platforms: linux/amd64
           push: false
+          cache-from: type=gha,scope=scale-set-service
+          cache-to: type=gha,mode=max,scope=scale-set-service
+
+      - name: Load scale-set service image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: ./lambdas/services/scale-set/Dockerfile
+          platforms: linux/amd64
           load: true
           cache-from: type=gha,scope=scale-set-service
           cache-to: type=gha,mode=max,scope=scale-set-service
