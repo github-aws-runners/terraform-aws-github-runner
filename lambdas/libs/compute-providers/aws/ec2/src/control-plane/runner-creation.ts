@@ -62,6 +62,9 @@ export function loadEc2ProviderConfig(): Ec2ProviderConfig {
   };
 }
 
+// Extension point: add a resolver here for each per-job override that needs more than a plain merge.
+type Ec2ConfigResolver = (config: CreateEC2RunnerConfig) => CreateEC2RunnerConfig;
+
 function resolveCapacityType(config: CreateEC2RunnerConfig): CreateEC2RunnerConfig {
   const { TargetCapacityType, ...overrides } = config.ec2OverrideConfig ?? {};
   let targetCapacityType = config.ec2instanceCriteria.targetCapacityType;
@@ -82,6 +85,12 @@ function resolveCapacityType(config: CreateEC2RunnerConfig): CreateEC2RunnerConf
   };
 }
 
+const ec2ConfigResolvers: Ec2ConfigResolver[] = [resolveCapacityType];
+
+function resolveEc2Config(config: CreateEC2RunnerConfig): CreateEC2RunnerConfig {
+  return ec2ConfigResolvers.reduce((resolvedConfig, resolve) => resolve(resolvedConfig), config);
+}
+
 export async function createRunners(
   ec2Operations: Ec2RunnerResourceOperations,
   githubRunnerConfig: CreateGitHubRunnerConfig,
@@ -94,7 +103,7 @@ export async function createRunners(
 ): Promise<CreateRunnerResult> {
   let result: CreateRunnerResult;
   try {
-    const { scaleErrors, ...ec2CreateConfig } = resolveCapacityType(ec2RunnerConfig);
+    const { scaleErrors, ...ec2CreateConfig } = resolveEc2Config(ec2RunnerConfig);
     const ec2Result = await ec2Operations.create({
       ...ec2CreateConfig,
       runnerType: githubRunnerConfig.runnerType,
