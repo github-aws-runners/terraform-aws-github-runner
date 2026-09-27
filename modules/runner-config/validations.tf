@@ -70,11 +70,11 @@ resource "terraform_data" "validate_config" {
     }
 
     precondition {
-      condition = var.compute_provider_key == null || try(
-        local.compute_providers[var.compute_provider_key] != null,
-        false,
-      )
-      error_message = "compute_provider_key must identify the non-null typed compute-provider block."
+      condition = length([
+        for provider_key, provider_config in local.compute_providers : provider_key
+        if provider_config != null
+      ]) == 1
+      error_message = "Exactly one compute-provider block must be set. Supported compute-provider blocks: aws.ec2."
     }
 
     precondition {

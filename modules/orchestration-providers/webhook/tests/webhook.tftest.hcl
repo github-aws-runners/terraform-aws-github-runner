@@ -13,31 +13,22 @@ mock_provider "aws" {
 
   mock_resource "aws_lambda_function" {
     defaults = {
-      arn = "arn:aws:lambda:eu-west-1:123456789012:function:webhook-orchestration-test"
+      arn = "arn:aws:lambda:eu-west-1:123456789012:function:mock-function"
     }
   }
 
   mock_resource "aws_sqs_queue" {
     defaults = {
-      arn = "arn:aws:sqs:eu-west-1:123456789012:webhook-orchestration-test"
-      id  = "https://sqs.eu-west-1.amazonaws.com/123456789012/webhook-orchestration-test"
-      url = "https://sqs.eu-west-1.amazonaws.com/123456789012/webhook-orchestration-test"
+      arn = "arn:aws:sqs:eu-west-1:123456789012:mock-queue"
     }
   }
 
   mock_resource "aws_cloudwatch_event_rule" {
     defaults = {
-      arn = "arn:aws:events:eu-west-1:123456789012:rule/webhook-orchestration-test"
+      arn = "arn:aws:events:eu-west-1:123456789012:rule/mock-event-rule"
     }
   }
-}
 
-run "base_inputs" {
-  command = apply
-
-  module {
-    source = "./tests/fixtures/base-inputs"
-  }
 }
 
 variables {
@@ -333,13 +324,55 @@ run "rejects_conflicting_artifact_sources" {
   }
 
   variables {
-    config = merge(run.base_inputs.config, {
-      lambda = merge(run.base_inputs.config.lambda, {
-        artifact = merge(run.base_inputs.config.lambda.artifact, {
-          zip = "runners.zip"
-        })
-      })
-    })
+    config = {
+      runner = {
+        boot_time_in_minutes = 11
+        ephemeral            = true
+        maximum_count        = 10
+      }
+      github = { organization_runners = true }
+      queue = {
+        build = {
+          arn = "arn:aws:sqs:eu-west-1:123456789012:build-queue"
+          url = "https://sqs.eu-west-1.amazonaws.com/123456789012/build-queue"
+        }
+      }
+      lambda = {
+        artifact = { zip = "runners.zip", s3 = { key = "runners.zip" } }
+        scale = {
+          up = {
+            memory_size                    = 512
+            timeout                        = 60
+            reserved_concurrent_executions = 1
+            event_source_mapping           = { batch_size = 10, maximum_batching_window_in_seconds = 0 }
+          }
+          down = {
+            memory_size         = 512
+            timeout             = 60
+            schedule_expression = "rate(5 minutes)"
+            idle_config         = []
+          }
+        }
+        pool = {
+          memory_size                    = 512
+          timeout                        = 60
+          reserved_concurrent_executions = 1
+          config                         = []
+          include_busy_runners           = false
+        }
+      }
+      job_retry = {
+        enabled          = false
+        delay_in_seconds = 60
+        delay_backoff    = 1
+        max_attempts     = 3
+        lambda = {
+          memory_size                    = 256
+          reserved_concurrent_executions = 1
+          timeout                        = 30
+        }
+      }
+    }
   }
 
   expect_failures = [terraform_data.validate_config]

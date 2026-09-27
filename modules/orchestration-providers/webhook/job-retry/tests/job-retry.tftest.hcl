@@ -11,27 +11,12 @@ mock_provider "aws" {
     }
   }
 
-  mock_resource "aws_lambda_function" {
-    defaults = {
-      arn = "arn:aws:lambda:eu-west-1:123456789012:function:job-retry-test"
-    }
-  }
-
   mock_resource "aws_sqs_queue" {
     defaults = {
-      arn = "arn:aws:sqs:eu-west-1:123456789012:job-retry-test"
-      id  = "https://sqs.eu-west-1.amazonaws.com/123456789012/job-retry-test"
-      url = "https://sqs.eu-west-1.amazonaws.com/123456789012/job-retry-test"
+      arn = "arn:aws:sqs:eu-west-1:123456789012:mock-queue"
     }
   }
-}
 
-run "base_inputs" {
-  command = apply
-
-  module {
-    source = "./tests/fixtures/base-inputs"
-  }
 }
 
 variables {
@@ -361,13 +346,13 @@ run "does_not_enable_partial_vpc_configuration" {
   command = plan
 
   variables {
-    storage_provider = merge(run.base_inputs.storage_provider, {
-      aws = merge(run.base_inputs.storage_provider.aws, {
-        ssm = merge(run.base_inputs.storage_provider.aws.ssm, {
+    storage_provider = {
+      aws = {
+        ssm = {
           kms_key_id = null
-        })
-      })
-    })
+        }
+      }
+    }
 
     config = {
       prefix        = "job-retry-test"
@@ -515,11 +500,76 @@ run "rejects_unsupported_lambda_architecture" {
   }
 
   variables {
-    config = merge(run.base_inputs.config, {
-      lambda = merge(run.base_inputs.config.lambda, {
-        architecture = "unsupported"
-      })
-    })
+    config = {
+      prefix        = "job-retry-test"
+      aws_partition = "aws"
+      lambda = {
+        artifact = {
+          zip = "unused.zip"
+          s3 = {
+            bucket = "lambda-artifacts"
+            key    = "job-retry.zip"
+          }
+        }
+        architecture                   = "unsupported"
+        runtime                        = "nodejs24.x"
+        memory_size                    = 256
+        timeout                        = 30
+        reserved_concurrent_executions = 1
+        environment_variables          = {}
+        vpc = {
+          subnet_ids         = []
+          security_group_ids = []
+        }
+        role = {
+          path       = "/job-retry-test/"
+          principals = []
+        }
+      }
+      runner = { name_prefix = "required-prefix-" }
+      github = {
+        organization_runners = false
+        enterprise_server    = { url = null, ssl_verify = false }
+        app_parameters       = { key_base64 = {}, id = {} }
+      }
+      queue = {
+        build = {
+          url = "https://sqs.eu-west-1.amazonaws.com/123456789012/build-queue"
+          arn = "arn:aws:sqs:eu-west-1:123456789012:build-queue"
+        }
+        event_source_mapping = {
+          batch_size                         = 10
+          maximum_batching_window_in_seconds = 0
+        }
+        encryption = { sqs_managed_sse_enabled = true }
+      }
+      observability = {
+        logs = {
+          level             = "trace"
+          retention_in_days = 14
+          class             = "STANDARD"
+        }
+        tracing = {
+          capture_http_requests = false
+          capture_error         = false
+        }
+        metrics = {
+          enabled   = false
+          namespace = "JobRetryTest"
+          metric = {
+            github_app_rate_limit = { enabled = false }
+            job_retry             = { enabled = false }
+          }
+        }
+      }
+      tags = {
+        resources            = {}
+        lambda               = {}
+        log_group            = {}
+        queue                = {}
+        event_source_mapping = {}
+      }
+    }
   }
 
   expect_failures = [terraform_data.validate_config]
@@ -553,9 +603,76 @@ run "rejects_resource_prefix_longer_than_aws_limit" {
   }
 
   variables {
-    config = merge(run.base_inputs.config, {
-      prefix = "1234567890123456789012345678901234567890123456789012345"
-    })
+    config = {
+      prefix        = "1234567890123456789012345678901234567890123456789012345"
+      aws_partition = "aws"
+      lambda = {
+        artifact = {
+          zip = "unused.zip"
+          s3 = {
+            bucket = "lambda-artifacts"
+            key    = "job-retry.zip"
+          }
+        }
+        architecture                   = "arm64"
+        runtime                        = "nodejs24.x"
+        memory_size                    = 256
+        timeout                        = 30
+        reserved_concurrent_executions = 1
+        environment_variables          = {}
+        vpc = {
+          subnet_ids         = []
+          security_group_ids = []
+        }
+        role = {
+          path       = "/job-retry-test/"
+          principals = []
+        }
+      }
+      runner = { name_prefix = "required-prefix-" }
+      github = {
+        organization_runners = false
+        enterprise_server    = { url = null, ssl_verify = false }
+        app_parameters       = { key_base64 = {}, id = {} }
+      }
+      queue = {
+        build = {
+          url = "https://sqs.eu-west-1.amazonaws.com/123456789012/build-queue"
+          arn = "arn:aws:sqs:eu-west-1:123456789012:build-queue"
+        }
+        event_source_mapping = {
+          batch_size                         = 10
+          maximum_batching_window_in_seconds = 0
+        }
+        encryption = { sqs_managed_sse_enabled = true }
+      }
+      observability = {
+        logs = {
+          level             = "trace"
+          retention_in_days = 14
+          class             = "STANDARD"
+        }
+        tracing = {
+          capture_http_requests = false
+          capture_error         = false
+        }
+        metrics = {
+          enabled   = false
+          namespace = "JobRetryTest"
+          metric = {
+            github_app_rate_limit = { enabled = false }
+            job_retry             = { enabled = false }
+          }
+        }
+      }
+      tags = {
+        resources            = {}
+        lambda               = {}
+        log_group            = {}
+        queue                = {}
+        event_source_mapping = {}
+      }
+    }
   }
 
   expect_failures = [terraform_data.validate_config]
