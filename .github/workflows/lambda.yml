@@ -34,7 +34,7 @@ jobs:
           persist-credentials: false
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: yarn install --immutable --mode=skip-build
 
       - name: Run prettier
         run: yarn format-check
@@ -81,20 +81,11 @@ jobs:
         with:
           context: .
           file: ./lambdas/services/scale-set/Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: false
+          load: true
           cache-from: type=gha,scope=scale-set-service
           cache-to: type=gha,mode=max,scope=scale-set-service
-
-      - name: Build scale-set service image for smoke test
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: .
-          file: ./lambdas/services/scale-set/Dockerfile
-          platforms: linux/amd64
-          load: true
-          tags: scale-set-service:smoke-test
-          cache-from: type=gha,scope=scale-set-service
 
       - name: Run scale-set service image smoke test
         run: ./tests/scale-set-container-smoke-test.sh
