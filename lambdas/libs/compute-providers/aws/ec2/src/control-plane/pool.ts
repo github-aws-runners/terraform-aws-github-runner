@@ -14,13 +14,21 @@ function countAvailableEc2PoolRunners(
   let numberOfRunnersInPool = 0;
   for (const ec2Instance of ec2runners) {
     const status = runnerStatus.get(ec2Instance.id);
-    // A runner can be registered before its agent connects (for example with JIT config) and is
-    // then reported as offline. Treat it like an unregistered runner until its boot time expires.
-    const registeredOffline = status?.status === 'offline' && status.busy === false;
     if ((status?.busy === false || includeBusyRunners) && status?.status === 'online') {
       numberOfRunnersInPool++;
       logger.debug(`Runner ${ec2Instance.id} is idle in GitHub and counted as part of the pool`);
-    } else if (status != null && !registeredOffline) {
+    } else if (status?.status === 'offline' && status.busy === false) {
+      // A runner can be registered before its agent connects (for example with JIT config) and is
+      // then reported as offline. Count it as booting until its boot time expires.
+      if (!bootTimeExceeded(ec2Instance)) {
+        numberOfRunnersInPool++;
+        logger.info(`Runner ${ec2Instance.id} is registered offline, still booting and counted as part of the pool`);
+      } else {
+        logger.debug(
+          `Runner ${ec2Instance.id} is registered offline past its boot time and NOT counted as part of the pool`,
+        );
+      }
+    } else if (status != null) {
       logger.debug(`Runner ${ec2Instance.id} is not idle in GitHub and NOT counted as part of the pool`);
     } else if (!bootTimeExceeded(ec2Instance)) {
       numberOfRunnersInPool++;

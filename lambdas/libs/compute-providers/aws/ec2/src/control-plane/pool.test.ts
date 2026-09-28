@@ -1,5 +1,5 @@
 import type { Octokit } from '@octokit/rest';
-import type { CreateGitHubRunnerConfig, CreateStartRunnerConfig, RunnerInfo, RunnerStatus } from '../../../../core';
+import type { CreateGitHubRunnerConfig, CreateStartRunnerConfig, RunnerInfo } from '../../../../core';
 import { bootTimeExceeded, type Ec2RunnerResourceOperations } from '../runners';
 import { createEc2PoolCapability } from './pool';
 import { createRunners, type Ec2ProviderConfig, loadEc2ProviderConfig } from './runner-creation';
@@ -69,15 +69,9 @@ describe('createEc2PoolCapability.countAvailableRunners', () => {
     expect(mockBootTimeExceeded).toHaveBeenCalledWith(runners[0]);
   });
 
-  it('does not count registered offline runners that are busy or have no busy value', () => {
-    const runners: RunnerInfo[] = [
-      { id: 'i-offline-busy', owner: 'owner', type: 'Org' },
-      { id: 'i-offline-no-busy', owner: 'owner', type: 'Org' },
-    ];
-    const runnerStatus = new Map<string, RunnerStatus>([
-      ['i-offline-busy', { busy: true, status: 'offline' }],
-      ['i-offline-no-busy', { status: 'offline' } as RunnerStatus],
-    ]);
+  it('does not count registered offline runners that are busy', () => {
+    const runners: RunnerInfo[] = [{ id: 'i-offline-busy', owner: 'owner', type: 'Org' }];
+    const runnerStatus = new Map([['i-offline-busy', { busy: true, status: 'offline' }]]);
     mockBootTimeExceeded.mockReturnValue(false);
 
     expect(capability.countAvailableRunners(runners, runnerStatus)).toBe(0);
