@@ -1,5 +1,5 @@
 import type { Octokit } from '@octokit/rest';
-import type { CreateGitHubRunnerConfig, CreateStartRunnerConfig, RunnerInfo } from '../../../../core';
+import type { CreateGitHubRunnerConfig, CreateStartRunnerConfig, RunnerInfo, RunnerStatus } from '../../../../core';
 import { bootTimeExceeded, type Ec2RunnerResourceOperations } from '../runners';
 import { createEc2PoolCapability } from './pool';
 import { createRunners, type Ec2ProviderConfig, loadEc2ProviderConfig } from './runner-creation';
@@ -41,17 +41,47 @@ describe('createEc2PoolCapability.countAvailableRunners', () => {
     expect(mockBootTimeExceeded).not.toHaveBeenCalled();
   });
 
-  it('does not count registered busy or offline runners', () => {
-    const runners: RunnerInfo[] = [
-      { id: 'i-busy', owner: 'owner', type: 'Org' },
-      { id: 'i-offline', owner: 'owner', type: 'Org' },
-    ];
-    const runnerStatus = new Map([
-      ['i-busy', { busy: true, status: 'online' }],
-      ['i-offline', { busy: false, status: 'offline' }],
-    ]);
+  it('does not count registered busy runners', () => {
+    const runners: RunnerInfo[] = [{ id: 'i-busy', owner: 'owner', type: 'Org' }];
+    const runnerStatus = new Map([['i-busy', { busy: true, status: 'online' }]]);
 
     expect(capability.countAvailableRunners(runners, runnerStatus)).toBe(0);
+    expect(mockBootTimeExceeded).not.toHaveBeenCalled();
+  });
+
+  it('counts registered offline runners that are still booting', () => {
+    // With JIT config the runner is registered in GitHub before the agent on the instance
+    // connects, so it can be reported as offline while it is still booting.
+    const runners: RunnerInfo[] = [{ id: 'i-jit-booting', owner: 'owner', type: 'Org' }];
+    const runnerStatus = new Map([['i-jit-booting', { busy: false, status: 'offline' }]]);
+    mockBootTimeExceeded.mockReturnValue(false);
+
+    expect(capability.countAvailableRunners(runners, runnerStatus)).toBe(1);
+    expect(mockBootTimeExceeded).toHaveBeenCalledWith(runners[0]);
+  });
+
+  it('does not count registered offline runners whose boot time expired', () => {
+    const runners: RunnerInfo[] = [{ id: 'i-offline', owner: 'owner', type: 'Org' }];
+    const runnerStatus = new Map([['i-offline', { busy: false, status: 'offline' }]]);
+    mockBootTimeExceeded.mockReturnValue(true);
+
+    expect(capability.countAvailableRunners(runners, runnerStatus)).toBe(0);
+    expect(mockBootTimeExceeded).toHaveBeenCalledWith(runners[0]);
+  });
+
+  it('does not count registered offline runners that are busy or have no busy value', () => {
+    const runners: RunnerInfo[] = [
+      { id: 'i-offline-busy', owner: 'owner', type: 'Org' },
+      { id: 'i-offline-no-busy', owner: 'owner', type: 'Org' },
+    ];
+    const runnerStatus = new Map<string, RunnerStatus>([
+      ['i-offline-busy', { busy: true, status: 'offline' }],
+      ['i-offline-no-busy', { status: 'offline' } as RunnerStatus],
+    ]);
+    mockBootTimeExceeded.mockReturnValue(false);
+
+    expect(capability.countAvailableRunners(runners, runnerStatus)).toBe(0);
+    expect(capability.countAvailableRunners(runners, runnerStatus, true)).toBe(0);
     expect(mockBootTimeExceeded).not.toHaveBeenCalled();
   });
 
