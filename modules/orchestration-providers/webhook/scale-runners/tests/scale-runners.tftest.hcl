@@ -211,6 +211,11 @@ variables {
 }
 
 run "assembles_provider_neutral_scaling_control_plane" {
+  assert {
+    condition     = aws_lambda_function.scale_down.environment[0].variables["RUNNER_NAME_PREFIX"] == var.config.runner.name_prefix
+    error_message = "Scale-down must receive the same trusted runner prefix as scale-up."
+  }
+
   command = plan
 
   assert {
