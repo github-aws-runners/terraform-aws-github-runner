@@ -1,9 +1,9 @@
-import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
+import { createEc2ComputeProviderLogger } from '../../logger';
 import type { CreateStartRunnerConfig, PoolComputeProvider, RunnerInfo, RunnerStatus } from '../../../../core';
 import { bootTimeExceeded, type Ec2RunnerResourceOperations } from '../runners';
 import { createRunners, loadEc2ProviderConfig } from './runner-creation';
 
-const logger = createChildLogger('pool');
+const logger = createEc2ComputeProviderLogger('pool');
 
 function countAvailableEc2PoolRunners(
   ec2runners: RunnerInfo[],

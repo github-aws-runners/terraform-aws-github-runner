@@ -1,5 +1,6 @@
 import type { AwsDynamicLabelsPolicy, AwsDynamicLabelsValueRule } from '../../../../contracts';
 import { violationsAgainstAwsDynamicLabelsPolicy } from '../../../dynamic-labels-policy';
+import { EC2_OVERRIDE_LABEL_PREFIX } from '../constants';
 
 export type Ec2DynamicLabelsValueRule = AwsDynamicLabelsValueRule;
 
@@ -19,5 +20,5 @@ export function violationsAgainstPolicy(
   labels: string[],
   policy: Ec2DynamicLabelsPolicy | null | undefined,
 ): { label: string; reason: string }[] {
-  return violationsAgainstAwsDynamicLabelsPolicy(labels, policy, 'ghr-ec2-');
+  return violationsAgainstAwsDynamicLabelsPolicy(labels, policy, EC2_OVERRIDE_LABEL_PREFIX);
 }

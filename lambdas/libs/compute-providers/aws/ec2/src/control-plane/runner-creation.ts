@@ -1,4 +1,4 @@
-import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
+import { createEc2ComputeProviderLogger } from '../../logger';
 import type {
   CreateGitHubRunnerConfig,
   CreateRunnerResult,
@@ -16,7 +16,7 @@ import type { Ec2RunnerResourceOperations } from '../runners';
 import type { RunnerInputParameters } from '../runners.d';
 import { toControlPlaneCreateRunnerResult } from './create-result';
 
-const logger = createChildLogger('ec2-runners');
+const logger = createEc2ComputeProviderLogger('ec2-runners');
 const RUNNER_LABELS_TAG_KEY = 'ghr:runner_labels';
 const RUNNER_LABELS_TAG_VALUE_SEPARATOR = ',';
 export const EC2_TAG_VALUE_MAX_LENGTH = 256;

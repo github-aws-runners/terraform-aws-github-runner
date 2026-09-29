@@ -31,6 +31,7 @@ import {
 
 import { InvalidRunnerLabelsError } from '../../../../core';
 import { Ec2OverrideConfig } from '../runners.d';
+import { EC2_OVERRIDE_LABEL_PREFIX } from '../constants';
 
 const EC2_OVERRIDE_LIST_VALUE_SEPARATOR = ';';
 
@@ -130,11 +131,11 @@ export function parseEc2OverrideConfig(
   labels: string[],
   defaultBlockDeviceName?: string,
 ): Ec2OverrideConfig | undefined {
-  const ec2Labels = labels.filter((l) => l.startsWith('ghr-ec2-'));
+  const ec2Labels = labels.filter((l) => l.startsWith(EC2_OVERRIDE_LABEL_PREFIX));
   const config: Ec2OverrideConfig = {};
 
   for (const label of ec2Labels) {
-    const [key, ...valueParts] = label.replace('ghr-ec2-', '').split(':');
+    const [key, ...valueParts] = label.replace(EC2_OVERRIDE_LABEL_PREFIX, '').split(':');
     const value = valueParts.join(':');
 
     if (!value) continue;
@@ -355,13 +356,15 @@ function getOrCreateBlockDeviceMapping(
 }
 
 export function shouldLoadLaunchTemplateBlockDeviceName(labels: string[]): boolean {
-  const blockDeviceNameLabel = 'ghr-ec2-block-device-name:';
+  const blockDeviceNameLabel = `${EC2_OVERRIDE_LABEL_PREFIX}block-device-name:`;
   let hasBlockDeviceOverride = false;
   let hasBlockDeviceName = false;
 
   for (const label of labels) {
     hasBlockDeviceOverride =
-      hasBlockDeviceOverride || label.startsWith('ghr-ec2-ebs-') || label.startsWith('ghr-ec2-block-device-');
+      hasBlockDeviceOverride ||
+      label.startsWith(`${EC2_OVERRIDE_LABEL_PREFIX}ebs-`) ||
+      label.startsWith(`${EC2_OVERRIDE_LABEL_PREFIX}block-device-`);
 
     hasBlockDeviceName =
       hasBlockDeviceName || (label.startsWith(blockDeviceNameLabel) && label.slice(blockDeviceNameLabel.length) !== '');

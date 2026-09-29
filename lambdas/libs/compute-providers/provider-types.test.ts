@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { computeProviderTypes, defaultComputeProvider, resolveComputeProviderType } from './provider-types';
+import {
+  computeProvider,
+  computeProviderTypes,
+  defaultComputeProvider,
+  resolveComputeProviderType,
+} from './provider-types';
 
 const defaultProviderInputs = [undefined, '', '   '] as const;
 const supportedProviderCases = computeProviderTypes.flatMap(
@@ -13,6 +18,7 @@ const supportedProviderCases = computeProviderTypes.flatMap(
 
 describe('compute provider configuration', () => {
   it('defines an explicit default provider', () => {
+    expect(computeProvider.ec2).toBe('ec2');
     expect(computeProviderTypes).toContain(defaultComputeProvider);
   });
 });
