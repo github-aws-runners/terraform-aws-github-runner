@@ -1,4 +1,5 @@
 #!/bin/bash
+# ghr:start-runner:begin
 
 # https://docs.aws.amazon.com/xray/latest/devguide/xray-api-sendingdata.html
 # https://docs.aws.amazon.com/xray/latest/devguide/scorekeep-scripts.html
@@ -88,6 +89,58 @@ tag_instance_with_runner_id() {
   fi
 }
 
+is_warm_standby() {
+  [[ "$warm_pool" == "true" && -z "$warm_activated" ]]
+}
+
+log_warm_activation_latency() {
+  [[ -n "$warm_activated" ]] || return 0
+  local activated
+  activated=$(date -u -d "$warm_activated" +%s 2> /dev/null || date -u -j -f "%Y-%m-%dT%H:%M:%S" "$${warm_activated%%.*}" +%s 2> /dev/null) || return 0
+  echo "warm-pool-activation-latency-seconds=$(( $(date +%s) - activated ))"
+}
+
+select_boot_mode() {
+  if aws ssm get-parameter --name "$token_path/$instance_id" --region "$region" > /dev/null 2>&1; then
+    echo "RUN"
+  elif is_warm_standby; then
+    echo "PRIME"
+  else
+    echo "WAIT"
+  fi
+}
+
+# Cloud-init runs user-data on first boot only, so warm instances rerun this script from a systemd unit.
+install_boot_hook() {
+  local script=/usr/local/sbin/ghr-start-runner.sh
+  mkdir -p /usr/local/sbin
+  sed -n '/^# ghr:start-runner:begin$/,/^# ghr:start-runner:end$/p' "$0" > "$script"
+  if ! grep -q '^# ghr:start-runner:end$' "$script"; then
+    echo "Failed to extract the start script from $0"
+    return 1
+  fi
+  chmod 700 "$script"
+  cat > /etc/systemd/system/ghr-start-runner.service <<EOF
+[Unit]
+Description=GitHub Actions runner start (warm pool)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/actions-runner
+Environment=HOME=/root
+ExecStart=/bin/bash -e $script
+KillMode=process
+StandardOutput=append:/var/log/user-data.log
+StandardError=append:/var/log/user-data.log
+
+[Install]
+WantedBy=multi-user.target
+EOF
+  systemctl daemon-reload && systemctl enable ghr-start-runner.service
+}
+
 cleanup() {
   local exit_code="$1"
   local error_location="$2"
@@ -96,6 +149,10 @@ cleanup() {
   if [ "$exit_code" -ne 0 ]; then
     echo "ERROR: runner-start-failed with exit code $exit_code occurred on $error_location"
     create_xray_error_segment "$${SEGMENT:-}" "runner-start-failed with exit code $exit_code occurred on $error_location - $error_lineno"
+  fi
+  if [[ "$boot_mode" != "RUN" ]] && is_warm_standby; then
+    echo "Warm pool standby instance, skipping self-termination"
+    return
   fi
   # allows to flush the cloud watch logs and traces
   sleep 10
@@ -143,6 +200,8 @@ environment=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.16
 ssm_config_path=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/tags/instance/ghr:ssm_config_path)
 runner_name_prefix=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/tags/instance/ghr:runner_name_prefix || echo "")
 xray_trace_id=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/tags/instance/ghr:trace_id || echo "")
+warm_pool=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/tags/instance/ghr:warm-pool || echo "")
+warm_activated=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/tags/instance/ghr:warm-activated || echo "")
 
 %{ else }
 tags=$(aws ec2 describe-tags --region "$region" --filters "Name=resource-id,Values=$instance_id")
@@ -152,12 +211,15 @@ environment=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:environment")
 ssm_config_path=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:ssm_config_path") | .Value')
 runner_name_prefix=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:runner_name_prefix") | .Value' || echo "")
 xray_trace_id=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:trace_id") | .Value' || echo "")
+warm_pool=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:warm-pool") | .Value')
+warm_activated=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:warm-activated") | .Value')
 
 %{ endif }
 
 echo "Retrieved ghr:environment tag - ($environment)"
 echo "Retrieved ghr:ssm_config_path tag - ($ssm_config_path)"
 echo "Retrieved ghr:runner_name_prefix tag - ($runner_name_prefix)"
+echo "Retrieved ghr:warm-pool tag - ($warm_pool), ghr:warm-activated tag - ($warm_activated)"
 
 parameters=$(aws ssm get-parameters-by-path --path "$ssm_config_path" --region "$region" --query "Parameters[*].{Name:Name,Value:Value}")
 echo "Retrieved parameters from AWS SSM ($parameters)"
@@ -180,7 +242,14 @@ echo "Retrieved /$ssm_config_path/enable_jit_config parameter - ($enable_jit_con
 token_path=$(echo "$parameters" | jq --arg ssm_config_path "$ssm_config_path" -r '.[] | select(.Name == "'$ssm_config_path'/token_path") | .Value')
 echo "Retrieved /$ssm_config_path/token_path parameter - ($token_path)"
 
-if [[ "$xray_trace_id" != "" ]]; then
+boot_mode=$(select_boot_mode)
+echo "Selected boot mode: $boot_mode"
+# An activated warm instance is single use; later reboots must not rerun the start logic.
+if [[ "$boot_mode" != "PRIME" && -f /etc/systemd/system/ghr-start-runner.service ]]; then
+  systemctl disable ghr-start-runner.service || true
+fi
+
+if [[ "$xray_trace_id" != "" && "$boot_mode" != "PRIME" ]]; then
   # run xray service
   curl https://s3.us-east-2.amazonaws.com/aws-xray-assets.us-east-2/xray-daemon/aws-xray-daemon-linux-3.x.zip -o aws-xray-daemon-linux-3.x.zip
   unzip aws-xray-daemon-linux-3.x.zip -d aws-xray-daemon-linux-3.x
@@ -195,6 +264,13 @@ fi
 if [[ "$enable_cloudwatch_agent" == "true" ]]; then
   echo "Cloudwatch is enabled"
   amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c "ssm:$ssm_config_path/cloudwatch_agent_config_runner"
+fi
+
+if [[ "$boot_mode" == "PRIME" ]]; then
+  install_boot_hook || exit 1
+  echo "Warm pool instance primed, shutting down"
+  shutdown -h now
+  exit 0
 fi
 
 ## Configure the runner
@@ -260,6 +336,7 @@ if [[ "$enable_jit_config" == "false" || $agent_mode != "ephemeral" ]]; then
   tag_instance_with_runner_id
 fi
 
+log_warm_activation_latency
 create_xray_success_segment "$${SEGMENT:-}"
 if [[ $agent_mode = "ephemeral" ]]; then
   echo "Starting the runner in ephemeral mode"
@@ -278,3 +355,4 @@ else
   echo "Starting the runner in persistent mode"
   ./svc.sh start
 fi
+# ghr:start-runner:end
