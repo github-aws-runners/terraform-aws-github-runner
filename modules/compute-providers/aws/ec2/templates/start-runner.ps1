@@ -1,5 +1,53 @@
+# ghr:start-runner:begin
 
 ## Retrieve instance metadata
+
+$bootHookDir = "C:\ProgramData\ghr"
+$bootHookScript = "$bootHookDir\start-runner.ps1"
+$bootHookTask = "ghr-start-runner"
+
+function Test-WarmStandby {
+    return ($warm_pool -eq "true") -and (-not $warm_activated)
+}
+
+function Get-BootMode {
+    aws ssm get-parameter --name "$token_path/$InstanceId" --region "$Region" *> $null
+    if ($LASTEXITCODE -eq 0) { return "RUN" }
+    if (Test-WarmStandby) { return "PRIME" }
+    return "WAIT"
+}
+
+function Write-WarmActivationLatency {
+    if (-not $warm_activated) { return }
+    try {
+        $activated = [DateTimeOffset]::Parse($warm_activated, [Globalization.CultureInfo]::InvariantCulture)
+        Write-Host "warm-pool-activation-latency-seconds=$([int]([DateTimeOffset]::UtcNow - $activated).TotalSeconds)"
+    }
+    catch {
+        Write-Host "Warning: could not parse ghr:warm-activated ($warm_activated)"
+    }
+}
+
+# EC2Launch runs user data on first boot only, so warm instances rerun this script from a startup task.
+function Install-BootHook {
+    $imdsToken = Invoke-RestMethod -Method PUT -Uri "http://169.254.169.254/latest/api/token" -Headers @{"X-aws-ec2-metadata-token-ttl-seconds" = "60"}
+    $response = Invoke-WebRequest -UseBasicParsing -Uri "http://169.254.169.254/latest/user-data" -Headers @{"X-aws-ec2-metadata-token" = $imdsToken}
+    $lines = [System.Text.Encoding]::UTF8.GetString($response.RawContentStream.ToArray()) -split "`r?`n"
+    $begin = [Array]::IndexOf($lines, "# ghr:start-runner:begin")
+    $end = [Array]::IndexOf($lines, "# ghr:start-runner:end")
+    if ($begin -lt 0 -or $end -le $begin) {
+        Write-Host "Failed to extract the start script from user data"
+        return $false
+    }
+    New-Item -ItemType Directory -Path $bootHookDir -Force | Out-Null
+    $lines[$begin..$end] | Set-Content -Path $bootHookScript -Encoding UTF8
+
+    $action = New-ScheduledTaskAction -Execute "powershell.exe" -WorkingDirectory "$pwd" -Argument "-NoProfile -ExecutionPolicy Bypass -Command `"Start-Transcript -Path C:\UserData.log -Append; & '$bootHookScript'; Stop-Transcript`""
+    $trigger = New-ScheduledTaskTrigger -AtStartup
+    $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero)
+    Register-ScheduledTask -TaskName $bootHookTask -Action $action -Trigger $trigger -Settings $settings -User "SYSTEM" -RunLevel Highest -Force | Out-Null
+    return $true
+}
 
 function Tag-InstanceWithRunnerId {
     Write-Host "Checking for .runner file to extract agent ID"
@@ -77,6 +125,10 @@ Write-Host  "Retrieved ghr:runner_name_prefix tag - ($runner_name_prefix)"
 $ssm_config_path=$tags.Tags.where( {$_.Key -eq 'ghr:ssm_config_path'}).value
 Write-Host  "Retrieved ghr:ssm_config_path tag - ($ssm_config_path)"
 
+$warm_pool=$tags.Tags.where( {$_.Key -eq 'ghr:warm-pool'}).value
+$warm_activated=$tags.Tags.where( {$_.Key -eq 'ghr:warm-activated'}).value
+Write-Host  "Retrieved ghr:warm-pool tag - ($warm_pool), ghr:warm-activated tag - ($warm_activated)"
+
 $parameters=$(aws ssm get-parameters-by-path --path "$ssm_config_path" --region "$Region" --query "Parameters[*].{Name:Name,Value:Value}") | ConvertFrom-Json
 Write-Host  "Retrieved parameters from AWS SSM"
 
@@ -98,11 +150,25 @@ Write-Host  "Retrieved $ssm_config_path/enable_jit_config parameter - ($enable_j
 $token_path=$parameters.where( {$_.Name -eq "$ssm_config_path/token_path"}).value
 Write-Host  "Retrieved $ssm_config_path/token_path parameter - ($token_path)"
 
+$boot_mode = Get-BootMode
+Write-Host "Selected boot mode: $boot_mode"
+# An activated warm instance is single use; later reboots must not rerun the start logic.
+if ($boot_mode -ne "PRIME" -and (Get-ScheduledTask -TaskName $bootHookTask -ErrorAction Ignore)) {
+    Disable-ScheduledTask -TaskName $bootHookTask | Out-Null
+}
 
 if ($enable_cloudwatch_agent -eq "true")
 {
     Write-Host  "Enabling CloudWatch Agent"
     & 'C:\Program Files\Amazon\AmazonCloudWatchAgent\amazon-cloudwatch-agent-ctl.ps1' -a fetch-config -m ec2 -s -c "ssm:$ssm_config_path/cloudwatch_agent_config_runner"
+}
+
+if ($boot_mode -eq "PRIME") {
+    if (-not (Install-BootHook)) { exit 1 }
+    Write-Host "Warm pool instance primed, shutting down"
+    # Delayed so EC2Launch records user data as completed before the instance stops.
+    shutdown.exe /s /t 60 /f
+    exit 0
 }
 
 ## Configure the runner
@@ -174,6 +240,7 @@ $jsonBody = @(
 ConvertTo-Json -InputObject $jsonBody | Set-Content -Path "$pwd\.setup_info"
 
 
+Write-WarmActivationLatency
 Write-Host "Starting the runner in $agent_mode mode"
 Write-Host "Starting runner after $(((get-date) - (gcim Win32_OperatingSystem).LastBootUpTime).tostring("hh':'mm':'ss''"))"
 
@@ -204,3 +271,4 @@ if ($agent_mode -eq "ephemeral") {
     Register-ScheduledTask -TaskName "runnertask" -Action $action -Trigger $trigger -User $username -Password $password -RunLevel Highest -Force
     Write-Host "Starting runner after $(((get-date) - (gcim Win32_OperatingSystem).LastBootUpTime).tostring("hh':'mm':'ss''"))"
 }
+# ghr:start-runner:end

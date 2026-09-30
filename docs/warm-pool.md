@@ -3,7 +3,7 @@
 A warm pool keeps stopped, pre-booted runner instances ready. When a job arrives, scale-up starts one of them instead of launching a new instance. A stopped instance costs only its EBS volumes, and starting it takes seconds instead of a full boot. See [ADR-004](adr/0004-warm-pool-standby.md) for the design.
 
 !!! note
-    Warm pools support Linux runners only, and require instance metadata tags (the default).
+    Warm pools support Linux and Windows runners (not macOS), and require instance metadata tags (the default). Windows instances take longer to prime, so size `runner_boot_time_in_minutes` for a full first boot.
 
 ## How it works
 
