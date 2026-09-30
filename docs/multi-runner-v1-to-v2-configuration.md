@@ -221,6 +221,7 @@ either a root module variable or an attribute under
 | `runner_boot_time_in_minutes` | `orchestration_provider.webhook.runner.boot_time_in_minutes` |
 | `runner_matcher_config` / `matcherConfig` | `orchestration_provider.webhook.matcherConfig` |
 | `pool_config` | `orchestration_provider.webhook.lambda.pool.config` |
+| `warm_pool` | `orchestration_provider.webhook.lambda.pool.warm` |
 | `job_retry` | `orchestration_provider.webhook.job_retry` |
 | `scale_down_idle_confirmation_seconds` | `orchestration_provider.webhook.lambda.scale.down.idle_confirmation_seconds` |
 | `idle_config` | `orchestration_provider.webhook.lambda.scale.down.idle_config` |
