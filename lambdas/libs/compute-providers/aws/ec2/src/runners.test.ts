@@ -10,6 +10,8 @@ import {
   DescribeInstancesCommand,
   type DescribeInstancesResult,
   DescribeLaunchTemplateVersionsCommand,
+  DescribeSubnetsCommand,
+  type DescribeSubnetsResult,
   EC2Client,
   FleetOnDemandAllocationStrategy,
   RunInstancesCommand,
@@ -77,6 +79,12 @@ const mockRunningInstancesJit: DescribeInstancesResult = {
         },
       ],
     },
+  ],
+};
+const mockDefaultSubnets: DescribeSubnetsResult = {
+  Subnets: [
+    { SubnetId: 'subnet-123', AvailabilityZoneId: 'euw1-az1' },
+    { SubnetId: 'subnet-456', AvailabilityZoneId: 'euw1-az2' },
   ],
 };
 
@@ -383,6 +391,20 @@ describe('create runner', () => {
         ...defaultExpectedFleetRequestValues,
         type: type,
       }),
+    });
+  });
+
+  it('loads the Availability Zones for configured subnets', async () => {
+    mockEC2Client.on(DescribeSubnetsCommand).resolves(mockDefaultSubnets);
+
+    await expect(ec2Operations.getSubnetAvailabilityZones(['subnet-123', 'subnet-456'])).resolves.toEqual(
+      new Map([
+        ['subnet-123', 'euw1-az1'],
+        ['subnet-456', 'euw1-az2'],
+      ]),
+    );
+    expect(mockEC2Client).toHaveReceivedCommandWith(DescribeSubnetsCommand, {
+      SubnetIds: ['subnet-123', 'subnet-456'],
     });
   });
 

@@ -6,6 +6,7 @@ import {
   DeleteTagsCommand,
   DescribeInstancesCommand,
   DescribeInstancesResult,
+  DescribeSubnetsCommand,
   RunInstancesCommand,
   type RunInstancesCommandInput,
   RunInstancesCommandOutput,
@@ -45,7 +46,11 @@ export interface Ec2RunnerResourceOperations {
   untag(instanceId: string, tags: Tag[]): Promise<void>;
 }
 
-export interface Ec2RunnerProvisioningOperations extends Ec2RunnerResourceOperations {
+export interface Ec2RunnerCreationOperations extends Ec2RunnerResourceOperations {
+  getSubnetAvailabilityZones(subnetIds: string[]): Promise<Map<string, string>>;
+}
+
+export interface Ec2RunnerProvisioningOperations extends Ec2RunnerCreationOperations {
   getDefaultBlockDeviceNameFromLaunchTemplate(launchTemplateName: string): Promise<string>;
 }
 
@@ -71,6 +76,8 @@ export function createEc2RunnerClient(ec2Client: EC2Client): Ec2RunnerClient {
       tag: (instanceId, tags) => runWithRequestSignal(signal, () => tagEc2Runner(ec2Client, instanceId, tags, signal)),
       untag: (instanceId, tags) =>
         runWithRequestSignal(signal, () => untagEc2Runner(ec2Client, instanceId, tags, signal)),
+      getSubnetAvailabilityZones: (subnetIds) =>
+        runWithRequestSignal(signal, () => getSubnetAvailabilityZones(ec2Client, subnetIds, signal)),
       getDefaultBlockDeviceNameFromLaunchTemplate: (launchTemplateName) =>
         runWithRequestSignal(signal, () =>
           getDefaultBlockDeviceNameFromLaunchTemplate(ec2Client, launchTemplateName, signal),
@@ -269,6 +276,24 @@ function fleetFailureCodes(errors: FleetError[]): Ec2RunnerFailureCode[] {
       }),
     ),
   ];
+}
+
+async function getSubnetAvailabilityZones(
+  ec2Client: EC2Client,
+  subnetIds: string[],
+  signal: AbortSignal | undefined,
+): Promise<Map<string, string>> {
+  const response = await ec2Client.send(new DescribeSubnetsCommand({ SubnetIds: subnetIds }), {
+    abortSignal: signal,
+  });
+  const availabilityZoneBySubnet = new Map<string, string>();
+  for (const subnet of response.Subnets || []) {
+    const availabilityZone = subnet.AvailabilityZoneId || subnet.AvailabilityZone;
+    if (subnet.SubnetId && availabilityZone) {
+      availabilityZoneBySubnet.set(subnet.SubnetId, availabilityZone);
+    }
+  }
+  return availabilityZoneBySubnet;
 }
 
 // The instance_allocation_strategy variable accepts the union of spot and on-demand strategies,
