@@ -56,6 +56,7 @@ markdown_extensions:
 nav:
   - Introduction: index.md
   - Configuration: configuration.md
+  - Warm pool standby: warm-pool.md
   - Multi-runner v1 to v2 configuration: multi-runner-v1-to-v2-configuration.md
   - Multi-runner v1 to v2 migration: multi-runner-v1-v2-migration.md
   - Getting started: getting-started.md
@@ -64,6 +65,7 @@ nav:
     - MiniStack for integration tests: adr/0001-use-ministack-for-terraform-integration-tests.md
     - Runner orchestration provider boundary: adr/002-runner-orchestration-provider-boundary.md
     - Scale-set resource ownership: adr/003-scale-set-resource-ownership.md
+    - Warm pool standby: adr/0004-warm-pool-standby.md
   - Modules:
     - Runners (main): modules/runners.md
     - Submodules (public):
