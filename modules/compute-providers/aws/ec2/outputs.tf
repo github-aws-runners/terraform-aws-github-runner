@@ -17,7 +17,7 @@ output "provider" {
   description = "Nested EC2 compute-provider contract consumed by runner-config."
   value = {
     type                  = "ec2"
-    capabilities          = { scale_set = local.scale_set_capability }
+    capabilities          = { scale_set = local.scale_set_capability, standby = true }
     environment_variables = local.provider_environment_variables
     policies              = local.provider_policies
     resources             = local.provider_resources

@@ -262,6 +262,7 @@ locals {
                   v.orchestration_provider.webhook.lambda.pool.runner_owner,
                   local.normalized_config.orchestration_provider.webhook.lambda.pool.runner_owner,
                 ), null)
+                warm = v.orchestration_provider.webhook.lambda.pool.warm
                 tags = merge(local.normalized_config.orchestration_provider.webhook.lambda.pool.tags, v.orchestration_provider.webhook.lambda.pool.tags)
               })
             })
