@@ -73,6 +73,10 @@ resource "aws_lambda_function" "scale_up" {
       USE_DEDICATED_HOST                       = var.use_dedicated_host
       }, var.ssm_ttl_seconds.tokens != null ? {
       SSM_TOKEN_TTL_SECONDS = tostring(var.ssm_ttl_seconds.tokens)
+      } : {}, var.warm_pool.enabled ? {
+      WARM_POOL_ENABLED          = "true"
+      WARM_POOL_LEASE_TABLE_NAME = aws_dynamodb_table.warm_pool_leases[0].name
+      ENABLE_METRIC_WARM_POOL    = tostring(var.metrics.enable)
     } : {})
   }
 

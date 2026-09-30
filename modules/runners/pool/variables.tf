@@ -65,7 +65,15 @@ variable "config" {
       schedule_expression_timezone = string
       size                         = number
     }))
-    include_busy_runners      = bool
+    include_busy_runners = bool
+    warm_pool = optional(object({
+      enabled       = optional(bool, false)
+      max_age_hours = optional(number, 168)
+    }), {})
+    metrics = optional(object({
+      enable    = optional(bool, false)
+      namespace = optional(string, null)
+    }), {})
     role_permissions_boundary = string
     kms_key_arn               = string
     ami_kms_key_arn           = string
