@@ -46,6 +46,8 @@ variable "orchestration_provider" {
     - `webhook.lambda.pool.config[].schedule_expression_timezone`: Optional IANA time zone used to evaluate the schedule.
     - `webhook.lambda.pool.config[].size`: Desired number of runners for the schedule.
     - `webhook.lambda.pool.include_busy_runners`: Includes busy runners when reconciling scheduled pool capacity. The default is `false`.
+    - `webhook.lambda.pool.warm.enabled`: Keeps the pool size of stopped, pre-booted instances instead of idle runners. Requires the AWS EC2 compute provider, linux runners, and instance metadata tags.
+    - `webhook.lambda.pool.warm.max_age_hours`: Age after which a warm instance is replaced. The default is `168`.
     - `webhook.lambda.pool.runner_owner`: Optional GitHub organization or repository owner used for pooled runners. The default is null.
     - `webhook.lambda.pool.tags`: Tags applied within pool resource scopes after common provider tags. The default is `{}`.
     - `webhook.job_retry.enabled`: Creates the retry queue, Lambda function, event-source mapping, and related IAM resources. The default is `false`.
@@ -122,7 +124,11 @@ variable "orchestration_provider" {
           })), [])
           include_busy_runners = optional(bool, false)
           runner_owner         = optional(string, null)
-          tags                 = optional(map(string), {})
+          warm = optional(object({
+            enabled       = optional(bool, false)
+            max_age_hours = optional(number, 168)
+          }), {})
+          tags = optional(map(string), {})
         }), {})
       }), {})
       job_retry = optional(object({

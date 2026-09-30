@@ -135,7 +135,11 @@ variable "config" {
         }))
         include_busy_runners = bool
         runner_owner         = optional(string, null)
-        tags                 = optional(map(string), {})
+        warm = optional(object({
+          enabled       = optional(bool, false)
+          max_age_hours = optional(number, 168)
+        }), {})
+        tags = optional(map(string), {})
       })
     })
     job_retry = object({
