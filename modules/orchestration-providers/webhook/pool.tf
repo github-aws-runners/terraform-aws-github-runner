@@ -29,8 +29,13 @@ module "pool" {
       zip                            = local.resolved_config.lambda.artifact.zip
       principals                     = local.resolved_config.lambda.role.principals
     }
-    pool                      = local.resolved_config.pool.config
-    include_busy_runners      = local.resolved_config.pool.include_busy_runners
+    pool                 = local.resolved_config.pool.config
+    include_busy_runners = local.resolved_config.pool.include_busy_runners
+    warm                 = local.resolved_config.pool.warm
+    metrics = {
+      enabled   = local.resolved_config.observability.metrics.enabled
+      namespace = local.resolved_config.observability.metrics.namespace
+    }
     role_path                 = local.resolved_config.lambda.role.path
     role_permissions_boundary = local.resolved_config.lambda.role.permissions_boundary
     runner = {

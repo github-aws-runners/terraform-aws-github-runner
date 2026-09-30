@@ -117,6 +117,37 @@ run "v1_effective_config_contains_derived_runner_labels" {
   }
 }
 
+run "v1_warm_pool_translates_to_webhook_pool" {
+  command = plan
+
+  variables {
+    multi_runner_config = {
+      warm = {
+        runner_config = {
+          runner_os             = "linux"
+          runner_architecture   = "x64"
+          instance_types        = ["m5.large"]
+          runners_maximum_count = 1
+          pool_config           = [{ schedule_expression = "cron(* * * * ? *)", size = 2 }]
+          warm_pool             = { enabled = true, max_age_hours = 24 }
+        }
+        matcherConfig = {
+          labelMatchers = [["warm-label"]]
+        }
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      local.effective_config.multi_runner_config["warm"].orchestration_provider.webhook.lambda.pool.warm.enabled
+      && local.effective_config.multi_runner_config["warm"].orchestration_provider.webhook.lambda.pool.warm.max_age_hours == 24
+      && module.runners["warm"].lambda_scale_up.environment[0].variables["WARM_POOL_ENABLED"] == "true"
+    )
+    error_message = "The v1 warm_pool setting must reach the webhook pool config and the scale-up lambda."
+  }
+}
+
 run "v2_effective_config_contains_derived_values" {
   command = apply
 

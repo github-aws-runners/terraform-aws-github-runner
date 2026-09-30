@@ -49,5 +49,15 @@ resource "terraform_data" "validate_runner" {
       condition     = length(var.runner.name_prefix) <= 45
       error_message = "runner.name_prefix must be at most 45 characters."
     }
+
+    precondition {
+      condition     = !var.warm_pool.enabled || var.runner.os == "linux"
+      error_message = "Warm pool standby supports only linux runners."
+    }
+
+    precondition {
+      condition     = !var.warm_pool.enabled || var.config.metadata_options == null || try(var.config.metadata_options.instance_metadata_tags, "enabled") != "disabled"
+      error_message = "Warm pool standby requires compute_provider.aws.ec2.metadata_options.instance_metadata_tags to be enabled."
+    }
   }
 }

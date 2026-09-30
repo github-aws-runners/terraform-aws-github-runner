@@ -24,6 +24,7 @@ module "compute_aws_ec2" {
   github           = var.github
   observability    = var.observability
   storage_provider = var.storage_provider
+  warm_pool        = local.warm_pool
 }
 
 moved {

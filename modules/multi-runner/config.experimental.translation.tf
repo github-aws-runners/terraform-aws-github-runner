@@ -409,6 +409,7 @@ locals {
               config                         = v.runner_config.pool_config
               include_busy_runners           = false
               runner_owner                   = v.runner_config.pool_runner_owner
+              warm                           = v.runner_config.warm_pool
               tags                           = {}
             }
           }

@@ -18,6 +18,21 @@ locals {
       jit_config_enabled = true
     }
   }[local.orchestration_provider_type]
+
+  warm_pool = try(var.orchestration_provider.webhook.lambda.pool.warm, null) != null ? var.orchestration_provider.webhook.lambda.pool.warm : {
+    enabled       = false
+    max_age_hours = 168
+  }
+}
+
+data "aws_iam_policy_document" "warm_pool_scale_up_storage" {
+  count = local.warm_pool.enabled ? 1 : 0
+
+  statement {
+    sid       = "WarmPoolRollbackRunnerConfig"
+    actions   = ["ssm:DeleteParameter"]
+    resources = ["${local.arn_ssm_parameters_path_tokens}/*"]
+  }
 }
 
 module "orchestration_webhook" {
@@ -54,6 +69,12 @@ module "orchestration_webhook" {
         kms_key_id           = local.kms_key_id
         parameter_store_tags = local.parameter_store_tags
       }
+    }
+    scale_up = {
+      environment_variables = local.warm_pool.enabled ? {
+        ENABLE_METRIC_WARM_POOL = tostring(var.observability.metrics.enabled)
+      } : {}
+      iam_policy_json = one(data.aws_iam_policy_document.warm_pool_scale_up_storage[*].json)
     }
   }
   observability = var.observability

@@ -44,6 +44,12 @@ variable "config" {
     - `pool[*].schedule_expression_timezone`: Time zone used to evaluate the schedule expression.
     - `pool[*].size`: Desired runner count for the scheduled pool target.
     - `include_busy_runners`: Whether busy runners count toward the desired pool size.
+    - `warm`: Warm pool standby settings. When enabled, the pool keeps stopped, pre-booted instances instead of idle runners.
+    - `warm.enabled`: Enables warm pool standby.
+    - `warm.max_age_hours`: Maximum age of a warm instance before the pool replaces it.
+    - `metrics`: Metric settings used by warm pool standby.
+    - `metrics.enabled`: Whether the pool Lambda publishes warm pool metrics.
+    - `metrics.namespace`: CloudWatch metrics namespace used by the pool Lambda.
     - `role_permissions_boundary`: Permissions boundary applied to IAM roles created for the pool.
     - `role_path`: IAM path applied to roles created for the pool.
     - `lambda_tags`: Tags added specifically to the pool Lambda function, overriding common tags with the same key.
@@ -103,7 +109,15 @@ variable "config" {
       schedule_expression_timezone = string
       size                         = number
     }))
-    include_busy_runners      = bool
+    include_busy_runners = bool
+    warm = optional(object({
+      enabled       = optional(bool, false)
+      max_age_hours = optional(number, 168)
+    }), {})
+    metrics = optional(object({
+      enabled   = optional(bool, false)
+      namespace = optional(string, null)
+    }), {})
     role_permissions_boundary = string
     role_path                 = string
     lambda_tags               = map(string)
