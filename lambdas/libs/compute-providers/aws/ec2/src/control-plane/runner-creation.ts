@@ -148,7 +148,7 @@ async function terminateFailedInstances(
   }
 }
 
-function createEc2StartRunnerConfigOptions(
+export function createEc2StartRunnerConfigOptions(
   ec2Operations: Ec2RunnerResourceOperations,
   storage?: RunnerConfigStorage,
 ): StartRunnerConfigOptions {

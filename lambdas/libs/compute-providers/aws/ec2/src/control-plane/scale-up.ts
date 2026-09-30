@@ -11,6 +11,7 @@ import {
 } from './dynamic-labels';
 import { createRunners, loadEc2ProviderConfig } from './runner-creation';
 import type { CreateEC2RunnerConfig } from './runner-creation';
+import { activateWarmRunners, type Ec2WarmActivationOperations, isWarmActivationEnabled } from './warm-activation';
 
 const logger = createChildLogger('ec2-scale-up');
 
@@ -55,6 +56,7 @@ async function resolveEc2ScaleUpRunnerLabels(
 export function createEc2ScaleUpCapability(
   ec2Operations: Ec2RunnerProvisioningOperations,
   createStartRunnerConfig: CreateStartRunnerConfig,
+  warmOperations?: Ec2WarmActivationOperations,
 ): Omit<ScaleUpComputeProvider<Ec2ScaleUpState>, 'type'> {
   return {
     resolveLabelsForRunners: (labels) => resolveEc2ScaleUpRunnerLabels(ec2Operations, labels),
@@ -62,20 +64,42 @@ export function createEc2ScaleUpCapability(
       (await ec2Operations.list({ environment: process.env.ENVIRONMENT, runnerType, runnerOwner })).length,
     createRunners: async ({ githubRunnerConfig, numberOfRunners, githubInstallationClient, state, storage }) => {
       const config = loadEc2ScaleUpProviderConfig();
+      const createColdRunners = (count: number) =>
+        createRunners(
+          ec2Operations,
+          githubRunnerConfig,
+          {
+            ...config,
+            ec2OverrideConfig: state.ec2OverrideConfig,
+          },
+          count,
+          githubInstallationClient,
+          createStartRunnerConfig,
+          'scale-up-lambda',
+          storage,
+        );
 
-      return await createRunners(
-        ec2Operations,
+      // Warm instances are launched with the default configuration, so dynamic EC2 overrides always launch cold.
+      if (!warmOperations || !storage || state.ec2OverrideConfig || !isWarmActivationEnabled()) {
+        return await createColdRunners(numberOfRunners);
+      }
+
+      const warm = await activateWarmRunners(ec2Operations, warmOperations, createStartRunnerConfig, {
         githubRunnerConfig,
-        {
-          ...config,
-          ec2OverrideConfig: state.ec2OverrideConfig,
-        },
         numberOfRunners,
-        githubInstallationClient,
-        createStartRunnerConfig,
-        'scale-up-lambda',
+        ghClient: githubInstallationClient,
         storage,
-      );
+      });
+      if (warm.coldRunnerCount <= 0) {
+        return { instances: warm.instances, retryableErrorCount: warm.retryableErrorCount, nonRetryableErrorCount: 0 };
+      }
+
+      const cold = await createColdRunners(warm.coldRunnerCount);
+      return {
+        instances: [...warm.instances, ...cold.instances],
+        retryableErrorCount: warm.retryableErrorCount + cold.retryableErrorCount,
+        nonRetryableErrorCount: cold.nonRetryableErrorCount,
+      };
     },
   };
 }
