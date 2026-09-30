@@ -77,6 +77,16 @@ module "runners" {
   #   idleCount = 1
   # }]
 
+  # Uncomment to keep one stopped, pre-booted runner ready during office hours (see docs/warm-pool.md)
+  # pool_config = [
+  #   { schedule_expression = "cron(* 7-18 ? * MON-FRI *)", schedule_expression_timezone = "Europe/Amsterdam", size = 1 },
+  #   { schedule_expression = "cron(0 19 ? * MON-FRI *)", schedule_expression_timezone = "Europe/Amsterdam", size = 0 },
+  # ]
+  # warm_pool = {
+  #   enabled       = true
+  #   max_age_hours = 24
+  # }
+
   # Let the module manage the service linked role
   # create_service_linked_role_spot = true
 
