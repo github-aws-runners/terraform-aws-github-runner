@@ -33,6 +33,8 @@ export function createEc2ScaleDownCapability(
   };
 }
 
+const WARM_ACTIVATION_GRACE_MS = 10 * 60 * 1000;
+
 // Runs even when warm mode is disabled so standby instances left behind are still cleaned up.
 async function sweepStoppedWarmInstances(
   environment: string,
@@ -40,7 +42,7 @@ async function sweepStoppedWarmInstances(
 ): Promise<void> {
   const now = Date.now();
   const instances = (await standbyOperations.listStoppedWarmInstances(environment)).filter(
-    (instance) => instance.activated || warmExpired(instance, now),
+    (instance) => (instance.activated && activationSettled(instance, now)) || warmExpired(instance, now),
   );
   for (const instance of instances) {
     try {
@@ -56,6 +58,12 @@ async function sweepStoppedWarmInstances(
       logger.warn(`Failed to destroy stopped warm instance '${instance.instanceId}'.`, { error });
     }
   }
+}
+
+// Scale-up tags an instance as activated before starting it, so a fresh activation is still stopped.
+function activationSettled(instance: Ec2StoppedWarmInstance, now: number): boolean {
+  const activatedAt = instance.activatedAt === undefined ? NaN : Date.parse(instance.activatedAt);
+  return Number.isNaN(activatedAt) || now - activatedAt >= WARM_ACTIVATION_GRACE_MS;
 }
 
 function warmExpired(instance: Ec2StoppedWarmInstance, now: number): boolean {

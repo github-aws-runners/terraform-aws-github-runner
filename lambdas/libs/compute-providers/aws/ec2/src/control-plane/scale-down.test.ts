@@ -116,10 +116,11 @@ describe('Standby sweep', () => {
     expect(capability.sweepStandby).toBeUndefined();
   });
 
-  it('destroys expired and activated stopped warm instances and keeps the rest', async () => {
+  it('destroys expired and settled activated stopped warm instances and keeps the rest', async () => {
     mockListStoppedWarmInstances.mockResolvedValue([
       { instanceId: 'i-expired', spotInstanceRequestId: 'sir-expired', expiresAt: PAST, activated: false },
-      { instanceId: 'i-activated', expiresAt: FUTURE, activated: true },
+      { instanceId: 'i-activated', expiresAt: FUTURE, activated: true, activatedAt: '2026-09-30T11:45:00.000Z' },
+      { instanceId: 'i-activating', expiresAt: FUTURE, activated: true, activatedAt: '2026-09-30T11:59:59.000Z' },
       { instanceId: 'i-warm', spotInstanceRequestId: 'sir-warm', expiresAt: FUTURE, activated: false },
       { instanceId: 'i-no-expiry', activated: false },
       { instanceId: 'i-bad-expiry', expiresAt: 'not-a-date', activated: false },
