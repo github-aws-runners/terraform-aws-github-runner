@@ -8,17 +8,19 @@ import { createEc2PoolCapability } from './src/control-plane/pool';
 import { createEc2ScaleDownCapability } from './src/control-plane/scale-down';
 import { createEc2ScaleUpCapability } from './src/control-plane/scale-up';
 import { createEc2RunnerClient } from './src/runners';
+import { createEc2StandbyClient } from './src/standby';
 
 export function createEc2ControlPlanePlugin(
   createStartRunnerConfig: CreateStartRunnerConfig,
 ): ComputeProviderPlugin<ControlPlaneProviderCapabilities, 'ec2'> {
   const ec2Client = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
   const ec2Operations = createEc2RunnerClient(ec2Client).forRequest({ signal: undefined });
+  const standbyOperations = createEc2StandbyClient(ec2Client).forRequest({ signal: undefined });
 
   return {
     type: 'ec2',
     capabilities: {
-      pool: () => createEc2PoolCapability(ec2Operations, createStartRunnerConfig),
+      pool: () => createEc2PoolCapability(ec2Operations, createStartRunnerConfig, standbyOperations),
       scaleUp: () => createEc2ScaleUpCapability(ec2Operations, createStartRunnerConfig),
       scaleDown: () => createEc2ScaleDownCapability(ec2Operations),
     },

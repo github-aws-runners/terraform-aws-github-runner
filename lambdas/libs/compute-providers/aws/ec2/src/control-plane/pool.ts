@@ -1,6 +1,15 @@
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
-import type { CreateStartRunnerConfig, PoolComputeProvider, RunnerInfo, RunnerStatus } from '../../../../core';
+import type {
+  CreateStartRunnerConfig,
+  PoolComputeProvider,
+  PoolStandbyOperations,
+  RunnerInfo,
+  RunnerStatus,
+  StandbyBatchResult,
+} from '../../../../core';
 import { bootTimeExceeded, type Ec2RunnerResourceOperations } from '../runners';
+import type { Ec2StandbyOperations } from '../standby';
+import { toControlPlaneCreateRunnerResult } from './create-result';
 import { createRunners, loadEc2ProviderConfig } from './runner-creation';
 
 const logger = createChildLogger('pool');
@@ -31,11 +40,75 @@ function countAvailableEc2PoolRunners(
   return numberOfRunnersInPool;
 }
 
+async function forEachSettled<TItem>(
+  items: TItem[],
+  idOf: (item: TItem) => string,
+  operation: (item: TItem) => Promise<void>,
+  description: string,
+): Promise<StandbyBatchResult> {
+  const result: StandbyBatchResult = { succeeded: [], failed: [] };
+  for (const item of items) {
+    const id = idOf(item);
+    try {
+      await operation(item);
+      result.succeeded.push(id);
+    } catch (error) {
+      logger.error(`Failed to ${description} '${id}'.`, { error });
+      result.failed.push(id);
+    }
+  }
+  return result;
+}
+
+function createEc2StandbyCapability(standbyOperations: Ec2StandbyOperations): PoolStandbyOperations {
+  return {
+    list: (input) => standbyOperations.listStandby(input),
+    launch: async ({ environment, runnerOwner, runnerType, numberOfInstances, maxAgeHours }) => {
+      const config = loadEc2ProviderConfig();
+      const result = await standbyOperations.launchWarm({
+        environment,
+        runnerOwner,
+        runnerType,
+        subnets: config.subnets,
+        launchTemplateName: config.launchTemplateName,
+        ec2instanceCriteria: config.ec2instanceCriteria,
+        amiIdSsmParameterName: config.amiIdSsmParameterName,
+        tracingEnabled: config.tracingEnabled,
+        numberOfRunners: numberOfInstances,
+        source: 'pool-lambda',
+        maxAgeHours,
+      });
+      return toControlPlaneCreateRunnerResult(result, config.scaleErrors);
+    },
+    destroy: (instances) =>
+      forEachSettled(
+        instances,
+        (instance) => instance.instanceId,
+        (instance) => standbyOperations.destroyInstance(instance),
+        'destroy standby instance',
+      ),
+    listOrphanedSpotRequests: (input) => standbyOperations.listOrphanedSpotRequests(input),
+    cancelSpotRequests: (spotInstanceRequestIds) =>
+      forEachSettled(
+        spotInstanceRequestIds,
+        (spotInstanceRequestId) => spotInstanceRequestId,
+        (spotInstanceRequestId) => standbyOperations.cancelSpotRequest(spotInstanceRequestId),
+        'cancel spot instance request',
+      ),
+    currentImage: () => {
+      const { launchTemplateName, amiIdSsmParameterName } = loadEc2ProviderConfig();
+      return standbyOperations.currentImage({ launchTemplateName, amiIdSsmParameterName });
+    },
+  };
+}
+
 export function createEc2PoolCapability(
   ec2Operations: Ec2RunnerResourceOperations,
   createStartRunnerConfig: CreateStartRunnerConfig,
+  standbyOperations?: Ec2StandbyOperations,
 ): Omit<PoolComputeProvider<RunnerInfo>, 'type'> {
   return {
+    ...(standbyOperations ? { standby: createEc2StandbyCapability(standbyOperations) } : {}),
     listRunners: ({ environment, runnerOwner, runnerType }) =>
       ec2Operations.list({
         environment,

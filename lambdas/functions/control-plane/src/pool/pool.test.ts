@@ -6,7 +6,7 @@ import * as ghAuth from '../github/auth';
 import { controlPlaneProviderRegistry } from '../control-plane-providers';
 import * as githubRunner from '../scale-runners/github-runner';
 import { adjust } from './pool';
-import type { PoolComputeProvider } from './pool-provider';
+import type { PoolComputeProvider, PoolStandbyOperations } from './pool-provider';
 
 const githubClient = {
   paginate: vi.fn(),
@@ -360,6 +360,42 @@ describe('pool adjustment', () => {
           githubRunnerConfig: expect.objectContaining({ appIndex: 2 }),
         }),
       );
+    });
+  });
+
+  describe('With the warm pool enabled', () => {
+    const standby = {
+      list: vi.fn<PoolStandbyOperations['list']>(),
+      launch: vi.fn<PoolStandbyOperations['launch']>(),
+      destroy: vi.fn<PoolStandbyOperations['destroy']>(),
+    } satisfies PoolStandbyOperations;
+
+    beforeEach(() => {
+      process.env.WARM_POOL_ENABLED = 'true';
+      standby.list.mockResolvedValue([]);
+      standby.launch.mockResolvedValue({ instances: ['i-1'], retryableErrorCount: 0, nonRetryableErrorCount: 0 });
+      mockedResolveCapability.mockReturnValue(() => ({ ...poolProvider, standby }));
+    });
+
+    it('maintains the warm pool without GitHub authentication or runner listing', async () => {
+      await adjust({ poolSize: 1 });
+
+      expect(mockedResolveCapability).toHaveBeenCalledWith(defaultComputeProvider, 'pool');
+      expect(standby.launch).toHaveBeenCalledWith(expect.objectContaining({ numberOfInstances: 1 }));
+      expect(mockedAppAuth).not.toHaveBeenCalled();
+      expect(mockedInstallationAuth).not.toHaveBeenCalled();
+      expect(mockedCreateClient).not.toHaveBeenCalled();
+      expect(githubClient.paginate).not.toHaveBeenCalled();
+      expect(poolProvider.listRunners).not.toHaveBeenCalled();
+      expect(poolProvider.createRunners).not.toHaveBeenCalled();
+    });
+
+    it('rejects a provider without standby support', async () => {
+      mockedResolveCapability.mockReturnValue(() => poolProvider);
+
+      await expect(adjust({ poolSize: 1 })).rejects.toThrow('does not support a warm pool');
+
+      expect(mockedAppAuth).not.toHaveBeenCalled();
     });
   });
 });
