@@ -39,14 +39,21 @@ function Install-BootHook {
         Write-Host "Failed to extract the start script from user data"
         return $false
     }
-    New-Item -ItemType Directory -Path $bootHookDir -Force | Out-Null
-    $lines[$begin..$end] | Set-Content -Path $bootHookScript -Encoding UTF8
+    # User data runs with ErrorActionPreference Continue; a partial hook must not let the instance park.
+    try {
+        New-Item -ItemType Directory -Path $bootHookDir -Force -ErrorAction Stop | Out-Null
+        $lines[$begin..$end] | Set-Content -Path $bootHookScript -Encoding UTF8 -ErrorAction Stop
 
-    $action = New-ScheduledTaskAction -Execute "powershell.exe" -WorkingDirectory "$pwd" -Argument "-NoProfile -ExecutionPolicy Bypass -Command `"Start-Transcript -Path C:\UserData.log -Append; & '$bootHookScript'; Stop-Transcript`""
-    $trigger = New-ScheduledTaskTrigger -AtStartup
-    $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero)
-    Register-ScheduledTask -TaskName $bootHookTask -Action $action -Trigger $trigger -Settings $settings -User "SYSTEM" -RunLevel Highest -Force | Out-Null
-    return $true
+        $action = New-ScheduledTaskAction -Execute "powershell.exe" -WorkingDirectory "$pwd" -Argument "-NoProfile -ExecutionPolicy Bypass -Command `"Start-Transcript -Path C:\UserData.log -Append; & '$bootHookScript'; Stop-Transcript`"" -ErrorAction Stop
+        $trigger = New-ScheduledTaskTrigger -AtStartup -ErrorAction Stop
+        $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -ErrorAction Stop
+        Register-ScheduledTask -TaskName $bootHookTask -Action $action -Trigger $trigger -Settings $settings -User "SYSTEM" -RunLevel Highest -Force -ErrorAction Stop | Out-Null
+    }
+    catch {
+        Write-Host "Failed to install the boot hook: $($_.Exception.Message)"
+        return $false
+    }
+    return [bool](Get-ScheduledTask -TaskName $bootHookTask -ErrorAction Ignore)
 }
 
 function Tag-InstanceWithRunnerId {
