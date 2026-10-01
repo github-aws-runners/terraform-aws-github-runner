@@ -55,6 +55,7 @@ export async function adjustWarmPool(
   const evictions = selectEvictions(instances, { poolSize, current, maxAgeHours, bootTimeInMinutes, now: Date.now() });
 
   const evictionCounts = new Map<WarmPoolEvictionReason, number>();
+  const destroyed = new Set<string>();
   if (evictions.length > 0) {
     for (const { instance, reason } of evictions) {
       logger.info(`Evicting ${instance.state} standby instance '${instance.instanceId}' (${reason}).`);
@@ -65,7 +66,7 @@ export async function adjustWarmPool(
         spotInstanceRequestId: instance.spotInstanceRequestId,
       })),
     );
-    const destroyed = new Set(result.succeeded);
+    result.succeeded.forEach((id) => destroyed.add(id));
     for (const { instance, reason } of evictions) {
       if (destroyed.has(instance.instanceId)) evictionCounts.set(reason, (evictionCounts.get(reason) ?? 0) + 1);
     }
@@ -82,8 +83,7 @@ export async function adjustWarmPool(
     }
   }
 
-  const evicted = new Set(evictions.map(({ instance }) => instance.instanceId));
-  const remaining = instances.filter((instance) => !evicted.has(instance.instanceId));
+  const remaining = instances.filter((instance) => !destroyed.has(instance.instanceId));
   const warm = remaining.filter((instance) => instance.state === 'WARM').length;
   let priming = remaining.filter((instance) => instance.state === 'PRIMING').length;
   const deficit = poolSize - (warm + priming);
