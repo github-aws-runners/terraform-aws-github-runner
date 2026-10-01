@@ -12,7 +12,7 @@ import type {
   StandbyInstance,
 } from '../../../../core';
 import { type Ec2RunnerResourceOperations, failureDetails } from '../runners';
-import { type Ec2StandbyOperations, WARM_ACTIVATED_TAG } from '../standby';
+import { type Ec2StandbyOperations, WARM_ACTIVATED_TAG, WARM_ACTIVATION_GRACE_MS } from '../standby';
 import type { WarmLeaseStore } from '../warm-lease';
 import { createEc2StartRunnerConfigOptions } from './runner-creation';
 
@@ -140,8 +140,14 @@ async function claimWarmInstances(
   let candidates: StandbyInstance[];
   try {
     const launchedAt = (instance: StandbyInstance) => instance.launchTime?.getTime() ?? 0;
+    // Scale-down sweeps expired standby instances, so never activate one that expires during activation.
+    const claimableUntil = Date.now() + WARM_ACTIVATION_GRACE_MS;
     candidates = (await warmOperations.standby.listStandby(pool))
       .filter((instance) => instance.state === 'WARM')
+      .filter((instance) => {
+        const expiresAt = Date.parse(instance.expiresAt ?? '');
+        return Number.isNaN(expiresAt) || expiresAt > claimableUntil;
+      })
       .sort((a, b) => launchedAt(b) - launchedAt(a));
   } catch (error) {
     logger.warn('Unable to list warm instances, skipping warm activation.', failureDetails(error));
