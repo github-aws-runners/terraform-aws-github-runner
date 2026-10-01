@@ -24,11 +24,13 @@ function gcim { [pscustomobject]@{ LastBootUpTime = (Get-Date) } }
 function shutdown.exe { Log "shutdown.exe $args" }
 function run-cmd { Log "run.cmd $args" }
 function config-cmd { Log "config.cmd $args" }
-function New-ScheduledTaskAction { param($Execute, $WorkingDirectory, $Argument) [pscustomobject]@{ Execute = $Execute; Argument = $Argument } }
-function New-ScheduledTaskTrigger { param([switch]$AtStartup) [pscustomobject]@{ AtStartup = [bool]$AtStartup } }
-function New-ScheduledTaskSettingsSet { param($ExecutionTimeLimit) [pscustomobject]@{ ExecutionTimeLimit = $ExecutionTimeLimit } }
+function New-ScheduledTaskAction { [CmdletBinding()] param($Execute, $WorkingDirectory, $Argument) [pscustomobject]@{ Execute = $Execute; Argument = $Argument } }
+function New-ScheduledTaskTrigger { [CmdletBinding()] param([switch]$AtStartup) [pscustomobject]@{ AtStartup = [bool]$AtStartup } }
+function New-ScheduledTaskSettingsSet { [CmdletBinding()] param($ExecutionTimeLimit) [pscustomobject]@{ ExecutionTimeLimit = $ExecutionTimeLimit } }
 function Register-ScheduledTask {
+    [CmdletBinding()]
     param($TaskName, $Action, $Trigger, $Settings, $User, $Password, $RunLevel, [switch]$Force)
+    if ($env:REGISTER_FAIL) { Write-Error 'Access is denied.'; return }
     Log "Register-ScheduledTask $TaskName user=$User atStartup=$($Trigger.AtStartup) limit=$($Settings.ExecutionTimeLimit) execute=$($Action.Execute) argument=$($Action.Argument)"
     Set-Content -Path "$sandbox/task-$TaskName" -Value 'registered'
 }
@@ -75,6 +77,7 @@ function New-Sandbox([hashtable]$Tags = @{}) {
     $env:SANDBOX = (New-Item -ItemType Directory -Path (Join-Path ([IO.Path]::GetTempPath()) "start-runner-ps1-test.$([guid]::NewGuid())")).FullName
     $env:INSTANCE_ID = $instanceId
     $env:CONFIG_AFTER = ''
+    $env:REGISTER_FAIL = ''
     New-Item -ItemType Directory -Path "$env:SANDBOX/actions-runner" | Out-Null
     New-Item -ItemType File -Path "$env:SANDBOX/calls.log" | Out-Null
     $allTags = @{ 'ghr:environment' = 'test'; 'ghr:ssm_config_path' = '/ghr/config'; 'ghr:runner_name_prefix' = 'test-' } + $Tags
@@ -178,6 +181,14 @@ Check 'disables boot hook (single use)' { Called 'Disable-ScheduledTask ghr-star
 Check 'logs activation latency' { $script:output -match '(?m)^warm-pool-activation-latency-seconds=\d+\r?$' }
 Check 'ephemeral self-terminates' { Called 'aws ec2 terminate-instances' }
 Check 'no shutdown' { -not (Called 'shutdown.exe') }
+
+Write-Host '# task registration fails -> PRIME fails without shutdown'
+New-Sandbox @{ 'ghr:warm-pool' = 'true' }
+$env:REGISTER_FAIL = '1'
+Invoke-Boot "$env:SANDBOX/start-runner.ps1"
+Check 'exits non-zero' { $script:exitCode -ne 0 }
+Check 'no shutdown' { -not (Called 'shutdown.exe') }
+Check 'reports the hook failure' { $script:output.Contains('Failed to install the boot hook') }
 
 Write-Host '# user data without markers -> PRIME fails without shutdown'
 New-Sandbox @{ 'ghr:warm-pool' = 'true' }
