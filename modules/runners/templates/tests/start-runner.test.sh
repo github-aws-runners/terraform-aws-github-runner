@@ -212,6 +212,13 @@ check "extracted script ends at end marker" test "$(tail -n1 "$hook")" = "# ghr:
 check "extracted script excludes surrounding user-data" bash -c "! grep -q 'user-data preamble' '$hook'"
 check "bash -n extracted script" bash -n "$hook"
 
+echo "# unactivated standby started again, boot via systemd unit -> PRIME keeps the hook intact"
+boot "$hook"
+check "mode PRIME" mode_is PRIME
+check "hook still ends at end marker" test "$(tail -n1 "$hook")" = "# ghr:start-runner:end"
+check "bash -n hook after priming again" bash -n "$hook"
+check "no staged hook files left" bash -c "[ \$(ls '$SANDBOX/usr/local/sbin' | wc -l) -eq 1 ]"
+
 echo "# activated warm instance, next boot via systemd unit -> RUN"
 set_tag ghr:warm-activated 2026-09-30T12:00:00Z
 touch "$SANDBOX/runner-config"
