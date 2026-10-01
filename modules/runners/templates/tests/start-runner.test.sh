@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Boot-mode tests for templates/start-runner.sh. Runs locally without AWS: IMDS (curl), aws and
 # system commands are PATH-injected stubs, absolute paths are rewritten into a per-test sandbox.
-# Usage: bash modules/runners/templates/tests/start-runner.test.sh
+# Usage: bash modules/runners/templates/tests/start-runner.test.sh [path/to/start-runner.sh]
 set -uo pipefail
 
 here=$(cd "$(dirname "$0")" && pwd)
-template="$here/../start-runner.sh"
+template="${1:-$here/../start-runner.sh}"
+v2_template="$here/../../../compute-providers/aws/ec2/templates/start-runner.sh"
 instance_id="i-0123456789abcdef0"
 pass=0
 fail=0
@@ -158,6 +159,7 @@ check "no template directives left after render" bash -c "! grep -q '%{' '$SANDB
 for f in user-data.sh install-runner.sh; do
   check "bash -n $f (raw template)" bash -n "$here/../$f"
 done
+check "compute-providers/aws/ec2 start-runner.sh matches modules/runners" cmp -s "$here/../start-runner.sh" "$v2_template"
 
 echo "# cold instance with registration config -> RUN"
 new_sandbox
