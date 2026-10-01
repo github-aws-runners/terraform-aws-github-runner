@@ -2,7 +2,7 @@ import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 
 import type { ScaleDownComputeProvider } from '../../../../core';
 import { bootTimeExceeded, type Ec2RunnerResourceOperations } from '../runners';
-import type { Ec2StandbyOperations, Ec2StoppedWarmInstance } from '../standby';
+import { type Ec2StandbyOperations, type Ec2StoppedWarmInstance, WARM_ACTIVATION_GRACE_MS } from '../standby';
 
 const logger = createChildLogger('scale-down');
 
@@ -33,16 +33,15 @@ export function createEc2ScaleDownCapability(
   };
 }
 
-const WARM_ACTIVATION_GRACE_MS = 10 * 60 * 1000;
-
 // Runs even when warm mode is disabled so standby instances left behind are still cleaned up.
 async function sweepStoppedWarmInstances(
   environment: string,
   standbyOperations: Ec2ScaleDownStandbyOperations,
 ): Promise<void> {
   const now = Date.now();
-  const instances = (await standbyOperations.listStoppedWarmInstances(environment)).filter(
-    (instance) => (instance.activated && activationSettled(instance, now)) || warmExpired(instance, now),
+  const instances = (await standbyOperations.listStoppedWarmInstances(environment)).filter((instance) =>
+    // The standby expiry no longer applies once an instance was activated.
+    instance.activated ? activationSettled(instance, now) : warmExpired(instance, now),
   );
   for (const instance of instances) {
     try {

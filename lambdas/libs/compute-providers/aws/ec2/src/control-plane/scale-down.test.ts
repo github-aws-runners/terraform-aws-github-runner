@@ -135,6 +135,20 @@ describe('Standby sweep', () => {
     expect(mockTerminateRunner).not.toHaveBeenCalled();
   });
 
+  it('decides activated instances by activation age only', async () => {
+    mockListStoppedWarmInstances.mockResolvedValue([
+      { instanceId: 'i-expired-activating', expiresAt: PAST, activated: true, activatedAt: '2026-09-30T11:59:59.000Z' },
+      { instanceId: 'i-boundary', expiresAt: FUTURE, activated: true, activatedAt: '2026-09-30T11:50:00.000Z' },
+      { instanceId: 'i-missing-time', expiresAt: FUTURE, activated: true },
+      { instanceId: 'i-bad-time', expiresAt: FUTURE, activated: true, activatedAt: 'not-a-date' },
+    ]);
+
+    await sweepCapability.sweepStandby!('unit-test-environment');
+
+    const destroyed = mockDestroyInstance.mock.calls.map(([input]) => input.instanceId);
+    expect(destroyed.sort()).toEqual(['i-bad-time', 'i-boundary', 'i-missing-time']);
+  });
+
   it('keeps destroying the remaining instances when one destroy fails', async () => {
     mockListStoppedWarmInstances.mockResolvedValue([
       { instanceId: 'i-fail', expiresAt: PAST, activated: false },
