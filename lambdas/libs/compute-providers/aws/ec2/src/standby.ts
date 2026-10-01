@@ -108,6 +108,8 @@ export interface Ec2StoppedWarmInstance {
   spotInstanceRequestId?: string;
   expiresAt?: string;
   activated: boolean;
+  /** Value of `ghr:warm-activated`, the ISO-8601 activation time. */
+  activatedAt?: string;
 }
 
 export interface Ec2StandbyOperations {
@@ -477,6 +479,7 @@ async function listStoppedWarmInstances(
         spotInstanceRequestId: instance.SpotInstanceRequestId,
         expiresAt: tag(WARM_EXPIRES_AT_TAG),
         activated: tag(WARM_ACTIVATED_TAG) !== undefined,
+        activatedAt: tag(WARM_ACTIVATED_TAG),
       },
     ];
   });

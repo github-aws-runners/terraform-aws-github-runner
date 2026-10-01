@@ -2,7 +2,7 @@ import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 
 import type { ScaleDownComputeProvider } from '../../../../core';
 import { bootTimeExceeded, type Ec2RunnerResourceOperations } from '../runners';
-import type { Ec2StandbyOperations, Ec2StoppedWarmInstance } from '../standby';
+import { type Ec2StandbyOperations, type Ec2StoppedWarmInstance, WARM_ACTIVATION_GRACE_MS } from '../standby';
 
 const logger = createChildLogger('scale-down');
 
@@ -39,8 +39,9 @@ async function sweepStoppedWarmInstances(
   standbyOperations: Ec2ScaleDownStandbyOperations,
 ): Promise<void> {
   const now = Date.now();
-  const instances = (await standbyOperations.listStoppedWarmInstances(environment)).filter(
-    (instance) => instance.activated || warmExpired(instance, now),
+  const instances = (await standbyOperations.listStoppedWarmInstances(environment)).filter((instance) =>
+    // The standby expiry no longer applies once an instance was activated.
+    instance.activated ? activationSettled(instance, now) : warmExpired(instance, now),
   );
   for (const instance of instances) {
     try {
@@ -56,6 +57,12 @@ async function sweepStoppedWarmInstances(
       logger.warn(`Failed to destroy stopped warm instance '${instance.instanceId}'.`, { error });
     }
   }
+}
+
+// Scale-up tags an instance as activated before starting it, so a fresh activation is still stopped.
+function activationSettled(instance: Ec2StoppedWarmInstance, now: number): boolean {
+  const activatedAt = instance.activatedAt === undefined ? NaN : Date.parse(instance.activatedAt);
+  return Number.isNaN(activatedAt) || now - activatedAt >= WARM_ACTIVATION_GRACE_MS;
 }
 
 function warmExpired(instance: Ec2StoppedWarmInstance, now: number): boolean {
