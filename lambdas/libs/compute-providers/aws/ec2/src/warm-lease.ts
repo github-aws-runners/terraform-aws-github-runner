@@ -1,4 +1,5 @@
 import { DeleteItemCommand, type DynamoDBClient, PutItemCommand } from '@aws-sdk/client-dynamodb';
+import { randomUUID } from 'node:crypto';
 
 export const WARM_LEASE_TTL_SECONDS = 10 * 60;
 const CONDITIONAL_CHECK_FAILED = 'ConditionalCheckFailedException';
@@ -17,6 +18,8 @@ export interface WarmLeaseStore {
 }
 
 export function createWarmLeaseStore(dynamoClient: DynamoDBClient, tableName: string): WarmLeaseStore {
+  // Release only deletes leases claimed through this store, never one taken over after expiry.
+  const owner = randomUUID();
   return {
     claim: async (instanceId) => {
       const now = Math.floor(Date.now() / 1000);
@@ -24,7 +27,11 @@ export function createWarmLeaseStore(dynamoClient: DynamoDBClient, tableName: st
         await dynamoClient.send(
           new PutItemCommand({
             TableName: tableName,
-            Item: { instanceId: { S: instanceId }, expiresAt: { N: String(now + WARM_LEASE_TTL_SECONDS) } },
+            Item: {
+              instanceId: { S: instanceId },
+              owner: { S: owner },
+              expiresAt: { N: String(now + WARM_LEASE_TTL_SECONDS) },
+            },
             // DynamoDB TTL deletes lazily, so an expired lease must not block a new claim.
             ConditionExpression: 'attribute_not_exists(instanceId) OR expiresAt < :now',
             ExpressionAttributeValues: { ':now': { N: String(now) } },
@@ -37,7 +44,19 @@ export function createWarmLeaseStore(dynamoClient: DynamoDBClient, tableName: st
       }
     },
     release: async (instanceId) => {
-      await dynamoClient.send(new DeleteItemCommand({ TableName: tableName, Key: { instanceId: { S: instanceId } } }));
+      try {
+        await dynamoClient.send(
+          new DeleteItemCommand({
+            TableName: tableName,
+            Key: { instanceId: { S: instanceId } },
+            ConditionExpression: '#owner = :owner',
+            ExpressionAttributeNames: { '#owner': 'owner' },
+            ExpressionAttributeValues: { ':owner': { S: owner } },
+          }),
+        );
+      } catch (error) {
+        if (!isConditionalCheckFailed(error)) throw error;
+      }
     },
   };
 }

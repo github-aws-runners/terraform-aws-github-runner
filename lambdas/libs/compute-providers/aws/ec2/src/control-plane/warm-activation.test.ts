@@ -261,8 +261,17 @@ describe('warm pool activation in EC2 scale-up', () => {
       const result = await createRunners();
 
       expect(result).toEqual({ instances: ['i-spot'], retryableErrorCount: 0, nonRetryableErrorCount: 0 });
+      expect(standby.cancelSpotRequest).toHaveBeenCalledTimes(3);
       expect(ec2Operations.untag).not.toHaveBeenCalled();
       expect(lease.release).not.toHaveBeenCalled();
+    });
+
+    it('retries a failed spot request cancellation', async () => {
+      standby.cancelSpotRequest.mockRejectedValueOnce(new Error('throttled'));
+
+      await createRunners();
+
+      expect(standby.cancelSpotRequest).toHaveBeenCalledTimes(2);
     });
 
     it('does not cancel the spot request when the start fails', async () => {
