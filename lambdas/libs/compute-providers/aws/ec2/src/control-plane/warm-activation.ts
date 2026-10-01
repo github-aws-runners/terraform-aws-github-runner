@@ -17,6 +17,7 @@ import type { WarmLeaseStore } from '../warm-lease';
 import { createEc2StartRunnerConfigOptions } from './runner-creation';
 
 const logger = createChildLogger('ec2-warm-activation');
+const SPOT_CANCEL_ATTEMPTS = 3;
 
 export type WarmActivationFallbackReason = 'no-warm-instance' | 'claim-lost' | 'lease-unavailable' | 'start-failed';
 
@@ -238,16 +239,22 @@ async function detachSpotRequest(
   instanceId: string,
   spotInstanceRequestId: string,
 ): Promise<void> {
-  try {
-    await warmOperations.standby.cancelSpotRequest(spotInstanceRequestId);
-  } catch (error) {
-    logger.error(
-      `Failed to cancel spot request '${spotInstanceRequestId}' of activated warm instance '${instanceId}'.`,
-      {
-        spotInstanceRequestId,
-        ...failureDetails(error),
-      },
-    );
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await warmOperations.standby.cancelSpotRequest(spotInstanceRequestId);
+      return;
+    } catch (error) {
+      if (attempt < SPOT_CANCEL_ATTEMPTS) continue;
+      // The pool lambda cancels it later as an orphan once the activation has settled.
+      logger.error(
+        `Failed to cancel spot request '${spotInstanceRequestId}' of activated warm instance '${instanceId}'.`,
+        {
+          spotInstanceRequestId,
+          ...failureDetails(error),
+        },
+      );
+      return;
+    }
   }
 }
 

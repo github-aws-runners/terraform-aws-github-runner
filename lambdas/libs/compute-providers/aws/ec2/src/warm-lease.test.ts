@@ -38,7 +38,7 @@ describe('warm lease store', () => {
     expect(WARM_LEASE_TTL_SECONDS).toBe(600);
     expect(mockDynamoClient).toHaveReceivedCommandWith(PutItemCommand, {
       TableName: 'warm-leases',
-      Item: { instanceId: { S: 'i-1' }, expiresAt: { N: String(NOW_SECONDS + 600) } },
+      Item: { instanceId: { S: 'i-1' }, owner: { S: expect.any(String) }, expiresAt: { N: String(NOW_SECONDS + 600) } },
       ConditionExpression: 'attribute_not_exists(instanceId) OR expiresAt < :now',
       ExpressionAttributeValues: { ':now': { N: String(NOW_SECONDS) } },
     });
@@ -79,14 +79,42 @@ describe('warm lease store', () => {
     expect(mockDynamoClient).toHaveReceivedCommandTimes(PutItemCommand, 3);
   });
 
-  it('releases a claim by deleting the item', async () => {
+  it('releases only its own claim', async () => {
+    mockDynamoClient.on(PutItemCommand).resolves({});
     mockDynamoClient.on(DeleteItemCommand).resolves({});
 
+    await lease.claim('i-1');
     await lease.release('i-1');
 
+    const owner = mockDynamoClient.commandCalls(PutItemCommand)[0].args[0].input.Item?.owner;
     expect(mockDynamoClient).toHaveReceivedCommandWith(DeleteItemCommand, {
       TableName: 'warm-leases',
       Key: { instanceId: { S: 'i-1' } },
+      ConditionExpression: '#owner = :owner',
+      ExpressionAttributeNames: { '#owner': 'owner' },
+      ExpressionAttributeValues: { ':owner': owner! },
     });
+  });
+
+  it('uses a distinct owner per store', async () => {
+    mockDynamoClient.on(PutItemCommand).resolves({});
+
+    await lease.claim('i-1');
+    await createWarmLeaseStore(new DynamoDBClient({}), 'warm-leases').claim('i-1');
+
+    const [first, second] = mockDynamoClient.commandCalls(PutItemCommand).map((call) => call.args[0].input.Item?.owner);
+    expect(first).not.toEqual(second);
+  });
+
+  it('ignores a release after another invocation took over the expired lease', async () => {
+    mockDynamoClient.on(DeleteItemCommand).rejects(conditionalCheckFailed());
+
+    await expect(lease.release('i-1')).resolves.toBeUndefined();
+  });
+
+  it('throws when a release fails for another reason', async () => {
+    mockDynamoClient.on(DeleteItemCommand).rejects(new Error('throttled'));
+
+    await expect(lease.release('i-1')).rejects.toThrow('throttled');
   });
 });
