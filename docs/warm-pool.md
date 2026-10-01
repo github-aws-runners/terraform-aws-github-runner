@@ -78,18 +78,6 @@ multi_runner_config = {
 
 The pool only refills and evicts when a `pool_config` schedule fires, so use a frequent schedule (for example every minute) while warm instances are wanted. A schedule with `size = 0` drains the pool, for example outside office hours.
 
-### Bursts of jobs
-
-Scale-up has a reserved concurrency of 1 by default. When many jobs are queued at once, the extra SQS messages are throttled and only retried after the queue visibility timeout, so warm instances are handed out roughly one per minute. For warm pools, let scale-up batch and run in parallel, for example:
-
-```yaml
-runner_config:
-  lambda_event_source_mapping_maximum_batching_window_in_seconds: 10
-  scale_up_reserved_concurrent_executions: 5
-```
-
-Concurrent invocations claim warm instances through a short-lived lease, so each warm instance is activated by at most one invocation.
-
 The examples in [`examples/multi-runner`](https://github.com/github-aws-runners/terraform-aws-github-runner/tree/main/examples/multi-runner/templates/runner-configs) include an on-demand (`linux-x64-warm.yaml`) and a spot (`linux-x64-warm-spot.yaml`) warm pool.
 
 ## On-demand and spot
@@ -129,28 +117,3 @@ With metrics enabled, the pool publishes `WarmPoolWarmInstances`, `WarmPoolPrimi
 ## Disabling
 
 Set `enabled = false`. With a `pool_config` left in place the pool returns to keeping idle runners, which needs GitHub API access and, for organization runners, `pool_runner_owner`; remove `pool_config` as well to stop the pool. Scale-down removes the remaining stopped warm instances once they expire. To remove them immediately, set the pool size to `0` for one schedule run before disabling.
-
-## Migrating from the warm pool preview branch
-
-Deployments that ran the earlier warm pool preview (PR #5204) can have leftover persistent spot requests and stopped instances. Drain them before deploying:
-
-```bash
-export AWS_REGION=<region>
-PREFIX=<your-prefix>
-
-# 1. Cancel runner spot requests of this deployment that are still open, active, or disabled.
-aws ec2 describe-spot-instance-requests \
-  --filters Name=state,Values=open,active,disabled Name=tag:ghr:Application,Values=github-action-runner \
-        "Name=tag:ghr:environment,Values=${PREFIX}*" \
-  --query 'SpotInstanceRequests[].SpotInstanceRequestId' --output text \
-  | xargs -r aws ec2 cancel-spot-instance-requests --spot-instance-request-ids
-
-# 2. Terminate stopped runner instances of this deployment.
-aws ec2 describe-instances \
-  --filters Name=instance-state-name,Values=stopped Name=tag:ghr:Application,Values=github-action-runner \
-        "Name=tag:ghr:environment,Values=${PREFIX}*" \
-  --query 'Reservations[].Instances[].InstanceId' --output text \
-  | xargs -r aws ec2 terminate-instances --instance-ids
-```
-
-Untagged instances launched by leaked spot requests can be found with `aws ec2 describe-instances --filters Name=instance-lifecycle,Values=spot` and their `SpotInstanceRequestId`.

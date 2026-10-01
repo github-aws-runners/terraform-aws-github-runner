@@ -16,20 +16,17 @@ EBS volume, costs only storage, and starts in seconds. A tier of stopped,
 pre-booted instances can therefore cut startup time without paying for idle
 compute.
 
-An earlier attempt (PR #5204) stopped idle runners in scale-down, tracked them
-in DynamoDB, and restarted them in scale-up. Running it showed:
+Stopped instances bring a few constraints:
 
-- Persistent spot requests outlived their instances. Terminating a persistent
-  spot instance re-opens its request, and AWS launched untagged, unregistered
-  replacement instances.
-- Restarted instances never re-registered, because cloud-init runs user-data
-  only on the first boot.
-- The pool lambda waited in-process for a readiness signal, but the Lambda
-  timeout is shorter than a boot.
-- The DynamoDB inventory drifted from EC2, which left orphaned and zombie
-  instances.
-- Lifecycle ownership was spread over scale-down, scale-up, the pool lambda,
-  and the instance itself.
+- Cloud-init runs user-data only on the first boot, so a started instance needs
+  another way to register as a runner.
+- Spot instances can only be stopped with a persistent request, and
+  terminating such an instance re-opens the request unless it is cancelled
+  first.
+- A boot takes longer than a Lambda timeout, so no lambda can wait for an
+  instance to become ready.
+- A separate inventory drifts from EC2, and lifecycle ownership spread over
+  several components leaves orphaned instances.
 
 ADR-002 separates orchestration from compute providers. Stop and start are
 EC2-specific, so the design must fit behind the compute-provider boundary.
@@ -147,7 +144,7 @@ activated spot instances that stopped instead of terminating.
 
 ## Alternatives Considered
 
-- **Stop idle runners in scale-down (PR #5204).** Rejected: parks disks that
+- **Stop idle runners in scale-down.** Rejected: parks disks that
   already ran jobs, and spreads ownership over several components.
 - **Scale-down as warm-tier owner.** Rejected: scale-down would need permission
   to create instances, and would lose schedule-based sizing.
