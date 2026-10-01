@@ -267,7 +267,8 @@ async function launchWarmInstances(
 
   const expiresAt = new Date(Date.now() + (parameters.maxAgeHours + WARM_EXPIRY_MARGIN_HOURS) * HOUR_IN_MS);
   const tags: Tag[] = [
-    ...createRunnerTags(parameters),
+    // Activation tags the trace of the scale-up that assigns the job, not the pool refill.
+    ...createRunnerTags({ ...parameters, tracingEnabled: false }),
     { Key: WARM_POOL_TAG, Value: 'true' },
     { Key: WARM_EXPIRES_AT_TAG, Value: expiresAt.toISOString() },
   ];
