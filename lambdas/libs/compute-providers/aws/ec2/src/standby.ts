@@ -73,6 +73,8 @@ const PRIMING_EC2_STATES = new Set(['pending', 'running', 'stopping']);
 const LIVE_EC2_STATES = ['pending', 'running', 'stopping', 'stopped'];
 const LIVE_SPOT_REQUEST_STATES = ['open', 'active', 'disabled'];
 const HOUR_IN_MS = 60 * 60 * 1000;
+// Matches the activation lease TTL; a younger activation may still be starting its instance.
+export const WARM_ACTIVATION_GRACE_MS = 10 * 60 * 1000;
 
 export type Ec2WarmLaunchParameters = Pick<
   RunnerInputParameters,
@@ -479,6 +481,11 @@ async function listStoppedWarmInstances(
   });
 }
 
+function activationSettled(instance: Instance, now: number): boolean {
+  const activatedAt = Date.parse(instance.Tags?.find((tag) => tag.Key === WARM_ACTIVATED_TAG)?.Value ?? '');
+  return !Number.isNaN(activatedAt) && now - activatedAt >= WARM_ACTIVATION_GRACE_MS;
+}
+
 async function listOrphanedSpotRequests(
   ec2Client: EC2Client,
   filters: ListStandbyInput,
@@ -491,7 +498,7 @@ async function listOrphanedSpotRequests(
   );
 
   const instanceIds = requests.flatMap((request) => request.InstanceId ?? []);
-  const liveInstanceIds = new Set(
+  const liveInstances = new Map(
     instanceIds.length > 0
       ? (
           await describeInstances(
@@ -502,16 +509,17 @@ async function listOrphanedSpotRequests(
             ],
             signal,
           )
-        ).map((instance) => instance.InstanceId)
+        ).map((instance) => [instance.InstanceId, instance])
       : [],
   );
+  const now = Date.now();
 
   return requests
-    .filter(
-      (request) =>
-        request.SpotInstanceRequestId !== undefined &&
-        (request.InstanceId === undefined || !liveInstanceIds.has(request.InstanceId)),
-    )
+    .filter((request) => {
+      if (request.SpotInstanceRequestId === undefined) return false;
+      const instance = request.InstanceId === undefined ? undefined : liveInstances.get(request.InstanceId);
+      return instance === undefined || activationSettled(instance, now);
+    })
     .map((request) => ({
       spotInstanceRequestId: request.SpotInstanceRequestId as string,
       state: request.State,

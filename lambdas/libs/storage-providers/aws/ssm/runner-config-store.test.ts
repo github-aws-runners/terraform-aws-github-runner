@@ -1,13 +1,15 @@
-import { putParameter } from '@aws-github-runner/aws-ssm-util';
+import { deleteParameter, putParameter } from '@aws-github-runner/aws-ssm-util';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createAwsSsmRunnerConfigStore } from './runner-config-store';
 
 vi.mock('@aws-github-runner/aws-ssm-util', () => ({
+  deleteParameter: vi.fn(),
   putParameter: vi.fn(),
 }));
 
 const putParameterMock = vi.mocked(putParameter);
+const deleteParameterMock = vi.mocked(deleteParameter);
 const cleanEnv = process.env;
 const loggerMock = vi.hoisted(() => ({
   debug: vi.fn(),
@@ -121,6 +123,31 @@ describe('aws_ssm runner config store', () => {
       errorNames: ['ThrottlingException'],
     });
     expect(JSON.stringify(loggerMock.error.mock.calls)).not.toContain('encoded-jit-secret');
+  });
+
+  it('deletes the runner configuration parameter', async () => {
+    await createAwsSsmRunnerConfigStore().delete('i-123');
+
+    expect(deleteParameterMock).toHaveBeenCalledWith('/runner/tokens/i-123');
+  });
+
+  it('treats a missing runner configuration parameter as deleted', async () => {
+    deleteParameterMock.mockRejectedValue(Object.assign(new Error('gone'), { name: 'ParameterNotFound' }));
+
+    await expect(createAwsSsmRunnerConfigStore().delete('i-123')).resolves.toBeUndefined();
+    expect(loggerMock.error).not.toHaveBeenCalled();
+  });
+
+  it('rethrows other delete failures', async () => {
+    const error = Object.assign(new Error('denied'), { name: 'AccessDeniedException' });
+    deleteParameterMock.mockRejectedValue(error);
+
+    await expect(createAwsSsmRunnerConfigStore().delete('i-123')).rejects.toBe(error);
+    expect(loggerMock.error).toHaveBeenCalledWith('Failed to delete runner configuration', {
+      runnerId: 'i-123',
+      parameterName: '/runner/tokens/i-123',
+      errorNames: ['AccessDeniedException'],
+    });
   });
 });
 

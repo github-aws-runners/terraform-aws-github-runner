@@ -1,4 +1,5 @@
 import {
+  DeleteParameterCommand,
   GetParameterCommand,
   GetParameterCommandOutput,
   GetParametersCommand,
@@ -10,7 +11,15 @@ import 'aws-sdk-client-mock-jest/vitest';
 import { mockClient } from 'aws-sdk-client-mock';
 import nock from 'nock';
 
-import { getParameter, getParameters, putParameter, resetSSMClient, ssmClient, SSM_ADVANCED_TIER_THRESHOLD } from '.';
+import {
+  deleteParameter,
+  getParameter,
+  getParameters,
+  putParameter,
+  resetSSMClient,
+  ssmClient,
+  SSM_ADVANCED_TIER_THRESHOLD,
+} from '.';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 const mockSSMClient = mockClient(SSMClient);
@@ -212,6 +221,16 @@ describe('Test getParameter and putParameter', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe('Test deleteParameter', () => {
+  it('deletes the named parameter', async () => {
+    mockSSMClient.on(DeleteParameterCommand).resolves({});
+
+    await deleteParameter('/runner/tokens/i-1');
+
+    expect(mockSSMClient).toHaveReceivedCommandWith(DeleteParameterCommand, { Name: '/runner/tokens/i-1' });
   });
 });
 

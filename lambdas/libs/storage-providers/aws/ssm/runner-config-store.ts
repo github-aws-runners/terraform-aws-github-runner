@@ -1,4 +1,4 @@
-import { putParameter } from '@aws-github-runner/aws-ssm-util';
+import { deleteParameter, putParameter } from '@aws-github-runner/aws-ssm-util';
 
 import type { RunnerConfigMetadata, RunnerConfigRecord, RunnerConfigStore } from '../../core';
 import type {} from './environment';
@@ -69,5 +69,21 @@ class AwsSsmRunnerConfigStore implements RunnerConfigStore {
       runnerId: record.runnerId,
       parameterName,
     });
+  }
+
+  async delete(runnerId: string): Promise<void> {
+    const parameterName = `${this.config.tokenPath}/${runnerId}`;
+    try {
+      await deleteParameter(parameterName);
+    } catch (error) {
+      if (error instanceof Error && error.name === 'ParameterNotFound') return;
+      logger.error('Failed to delete runner configuration', {
+        runnerId,
+        parameterName,
+        errorNames: getErrorNames(error),
+      });
+      throw error;
+    }
+    logger.debug('Deleted runner configuration', { runnerId, parameterName });
   }
 }
