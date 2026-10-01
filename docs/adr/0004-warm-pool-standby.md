@@ -138,7 +138,7 @@ activated spot instances that stopped instead of terminating.
 - Refill and eviction happen only on pool schedule events.
 - Custom user-data templates must keep the start script for the boot hook.
   Otherwise warm instances never park and are evicted.
-- Linux only at first.
+- Linux only at first; Windows was added later with a startup scheduled task as its boot hook. macOS is not supported.
 - A spot start can fail for lack of capacity. Scale-up then launches cold, so a
   failed start is never worse than today.
 
