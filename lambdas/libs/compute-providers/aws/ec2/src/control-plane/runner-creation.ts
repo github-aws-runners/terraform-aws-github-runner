@@ -12,7 +12,7 @@ import { Octokit } from '@octokit/rest';
 import type { Tag } from '@aws-sdk/client-ec2';
 import yn from 'yn';
 
-import type { Ec2RunnerResourceOperations } from '../runners';
+import type { Ec2RunnerCreationOperations, Ec2RunnerResourceOperations } from '../runners';
 import type { RunnerInputParameters } from '../runners.d';
 import { toControlPlaneCreateRunnerResult } from './create-result';
 
@@ -39,6 +39,11 @@ export interface CreateEC2RunnerConfig extends Ec2ProviderConfig {
   useDedicatedHost?: boolean;
 }
 
+interface SubnetAllocation {
+  subnets: string[];
+  targetCapacity: number;
+}
+
 export function loadEc2ProviderConfig(): Ec2ProviderConfig {
   return {
     environment: process.env.ENVIRONMENT,
@@ -63,7 +68,7 @@ export function loadEc2ProviderConfig(): Ec2ProviderConfig {
 }
 
 export async function createRunners(
-  ec2Operations: Ec2RunnerResourceOperations,
+  ec2Operations: Ec2RunnerCreationOperations,
   githubRunnerConfig: CreateGitHubRunnerConfig,
   ec2RunnerConfig: CreateEC2RunnerConfig,
   numberOfRunners: number,
@@ -75,14 +80,17 @@ export async function createRunners(
   let result: CreateRunnerResult;
   try {
     const { scaleErrors, ...ec2CreateConfig } = ec2RunnerConfig;
-    const ec2Result = await ec2Operations.create({
-      ...ec2CreateConfig,
-      runnerType: githubRunnerConfig.runnerType,
-      runnerOwner: githubRunnerConfig.runnerOwner,
-      numberOfRunners,
-      source,
-    });
-    result = toControlPlaneCreateRunnerResult(ec2Result, scaleErrors);
+    result = await createEc2Runners(
+      ec2Operations,
+      {
+        ...ec2CreateConfig,
+        runnerType: githubRunnerConfig.runnerType,
+        runnerOwner: githubRunnerConfig.runnerOwner,
+        numberOfRunners,
+        source,
+      },
+      scaleErrors,
+    );
   } catch (error) {
     logger.error('Unexpected error while creating EC2 runner instances.', {
       error,
@@ -130,6 +138,112 @@ export async function createRunners(
   }
 
   return result;
+}
+
+async function buildAzSafeSubnetSets(
+  subnetIds: string[],
+  ec2Operations: Ec2RunnerCreationOperations,
+): Promise<string[][]> {
+  const uniqueSubnetIds = [...new Set(subnetIds)];
+  if (uniqueSubnetIds.length <= 1) {
+    return [uniqueSubnetIds];
+  }
+
+  const availabilityZoneBySubnet = await ec2Operations.getSubnetAvailabilityZones(uniqueSubnetIds);
+  const subnetsByAvailabilityZone = new Map<string, string[]>();
+  for (const subnetId of uniqueSubnetIds) {
+    const availabilityZone = availabilityZoneBySubnet.get(subnetId);
+    if (!availabilityZone) {
+      throw new Error(`Unable to resolve an Availability Zone for subnet '${subnetId}'.`);
+    }
+    const subnets = subnetsByAvailabilityZone.get(availabilityZone) || [];
+    subnets.push(subnetId);
+    subnetsByAvailabilityZone.set(availabilityZone, subnets);
+  }
+
+  const subnetSetCount = Math.max(...[...subnetsByAvailabilityZone.values()].map((subnets) => subnets.length));
+  const subnetSets = Array.from({ length: subnetSetCount }, (_, setIndex) =>
+    [...subnetsByAvailabilityZone.values()].map((subnets) => subnets[setIndex % subnets.length]),
+  );
+
+  logger.debug('Resolved AZ-safe subnet sets.', { subnetSets });
+  return subnetSets;
+}
+
+function buildSubnetAllocations(subnetSets: string[][], targetCapacity: number): SubnetAllocation[] {
+  if (subnetSets.length <= 1) {
+    return [{ subnets: subnetSets[0], targetCapacity }];
+  }
+
+  const startIndex = Math.floor(Math.random() * subnetSets.length);
+  const orderedSubnetSets = subnetSets.map((_, index) => subnetSets[(startIndex + index) % subnetSets.length]);
+  const baseTargetCapacity = Math.floor(targetCapacity / orderedSubnetSets.length);
+  const remainder = targetCapacity % orderedSubnetSets.length;
+
+  return orderedSubnetSets.map((subnets, index) => ({
+    subnets,
+    targetCapacity: baseTargetCapacity + (index < remainder ? 1 : 0),
+  }));
+}
+
+async function createEc2Runners(
+  ec2Operations: Ec2RunnerCreationOperations,
+  runnerParameters: RunnerInputParameters,
+  configuredRetryableErrors: readonly string[],
+): Promise<CreateRunnerResult> {
+  if (runnerParameters.useDedicatedHost || runnerParameters.ec2OverrideConfig?.SubnetId) {
+    return await createEc2RunnersForSubnetSet(ec2Operations, runnerParameters, configuredRetryableErrors);
+  }
+
+  const subnetSets = await buildAzSafeSubnetSets(runnerParameters.subnets, ec2Operations);
+  if (subnetSets.length === 1) {
+    return await createEc2RunnersForSubnetSet(
+      ec2Operations,
+      { ...runnerParameters, subnets: subnetSets[0] },
+      configuredRetryableErrors,
+    );
+  }
+
+  const result: CreateRunnerResult = {
+    instances: [],
+    retryableErrorCount: 0,
+    nonRetryableErrorCount: 0,
+  };
+  let retryableCarry = 0;
+
+  const allocations = buildSubnetAllocations(subnetSets, runnerParameters.numberOfRunners);
+  for (const allocation of allocations) {
+    const targetCapacity = allocation.targetCapacity + retryableCarry;
+    retryableCarry = 0;
+    if (targetCapacity === 0) {
+      continue;
+    }
+
+    const allocationResult = await createEc2RunnersForSubnetSet(
+      ec2Operations,
+      {
+        ...runnerParameters,
+        subnets: allocation.subnets,
+        numberOfRunners: targetCapacity,
+      },
+      configuredRetryableErrors,
+    );
+    result.instances.push(...allocationResult.instances);
+    result.nonRetryableErrorCount += allocationResult.nonRetryableErrorCount;
+    retryableCarry = allocationResult.retryableErrorCount;
+  }
+
+  result.retryableErrorCount = retryableCarry;
+  return result;
+}
+
+async function createEc2RunnersForSubnetSet(
+  ec2Operations: Ec2RunnerCreationOperations,
+  runnerParameters: RunnerInputParameters,
+  configuredRetryableErrors: readonly string[],
+): Promise<CreateRunnerResult> {
+  const ec2Result = await ec2Operations.create(runnerParameters);
+  return toControlPlaneCreateRunnerResult(ec2Result, configuredRetryableErrors);
 }
 
 async function terminateFailedInstances(

@@ -1003,7 +1003,7 @@ variable "vpc_id" {
 }
 
 variable "subnet_ids" {
-  description = "List of subnets in which stable v1 action runners will be launched. Omit when using the experimental v2 interface."
+  description = "List of subnets in which stable v1 action runner instances will be launched. The subnets must exist in the configured VPC (`vpc_id`). Omit when using the experimental v2 interface."
   type        = list(string)
   default     = null
 }

@@ -14,6 +14,7 @@ const mockListRunners = vi.fn<Ec2RunnerProvisioningOperations['list']>();
 const mockTag = vi.fn<Ec2RunnerProvisioningOperations['tag']>();
 const mockTerminateRunner = vi.fn<Ec2RunnerProvisioningOperations['terminate']>();
 const mockUntag = vi.fn<Ec2RunnerProvisioningOperations['untag']>();
+const mockGetSubnetAvailabilityZones = vi.fn<Ec2RunnerProvisioningOperations['getSubnetAvailabilityZones']>();
 const mockCreateStartRunnerConfig = vi.fn<CreateStartRunnerConfig>();
 const mockGetDefaultBlockDeviceNameFromLaunchTemplate =
   vi.fn<Ec2RunnerProvisioningOperations['getDefaultBlockDeviceNameFromLaunchTemplate']>();
@@ -28,6 +29,7 @@ const ec2Operations: Ec2RunnerProvisioningOperations = {
   terminate: mockTerminateRunner,
   tag: mockTag,
   untag: mockUntag,
+  getSubnetAvailabilityZones: mockGetSubnetAvailabilityZones,
   getDefaultBlockDeviceNameFromLaunchTemplate: mockGetDefaultBlockDeviceNameFromLaunchTemplate,
 };
 const capability = createEc2ScaleUpCapability(ec2Operations, mockCreateStartRunnerConfig);
@@ -36,6 +38,7 @@ interface CreateProviderRunnersOptions {
   labels?: string[];
   baseRunnerLabels?: string;
   githubRunnerConfig?: Partial<CreateGitHubRunnerConfig>;
+  numberOfRunners?: number;
 }
 
 function createRunnerResult(instances: string[], failedInstanceCount = 0, failureCodes: string[] = []) {
@@ -92,7 +95,7 @@ async function createProviderRunners(options: CreateProviderRunnersOptions = {})
 
   return await capability.createRunners({
     githubRunnerConfig,
-    numberOfRunners: 1,
+    numberOfRunners: options.numberOfRunners ?? 1,
     githubInstallationClient: githubClient,
     state: runnerLabelResolution.state,
   });
@@ -614,14 +617,80 @@ describe('useDedicatedHost', () => {
 
   it('is true when USE_DEDICATED_HOST is "true"', async () => {
     process.env.USE_DEDICATED_HOST = 'true';
+    process.env.SUBNET_IDS = 'subnet-123,subnet-456';
     await createProviderRunners();
     expect(mockCreateRunner).toHaveBeenCalledWith(expect.objectContaining({ useDedicatedHost: true }));
+    expect(mockGetSubnetAvailabilityZones).not.toHaveBeenCalled();
   });
 
   it('is false when USE_DEDICATED_HOST is "false"', async () => {
     process.env.USE_DEDICATED_HOST = 'false';
     await createProviderRunners();
     expect(mockCreateRunner).toHaveBeenCalledWith(expect.objectContaining({ useDedicatedHost: false }));
+  });
+});
+
+describe('subnet Availability Zone allocation', () => {
+  it('partitions batch capacity across subnet sets with at most one subnet per Availability Zone', async () => {
+    process.env.SUBNET_IDS = 'subnet-123,subnet-456,subnet-789';
+    mockGetSubnetAvailabilityZones.mockResolvedValueOnce(
+      new Map([
+        ['subnet-123', 'euw1-az1'],
+        ['subnet-456', 'euw1-az1'],
+        ['subnet-789', 'euw1-az2'],
+      ]),
+    );
+    mockCreateRunner
+      .mockResolvedValueOnce(createRunnerResult(['i-1234']))
+      .mockResolvedValueOnce(createRunnerResult(['i-5678']));
+
+    await createProviderRunners({ numberOfRunners: 2 });
+
+    expect(mockGetSubnetAvailabilityZones).toHaveBeenCalledWith(['subnet-123', 'subnet-456', 'subnet-789']);
+    expect(mockCreateRunner).toHaveBeenCalledTimes(2);
+    const requests = mockCreateRunner.mock.calls.map(([request]) => request);
+    expect(requests.map(({ subnets }) => [...subnets].sort()).sort()).toEqual(
+      [
+        ['subnet-123', 'subnet-789'],
+        ['subnet-456', 'subnet-789'],
+      ].sort(),
+    );
+    expect(requests.map(({ numberOfRunners }) => numberOfRunners)).toEqual([1, 1]);
+  });
+
+  it('carries retryable subnet address failures to the next same-AZ subnet set', async () => {
+    process.env.SUBNET_IDS = 'subnet-123,subnet-456';
+    process.env.SCALE_ERRORS = '["InsufficientFreeAddressesInSubnet"]';
+    mockGetSubnetAvailabilityZones.mockResolvedValueOnce(
+      new Map([
+        ['subnet-123', 'euw1-az1'],
+        ['subnet-456', 'euw1-az1'],
+      ]),
+    );
+    mockCreateRunner
+      .mockResolvedValueOnce(createRunnerResult([], 1, ['aws-name:InsufficientFreeAddressesInSubnet']))
+      .mockResolvedValueOnce(createRunnerResult(['i-1234']));
+
+    await expect(createProviderRunners()).resolves.toEqual({
+      instances: ['i-1234'],
+      retryableErrorCount: 0,
+      nonRetryableErrorCount: 0,
+    });
+
+    expect(mockCreateRunner).toHaveBeenCalledTimes(2);
+    const attemptedSubnets = mockCreateRunner.mock.calls.flatMap(([request]) => request.subnets).sort();
+    expect(attemptedSubnets).toEqual(['subnet-123', 'subnet-456']);
+  });
+
+  it('skips subnet lookup when a dynamic subnet override is configured', async () => {
+    process.env.SUBNET_IDS = 'subnet-123,subnet-456';
+
+    await createProviderRunners({ labels: ['ghr-ec2-subnet-id:subnet-override'] });
+
+    expect(mockGetSubnetAvailabilityZones).not.toHaveBeenCalled();
+    expect(mockCreateRunner).toHaveBeenCalledWith(
+      expect.objectContaining({ ec2OverrideConfig: expect.objectContaining({ SubnetId: 'subnet-override' }) }),
+    );
   });
 });
 
