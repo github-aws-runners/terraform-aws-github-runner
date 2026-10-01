@@ -61,6 +61,8 @@ variable "config" {
     - `lambda.pool.config[].size`: Desired number of runners for the schedule.
     - `lambda.pool.include_busy_runners`: Includes busy runners when reconciling scheduled pool capacity.
     - `lambda.pool.runner_owner`: Optional GitHub organization or repository owner used for pooled runners.
+    - `lambda.pool.warm.enabled`: Keeps the pool size of stopped, pre-booted standby instances instead of idle runners; scale-up starts them for jobs.
+    - `lambda.pool.warm.max_age_hours`: Whole hours after which a warm instance is replaced. The default is `168`.
     - `lambda.pool.tags`: Tags applied within pool resource scopes after common provider tags.
     - `job_retry.enabled`: Creates the retry queue, Lambda function, event-source mapping, and related IAM resources.
     - `job_retry.delay_in_seconds`: Initial delay before a queued-job retry check.
@@ -135,7 +137,11 @@ variable "config" {
         }))
         include_busy_runners = bool
         runner_owner         = optional(string, null)
-        tags                 = optional(map(string), {})
+        warm = optional(object({
+          enabled       = optional(bool, false)
+          max_age_hours = optional(number, 168)
+        }), {})
+        tags = optional(map(string), {})
       })
     })
     job_retry = object({
