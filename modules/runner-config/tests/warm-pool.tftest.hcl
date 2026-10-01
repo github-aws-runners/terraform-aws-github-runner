@@ -194,3 +194,19 @@ run "warm_pool_requires_pool_config" {
 
   expect_failures = [terraform_data.validate_config]
 }
+
+run "warm_pool_rejects_fractional_max_age" {
+  command = plan
+
+  variables {
+    orchestration_provider = merge(var.orchestration_provider, {
+      webhook = merge(var.orchestration_provider.webhook, {
+        lambda = merge(var.orchestration_provider.webhook.lambda, {
+          pool = merge(var.orchestration_provider.webhook.lambda.pool, { warm = { enabled = true, max_age_hours = 0.5 } })
+        })
+      })
+    })
+  }
+
+  expect_failures = [var.orchestration_provider]
+}
