@@ -14,7 +14,7 @@ Provider-owned settings remain nested under a typed namespace and provider leaf.
 
 The EC2 leaf reaches runner-config with `compute_provider.aws.ec2.binaries_syncer = { enabled, s3 }`; the S3 object is null when synchronization is disabled. Binary discovery and this shape adaptation happen in `multi-runner`, not inside runner-config. Runner-config calls [`compute-providers/aws/ec2/trust-policy`](../compute-providers/aws/ec2/trust-policy) as `module.compute_aws_ec2_trust_policy[0]`, then dispatches the full [`compute-providers/aws/ec2`](../compute-providers/aws/ec2) module at `module.compute_aws_ec2[0]`. Declarative moved blocks preserve state from the earlier experimental `module.compute_ec2_trust_policy[0]` and `module.compute_ec2[0]` labels.
 
-The MicroVM leaf similarly uses [`compute-providers/aws/microvm/trust-policy`](../compute-providers/aws/microvm/trust-policy) at `module.compute_aws_microvm_trust_policy[0]` and the full [`compute-providers/aws/microvm`](../compute-providers/aws/microvm) module at `module.compute_aws_microvm[0]`. It uses the resolved common `runner.iam.role` as the MicroVM execution role and exports the IAM and runtime-environment fragments required by the webhook control plane. MicroVM lanes require Linux on ARM64 and ephemeral webhook orchestration with JIT configuration enabled. MicroVM is introduced directly at its namespaced labels, so the EC2 moved blocks do not apply to it.
+The MicroVM leaf similarly uses [`compute-providers/aws/microvm/trust-policy`](../compute-providers/aws/microvm/trust-policy) at `module.compute_aws_microvm_trust_policy[0]` and the full [`compute-providers/aws/microvm`](../compute-providers/aws/microvm) module at `module.compute_aws_microvm[0]`. It uses the resolved common `runner.iam.role` as the MicroVM execution role and exports IAM and runtime configuration for both the webhook control plane and Scale Set provider. MicroVM lanes require Linux on ARM64; webhook orchestration requires ephemeral runners with JIT enabled, while the Scale Set provider obtains JIT configuration through the Scale Set contract. MicroVM is introduced directly at its namespaced labels, so the EC2 moved blocks do not apply to it.
 
 The common configuration module attaches each selected provider's returned policy groups to its managed runner or webhook-provider roles. Provider-specific outputs remain grouped under the matching path: `provider.aws.ec2` or `provider.aws.microvm`. Moved blocks do not rewrite output references, so consumers of the former experimental `provider.ec2` path must update their expressions.
 
@@ -35,6 +35,8 @@ The EC2 provider creates runners from a launch template. Bootstrap is handled by
 ### Lambda MicroVM runners
 
 The MicroVM provider starts Linux ARM64 capacity with `RunMicrovm`. The control plane generates the ephemeral runner's JIT payload, and the MicroVM image retrieves that payload from Parameter Store through its `/run` hook. The resolved common runner role is the MicroVM execution role.
+
+The Scale Set service loads the MicroVM compute-provider plugin from the Scale Set registry. Its per-runner-config role lists, launches, and terminates MicroVMs, writes ownership metadata, and publishes JIT configuration to the existing SSM token path. Scale-down removes a runner through the Scale Set controller callback before terminating its MicroVM; missing or busy runner state is retained for a later reconciliation.
 
 ### Lambda scale up
 

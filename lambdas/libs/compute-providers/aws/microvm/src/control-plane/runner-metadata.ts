@@ -319,7 +319,7 @@ function parseMetadata(value: string, expectedMicrovmId: string): MicrovmRunnerM
     typeof parsed.runnerOwner !== 'string' ||
     parsed.runnerOwner.length === 0 ||
     (parsed.runnerType !== 'Org' && parsed.runnerType !== 'Repo') ||
-    (parsed.source !== 'scale-up-lambda' && parsed.source !== 'pool-lambda') ||
+    (parsed.source !== 'scale-up-lambda' && parsed.source !== 'pool-lambda' && parsed.source !== 'scale-set-service') ||
     typeof parsed.imageArn !== 'string' ||
     parsed.imageArn.length === 0 ||
     !optionalString(parsed.imageVersion) ||

@@ -1,12 +1,14 @@
 # AWS Lambda MicroVM runner provider
 
-This internal module implements the AWS Lambda MicroVM compute provider used by `runner-config`. It returns provider-specific Lambda environment variables, control-plane IAM policy fragments, selected image metadata, native runtime and optional CloudWatch-agent log groups, and collected-file definitions through the common provider contract; the parent owns the runner role, Lambda resources, queues, schedules, and Parameter Store lifecycle.
+This internal module implements the AWS Lambda MicroVM compute provider used by `runner-config`. It returns provider-specific Lambda environment variables, control-plane IAM policy fragments, Scale Set runtime configuration and IAM statements, selected image metadata, native runtime and optional CloudWatch-agent log groups, and collected-file definitions through the common provider contract; the parent owns the runner role, Lambda resources, queues, schedules, and Parameter Store lifecycle.
 
-Select it with the `compute_provider.aws.microvm` leaf. The Terraform dispatch key is `aws_microvm`, while the runtime `COMPUTE_PROVIDER_TYPE` remains `microvm` for compatibility with the control-plane Lambda. MicroVM lanes require Linux on ARM64 and ephemeral webhook orchestration with just-in-time configuration enabled.
+Select it with the `compute_provider.aws.microvm` leaf. The Terraform dispatch key is `aws_microvm`, while the runtime provider type is `microvm`. MicroVM lanes require Linux on ARM64. Webhook lanes use ephemeral runners with JIT enabled; Scale Set supplies its own ephemeral JIT registration flow through the Scale Set compute-provider plugin.
 
 MicroVM runners use the provider's fixed 28,800-second (8-hour) lifetime; this is not a Terraform input.
 
 The resolved provider-neutral `runner.iam.role` is passed to Lambda as the MicroVM execution role. The provider creates `/github-self-hosted-runners/<prefix>/microvm` with the common observability lifecycle and derives a metadata prefix at `<ssm.paths.root>/<ssm.paths.config>/microvm-metadata`. Scale-up, scale-down, and pool use that non-secret prefix for MicroVM ownership and lifecycle state; the runner role can read only the lane's `*.tags` metadata records, the CloudWatch enablement parameter, and its lane-scoped one-time JIT parameter. It can also delete that JIT parameter and write to the provider-managed log groups. MicroVMs sharing the execution role can read the tag records for that lane, but not the ownership and cleanup records. When the runner role is supplied externally, its Lambda trust and these permissions remain caller-owned.
+
+For Scale Set orchestration, the provider exports image, networking, execution-role, SSM-path, and metadata-tag settings through `capabilities.scale_set`. The Scale Set module attaches the emitted Lambda MicroVM and SSM statements to its per-runner-config compute role. The ECS controller uses that role to launch and terminate MicroVMs and publish the JIT SecureString; the MicroVM execution role independently reads and deletes the one-time JIT parameter during boot.
 
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
