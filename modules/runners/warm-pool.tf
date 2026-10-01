@@ -96,7 +96,7 @@ data "aws_iam_policy_document" "scale_up_warm_pool" {
     condition {
       test     = "StringLike"
       variable = "kms:ViaService"
-      values   = ["ec2.*.amazonaws.com"]
+      values   = ["ec2.*.amazonaws.com", "ec2.*.amazonaws.com.cn"]
     }
   }
 }
