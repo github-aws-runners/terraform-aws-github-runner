@@ -34,7 +34,8 @@ it('exposes every configured provider through both capability registries', () =>
       getCurrentRunners: expect.any(Function),
       createRunners: expect.any(Function),
     });
-    expect(controlPlaneRegistry.capability(type, 'scaleDown')()).toEqual({
+    const scaleDown = controlPlaneRegistry.capability(type, 'scaleDown')();
+    expect(scaleDown).toEqual({
       list: expect.any(Function),
       bootTimeExceeded: expect.any(Function),
       markOrphan: expect.any(Function),
@@ -42,6 +43,7 @@ it('exposes every configured provider through both capability registries', () =>
       markIdle: expect.any(Function),
       unmarkIdle: expect.any(Function),
       terminate: expect.any(Function),
+      ...(scaleDown.sweepStandby && { sweepStandby: expect.any(Function) }),
     });
     expect(webhookProviderRegistry.capability(type, 'dynamicLabels').getViolations).toEqual(expect.any(Function));
   }
@@ -54,4 +56,5 @@ it('exposes every configured provider through both capability registries', () =>
     cancelSpotRequests: expect.any(Function),
     currentImage: expect.any(Function),
   });
+  expect(controlPlaneRegistry.capability('ec2', 'scaleDown')().sweepStandby).toEqual(expect.any(Function));
 });

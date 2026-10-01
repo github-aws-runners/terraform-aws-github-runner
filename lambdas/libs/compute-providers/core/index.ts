@@ -118,6 +118,8 @@ export interface ScaleDownComputeProvider extends ComputeProvider {
   markIdle(id: string, at: string): Promise<void>;
   /** Clear the idle marker — the runner was seen busy again, so the window restarts. */
   unmarkIdle(id: string): Promise<void>;
+  /** Destroy leftover standby instances of the environment; called every cycle, even with warm mode off. */
+  sweepStandby?(environment: string): Promise<void>;
 }
 
 export interface RunnerStatus {

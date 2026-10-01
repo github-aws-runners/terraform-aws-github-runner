@@ -284,6 +284,17 @@ describe('warm pool activation in EC2 scale-up', () => {
   });
 
   describe('claim lease', () => {
+    it('skips warm instances that expire before the activation settles', async () => {
+      standby.listStandby.mockResolvedValue([
+        warm('i-expiring', 1, { expiresAt: new Date(NOW.getTime() + 5 * MINUTE).toISOString() }),
+        warm('i-valid', 5, { expiresAt: new Date(NOW.getTime() + 60 * MINUTE).toISOString() }),
+      ]);
+
+      const result = await createRunners();
+
+      expect(lease.claim).not.toHaveBeenCalledWith('i-expiring');
+      expect(result.instances).toEqual(['i-valid']);
+    });
     it('tries the next warm instance when a claim is lost', async () => {
       lease.claim.mockResolvedValueOnce(false);
 
