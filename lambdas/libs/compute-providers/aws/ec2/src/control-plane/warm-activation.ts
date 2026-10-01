@@ -1,4 +1,4 @@
-import { createChildLogger, createSingleMetric } from '@aws-github-runner/aws-powertools-util';
+import { createChildLogger, createSingleMetric, tracer } from '@aws-github-runner/aws-powertools-util';
 import type { RunnerConfigStorage } from '@aws-github-runner/storage-providers';
 import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import type { Tag } from '@aws-sdk/client-ec2';
@@ -18,6 +18,7 @@ import { createEc2StartRunnerConfigOptions } from './runner-creation';
 
 const logger = createChildLogger('ec2-warm-activation');
 const SPOT_CANCEL_ATTEMPTS = 3;
+const TRACE_ID_TAG = 'ghr:trace_id';
 
 export type WarmActivationFallbackReason = 'no-warm-instance' | 'claim-lost' | 'lease-unavailable' | 'start-failed';
 
@@ -180,11 +181,16 @@ async function claimWarmInstances(
 }
 
 function activationTags(githubRunnerConfig: CreateGitHubRunnerConfig): Tag[] {
-  return [
+  const tags = [
     { Key: WARM_ACTIVATED_TAG, Value: new Date().toISOString() },
     { Key: 'ghr:Owner', Value: githubRunnerConfig.runnerOwner },
     { Key: 'ghr:Type', Value: githubRunnerConfig.runnerType },
   ];
+  const traceId = yn(process.env.POWERTOOLS_TRACE_ENABLED, { default: false })
+    ? tracer.getRootXrayTraceId()
+    : undefined;
+  if (traceId) tags.push({ Key: TRACE_ID_TAG, Value: traceId });
+  return tags;
 }
 
 async function createRunnerConfig(
@@ -217,7 +223,7 @@ async function rollbackActivation(context: ActivationContext, instanceId: string
     context.storage.runnerConfig.delete(instanceId),
   );
   await bestEffort('remove the activation tag from', instanceId, () =>
-    context.ec2Operations.untag(instanceId, [{ Key: WARM_ACTIVATED_TAG }]),
+    context.ec2Operations.untag(instanceId, [{ Key: WARM_ACTIVATED_TAG }, { Key: TRACE_ID_TAG }]),
   );
   await bestEffort('restore the pool tags of', instanceId, () =>
     context.ec2Operations.tag(instanceId, [

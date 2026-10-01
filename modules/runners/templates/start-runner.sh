@@ -95,8 +95,10 @@ is_warm_standby() {
 
 log_warm_activation_latency() {
   [[ -n "$warm_activated" ]] || return 0
-  local activated
-  activated=$(date -u -d "$warm_activated" +%s 2> /dev/null || date -u -j -f "%Y-%m-%dT%H:%M:%S" "$${warm_activated%%.*}" +%s 2> /dev/null) || return 0
+  local activated bsd_time
+  bsd_time=$${warm_activated%Z}
+  bsd_time=$${bsd_time%%.*}
+  activated=$(date -u -d "$warm_activated" +%s 2> /dev/null || date -u -j -f "%Y-%m-%dT%H:%M:%S" "$bsd_time" +%s 2> /dev/null) || return 0
   echo "warm-pool-activation-latency-seconds=$(( $(date +%s) - activated ))"
 }
 
@@ -112,14 +114,18 @@ select_boot_mode() {
 
 # Cloud-init runs user-data on first boot only, so warm instances rerun this script from a systemd unit.
 install_boot_hook() {
-  local script=/usr/local/sbin/ghr-start-runner.sh
+  local script=/usr/local/sbin/ghr-start-runner.sh staged
   mkdir -p /usr/local/sbin
-  sed -n '/^# ghr:start-runner:begin$/,/^# ghr:start-runner:end$/p' "$0" > "$script"
-  if ! grep -q '^# ghr:start-runner:end$' "$script"; then
+  # $0 is the hook itself when a parked instance primes again, so never write to it in place.
+  staged=$(mktemp /usr/local/sbin/ghr-start-runner.XXXXXX) || return 1
+  sed -n '/^# ghr:start-runner:begin$/,/^# ghr:start-runner:end$/p' "$0" > "$staged"
+  if ! grep -q '^# ghr:start-runner:end$' "$staged"; then
     echo "Failed to extract the start script from $0"
+    rm -f "$staged"
     return 1
   fi
-  chmod 700 "$script"
+  chmod 700 "$staged"
+  mv -f "$staged" "$script"
   cat > /etc/systemd/system/ghr-start-runner.service <<EOF
 [Unit]
 Description=GitHub Actions runner start (warm pool)
