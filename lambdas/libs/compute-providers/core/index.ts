@@ -138,6 +138,54 @@ export interface CreatePoolRunnersInput {
   storage?: import('@aws-github-runner/storage-providers').RunnerConfigStorage;
 }
 
+export type StandbyInstanceState = 'PRIMING' | 'WARM' | 'ACTIVE' | 'GARBAGE';
+
+export interface StandbyInstance {
+  instanceId: string;
+  state: StandbyInstanceState;
+  launchTime?: Date;
+  imageId?: string;
+  launchTemplateVersion?: string;
+  spotInstanceRequestId?: string;
+  /** ISO-8601 time after which the instance must be destroyed, from `ghr:warm-expires-at`. */
+  expiresAt?: string;
+}
+
+export type ListStandbyInput = ListPoolRunnersInput;
+
+export interface LaunchStandbyInput extends ListPoolRunnersInput {
+  numberOfInstances: number;
+  maxAgeHours: number;
+}
+
+export type DestroyStandbyInput = Pick<StandbyInstance, 'instanceId' | 'spotInstanceRequestId'>;
+
+export interface StandbySpotRequest {
+  spotInstanceRequestId: string;
+  state?: string;
+  instanceId?: string;
+}
+
+export interface StandbyBatchResult {
+  succeeded: string[];
+  failed: string[];
+}
+
+/** Image new standby instances would launch with; undefined fields could not be determined. */
+export interface StandbyImage {
+  imageId?: string;
+  launchTemplateVersion?: string;
+}
+
+export interface PoolStandbyOperations {
+  list(input: ListStandbyInput): Promise<StandbyInstance[]>;
+  launch(input: LaunchStandbyInput): Promise<CreateRunnerResult>;
+  destroy(instances: DestroyStandbyInput[]): Promise<StandbyBatchResult>;
+  listOrphanedSpotRequests?(input: ListStandbyInput): Promise<StandbySpotRequest[]>;
+  cancelSpotRequests?(spotInstanceRequestIds: string[]): Promise<StandbyBatchResult>;
+  currentImage?(): Promise<StandbyImage>;
+}
+
 export interface PoolComputeProvider<TRunner = unknown> extends ComputeProvider {
   listRunners(input: ListPoolRunnersInput): Promise<TRunner[]>;
   countAvailableRunners(
@@ -146,6 +194,8 @@ export interface PoolComputeProvider<TRunner = unknown> extends ComputeProvider 
     includeBusyRunners: boolean,
   ): number;
   createRunners(input: CreatePoolRunnersInput): Promise<string[]>;
+  /** Undefined when the provider cannot keep stopped standby (warm) instances. */
+  standby?: PoolStandbyOperations;
 }
 
 export interface ComputeProviderPlugin<TCapabilities, TType extends string = string> {
