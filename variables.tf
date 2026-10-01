@@ -904,6 +904,11 @@ variable "warm_pool" {
   })
   default  = {}
   nullable = false
+
+  validation {
+    condition     = var.warm_pool.max_age_hours >= 1 && floor(var.warm_pool.max_age_hours) == var.warm_pool.max_age_hours
+    error_message = "warm_pool.max_age_hours must be a whole number of hours, at least 1."
+  }
 }
 
 variable "aws_partition" {

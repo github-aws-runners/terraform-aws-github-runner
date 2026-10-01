@@ -164,3 +164,13 @@ run "warm_pool_requires_metadata_tags" {
 
   expect_failures = [terraform_data.warm_pool_validation]
 }
+
+run "warm_pool_rejects_fractional_max_age" {
+  command = plan
+
+  variables {
+    warm_pool = { enabled = true, max_age_hours = 0.5 }
+  }
+
+  expect_failures = [var.warm_pool]
+}
