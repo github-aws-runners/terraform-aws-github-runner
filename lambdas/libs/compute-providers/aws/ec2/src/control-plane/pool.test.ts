@@ -1,6 +1,7 @@
 import type { Octokit } from '@octokit/rest';
 import type { CreateGitHubRunnerConfig, CreateStartRunnerConfig, RunnerInfo } from '../../../../core';
 import { bootTimeExceeded, type Ec2RunnerResourceOperations } from '../runners';
+import type { Ec2StandbyOperations } from '../standby';
 import { createEc2PoolCapability } from './pool';
 import { createRunners, type Ec2ProviderConfig, loadEc2ProviderConfig } from './runner-creation';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -158,5 +159,110 @@ describe('createEc2PoolCapability.createRunners', () => {
       'pool-lambda',
       undefined,
     );
+  });
+});
+
+describe('createEc2PoolCapability.standby', () => {
+  const standbyOperations = {
+    destroyInstance: vi.fn<Ec2StandbyOperations['destroyInstance']>(),
+    launchWarm: vi.fn<Ec2StandbyOperations['launchWarm']>(),
+    listStandby: vi.fn<Ec2StandbyOperations['listStandby']>(),
+    listOrphanedSpotRequests: vi.fn<Ec2StandbyOperations['listOrphanedSpotRequests']>(),
+    cancelSpotRequest: vi.fn<Ec2StandbyOperations['cancelSpotRequest']>(),
+    currentImage: vi.fn<Ec2StandbyOperations['currentImage']>(),
+  } satisfies Ec2StandbyOperations;
+  const standby = createEc2PoolCapability(ec2Operations, createStartRunnerConfig, standbyOperations).standby!;
+  const poolInput = { environment: 'test-environment', runnerOwner: 'owner', runnerType: 'Org' as const };
+  const providerConfig: Ec2ProviderConfig = {
+    environment: 'config-environment',
+    subnets: ['subnet-a', 'subnet-b'],
+    launchTemplateName: 'runner-template',
+    ec2instanceCriteria: {
+      instanceTypes: ['m5.large', 'c5.large'],
+      targetCapacityType: 'spot',
+      instanceAllocationStrategy: 'lowest-price',
+    },
+    amiIdSsmParameterName: '/ami',
+    tracingEnabled: true,
+    onDemandFailoverOnError: [],
+    scaleErrors: ['InsufficientInstanceCapacity'],
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockLoadProviderConfig.mockReturnValue(providerConfig);
+  });
+
+  it('is undefined when the capability has no standby operations', () => {
+    expect(capability.standby).toBeUndefined();
+  });
+
+  it('lists standby instances and orphaned spot requests for the pool', async () => {
+    standbyOperations.listStandby.mockResolvedValue([{ instanceId: 'i-warm', state: 'WARM' }]);
+    standbyOperations.listOrphanedSpotRequests.mockResolvedValue([{ spotInstanceRequestId: 'sir-1', state: 'open' }]);
+
+    await expect(standby.list(poolInput)).resolves.toEqual([{ instanceId: 'i-warm', state: 'WARM' }]);
+    await expect(standby.listOrphanedSpotRequests!(poolInput)).resolves.toEqual([
+      { spotInstanceRequestId: 'sir-1', state: 'open' },
+    ]);
+    expect(standbyOperations.listStandby).toHaveBeenCalledWith(poolInput);
+    expect(standbyOperations.listOrphanedSpotRequests).toHaveBeenCalledWith(poolInput);
+  });
+
+  it('launches warm instances from the provider config and maps retryable failures', async () => {
+    standbyOperations.launchWarm.mockResolvedValue({
+      instances: ['i-1'],
+      failedInstanceCount: 1,
+      failureCodes: ['aws-name:InsufficientInstanceCapacity'],
+    });
+
+    await expect(standby.launch({ ...poolInput, numberOfInstances: 2, maxAgeHours: 12 })).resolves.toEqual({
+      instances: ['i-1'],
+      retryableErrorCount: 1,
+      nonRetryableErrorCount: 0,
+    });
+    expect(standbyOperations.launchWarm).toHaveBeenCalledWith({
+      ...poolInput,
+      subnets: providerConfig.subnets,
+      launchTemplateName: providerConfig.launchTemplateName,
+      ec2instanceCriteria: providerConfig.ec2instanceCriteria,
+      amiIdSsmParameterName: '/ami',
+      tracingEnabled: true,
+      numberOfRunners: 2,
+      source: 'pool-lambda',
+      maxAgeHours: 12,
+    });
+  });
+
+  it('destroys every instance and reports failures without stopping', async () => {
+    standbyOperations.destroyInstance.mockRejectedValueOnce(new Error('boom')).mockResolvedValue();
+
+    await expect(
+      standby.destroy([{ instanceId: 'i-1', spotInstanceRequestId: 'sir-1' }, { instanceId: 'i-2' }]),
+    ).resolves.toEqual({ succeeded: ['i-2'], failed: ['i-1'] });
+    expect(standbyOperations.destroyInstance).toHaveBeenNthCalledWith(1, {
+      instanceId: 'i-1',
+      spotInstanceRequestId: 'sir-1',
+    });
+    expect(standbyOperations.destroyInstance).toHaveBeenNthCalledWith(2, { instanceId: 'i-2' });
+  });
+
+  it('cancels every spot request and reports failures without stopping', async () => {
+    standbyOperations.cancelSpotRequest.mockResolvedValueOnce().mockRejectedValueOnce(new Error('boom'));
+
+    await expect(standby.cancelSpotRequests!(['sir-1', 'sir-2'])).resolves.toEqual({
+      succeeded: ['sir-1'],
+      failed: ['sir-2'],
+    });
+  });
+
+  it('resolves the current image from the provider config', async () => {
+    standbyOperations.currentImage.mockResolvedValue({ imageId: 'ami-1', launchTemplateVersion: '3' });
+
+    await expect(standby.currentImage!()).resolves.toEqual({ imageId: 'ami-1', launchTemplateVersion: '3' });
+    expect(standbyOperations.currentImage).toHaveBeenCalledWith({
+      launchTemplateName: 'runner-template',
+      amiIdSsmParameterName: '/ami',
+    });
   });
 });

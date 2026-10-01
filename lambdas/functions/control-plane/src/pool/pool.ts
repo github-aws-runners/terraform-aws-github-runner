@@ -13,6 +13,7 @@ import {
 import { controlPlaneProviderRegistry } from '../control-plane-providers';
 import { getGitHubEnterpriseApiUrl } from '../scale-runners/github-runner';
 import type { RunnerStatus } from './pool-provider';
+import { adjustWarmPool, isWarmPoolEnabled } from './warm-pool';
 
 const logger = createChildLogger('pool');
 
@@ -21,13 +22,21 @@ export interface PoolEvent {
   type?: string;
 }
 
-export async function adjust(event: PoolEvent): Promise<void> {
-  const storage = createStorageProviders();
-  const computeProviderType = resolveComputeProviderType(event.type);
-  const computeProvider = {
+function resolvePoolProvider(type: string | undefined) {
+  const computeProviderType = resolveComputeProviderType(type);
+  return {
     ...controlPlaneProviderRegistry.capability(computeProviderType, 'pool')(),
     type: computeProviderType,
   };
+}
+
+export async function adjust(event: PoolEvent): Promise<void> {
+  if (isWarmPoolEnabled()) {
+    return adjustWarmPool(resolvePoolProvider(event.type), event.poolSize);
+  }
+
+  const storage = createStorageProviders();
+  const computeProvider = resolvePoolProvider(event.type);
   logger.info(`Checking current ${computeProvider.type} pool size against pool of size: ${event.poolSize}`);
   const runnerLabels = process.env.RUNNER_LABELS || '';
   const runnerGroup = process.env.RUNNER_GROUP_NAME || '';

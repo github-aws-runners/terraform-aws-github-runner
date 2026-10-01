@@ -16,10 +16,18 @@ it('exposes every configured provider through both capability registries', () =>
   expect(webhookTypes).toEqual(computeProviderTypes);
 
   for (const type of computeProviderTypes) {
-    expect(controlPlaneRegistry.capability(type, 'pool')()).toEqual({
+    const pool = controlPlaneRegistry.capability(type, 'pool')();
+    expect(pool).toEqual({
       listRunners: expect.any(Function),
       countAvailableRunners: expect.any(Function),
       createRunners: expect.any(Function),
+      ...(pool.standby && {
+        standby: expect.objectContaining({
+          list: expect.any(Function),
+          launch: expect.any(Function),
+          destroy: expect.any(Function),
+        }),
+      }),
     });
     expect(controlPlaneRegistry.capability(type, 'scaleUp')()).toEqual({
       resolveLabelsForRunners: expect.any(Function),
@@ -37,4 +45,13 @@ it('exposes every configured provider through both capability registries', () =>
     });
     expect(webhookProviderRegistry.capability(type, 'dynamicLabels').getViolations).toEqual(expect.any(Function));
   }
+
+  expect(controlPlaneRegistry.capability('ec2', 'pool')().standby).toEqual({
+    list: expect.any(Function),
+    launch: expect.any(Function),
+    destroy: expect.any(Function),
+    listOrphanedSpotRequests: expect.any(Function),
+    cancelSpotRequests: expect.any(Function),
+    currentImage: expect.any(Function),
+  });
 });
