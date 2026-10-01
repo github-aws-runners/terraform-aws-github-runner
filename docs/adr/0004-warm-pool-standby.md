@@ -48,7 +48,7 @@ keeps `pool_config[].size` stopped instances instead of running idle runners.
 | Scale-down  | ACTIVE                 | unchanged, plus a sweep of stopped leftovers |
 | Instance    | PRIMING -> WARM        | prepare, then `shutdown -h`               |
 
-A warm instance is used at most once. Runners that ran a job are never parked.
+A warm instance is activated at most once. Runners that ran a job are never parked again; a non-ephemeral runner keeps its normal lifecycle after activation.
 
 ### Lifecycle
 
