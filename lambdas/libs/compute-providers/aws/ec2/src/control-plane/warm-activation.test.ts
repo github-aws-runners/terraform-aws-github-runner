@@ -1,4 +1,4 @@
-import { createSingleMetric } from '@aws-github-runner/aws-powertools-util';
+import { createSingleMetric, tracer } from '@aws-github-runner/aws-powertools-util';
 import type { RunnerConfigStorage, RunnerConfigStore } from '@aws-github-runner/storage-providers';
 import type { Octokit } from '@octokit/rest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -89,7 +89,10 @@ function callOrder(mock: { mock: { invocationCallOrder: number[] } }, index = 0)
 
 function expectRolledBack(instanceId: string) {
   expect(runnerConfigStore.delete).toHaveBeenCalledWith(instanceId);
-  expect(ec2Operations.untag).toHaveBeenCalledWith(instanceId, [{ Key: 'ghr:warm-activated' }]);
+  expect(ec2Operations.untag).toHaveBeenCalledWith(instanceId, [
+    { Key: 'ghr:warm-activated' },
+    { Key: 'ghr:trace_id' },
+  ]);
   expect(ec2Operations.tag).toHaveBeenCalledWith(instanceId, [
     { Key: 'ghr:Owner', Value: POOL_OWNER },
     { Key: 'ghr:Type', Value: 'Org' },
@@ -280,6 +283,31 @@ describe('warm pool activation in EC2 scale-up', () => {
       await createRunners();
 
       expect(standby.cancelSpotRequest).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('tracing', () => {
+    it('tags the scale-up trace on activation when tracing is enabled', async () => {
+      process.env.POWERTOOLS_TRACE_ENABLED = 'true';
+      vi.spyOn(tracer, 'getRootXrayTraceId').mockReturnValue('1-scale-up-trace');
+
+      await createRunners();
+
+      expect(ec2Operations.tag).toHaveBeenNthCalledWith(
+        1,
+        'i-new',
+        expect.arrayContaining([{ Key: 'ghr:trace_id', Value: '1-scale-up-trace' }]),
+      );
+    });
+
+    it('does not tag a trace when tracing is disabled', async () => {
+      await createRunners();
+
+      expect(ec2Operations.tag).toHaveBeenNthCalledWith(
+        1,
+        'i-new',
+        expect.not.arrayContaining([expect.objectContaining({ Key: 'ghr:trace_id' })]),
+      );
     });
   });
 
