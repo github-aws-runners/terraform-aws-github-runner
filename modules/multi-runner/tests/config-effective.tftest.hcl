@@ -148,6 +148,64 @@ run "v1_warm_pool_translates_to_webhook_pool" {
   }
 }
 
+run "v2_warm_pool_reaches_pool_and_scale_up" {
+  command = plan
+
+  variables {
+    experimental_features = ["multi-runner-v2"]
+
+    global_config = {
+      runner = { os = "linux", architecture = "x64" }
+    }
+    global_config_github = {
+      app = { key_base64 = "key", id = "id", webhook_secret = "secret" }
+    }
+    global_config_lambda = {
+      artifact = { s3 = { bucket = "global-lambda-artifacts" } }
+    }
+    global_config_orchestration_provider = {
+      webhook = {
+        lambda = {
+          artifact = { s3 = { key = "global-runners.zip" } }
+          webhook  = { artifact = { s3 = { key = "global-webhook.zip" } } }
+        }
+      }
+    }
+    global_config_storage_provider = {
+      aws = { ssm = { housekeeper = { lambda = { artifact = { s3 = { key = "global-housekeeper.zip" } } } } } }
+    }
+    global_config_compute_provider = {
+      aws = { ec2 = { vpc_id = "vpc-test", subnet_ids = ["subnet-test"], runner_binaries = { enabled = false } } }
+    }
+
+    multi_runner_config = {
+      warm = {
+        orchestration_provider = {
+          webhook = {
+            matcherConfig = { labelMatchers = [["warm-label"]] }
+            lambda = {
+              pool = {
+                config = [{ schedule_expression = "cron(* * * * ? *)", size = 2 }]
+                warm   = { enabled = true, max_age_hours = 24 }
+              }
+            }
+          }
+        }
+        compute_provider = { aws = { ec2 = { instance_types = ["m5.large"] } } }
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      module.runner_configs["warm"].pool.lambda.environment[0].variables["WARM_POOL_ENABLED"] == "true"
+      && module.runner_configs["warm"].pool.lambda.environment[0].variables["WARM_POOL_MAX_AGE_HOURS"] == "24"
+      && module.runner_configs["warm"].scale_up.lambda.environment[0].variables["WARM_POOL_ENABLED"] == "true"
+    )
+    error_message = "A native v2 warm pool must reach the pool and scale-up lambdas."
+  }
+}
+
 run "v2_effective_config_contains_derived_values" {
   command = apply
 
