@@ -283,6 +283,15 @@ describe('adjustWarmPool', () => {
       expect(standby.destroy.mock.invocationCallOrder[0]).toBeLessThan(standby.launch.mock.invocationCallOrder[0]);
       expect(standby.launch).toHaveBeenCalledWith(expect.objectContaining({ numberOfInstances: 1 }));
     });
+
+    it('still counts instances whose eviction failed', async () => {
+      standby.list.mockResolvedValue([instance('i-drift', 'WARM', HOUR, { imageId: 'ami-old' })]);
+      standby.destroy.mockResolvedValue({ succeeded: [], failed: ['i-drift'] });
+
+      await adjustWarmPool(provider, 1);
+
+      expect(standby.launch).not.toHaveBeenCalled();
+    });
   });
 
   describe('metrics', () => {
