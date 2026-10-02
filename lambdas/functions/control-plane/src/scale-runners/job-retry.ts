@@ -1,6 +1,6 @@
 import { addPersistentContextToChildLogger, createSingleMetric, logger } from '@aws-github-runner/aws-powertools-util';
 import { publishMessage } from '../aws/sqs';
-import { getGitHubEnterpriseApiUrl, isJobQueued } from './github-runner';
+import { getGitHubEnterpriseApiUrl, isJobQueued, UnsupportedEventError } from './github-runner';
 import type { ActionRequestMessage, ActionRequestMessageRetry } from './types';
 import { getOctokit } from '../github/octokit';
 import { MetricUnit } from '@aws-lambda-powertools/metrics';
@@ -63,8 +63,22 @@ export async function checkAndRetryJob(payload: ActionRequestMessageRetry): Prom
   const { ghesApiUrl } = getGitHubEnterpriseApiUrl();
   const ghClient = await getOctokit(ghesApiUrl, enableOrgLevel, payload);
 
-  // check job is still queued
-  if (await isJobQueued(ghClient, payload)) {
+  let jobQueued = true;
+  try {
+    jobQueued = await isJobQueued(ghClient, payload);
+  } catch (e) {
+    if (e instanceof UnsupportedEventError) {
+      logger.debug(`Unsupported event type, skipping retry`, { payload });
+      return;
+    }
+    const err = e as Error & { status?: number };
+    logger.warn('isJobQueued check failed, assuming job is still queued (fail-open)', {
+      error: err.message,
+      status: err.status,
+    });
+  }
+
+  if (jobQueued) {
     await publishMessage(JSON.stringify(payload), jobQueueUrl);
     createMetric(enableMetrics, environment, payload);
     logger.info(`Job is still queued, message published to build queue and will be handled by scale-up.`, { payload });
