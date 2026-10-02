@@ -142,6 +142,9 @@ variable "storage_provider" {
         config_path_arn      = string
         kms_key_id           = optional(string, null)
         parameter_store_tags = string
+
+        parameter_store_max_concurrent_invocations = optional(number, 1)
+        parameter_store_max_writes_per_second      = optional(number, 40)
       })
     })
     environment_variables = optional(map(string), {})

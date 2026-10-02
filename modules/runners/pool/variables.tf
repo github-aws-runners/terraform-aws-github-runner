@@ -75,12 +75,14 @@ variable "config" {
     ssm_ttl_seconds = optional(object({
       tokens = optional(number, null)
     }), {})
-    ssm_config_path                      = string
-    ami_id_ssm_parameter_name            = string
-    ami_id_ssm_parameter_read_policy_arn = string
-    arn_ssm_parameters_path_config       = string
-    lambda_tags                          = map(string)
-    user_agent                           = string
+    ssm_config_path                                = string
+    ssm_parameter_store_max_concurrent_invocations = optional(number, 1)
+    ssm_parameter_store_max_writes_per_second      = optional(number, 40)
+    ami_id_ssm_parameter_name                      = string
+    ami_id_ssm_parameter_read_policy_arn           = string
+    arn_ssm_parameters_path_config                 = string
+    lambda_tags                                    = map(string)
+    user_agent                                     = string
   })
 }
 

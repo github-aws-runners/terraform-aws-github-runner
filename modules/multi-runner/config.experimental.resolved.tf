@@ -319,6 +319,14 @@ locals {
               tags = merge(local.normalized_config.storage_provider.aws.ssm.tags, v.storage_provider.aws.ssm.tags)
               parameters = {
                 tags = merge(local.normalized_config.storage_provider.aws.ssm.parameters.tags, v.storage_provider.aws.ssm.parameters.tags)
+                max_concurrent_invocations = coalesce(
+                  v.storage_provider.aws.ssm.parameters.max_concurrent_invocations,
+                  local.normalized_config.storage_provider.aws.ssm.parameters.max_concurrent_invocations,
+                )
+                max_writes_per_second = coalesce(
+                  v.storage_provider.aws.ssm.parameters.max_writes_per_second,
+                  local.normalized_config.storage_provider.aws.ssm.parameters.max_writes_per_second,
+                )
               }
               housekeeper = {
                 schedule_expression = coalesce(

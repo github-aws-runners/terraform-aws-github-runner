@@ -204,7 +204,9 @@ run "empty_v2_map_translates_stable_inputs" {
       runners = "legacy-runners"
       webhook = "legacy-webhook"
     }
-    parameter_store_tags = { owner = "stable-test" }
+    parameter_store_tags                           = { owner = "stable-test" }
+    ssm_parameter_store_max_concurrent_invocations = 4
+    ssm_parameter_store_max_writes_per_second      = 200
     runners_ssm_housekeeper = {
       schedule_expression = "rate(2 days)"
       enabled             = false
@@ -431,6 +433,10 @@ run "empty_v2_map_translates_stable_inputs" {
       && local.stable_to_v2.orchestration_provider.webhook.lambda.scale.up.event_source_mapping.batch_size == var.lambda_event_source_mapping_batch_size
       && local.stable_to_v2.orchestration_provider.webhook.lambda.scale.down.idle_config == []
       && local.stable_to_v2.storage_provider.aws.ssm.parameters.tags.owner == var.parameter_store_tags.owner
+      && local.stable_to_v2.storage_provider.aws.ssm.parameters.max_concurrent_invocations == 4
+      && local.stable_to_v2.storage_provider.aws.ssm.parameters.max_writes_per_second == 200
+      && local.effective_config.multi_runner_config["stable"].storage_provider.aws.ssm.parameters.max_concurrent_invocations == 4
+      && local.effective_config.multi_runner_config["stable"].storage_provider.aws.ssm.parameters.max_writes_per_second == 200
       && local.stable_to_v2.storage_provider.aws.ssm.housekeeper.lambda.memory_size == var.runners_ssm_housekeeper.lambda_memory_size
       && local.stable_to_v2.compute_provider.aws.ec2.runner_binaries.s3.encryption.sse_algorithm == "aws:kms"
       && local.stable_to_v2.compute_provider.aws.ec2.runner_binaries.s3.encryption.kms_master_key_id == "arn:aws:kms:eu-west-1:123456789012:key/binaries"
@@ -643,6 +649,10 @@ run "lane_values_override_experimental_globals" {
     global_config_storage_provider = {
       aws = {
         ssm = {
+          parameters = {
+            max_concurrent_invocations = 8
+            max_writes_per_second      = 1000
+          }
           housekeeper = {
             lambda = {
               artifact = {
@@ -710,6 +720,9 @@ run "lane_values_override_experimental_globals" {
         storage_provider = {
           aws = {
             ssm = {
+              parameters = {
+                max_writes_per_second = 3000
+              }
               housekeeper = {
                 lambda = {
                   artifact = {
@@ -751,6 +764,8 @@ run "lane_values_override_experimental_globals" {
       && local.resolved_config.multi_runner_config["lane"].observability.logs.retention_in_days == 30
       && local.resolved_config.multi_runner_config["lane"].storage_provider.aws.ssm.housekeeper.lambda.artifact.zip == null
       && local.resolved_config.multi_runner_config["lane"].storage_provider.aws.ssm.housekeeper.lambda.artifact.s3.key == "lane-housekeeper.zip"
+      && local.resolved_config.multi_runner_config["lane"].storage_provider.aws.ssm.parameters.max_writes_per_second == 3000
+      && local.resolved_config.multi_runner_config["lane"].storage_provider.aws.ssm.parameters.max_concurrent_invocations == 8
     )
     error_message = "Lane values must override v2 globals while omitted values inherit their global defaults."
   }
