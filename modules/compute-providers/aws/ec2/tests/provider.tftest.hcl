@@ -95,7 +95,13 @@ run "separates_control_plane_contract_from_ec2_resources" {
   command = plan
 
   assert {
-    condition     = toset(keys(output.provider)) == toset(["environment_variables", "policies", "resources"])
+    condition = toset(keys(output.provider)) == toset([
+      "capabilities",
+      "environment_variables",
+      "policies",
+      "resources",
+      "type",
+    ])
     error_message = "The EC2 provider contract must expose only integration and resource data; its module identity must not be repeated in the output."
   }
 
@@ -216,11 +222,18 @@ run "includes_managed_ami_read_in_scale_set_contract" {
   command = plan
 
   variables {
-    config = merge(var.config, {
-      ami = merge(var.config.ami, {
+    config = {
+      vpc_id         = "vpc-12345678"
+      subnet_ids     = ["subnet-12345678"]
+      instance_types = ["m5.large"]
+      binaries_syncer = {
+        enabled = false
+        s3      = null
+      }
+      ami = {
         id_ssm_parameter = null
-      })
-    })
+      }
+    }
   }
 
   assert {

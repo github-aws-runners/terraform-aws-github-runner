@@ -7,6 +7,13 @@ packer {
   }
 }
 
+variable "github_api_token" {
+  description = "Optional GitHub token for the runner release API."
+  type        = string
+  default     = env("PACKER_GITHUB_API_TOKEN")
+  sensitive   = true
+}
+
 variable "runner_version" {
   description = "The version (no v prefix) of the runner software to install https://github.com/actions/runner/releases. The latest release will be fetched from GitHub if not provided."
   default     = null
@@ -91,10 +98,15 @@ variable "temporary_security_group_source_public_ip" {
 
 data "http" github_runner_release_json {
   url = "https://api.github.com/repos/actions/runner/releases/latest"
-  request_headers = {
-    Accept = "application/vnd.github+json"
-    X-GitHub-Api-Version : "2022-11-28"
-  }
+  request_headers = merge(
+    {
+      Accept                 = "application/vnd.github+json"
+      "X-GitHub-Api-Version" = "2022-11-28"
+    },
+    var.github_api_token == "" ? {} : {
+      Authorization = "Bearer ${var.github_api_token}"
+    }
+  )
 }
 
 locals {
