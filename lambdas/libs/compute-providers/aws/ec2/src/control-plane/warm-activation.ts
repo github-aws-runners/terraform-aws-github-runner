@@ -11,20 +11,27 @@ import type {
   ListStandbyInput,
   StandbyInstance,
 } from '../../../../core';
-import { type Ec2RunnerResourceOperations, failureDetails } from '../runners';
+import { awsErrorCode, type Ec2RunnerResourceOperations, failureDetails } from '../runners';
 import { type Ec2StandbyOperations, WARM_ACTIVATED_TAG, WARM_ACTIVATION_GRACE_MS } from '../standby';
-import type { WarmLeaseStore } from '../warm-lease';
+import type { WarmIndexItem, WarmIndexStore } from '../warm-index';
+import type { CreateWarmIndexStore } from './pool';
 import { createEc2StartRunnerConfigOptions } from './runner-creation';
 
 const logger = createChildLogger('ec2-warm-activation');
 const SPOT_CANCEL_ATTEMPTS = 3;
 const TRACE_ID_TAG = 'ghr:trace_id';
+// The index entry no longer matches EC2; another warm instance may still start.
+const STALE_START_ERRORS = new Set([
+  'InvalidInstanceID.NotFound',
+  'IncorrectInstanceState',
+  'IncorrectSpotRequestState',
+]);
 
-export type WarmActivationFallbackReason = 'no-warm-instance' | 'claim-lost' | 'lease-unavailable' | 'start-failed';
+export type WarmActivationFallbackReason = 'no-warm-instance' | 'claim-lost' | 'index-unavailable' | 'start-failed';
 
 export interface Ec2WarmActivationOperations {
-  standby: Pick<Ec2StandbyOperations, 'listStandby' | 'startInstance' | 'cancelSpotRequest'>;
-  createLeaseStore(tableName: string): WarmLeaseStore;
+  standby: Pick<Ec2StandbyOperations, 'startInstance' | 'cancelSpotRequest'>;
+  createIndexStore: CreateWarmIndexStore;
 }
 
 export interface WarmActivationInput {
@@ -43,9 +50,18 @@ export interface WarmActivationResult {
 
 interface ActivationContext {
   ec2Operations: Ec2RunnerResourceOperations;
-  lease: WarmLeaseStore;
+  warmOperations: Ec2WarmActivationOperations;
+  index: WarmIndexStore;
   pool: ListStandbyInput;
   storage: RunnerConfigStorage;
+}
+
+interface BatchOutcome {
+  started: string[];
+  retryableErrorCount: number;
+  /** Instances that failed for a reason another warm instance would not fix; launched cold. */
+  coldFallbacks: number;
+  staleCount: number;
 }
 
 type FallBack = (reason: WarmActivationFallbackReason, count: number) => void;
@@ -70,119 +86,164 @@ export async function activateWarmRunners(
   const fallBack: FallBack = (reason, count) => {
     if (count > 0) fallbacks.set(reason, (fallbacks.get(reason) ?? 0) + count);
   };
+  const finish = (instances: string[], retryableErrorCount: number): WarmActivationResult => {
+    if (instances.length > 0) logger.info(`Activated warm instance(s): ${instances.join(',')}`);
+    if (fallbacks.size > 0) logger.info('Some runners fall back to a cold launch.', Object.fromEntries(fallbacks));
+    publishActivationMetrics(environment, instances.length, fallbacks);
+    return {
+      instances,
+      retryableErrorCount,
+      coldRunnerCount: input.numberOfRunners - instances.length - retryableErrorCount,
+    };
+  };
 
-  const { lease, claimed } = await claimWarmInstances(warmOperations, pool, input.numberOfRunners, fallBack);
-  const instances: string[] = [];
-  let retryableErrorCount = 0;
-
-  if (lease && claimed.length > 0) {
-    const context: ActivationContext = { ec2Operations, lease, pool, storage: input.storage };
-
-    const tagged: StandbyInstance[] = [];
-    for (const instance of claimed) {
-      try {
-        await ec2Operations.tag(instance.instanceId, activationTags(input.githubRunnerConfig));
-        tagged.push(instance);
-      } catch (error) {
-        logger.warn(`Failed to tag warm instance '${instance.instanceId}' for activation.`, failureDetails(error));
-        await rollbackActivation(context, instance.instanceId);
-        fallBack('start-failed', 1);
-      }
-    }
-
-    const failedConfig = await createRunnerConfig(context, createStartRunnerConfig, input, tagged);
-    for (const instanceId of failedConfig) await rollbackActivation(context, instanceId);
-    retryableErrorCount = failedConfig.length;
-
-    for (const instance of tagged.filter(({ instanceId }) => !failedConfig.includes(instanceId))) {
-      try {
-        await warmOperations.standby.startInstance(instance.instanceId);
-      } catch (error) {
-        logger.warn(`Failed to start warm instance '${instance.instanceId}', falling back to a cold launch.`, {
-          spotInstanceRequestId: instance.spotInstanceRequestId,
-          ...failureDetails(error),
-        });
-        await rollbackActivation(context, instance.instanceId);
-        fallBack('start-failed', 1);
-        continue;
-      }
-      // The lease is kept until its TTL so a concurrent stale listing cannot claim the instance again.
-      instances.push(instance.instanceId);
-      if (instance.spotInstanceRequestId) {
-        await detachSpotRequest(warmOperations, instance.instanceId, instance.spotInstanceRequestId);
-      }
-    }
+  const tableName = process.env.WARM_POOL_INDEX_TABLE_NAME;
+  if (!tableName) {
+    logger.warn('WARM_POOL_INDEX_TABLE_NAME is not set, skipping warm activation.');
+    fallBack('index-unavailable', input.numberOfRunners);
+    return finish([], 0);
+  }
+  const index = warmOperations.createIndexStore(tableName, environment);
+  let candidates: StandbyInstance[];
+  try {
+    candidates = warmCandidates(await index.query());
+  } catch (error) {
+    logger.warn('Warm pool index is unavailable, skipping warm activation.', failureDetails(error));
+    fallBack('index-unavailable', input.numberOfRunners);
+    return finish([], 0);
   }
 
-  if (instances.length > 0) logger.info(`Activated warm instance(s): ${instances.join(',')}`);
-  if (fallbacks.size > 0) logger.info('Some runners fall back to a cold launch.', Object.fromEntries(fallbacks));
-  publishActivationMetrics(environment, instances.length, fallbacks);
+  const context: ActivationContext = { ec2Operations, warmOperations, index, pool, storage: input.storage };
+  const instances: string[] = [];
+  let retryableErrorCount = 0;
+  let needed = input.numberOfRunners;
+  let claimLost = false;
+  let staleCount = 0;
+  while (needed > 0 && candidates.length > 0) {
+    const claim = await claimWarmInstances(index, candidates, needed);
+    candidates = claim.remaining;
+    claimLost ||= claim.lost;
+    if (claim.unavailable) {
+      fallBack('index-unavailable', needed);
+      return finish(instances, retryableErrorCount);
+    }
+    if (claim.claimed.length === 0) break;
 
-  return {
-    instances,
-    retryableErrorCount,
-    coldRunnerCount: input.numberOfRunners - instances.length - retryableErrorCount,
-  };
+    const outcome = await activateBatch(context, createStartRunnerConfig, input, claim.claimed);
+    instances.push(...outcome.started);
+    retryableErrorCount += outcome.retryableErrorCount;
+    fallBack('start-failed', outcome.coldFallbacks);
+    staleCount += outcome.staleCount;
+    needed -= outcome.started.length + outcome.retryableErrorCount + outcome.coldFallbacks;
+  }
+  const staleFallbacks = Math.min(needed, staleCount);
+  fallBack('start-failed', staleFallbacks);
+  fallBack(claimLost ? 'claim-lost' : 'no-warm-instance', needed - staleFallbacks);
+  return finish(instances, retryableErrorCount);
+}
+
+function warmCandidates(items: WarmIndexItem[]): StandbyInstance[] {
+  const now = Date.now();
+  // Scale-down sweeps expired standby instances, so never activate one that expires during activation.
+  const claimableUntil = now + WARM_ACTIVATION_GRACE_MS;
+  const launchedAt = (item: WarmIndexItem) => Date.parse(item.launchTime ?? '') || 0;
+  return items
+    .filter((item) => item.state === 'WARM')
+    .filter((item) => item.claimUntil === undefined || item.claimUntil * 1000 < now)
+    .filter((item) => {
+      const expiresAt = Date.parse(item.expiresAt ?? '');
+      return Number.isNaN(expiresAt) || expiresAt > claimableUntil;
+    })
+    .sort((a, b) => launchedAt(b) - launchedAt(a))
+    .map((item) => ({
+      instanceId: item.instanceId,
+      state: 'WARM',
+      launchTime: item.launchTime ? new Date(item.launchTime) : undefined,
+      expiresAt: item.expiresAt,
+      spotInstanceRequestId: item.spotInstanceRequestId,
+    }));
 }
 
 async function claimWarmInstances(
-  warmOperations: Ec2WarmActivationOperations,
-  pool: ListStandbyInput,
+  index: WarmIndexStore,
+  candidates: StandbyInstance[],
   count: number,
-  fallBack: FallBack,
-): Promise<{ lease?: WarmLeaseStore; claimed: StandbyInstance[] }> {
-  const tableName = process.env.WARM_POOL_LEASE_TABLE_NAME;
-  if (!tableName) {
-    logger.warn('WARM_POOL_LEASE_TABLE_NAME is not set, skipping warm activation.');
-    fallBack('lease-unavailable', count);
-    return { claimed: [] };
-  }
-
-  let candidates: StandbyInstance[];
-  try {
-    const launchedAt = (instance: StandbyInstance) => instance.launchTime?.getTime() ?? 0;
-    // Scale-down sweeps expired standby instances, so never activate one that expires during activation.
-    const claimableUntil = Date.now() + WARM_ACTIVATION_GRACE_MS;
-    candidates = (await warmOperations.standby.listStandby(pool, { spotRequests: false })).instances
-      .filter((instance) => instance.state === 'WARM')
-      .filter((instance) => {
-        const expiresAt = Date.parse(instance.expiresAt ?? '');
-        return Number.isNaN(expiresAt) || expiresAt > claimableUntil;
-      })
-      .sort((a, b) => launchedAt(b) - launchedAt(a));
-  } catch (error) {
-    logger.warn('Unable to list warm instances, skipping warm activation.', failureDetails(error));
-    fallBack('no-warm-instance', count);
-    return { claimed: [] };
-  }
-
-  const lease = warmOperations.createLeaseStore(tableName);
+): Promise<{ claimed: StandbyInstance[]; remaining: StandbyInstance[]; lost: boolean; unavailable: boolean }> {
   const claimed: StandbyInstance[] = [];
-  let claimLost = false;
+  let lost = false;
+  let tried = 0;
   for (const candidate of candidates) {
     if (claimed.length === count) break;
+    tried++;
     try {
-      if (await lease.claim(candidate.instanceId)) {
+      if (await index.claim(candidate.instanceId)) {
         claimed.push(candidate);
       } else {
-        claimLost = true;
+        lost = true;
         logger.debug(`Warm instance '${candidate.instanceId}' is claimed by another invocation.`);
       }
     } catch (error) {
-      logger.warn('Warm pool lease table is unavailable, skipping warm activation.', failureDetails(error));
-      for (const instance of claimed) await releaseLease(lease, instance.instanceId);
-      fallBack('lease-unavailable', count);
-      return { claimed: [] };
+      logger.warn('Warm pool index is unavailable, skipping warm activation.', failureDetails(error));
+      for (const instance of claimed) await releaseClaim(index, instance.instanceId);
+      return { claimed: [], remaining: [], lost, unavailable: true };
+    }
+  }
+  return { claimed, remaining: candidates.slice(tried), lost, unavailable: false };
+}
+
+async function activateBatch(
+  context: ActivationContext,
+  createStartRunnerConfig: CreateStartRunnerConfig,
+  input: WarmActivationInput,
+  claimed: StandbyInstance[],
+): Promise<BatchOutcome> {
+  const outcome: BatchOutcome = { started: [], retryableErrorCount: 0, coldFallbacks: 0, staleCount: 0 };
+  const activatedAt = new Date().toISOString();
+
+  const tagged: StandbyInstance[] = [];
+  for (const instance of claimed) {
+    try {
+      await context.ec2Operations.tag(instance.instanceId, activationTags(input.githubRunnerConfig, activatedAt));
+      tagged.push(instance);
+    } catch (error) {
+      logger.warn(`Failed to tag warm instance '${instance.instanceId}' for activation.`, failureDetails(error));
+      await rollbackActivation(context, instance.instanceId);
+      outcome.coldFallbacks++;
     }
   }
 
-  fallBack(claimLost ? 'claim-lost' : 'no-warm-instance', count - claimed.length);
-  return { lease, claimed };
+  const failedConfig = await createRunnerConfig(context, createStartRunnerConfig, input, tagged);
+  for (const instanceId of failedConfig) await rollbackActivation(context, instanceId);
+  outcome.retryableErrorCount = failedConfig.length;
+
+  for (const instance of tagged.filter(({ instanceId }) => !failedConfig.includes(instanceId))) {
+    try {
+      await context.warmOperations.standby.startInstance(instance.instanceId);
+    } catch (error) {
+      const stale = STALE_START_ERRORS.has(awsErrorCode(error) ?? '');
+      logger.warn(
+        `Failed to start warm instance '${instance.instanceId}', ${stale ? 'trying another warm instance' : 'falling back to a cold launch'}.`,
+        { spotInstanceRequestId: instance.spotInstanceRequestId, ...failureDetails(error) },
+      );
+      await rollbackActivation(context, instance.instanceId, stale);
+      if (stale) outcome.staleCount++;
+      else outcome.coldFallbacks++;
+      continue;
+    }
+    outcome.started.push(instance.instanceId);
+    await bestEffort('record the activation of', instance.instanceId, () =>
+      context.index.markActivated(instance.instanceId, activatedAt),
+    );
+    if (instance.spotInstanceRequestId) {
+      await detachSpotRequest(context.warmOperations, instance.instanceId, instance.spotInstanceRequestId);
+    }
+  }
+  return outcome;
 }
 
-function activationTags(githubRunnerConfig: CreateGitHubRunnerConfig): Tag[] {
+function activationTags(githubRunnerConfig: CreateGitHubRunnerConfig, activatedAt: string): Tag[] {
   const tags = [
-    { Key: WARM_ACTIVATED_TAG, Value: new Date().toISOString() },
+    { Key: WARM_ACTIVATED_TAG, Value: activatedAt },
     { Key: 'ghr:Owner', Value: githubRunnerConfig.runnerOwner },
     { Key: 'ghr:Type', Value: githubRunnerConfig.runnerType },
   ];
@@ -218,7 +279,7 @@ async function createRunnerConfig(
   }
 }
 
-async function rollbackActivation(context: ActivationContext, instanceId: string): Promise<void> {
+async function rollbackActivation(context: ActivationContext, instanceId: string, stale = false): Promise<void> {
   await bestEffort('delete the runner configuration of', instanceId, () =>
     context.storage.runnerConfig.delete(instanceId),
   );
@@ -231,11 +292,15 @@ async function rollbackActivation(context: ActivationContext, instanceId: string
       { Key: 'ghr:Type', Value: context.pool.runnerType },
     ]),
   );
-  await releaseLease(context.lease, instanceId);
+  if (stale) {
+    await bestEffort('mark the index entry unusable of', instanceId, () => context.index.markUnusable(instanceId));
+  } else {
+    await releaseClaim(context.index, instanceId);
+  }
 }
 
-async function releaseLease(lease: WarmLeaseStore, instanceId: string): Promise<void> {
-  await bestEffort('release the lease of', instanceId, () => lease.release(instanceId));
+async function releaseClaim(index: WarmIndexStore, instanceId: string): Promise<void> {
+  await bestEffort('release the claim of', instanceId, () => index.release(instanceId));
 }
 
 async function bestEffort(description: string, instanceId: string, operation: () => Promise<void>): Promise<void> {

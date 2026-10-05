@@ -6,7 +6,10 @@ import { type Ec2StandbyOperations, type Ec2StoppedWarmInstance, WARM_ACTIVATION
 
 const logger = createChildLogger('scale-down');
 
-export type Ec2ScaleDownStandbyOperations = Pick<Ec2StandbyOperations, 'listStoppedWarmInstances' | 'destroyInstance'>;
+export type Ec2ScaleDownStandbyOperations = Pick<
+  Ec2StandbyOperations,
+  'listStoppedWarmInstances' | 'listScaleDownInstances' | 'destroyInstance'
+>;
 
 /**
  * Idle-confirmation window (see ScaleDownComputeProvider.markIdle). EC2 persists the
@@ -19,11 +22,22 @@ export function createEc2ScaleDownCapability(
   ec2Operations: Ec2RunnerResourceOperations,
   standbyOperations?: Ec2ScaleDownStandbyOperations,
 ): Omit<ScaleDownComputeProvider, 'type'> {
+  // The runner listing also returns stopped warm instances, so the sweep needs no scan of its own.
+  let stoppedWarm: Ec2StoppedWarmInstance[] | undefined;
   return {
     ...(standbyOperations && {
-      sweepStandby: (environment: string) => sweepStoppedWarmInstances(environment, standbyOperations),
+      sweepStandby: (environment: string) => {
+        const listed = stoppedWarm;
+        stoppedWarm = undefined;
+        return sweepStoppedWarmInstances(environment, standbyOperations, listed);
+      },
     }),
-    list: (environment, orphan) => ec2Operations.list({ environment, orphan }),
+    list: async (environment, orphan) => {
+      if (orphan || !standbyOperations) return ec2Operations.list({ environment, orphan });
+      const listing = await standbyOperations.listScaleDownInstances(environment);
+      stoppedWarm = listing.stoppedWarm;
+      return listing.runners;
+    },
     bootTimeExceeded,
     markOrphan: (id) => ec2Operations.tag(id, [{ Key: 'ghr:orphan', Value: 'true' }]),
     unmarkOrphan: (id) => ec2Operations.untag(id, [{ Key: 'ghr:orphan', Value: 'true' }]),
@@ -37,9 +51,11 @@ export function createEc2ScaleDownCapability(
 async function sweepStoppedWarmInstances(
   environment: string,
   standbyOperations: Ec2ScaleDownStandbyOperations,
+  listed: Ec2StoppedWarmInstance[] | undefined,
 ): Promise<void> {
   const now = Date.now();
-  const instances = (await standbyOperations.listStoppedWarmInstances(environment)).filter((instance) =>
+  const stopped = listed ?? (await standbyOperations.listStoppedWarmInstances(environment));
+  const instances = stopped.filter((instance) =>
     // The standby expiry no longer applies once an instance was activated.
     instance.activated ? activationSettled(instance, now) : warmExpired(instance, now),
   );

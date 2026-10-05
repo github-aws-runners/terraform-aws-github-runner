@@ -57,7 +57,7 @@ A warm instance is activated at most once. Runners that ran a job are never park
      |
      v
   WARM     stopped by the instance itself
-     |  scale-up: claim (DynamoDB lease), tag, write registration config
+     |  scale-up: claim (DynamoDB index), tag, write registration config
      |            to SSM, StartInstances, cancel spot request if any
      v
   ACTIVE   boot hook finds its config, registers, runs the job
@@ -71,9 +71,14 @@ A warm instance is activated at most once. Runners that ran a job are never park
 - **Boot hook.** A systemd unit reruns the start script on every boot and picks
   a mode: run (registration config exists), prime (warm-pool member, not
   activated), or wait (cold path).
-- **EC2 is the inventory.** The pool classifies instances from EC2 state,
-  `StateReason`, spot request state, and tags. DynamoDB holds only short-lived
-  claim leases that stop two scale-up invocations starting the same instance.
+- **EC2 is the source of truth, DynamoDB the index.** The pool classifies
+  instances from EC2 state, `StateReason`, spot request state, and tags. A
+  DynamoDB table indexes the warm-pool instances, so the pool reads EC2 by
+  instance ID and scale-up picks candidates without calling EC2. Each pool run
+  writes the EC2 state back to the index. Scale-up claims an entry before
+  starting it, which also stops the pool destroying an instance being
+  activated. About once an hour the pool lists its instances by tag and adds
+  any missing from the index.
 
 ### Eviction
 
@@ -148,7 +153,10 @@ activated spot instances that stopped instead of terminating.
   already ran jobs, and spreads ownership over several components.
 - **Scale-down as warm-tier owner.** Rejected: scale-down would need permission
   to create instances, and would lose schedule-based sizing.
-- **DynamoDB inventory.** Rejected: drifts from EC2.
+- **EC2 tag scans as the only inventory.** Rejected for large pools: a
+  tag-filtered `DescribeInstances` takes longer with every matching instance,
+  while a read by instance ID stays fast. The index keeps EC2 as the source of
+  truth and is reconciled against a tag scan, which bounds drift.
 - **Lambda-driven parking after a readiness signal.** Rejected: bounded by the
   Lambda timeout.
 - **EC2 hibernate.** Deferred: needs specific instance types and AMIs, for a
