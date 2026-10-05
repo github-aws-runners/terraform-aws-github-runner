@@ -8,7 +8,7 @@ A warm pool keeps stopped, pre-booted runner instances ready. When a job arrives
 ## How it works
 
 1. The pool Lambda launches instances until the number of warm and priming instances matches the pool size from `pool_config`.
-2. Each instance installs the runner, prepares itself, and shuts itself down. It never registers with GitHub while it is in the pool.
+2. Each instance installs the runner, prepares itself, and shuts itself down. It never registers with GitHub while it is in the pool. Its stop event marks it warm within seconds.
 3. When a job is queued, scale-up claims the newest warm instance in the warm pool index, starts it, and then writes its registration config, the same order as a new instance. A boot hook waits for the config, registers the runner, and runs the job.
 4. A warm instance is activated at most once and never returns to the pool. After activation it follows the normal runner lifecycle: an ephemeral runner runs one job, a non-ephemeral runner can pick up more jobs until scale-down removes it.
 5. If no warm instance is available, or starting one fails, scale-up launches a new instance as usual.
@@ -22,6 +22,8 @@ With warm mode enabled, `pool_config` sizes the warm pool instead of the pool of
 A DynamoDB table (`<prefix>-warm-pool-index`) records which instances belong to the warm pool. EC2 stays the source of truth for their state: each pool run reads the indexed instances by ID and writes changes back to the index, and scale-up picks warm instances from the index without calling EC2 to list them. Listing instances by tag gets slower with every matching instance, while reading by ID stays fast, which matters for large pools.
 
 Scale-up claims an instance in the index before starting it, so two invocations never start the same instance, and the pool never destroys a claimed instance. A claim expires after 10 minutes. If an instance no longer matches its index entry when scale-up starts it (for example it was terminated), scale-up tries the next warm instance.
+
+One EventBridge rule per deployment sends EC2 stop events to an SQS queue, and one consumer Lambda (`<prefix>-warm-pool-stop-events`) reads them in batches. For each batch it describes the stopped instances by ID once, keeps the warm pool instances, and marks those that stopped themselves warm in the index of their runner configuration. Pool Lambdas are not involved, so a burst of primed instances does not delay scheduled pool runs. If an event is missed, the next scheduled pool run marks the instance warm.
 
 About once an hour the pool also lists its instances by tag and adds any instance missing from the index, for example after a Lambda crashed between launch and the index write.
 
@@ -84,7 +86,7 @@ multi_runner_config = {
 | `enabled` | `false` | Keep the pool size of stopped instances instead of idle runners. |
 | `max_age_hours` | `168` | Whole hours, at least 1, after which a warm instance is replaced. |
 
-The pool only refills and evicts when a `pool_config` schedule fires, so use a frequent schedule (for example every minute) while warm instances are wanted. A schedule with `size = 0` drains the pool, for example outside office hours.
+Primed instances become available without waiting for a schedule, but the pool only refills and evicts when a `pool_config` schedule fires, so use a frequent schedule (for example every minute) while warm instances are wanted. A schedule with `size = 0` drains the pool, for example outside office hours.
 
 The examples in [`examples/multi-runner`](https://github.com/github-aws-runners/terraform-aws-github-runner/tree/main/examples/multi-runner/templates/runner-configs) include an on-demand (`linux-x64-warm.yaml`) and a spot (`linux-x64-warm-spot.yaml`) warm pool.
 
@@ -123,6 +125,7 @@ With metrics enabled, the pool publishes `WarmPoolWarmInstances`, `WarmPoolPrimi
 - Every warm instance keeps its EBS volumes. Check the EBS volume and storage quotas for large pools.
 - Warm instances do not count toward `runners_maximum_count`. Activating one does, like launching a new instance.
 - The pool reads its instances from EC2 by ID, and lists them by tag only about once an hour. Scale-up does not list instances to activate a warm one. If the warm pool index cannot be read, scale-up launches new instances and reports `index-unavailable`.
+- EC2 stop events cannot be filtered by tag, so the stop-event queue receives every instance stop in the account and region. Each batch costs one `DescribeInstances` by ID; instances outside the warm pools need no further calls.
 - Spot API request limits are shared by everything in the account and region. A spot warm pool reads spot requests only by ID, at most once per run, and only for its own instances; scale-up and on-demand warm pools do not read spot requests at all. If the Spot API throttles that read, the run continues without it: stopped spot instances are classified from EC2 data, spot request cleanup waits for a later run, and `WarmPoolSpotLookupFailures` is published.
 
 ## Disabling

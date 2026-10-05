@@ -175,6 +175,7 @@ describe('createEc2PoolCapability.standby', () => {
     launchWarm: vi.fn<Ec2StandbyOperations['launchWarm']>(),
     listStandby: vi.fn<Ec2StandbyOperations['listStandby']>(),
     readStandby: vi.fn<Ec2StandbyOperations['readStandby']>(),
+    readWarmPoolInstances: vi.fn<Ec2StandbyOperations['readWarmPoolInstances']>(),
     listStoppedWarmInstances: vi.fn<Ec2StandbyOperations['listStoppedWarmInstances']>(),
     listScaleDownInstances: vi.fn<Ec2StandbyOperations['listScaleDownInstances']>(),
     startInstance: vi.fn<Ec2StandbyOperations['startInstance']>(),
@@ -183,6 +184,7 @@ describe('createEc2PoolCapability.standby', () => {
   } satisfies Ec2StandbyOperations;
   const index = {
     query: vi.fn<WarmIndexStore['query']>(),
+    markWarm: vi.fn<WarmIndexStore['markWarm']>(),
     update: vi.fn<WarmIndexStore['update']>(),
     remove: vi.fn<WarmIndexStore['remove']>(),
     removeUnclaimed: vi.fn<WarmIndexStore['removeUnclaimed']>(),
@@ -424,6 +426,74 @@ describe('createEc2PoolCapability.standby', () => {
     });
     expect(standbyOperations.cancelSpotRequest).not.toHaveBeenCalled();
     expect(index.remove).toHaveBeenCalledWith('i-gone');
+  });
+
+  describe('markPrimed', () => {
+    const primed = (instanceId: string, environment: string, overrides: object = {}) => ({
+      instanceId,
+      environment,
+      state: 'WARM' as const,
+      launchTime: new Date('2026-10-05T15:35:00.000Z'),
+      expiresAt: 'later',
+      instanceType: 'm7g.large',
+      availabilityZone: 'eu-west-1a',
+      ...overrides,
+    });
+
+    beforeEach(() => {
+      process.env.WARM_POOL_INDEX_TABLES = JSON.stringify({ 'env-a': 'table-a', 'env-b': 'table-b' });
+      index.markWarm.mockResolvedValue(true);
+    });
+
+    it('marks primed instances warm in the index of their own environment', async () => {
+      standbyOperations.readWarmPoolInstances.mockResolvedValue([
+        primed('i-a', 'env-a', { spotInstanceRequestId: 'sir-1' }),
+        primed('i-b', 'env-b'),
+      ]);
+
+      await expect(standby.markPrimed!(['i-a', 'i-b', 'i-a'])).resolves.toEqual([]);
+
+      expect(standbyOperations.readWarmPoolInstances).toHaveBeenCalledWith(['i-a', 'i-b']);
+      expect(createIndexStore).toHaveBeenCalledWith('table-a', 'env-a');
+      expect(createIndexStore).toHaveBeenCalledWith('table-b', 'env-b');
+      expect(index.markWarm).toHaveBeenCalledWith({
+        instanceId: 'i-a',
+        state: 'WARM',
+        launchTime: '2026-10-05T15:35:00.000Z',
+        expiresAt: 'later',
+        instanceType: 'm7g.large',
+        availabilityZone: 'eu-west-1a',
+        spotInstanceRequestId: 'sir-1',
+      });
+      expect(index.markWarm).toHaveBeenCalledTimes(2);
+      expect(standbyOperations.readStandby).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['an environment without a warm pool index', primed('i-x', 'env-unknown')],
+      ['an instance stopped by AWS or an operator', primed('i-x', 'env-a', { state: 'GARBAGE' })],
+      ['an activated instance', primed('i-x', 'env-a', { state: 'ACTIVE' })],
+    ])('leaves %s alone', async (_, instance) => {
+      standbyOperations.readWarmPoolInstances.mockResolvedValue([instance]);
+
+      await expect(standby.markPrimed!(['i-x'])).resolves.toEqual([]);
+
+      expect(index.markWarm).not.toHaveBeenCalled();
+    });
+
+    it('reports instances whose index write failed and keeps going', async () => {
+      standbyOperations.readWarmPoolInstances.mockResolvedValue([primed('i-a', 'env-a'), primed('i-b', 'env-a')]);
+      index.markWarm.mockRejectedValueOnce(new Error('throttled'));
+
+      await expect(standby.markPrimed!(['i-a', 'i-b'])).resolves.toEqual(['i-a']);
+      expect(index.markWarm).toHaveBeenCalledTimes(2);
+    });
+
+    it('fails when no index tables are configured', async () => {
+      delete process.env.WARM_POOL_INDEX_TABLES;
+
+      await expect(standby.markPrimed!(['i-a'])).rejects.toThrow('WARM_POOL_INDEX_TABLES is not set.');
+    });
   });
 
   it('resolves the current image from the provider config', async () => {

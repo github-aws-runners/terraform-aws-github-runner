@@ -1,4 +1,5 @@
 import {
+  type AttributeValue,
   DeleteItemCommand,
   type DynamoDBClient,
   QueryCommand,
@@ -42,6 +43,8 @@ export interface WarmIndexStore {
   query(): Promise<WarmIndexItem[]>;
   /** Writes EC2-derived fields; never overwrites an item that scale-up marked activated. */
   update(item: WarmIndexUpdate): Promise<void>;
+  /** Writes a WARM item only while it is still PRIMING; resolves false otherwise. */
+  markWarm(item: WarmIndexUpdate): Promise<boolean>;
   remove(instanceId: string): Promise<void>;
   /** Removes the item unless scale-up holds a live claim on it; resolves false when it does. */
   removeUnclaimed(instanceId: string): Promise<boolean>;
@@ -79,6 +82,40 @@ function numberAttribute(value: { N?: string } | undefined): number | undefined 
   return value?.N === undefined ? undefined : Number(value.N);
 }
 
+function toItem(instanceId: string, item: Record<string, AttributeValue>): WarmIndexItem {
+  return {
+    instanceId,
+    state: (item.state?.S ?? 'PRIMING') as WarmIndexState,
+    launchTime: item.launchTime?.S,
+    expiresAt: item.expiresAt?.S,
+    instanceType: item.instanceType?.S,
+    availabilityZone: item.availabilityZone?.S,
+    spotInstanceRequestId: item.spotInstanceRequestId?.S,
+    activatedAt: item.activatedAt?.S,
+    claimUntil: numberAttribute(item.claimUntil),
+    startFailures: numberAttribute(item.startFailures),
+    cooldownUntil: numberAttribute(item.cooldownUntil),
+  };
+}
+
+function updateExpression(item: WarmIndexUpdate): {
+  assignments: string[];
+  values: Record<string, AttributeValue>;
+} {
+  const values: Record<string, AttributeValue> = {
+    ':state': { S: item.state },
+    ':ttl': { N: String(ttlSeconds(item)) },
+  };
+  const assignments = ['#state = :state', '#ttl = :ttl'];
+  for (const field of UPDATE_FIELDS) {
+    const value = item[field];
+    if (value === undefined) continue;
+    assignments.push(`${field} = :${field}`);
+    values[`:${field}`] = { S: value };
+  }
+  return { assignments, values };
+}
+
 // DynamoDB TTL is a safety net only; the pool removes items itself.
 function ttlSeconds(item: WarmIndexUpdate): number {
   const expiresAt = Date.parse(item.expiresAt ?? '');
@@ -113,19 +150,7 @@ export function createWarmIndexStore(
         for (const item of result.Items ?? []) {
           const instanceId = item.instanceId?.S;
           if (!instanceId || instanceId === RECONCILE_MARKER) continue;
-          items.push({
-            instanceId,
-            state: (item.state?.S ?? 'PRIMING') as WarmIndexState,
-            launchTime: item.launchTime?.S,
-            expiresAt: item.expiresAt?.S,
-            instanceType: item.instanceType?.S,
-            availabilityZone: item.availabilityZone?.S,
-            spotInstanceRequestId: item.spotInstanceRequestId?.S,
-            activatedAt: item.activatedAt?.S,
-            claimUntil: numberAttribute(item.claimUntil),
-            startFailures: numberAttribute(item.startFailures),
-            cooldownUntil: numberAttribute(item.cooldownUntil),
-          });
+          items.push(toItem(instanceId, item));
         }
         exclusiveStartKey = result.LastEvaluatedKey;
       } while (exclusiveStartKey);
@@ -133,18 +158,7 @@ export function createWarmIndexStore(
     },
 
     update: async (item) => {
-      const values: Record<string, { S: string } | { N: string }> = {
-        ':state': { S: item.state },
-        ':ttl': { N: String(ttlSeconds(item)) },
-        ':activated': { S: 'ACTIVATED' },
-      };
-      const assignments = ['#state = :state', '#ttl = :ttl'];
-      for (const field of UPDATE_FIELDS) {
-        const value = item[field];
-        if (value === undefined) continue;
-        assignments.push(`${field} = :${field}`);
-        values[`:${field}`] = { S: value };
-      }
+      const { assignments, values } = updateExpression(item);
       await unlessConditionFails(() =>
         dynamoClient.send(
           new UpdateItemCommand({
@@ -153,7 +167,23 @@ export function createWarmIndexStore(
             UpdateExpression: `SET ${assignments.join(', ')}`,
             ConditionExpression: 'attribute_not_exists(#state) OR #state <> :activated',
             ExpressionAttributeNames: { '#state': 'state', '#ttl': 'ttl' },
-            ExpressionAttributeValues: values,
+            ExpressionAttributeValues: { ...values, ':activated': { S: 'ACTIVATED' } },
+          }),
+        ),
+      );
+    },
+
+    markWarm: (item) => {
+      const { assignments, values } = updateExpression({ ...item, state: 'WARM' });
+      return unlessConditionFails(() =>
+        dynamoClient.send(
+          new UpdateItemCommand({
+            TableName: tableName,
+            Key: key(item.instanceId),
+            UpdateExpression: `SET ${assignments.join(', ')}`,
+            ConditionExpression: '#state = :priming',
+            ExpressionAttributeNames: { '#state': 'state', '#ttl': 'ttl' },
+            ExpressionAttributeValues: { ...values, ':priming': { S: 'PRIMING' } },
           }),
         ),
       );

@@ -124,6 +124,11 @@ export interface Ec2IndexedInstance {
   activatedAt?: string;
 }
 
+/** A warm-pool instance as read for a stop event, with the environment that owns it. */
+export interface Ec2WarmPoolInstance extends StandbyInstance {
+  environment: string;
+}
+
 export interface Ec2ScaleDownListing {
   /** Running and pending runners, as the runner listing returns them. */
   runners: RunnerInfo[];
@@ -142,6 +147,8 @@ export interface Ec2StandbyOperations {
   listStandby(filters: ListStandbyInput): Promise<StandbyInstance[]>;
   /** Reads exactly the indexed instances by ID, with one by-ID spot request lookup. */
   readStandby(indexed: Ec2IndexedInstance[]): Promise<Ec2StandbyRead>;
+  /** Reads instances by ID and keeps warm-pool members, classified from EC2 data only; unknown IDs are dropped. */
+  readWarmPoolInstances(instanceIds: string[]): Promise<Ec2WarmPoolInstance[]>;
   listStoppedWarmInstances(environment: string): Promise<Ec2StoppedWarmInstance[]>;
   /** One listing for scale-down: its runners and the stopped warm instances to sweep. */
   listScaleDownInstances(environment: string): Promise<Ec2ScaleDownListing>;
@@ -162,6 +169,15 @@ export function createEc2StandbyClient(ec2Client: EC2Client): Ec2StandbyClient {
         runWithRequestSignal(signal, () => launchWarmInstances(ec2Client, parameters, signal)),
       listStandby: (filters) => runWithRequestSignal(signal, () => listStandbyInstances(ec2Client, filters, signal)),
       readStandby: (indexed) => runWithRequestSignal(signal, () => readStandbyInstances(ec2Client, indexed, signal)),
+      readWarmPoolInstances: (instanceIds) =>
+        runWithRequestSignal(signal, async () =>
+          (await describeInstancesById(ec2Client, instanceIds, signal)).flatMap((instance) => {
+            const environment = tagValue(instance, 'ghr:environment');
+            return tagValue(instance, WARM_POOL_TAG) === 'true' && environment
+              ? [{ ...toStandbyInstance(instance, undefined), environment }]
+              : [];
+          }),
+        ),
       listStoppedWarmInstances: (environment) =>
         runWithRequestSignal(signal, () => listStoppedWarmInstances(ec2Client, environment, signal)),
       listScaleDownInstances: (environment) =>

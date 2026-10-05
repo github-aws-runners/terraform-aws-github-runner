@@ -27,8 +27,9 @@ locals {
   }
 
   provider_resources = {
-    launch_template    = aws_launch_template.runner
-    runners_log_groups = try(aws_cloudwatch_log_group.gh_runners, [])
-    logfiles           = local.logfiles
+    launch_template       = aws_launch_template.runner
+    runners_log_groups    = try(aws_cloudwatch_log_group.gh_runners, [])
+    logfiles              = local.logfiles
+    warm_pool_index_table = one([for table in aws_dynamodb_table.warm_pool_index : { name = table.name, arn = table.arn }])
   }
 }
