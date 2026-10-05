@@ -143,7 +143,7 @@ async function claimWarmInstances(
     const launchedAt = (instance: StandbyInstance) => instance.launchTime?.getTime() ?? 0;
     // Scale-down sweeps expired standby instances, so never activate one that expires during activation.
     const claimableUntil = Date.now() + WARM_ACTIVATION_GRACE_MS;
-    candidates = (await warmOperations.standby.listStandby(pool))
+    candidates = (await warmOperations.standby.listStandby(pool, { spotRequests: false })).instances
       .filter((instance) => instance.state === 'WARM')
       .filter((instance) => {
         const expiresAt = Date.parse(instance.expiresAt ?? '');

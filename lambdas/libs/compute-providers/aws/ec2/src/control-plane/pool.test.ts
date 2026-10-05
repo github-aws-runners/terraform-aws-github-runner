@@ -167,7 +167,8 @@ describe('createEc2PoolCapability.standby', () => {
     destroyInstance: vi.fn<Ec2StandbyOperations['destroyInstance']>(),
     launchWarm: vi.fn<Ec2StandbyOperations['launchWarm']>(),
     listStandby: vi.fn<Ec2StandbyOperations['listStandby']>(),
-    listOrphanedSpotRequests: vi.fn<Ec2StandbyOperations['listOrphanedSpotRequests']>(),
+    listStoppedWarmInstances: vi.fn<Ec2StandbyOperations['listStoppedWarmInstances']>(),
+    startInstance: vi.fn<Ec2StandbyOperations['startInstance']>(),
     cancelSpotRequest: vi.fn<Ec2StandbyOperations['cancelSpotRequest']>(),
     currentImage: vi.fn<Ec2StandbyOperations['currentImage']>(),
   } satisfies Ec2StandbyOperations;
@@ -197,16 +198,16 @@ describe('createEc2PoolCapability.standby', () => {
     expect(capability.standby).toBeUndefined();
   });
 
-  it('lists standby instances and orphaned spot requests for the pool', async () => {
-    standbyOperations.listStandby.mockResolvedValue([{ instanceId: 'i-warm', state: 'WARM' }]);
-    standbyOperations.listOrphanedSpotRequests.mockResolvedValue([{ spotInstanceRequestId: 'sir-1', state: 'open' }]);
+  it('lists standby instances with spot request state for the pool', async () => {
+    const listing = {
+      instances: [{ instanceId: 'i-warm', state: 'WARM' as const }],
+      orphanedSpotRequests: [{ spotInstanceRequestId: 'sir-1', state: 'open' }],
+      spotStateKnown: true,
+    };
+    standbyOperations.listStandby.mockResolvedValue(listing);
 
-    await expect(standby.list(poolInput)).resolves.toEqual([{ instanceId: 'i-warm', state: 'WARM' }]);
-    await expect(standby.listOrphanedSpotRequests!(poolInput)).resolves.toEqual([
-      { spotInstanceRequestId: 'sir-1', state: 'open' },
-    ]);
-    expect(standbyOperations.listStandby).toHaveBeenCalledWith(poolInput);
-    expect(standbyOperations.listOrphanedSpotRequests).toHaveBeenCalledWith(poolInput);
+    await expect(standby.list(poolInput)).resolves.toEqual(listing);
+    expect(standbyOperations.listStandby).toHaveBeenCalledWith(poolInput, { spotRequests: true });
   });
 
   it('launches warm instances from the provider config and maps retryable failures', async () => {
@@ -250,10 +251,24 @@ describe('createEc2PoolCapability.standby', () => {
   it('cancels every spot request and reports failures without stopping', async () => {
     standbyOperations.cancelSpotRequest.mockResolvedValueOnce().mockRejectedValueOnce(new Error('boom'));
 
-    await expect(standby.cancelSpotRequests!(['sir-1', 'sir-2'])).resolves.toEqual({
-      succeeded: ['sir-1'],
-      failed: ['sir-2'],
+    await expect(
+      standby.cancelSpotRequests!([{ spotInstanceRequestId: 'sir-1' }, { spotInstanceRequestId: 'sir-2' }]),
+    ).resolves.toEqual({ succeeded: ['sir-1'], failed: ['sir-2'] });
+  });
+
+  it('destroys the replacement instance of a respawned request, cancelling the request first', async () => {
+    standbyOperations.destroyInstance.mockResolvedValue();
+
+    await expect(
+      standby.cancelSpotRequests!([
+        { spotInstanceRequestId: 'sir-1', instanceId: 'i-gone', replacementInstanceId: 'i-respawn' },
+      ]),
+    ).resolves.toEqual({ succeeded: ['sir-1'], failed: [] });
+    expect(standbyOperations.destroyInstance).toHaveBeenCalledWith({
+      instanceId: 'i-respawn',
+      spotInstanceRequestId: 'sir-1',
     });
+    expect(standbyOperations.cancelSpotRequest).not.toHaveBeenCalled();
   });
 
   it('resolves the current image from the provider config', async () => {

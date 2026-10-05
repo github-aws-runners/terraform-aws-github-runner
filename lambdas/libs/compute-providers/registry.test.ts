@@ -52,7 +52,6 @@ it('exposes every configured provider through both capability registries', () =>
     list: expect.any(Function),
     launch: expect.any(Function),
     destroy: expect.any(Function),
-    listOrphanedSpotRequests: expect.any(Function),
     cancelSpotRequests: expect.any(Function),
     currentImage: expect.any(Function),
   });
