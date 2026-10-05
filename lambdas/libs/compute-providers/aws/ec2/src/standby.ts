@@ -3,7 +3,6 @@ import {
   DescribeInstancesCommand,
   DescribeLaunchTemplateVersionsCommand,
   DescribeSpotInstanceRequestsCommand,
-  type DescribeSpotInstanceRequestsCommandInput,
   type EC2Client,
   type Filter,
   type Instance,
@@ -21,7 +20,9 @@ import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import type {
   DestroyStandbyInput,
   ListStandbyInput,
+  RunnerInfo,
   StandbyImage,
+  StandbyInstance,
   StandbyInstanceState,
   StandbyListing,
   StandbySpotRequest,
@@ -33,6 +34,7 @@ import {
   type Ec2RunnerRequestContext,
   failureDetails,
   getAmiIdOverride,
+  toRunnerInfo,
   requestFailureCodes,
   runWithRequestSignal,
   throwIfAborted,
@@ -114,16 +116,35 @@ export interface Ec2StoppedWarmInstance {
   activatedAt?: string;
 }
 
-export interface Ec2ListStandbyOptions {
-  /** Read spot request state by ID; scale-up classifies from EC2 data only to stay off the Spot API. */
-  spotRequests: boolean;
+/** A warm-pool instance as recorded in the warm pool index. */
+export interface Ec2IndexedInstance {
+  instanceId: string;
+  spotInstanceRequestId?: string;
+  /** ISO-8601 activation time recorded by scale-up. */
+  activatedAt?: string;
+}
+
+export interface Ec2ScaleDownListing {
+  /** Running and pending runners, as the runner listing returns them. */
+  runners: RunnerInfo[];
+  stoppedWarm: Ec2StoppedWarmInstance[];
+}
+
+export interface Ec2StandbyRead extends StandbyListing {
+  /** Indexed instances whose entry can be dropped: gone without a live spot request, or activated and settled. */
+  releasedInstanceIds: string[];
 }
 
 export interface Ec2StandbyOperations {
   destroyInstance(input: DestroyStandbyInput): Promise<void>;
   launchWarm(parameters: Ec2WarmLaunchParameters): Promise<Ec2RunnerCreateResult>;
-  listStandby(filters: ListStandbyInput, options: Ec2ListStandbyOptions): Promise<StandbyListing>;
+  /** Tag-filtered scan, classified from EC2 data only; slow with many matching instances. */
+  listStandby(filters: ListStandbyInput): Promise<StandbyInstance[]>;
+  /** Reads exactly the indexed instances by ID, with one by-ID spot request lookup. */
+  readStandby(indexed: Ec2IndexedInstance[]): Promise<Ec2StandbyRead>;
   listStoppedWarmInstances(environment: string): Promise<Ec2StoppedWarmInstance[]>;
+  /** One listing for scale-down: its runners and the stopped warm instances to sweep. */
+  listScaleDownInstances(environment: string): Promise<Ec2ScaleDownListing>;
   cancelSpotRequest(spotInstanceRequestId: string): Promise<void>;
   currentImage(parameters: Ec2CurrentImageParameters): Promise<StandbyImage>;
   startInstance(instanceId: string): Promise<void>;
@@ -139,10 +160,12 @@ export function createEc2StandbyClient(ec2Client: EC2Client): Ec2StandbyClient {
       destroyInstance: (input) => runWithRequestSignal(signal, () => destroyInstance(ec2Client, input, signal)),
       launchWarm: (parameters) =>
         runWithRequestSignal(signal, () => launchWarmInstances(ec2Client, parameters, signal)),
-      listStandby: (filters, options) =>
-        runWithRequestSignal(signal, () => listStandbyInstances(ec2Client, filters, options, signal)),
+      listStandby: (filters) => runWithRequestSignal(signal, () => listStandbyInstances(ec2Client, filters, signal)),
+      readStandby: (indexed) => runWithRequestSignal(signal, () => readStandbyInstances(ec2Client, indexed, signal)),
       listStoppedWarmInstances: (environment) =>
         runWithRequestSignal(signal, () => listStoppedWarmInstances(ec2Client, environment, signal)),
+      listScaleDownInstances: (environment) =>
+        runWithRequestSignal(signal, () => listScaleDownInstances(ec2Client, environment, signal)),
       cancelSpotRequest: (spotInstanceRequestId) =>
         runWithRequestSignal(signal, () => cancelSpotRequest(ec2Client, spotInstanceRequestId, signal)),
       currentImage: (parameters) => runWithRequestSignal(signal, () => currentImage(ec2Client, parameters, signal)),
@@ -404,58 +427,161 @@ async function describeInstances(
   return instances;
 }
 
-async function describeSpotRequests(
+const ID_READ_CHUNK = 200;
+
+function errorText(error: unknown): string {
+  const nested = (error as { Error?: { Message?: string } } | undefined)?.Error?.Message;
+  return [error instanceof Error ? error.message : String(error), nested].filter(Boolean).join(' ');
+}
+
+// One unknown ID fails the whole call, so drop the IDs named in the error and read the rest again.
+async function describeById<TResult>(
+  ids: string[],
+  notFoundCode: string,
+  idPattern: RegExp,
+  describe: (ids: string[]) => Promise<TResult[]>,
+): Promise<{ results: TResult[]; missing: string[] }> {
+  const results: TResult[] = [];
+  const missing: string[] = [];
+  for (let offset = 0; offset < ids.length; offset += ID_READ_CHUNK) {
+    let remaining = ids.slice(offset, offset + ID_READ_CHUNK);
+    while (remaining.length > 0) {
+      try {
+        results.push(...(await describe(remaining)));
+        break;
+      } catch (error) {
+        if (awsErrorCode(error) !== notFoundCode) throw error;
+        const named = new Set(errorText(error).match(idPattern) ?? []);
+        const gone = remaining.filter((id) => named.has(id));
+        if (gone.length === 0) throw error;
+        missing.push(...gone);
+        remaining = remaining.filter((id) => !named.has(id));
+      }
+    }
+  }
+  return { results, missing };
+}
+
+async function describeInstancesById(
   ec2Client: EC2Client,
-  input: Omit<DescribeSpotInstanceRequestsCommandInput, 'NextToken'>,
+  instanceIds: string[],
+  signal: AbortSignal | undefined,
+): Promise<Instance[]> {
+  const { results } = await describeById(instanceIds, 'InvalidInstanceID.NotFound', /i-[0-9a-z]+/g, async (ids) => {
+    const result = await ec2Client.send(new DescribeInstancesCommand({ InstanceIds: ids }), { abortSignal: signal });
+    return result.Reservations?.flatMap((reservation) => reservation.Instances ?? []) ?? [];
+  });
+  return results;
+}
+
+async function describeSpotRequestsById(
+  ec2Client: EC2Client,
+  spotInstanceRequestIds: string[],
   signal: AbortSignal | undefined,
 ): Promise<SpotInstanceRequest[]> {
-  const requests: SpotInstanceRequest[] = [];
-  let nextToken: string | undefined;
-  do {
-    const result = await ec2Client.send(new DescribeSpotInstanceRequestsCommand({ ...input, NextToken: nextToken }), {
-      abortSignal: signal,
-    });
-    requests.push(...(result.SpotInstanceRequests ?? []));
-    nextToken = result.NextToken;
-  } while (nextToken);
-  return requests;
+  const { results } = await describeById(
+    spotInstanceRequestIds,
+    'InvalidSpotInstanceRequestID.NotFound',
+    /sir-[0-9a-z]+/g,
+    async (ids) => {
+      const result = await ec2Client.send(new DescribeSpotInstanceRequestsCommand({ SpotInstanceRequestIds: ids }), {
+        abortSignal: signal,
+      });
+      return result.SpotInstanceRequests ?? [];
+    },
+  );
+  return results;
+}
+
+function tagValue(instance: Instance | undefined, key: string): string | undefined {
+  return instance?.Tags?.find((tag) => tag.Key === key)?.Value;
+}
+
+function toStandbyInstance(instance: Instance, request: SpotInstanceRequest | undefined): StandbyInstance {
+  return {
+    instanceId: instance.InstanceId as string,
+    state: classifyStandbyInstance({
+      ec2State: instance.State?.Name,
+      stateReasonCode: instance.StateReason?.Code,
+      spot: instance.SpotInstanceRequestId !== undefined,
+      spotStatusCode: request?.Status?.Code,
+      spotRequestState: request?.State,
+      activated: tagValue(instance, WARM_ACTIVATED_TAG) !== undefined,
+    }),
+    launchTime: instance.LaunchTime,
+    imageId: instance.ImageId,
+    launchTemplateVersion: tagValue(instance, LAUNCH_TEMPLATE_VERSION_TAG),
+    spotInstanceRequestId: instance.SpotInstanceRequestId,
+    expiresAt: tagValue(instance, WARM_EXPIRES_AT_TAG),
+  };
 }
 
 async function listStandbyInstances(
   ec2Client: EC2Client,
   filters: ListStandbyInput,
-  options: Ec2ListStandbyOptions,
   signal: AbortSignal | undefined,
-): Promise<StandbyListing> {
+): Promise<StandbyInstance[]> {
   const instances = await describeInstances(
     ec2Client,
     [{ Name: 'instance-state-name', Values: LIVE_EC2_STATES }, ...standbyTagFilters(filters)],
     signal,
   );
+  return instances.map((instance) => toStandbyInstance(instance, undefined));
+}
 
+function settledActivation(activatedAt: string | undefined, now: number): boolean {
+  const time = Date.parse(activatedAt ?? '');
+  return !Number.isNaN(time) && now - time >= WARM_ACTIVATION_GRACE_MS;
+}
+
+async function readStandbyInstances(
+  ec2Client: EC2Client,
+  indexed: Ec2IndexedInstance[],
+  signal: AbortSignal | undefined,
+): Promise<Ec2StandbyRead> {
+  const found = new Map(
+    (
+      await describeInstancesById(
+        ec2Client,
+        indexed.map(({ instanceId }) => instanceId),
+        signal,
+      )
+    ).map((instance) => [instance.InstanceId, instance]),
+  );
+  const now = Date.now();
+  const entries = indexed.map((item) => {
+    const instance = found.get(item.instanceId);
+    const activatedAt = tagValue(instance, WARM_ACTIVATED_TAG) ?? item.activatedAt;
+    return {
+      instanceId: item.instanceId,
+      instance,
+      gone: instance === undefined || GONE_EC2_STATES.includes(instance.State?.Name ?? ''),
+      activatedAt,
+      settled: settledActivation(activatedAt, now),
+      spotInstanceRequestId: instance?.SpotInstanceRequestId ?? item.spotInstanceRequestId,
+    };
+  });
+  // Live, unactivated instances are classified; gone or settled activated ones are cleaned up.
+  const finished = entries.filter((entry) => entry.gone || (entry.activatedAt !== undefined && entry.settled));
+  const classified = entries.filter((entry) => !entry.gone && entry.activatedAt === undefined);
+
+  const spotInstanceRequestIds = [
+    ...new Set(
+      [...finished, ...classified.filter((entry) => entry.instance?.State?.Name === 'stopped')].flatMap(
+        (entry) => entry.spotInstanceRequestId ?? [],
+      ),
+    ),
+  ];
   let spotRequestById = new Map<string, SpotInstanceRequest>();
-  let orphanCandidates: Instance[] = [];
-  let spotStateKnown = options.spotRequests;
-  if (options.spotRequests) {
+  let spotStateKnown = true;
+  if (spotInstanceRequestIds.length > 0) {
     try {
-      orphanCandidates = await listOrphanCandidates(ec2Client, filters.environment, signal);
-      // Only stopped spot instances need the request state to be classified.
-      const stoppedSpot = instances.filter((instance) => instance.State?.Name === 'stopped');
-      const spotInstanceRequestIds = [
-        ...new Set([...stoppedSpot, ...orphanCandidates].flatMap((instance) => instance.SpotInstanceRequestId ?? [])),
-      ];
-      if (spotInstanceRequestIds.length > 0) {
-        const requests = await describeSpotRequests(
-          ec2Client,
-          { SpotInstanceRequestIds: spotInstanceRequestIds },
-          signal,
-        );
-        spotRequestById = new Map(
-          requests.flatMap((request) =>
-            request.SpotInstanceRequestId ? [[request.SpotInstanceRequestId, request]] : [],
-          ),
-        );
-      }
+      const requests = await describeSpotRequestsById(ec2Client, spotInstanceRequestIds, signal);
+      spotRequestById = new Map(
+        requests.flatMap((request) =>
+          request.SpotInstanceRequestId ? [[request.SpotInstanceRequestId, request]] : [],
+        ),
+      );
     } catch (error) {
       throwIfAborted(signal, error);
       logger.warn(
@@ -463,80 +589,54 @@ async function listStandbyInstances(
         failureDetails(error),
       );
       spotStateKnown = false;
-      orphanCandidates = [];
-      spotRequestById = new Map();
     }
   }
-  const spotRequest = (instance: Instance) =>
-    instance.SpotInstanceRequestId === undefined ? undefined : spotRequestById.get(instance.SpotInstanceRequestId);
+  const spotRequest = (id: string | undefined) => (id === undefined ? undefined : spotRequestById.get(id));
 
-  return {
-    instances: instances.map((instance) => {
-      const tag = (key: string) => instance.Tags?.find((t) => t.Key === key)?.Value;
-      return {
-        instanceId: instance.InstanceId as string,
-        state: classifyStandbyInstance({
-          ec2State: instance.State?.Name,
-          stateReasonCode: instance.StateReason?.Code,
-          spot: instance.SpotInstanceRequestId !== undefined,
-          spotStatusCode: spotRequest(instance)?.Status?.Code,
-          spotRequestState: spotRequest(instance)?.State,
-          activated: tag(WARM_ACTIVATED_TAG) !== undefined,
-        }),
-        launchTime: instance.LaunchTime,
-        imageId: instance.ImageId,
-        launchTemplateVersion: tag(LAUNCH_TEMPLATE_VERSION_TAG),
-        spotInstanceRequestId: instance.SpotInstanceRequestId,
-        expiresAt: tag(WARM_EXPIRES_AT_TAG),
-      };
-    }),
-    orphanedSpotRequests: orphanedSpotRequests(orphanCandidates, spotRequest),
-    spotStateKnown,
-  };
-}
-
-// Terminated instances stay visible for about an hour, so their requests are found without a filtered Spot query.
-async function listOrphanCandidates(
-  ec2Client: EC2Client,
-  environment: string,
-  signal: AbortSignal | undefined,
-): Promise<Instance[]> {
-  const instances = await describeInstances(
-    ec2Client,
-    [
-      { Name: 'instance-lifecycle', Values: ['spot'] },
-      { Name: 'tag:ghr:Application', Values: ['github-action-runner'] },
-      { Name: 'tag:ghr:environment', Values: [environment] },
-      { Name: `tag:${WARM_POOL_TAG}`, Values: ['true'] },
-    ],
-    signal,
-  );
-  const now = Date.now();
-  return instances.filter((instance) => {
-    const state = instance.State?.Name ?? '';
-    if (GONE_EC2_STATES.includes(state)) return true;
-    return LIVE_EC2_STATES.includes(state) && activationSettled(instance, now);
-  });
-}
-
-function orphanedSpotRequests(
-  candidates: Instance[],
-  spotRequest: (instance: Instance) => SpotInstanceRequest | undefined,
-): StandbySpotRequest[] {
-  const orphaned = new Map<string, StandbySpotRequest>();
-  for (const instance of candidates) {
-    const request = spotRequest(instance);
-    if (!request?.SpotInstanceRequestId || !LIVE_SPOT_REQUEST_STATES.includes(request.State ?? '')) continue;
+  const orphanedSpotRequests: StandbySpotRequest[] = [];
+  const releasedInstanceIds: string[] = [];
+  for (const entry of finished) {
+    if (!entry.spotInstanceRequestId) {
+      releasedInstanceIds.push(entry.instanceId);
+      continue;
+    }
+    if (!spotStateKnown) continue;
+    const request = spotRequest(entry.spotInstanceRequestId);
+    if (!request || !LIVE_SPOT_REQUEST_STATES.includes(request.State ?? '')) {
+      releasedInstanceIds.push(entry.instanceId);
+      continue;
+    }
     const replacementInstanceId =
-      request.InstanceId !== undefined && request.InstanceId !== instance.InstanceId ? request.InstanceId : undefined;
-    orphaned.set(request.SpotInstanceRequestId, {
-      spotInstanceRequestId: request.SpotInstanceRequestId,
+      request.InstanceId !== undefined && request.InstanceId !== entry.instanceId ? request.InstanceId : undefined;
+    orphanedSpotRequests.push({
+      spotInstanceRequestId: entry.spotInstanceRequestId,
       state: request.State,
-      instanceId: instance.InstanceId,
+      instanceId: entry.instanceId,
       ...(replacementInstanceId ? { replacementInstanceId } : {}),
     });
   }
-  return [...orphaned.values()];
+
+  return {
+    instances: classified.map((entry) =>
+      toStandbyInstance(entry.instance as Instance, spotRequest(entry.spotInstanceRequestId)),
+    ),
+    orphanedSpotRequests,
+    spotStateKnown,
+    releasedInstanceIds,
+  };
+}
+
+function toStoppedWarmInstance(instance: Instance): Ec2StoppedWarmInstance[] {
+  if (!instance.InstanceId) return [];
+  return [
+    {
+      instanceId: instance.InstanceId,
+      spotInstanceRequestId: instance.SpotInstanceRequestId,
+      expiresAt: tagValue(instance, WARM_EXPIRES_AT_TAG),
+      activated: tagValue(instance, WARM_ACTIVATED_TAG) !== undefined,
+      activatedAt: tagValue(instance, WARM_ACTIVATED_TAG),
+    },
+  ];
 }
 
 async function listStoppedWarmInstances(
@@ -554,22 +654,28 @@ async function listStoppedWarmInstances(
     ],
     signal,
   );
-  return instances.flatMap((instance) => {
-    if (!instance.InstanceId) return [];
-    const tag = (key: string) => instance.Tags?.find((t) => t.Key === key)?.Value;
-    return [
-      {
-        instanceId: instance.InstanceId,
-        spotInstanceRequestId: instance.SpotInstanceRequestId,
-        expiresAt: tag(WARM_EXPIRES_AT_TAG),
-        activated: tag(WARM_ACTIVATED_TAG) !== undefined,
-        activatedAt: tag(WARM_ACTIVATED_TAG),
-      },
-    ];
-  });
+  return instances.flatMap(toStoppedWarmInstance);
 }
 
-function activationSettled(instance: Instance, now: number): boolean {
-  const activatedAt = Date.parse(instance.Tags?.find((tag) => tag.Key === WARM_ACTIVATED_TAG)?.Value ?? '');
-  return !Number.isNaN(activatedAt) && now - activatedAt >= WARM_ACTIVATION_GRACE_MS;
+async function listScaleDownInstances(
+  ec2Client: EC2Client,
+  environment: string,
+  signal: AbortSignal | undefined,
+): Promise<Ec2ScaleDownListing> {
+  const instances = await describeInstances(
+    ec2Client,
+    [
+      { Name: 'instance-state-name', Values: ['running', 'pending', 'stopped'] },
+      { Name: 'tag:ghr:environment', Values: [environment] },
+      { Name: 'tag:ghr:Application', Values: ['github-action-runner'] },
+    ],
+    signal,
+  );
+  const stopped = (instance: Instance) => instance.State?.Name === 'stopped';
+  return {
+    runners: instances.filter((instance) => !stopped(instance)).map(toRunnerInfo),
+    stoppedWarm: instances
+      .filter((instance) => stopped(instance) && tagValue(instance, WARM_POOL_TAG) === 'true')
+      .flatMap(toStoppedWarmInstance),
+  };
 }

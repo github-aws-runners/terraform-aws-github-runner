@@ -72,7 +72,7 @@ run "warm_pool_disabled_by_default" {
   command = plan
 
   assert {
-    condition     = length(aws_dynamodb_table.warm_pool_leases) == 0 && length(aws_iam_role_policy.scale_up_warm_pool) == 0
+    condition     = length(aws_dynamodb_table.warm_pool_index) == 0 && length(aws_iam_role_policy.scale_up_warm_pool) == 0
     error_message = "No warm pool resources should exist when warm_pool is disabled"
   }
 
@@ -91,8 +91,10 @@ run "warm_pool_enabled" {
   }
 
   assert {
-    condition     = length(aws_dynamodb_table.warm_pool_leases) == 1 && aws_dynamodb_table.warm_pool_leases[0].hash_key == "instanceId"
-    error_message = "The lease table should be created with instanceId as hash key"
+    condition = (length(aws_dynamodb_table.warm_pool_index) == 1
+      && aws_dynamodb_table.warm_pool_index[0].hash_key == "environment"
+    && aws_dynamodb_table.warm_pool_index[0].range_key == "instanceId")
+    error_message = "The index table should be keyed by environment and instanceId"
   }
 
   assert {
@@ -102,13 +104,14 @@ run "warm_pool_enabled" {
 
   assert {
     condition = (aws_lambda_function.scale_up.environment[0].variables["WARM_POOL_ENABLED"] == "true"
-    && aws_lambda_function.scale_up.environment[0].variables["WARM_POOL_LEASE_TABLE_NAME"] == aws_dynamodb_table.warm_pool_leases[0].name)
+    && aws_lambda_function.scale_up.environment[0].variables["WARM_POOL_INDEX_TABLE_NAME"] == aws_dynamodb_table.warm_pool_index[0].name)
     error_message = "Scale-up should receive the warm pool env vars"
   }
 
   assert {
     condition = (module.pool[0].lambda.environment[0].variables["WARM_POOL_ENABLED"] == "true"
-    && module.pool[0].lambda.environment[0].variables["WARM_POOL_MAX_AGE_HOURS"] == "24")
+      && module.pool[0].lambda.environment[0].variables["WARM_POOL_MAX_AGE_HOURS"] == "24"
+    && module.pool[0].lambda.environment[0].variables["WARM_POOL_INDEX_TABLE_NAME"] == aws_dynamodb_table.warm_pool_index[0].name)
     error_message = "The pool should receive the warm pool env vars"
   }
 }
@@ -122,7 +125,7 @@ run "warm_pool_repository_runners" {
   }
 
   assert {
-    condition     = length(aws_dynamodb_table.warm_pool_leases) == 1
+    condition     = length(aws_dynamodb_table.warm_pool_index) == 1
     error_message = "Warm pool should plan for repository-level runners"
   }
 }
@@ -147,7 +150,7 @@ run "warm_pool_windows" {
   }
 
   assert {
-    condition     = length(aws_dynamodb_table.warm_pool_leases) == 1
+    condition     = length(aws_dynamodb_table.warm_pool_index) == 1
     error_message = "Warm pool should plan for windows runners"
   }
 }

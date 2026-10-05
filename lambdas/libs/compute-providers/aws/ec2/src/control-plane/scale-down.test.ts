@@ -94,9 +94,11 @@ describe('Scale down runners', () => {
 
 describe('Standby sweep', () => {
   const mockListStoppedWarmInstances = vi.fn<Ec2ScaleDownStandbyOperations['listStoppedWarmInstances']>();
+  const mockListScaleDownInstances = vi.fn<Ec2ScaleDownStandbyOperations['listScaleDownInstances']>();
   const mockDestroyInstance = vi.fn<Ec2ScaleDownStandbyOperations['destroyInstance']>();
   const sweepCapability = createEc2ScaleDownCapability(ec2Operations, {
     listStoppedWarmInstances: mockListStoppedWarmInstances,
+    listScaleDownInstances: mockListScaleDownInstances,
     destroyInstance: mockDestroyInstance,
   });
   const PAST = '2026-09-29T12:00:00.000Z';
@@ -147,6 +149,36 @@ describe('Standby sweep', () => {
 
     const destroyed = mockDestroyInstance.mock.calls.map(([input]) => input.instanceId);
     expect(destroyed.sort()).toEqual(['i-bad-time', 'i-boundary', 'i-missing-time']);
+  });
+
+  it('reuses the stopped warm instances of the runner listing once', async () => {
+    const runner = { id: 'i-runner', launchTime: new Date(), owner: 'o', type: 'Org' } as RunnerInfo;
+    mockListScaleDownInstances.mockResolvedValue({
+      runners: [runner],
+      stoppedWarm: [{ instanceId: 'i-expired', expiresAt: PAST, activated: false }],
+    });
+    mockListStoppedWarmInstances.mockResolvedValue([]);
+
+    await expect(sweepCapability.list('unit-test-environment')).resolves.toEqual([runner]);
+    await sweepCapability.sweepStandby!('unit-test-environment');
+
+    expect(mockListRunners).not.toHaveBeenCalled();
+    expect(mockListStoppedWarmInstances).not.toHaveBeenCalled();
+    expect(mockDestroyInstance).toHaveBeenCalledWith({ instanceId: 'i-expired', spotInstanceRequestId: undefined });
+
+    await sweepCapability.sweepStandby!('unit-test-environment');
+
+    expect(mockListStoppedWarmInstances).toHaveBeenCalledWith('unit-test-environment');
+    expect(mockDestroyInstance).toHaveBeenCalledTimes(1);
+  });
+
+  it('lists orphans without the combined listing', async () => {
+    mockListRunners.mockResolvedValue([]);
+
+    await sweepCapability.list('unit-test-environment', true);
+
+    expect(mockListRunners).toHaveBeenCalledWith({ environment: 'unit-test-environment', orphan: true });
+    expect(mockListScaleDownInstances).not.toHaveBeenCalled();
   });
 
   it('keeps destroying the remaining instances when one destroy fails', async () => {
