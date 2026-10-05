@@ -28,6 +28,7 @@ import type {
 } from '../../../core';
 import type { Ec2RunnerCreateResult, Ec2RunnerFailureCode } from './runner-create-result';
 import {
+  awsErrorCode,
   createRunnerTags,
   type Ec2RunnerRequestContext,
   failureDetails,
@@ -203,7 +204,7 @@ async function cancelSpotRequest(
     });
     logger.info(`Cancelled spot instance request '${spotInstanceRequestId}'.`);
   } catch (error) {
-    if (error instanceof Error && error.name === SPOT_REQUEST_NOT_FOUND) {
+    if (awsErrorCode(error) === SPOT_REQUEST_NOT_FOUND) {
       logger.info(`Spot instance request '${spotInstanceRequestId}' no longer exists.`);
       return;
     }
@@ -292,7 +293,7 @@ async function launchWarmInstances(
       } catch (error) {
         throwIfAborted(signal, error);
         requestFailureCodes(error).forEach((failureCode) => failureCodes.add(failureCode));
-        if (!(error instanceof Error && WARM_LAUNCH_FALLBACK_ERRORS.has(error.name))) {
+        if (!WARM_LAUNCH_FALLBACK_ERRORS.has(awsErrorCode(error) ?? '')) {
           logger.warn('Warm launch failed with a non-capacity error.', {
             instanceType,
             subnetId,
