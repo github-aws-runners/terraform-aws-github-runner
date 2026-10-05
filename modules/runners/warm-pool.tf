@@ -74,12 +74,6 @@ data "aws_iam_policy_document" "scale_up_warm_pool" {
     resources = [aws_dynamodb_table.warm_pool_index[0].arn]
   }
 
-  statement {
-    sid       = "WarmPoolRollbackRunnerConfig"
-    actions   = ["ssm:DeleteParameter"]
-    resources = ["arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${local.token_path}/*"]
-  }
-
   # Launching or starting instances with the caller's credentials needs the EBS encryption key (e.g. a customer-managed default key).
   statement {
     sid = "WarmPoolEbsEncryption"
