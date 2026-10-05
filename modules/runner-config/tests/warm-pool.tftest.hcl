@@ -144,7 +144,8 @@ run "warm_pool_wires_pool_and_scale_up" {
       module.orchestration_webhook[0].pool.lambda.environment[0].variables["WARM_POOL_ENABLED"] == "true"
       && module.orchestration_webhook[0].pool.lambda.environment[0].variables["WARM_POOL_MAX_AGE_HOURS"] == "24"
       && module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["WARM_POOL_ENABLED"] == "true"
-      && contains(keys(module.orchestration_webhook[0].scale_up.lambda.environment[0].variables), "WARM_POOL_LEASE_TABLE_NAME")
+      && contains(keys(module.orchestration_webhook[0].scale_up.lambda.environment[0].variables), "WARM_POOL_INDEX_TABLE_NAME")
+      && contains(keys(module.orchestration_webhook[0].pool.lambda.environment[0].variables), "WARM_POOL_INDEX_TABLE_NAME")
       && contains(keys(module.orchestration_webhook[0].scale_up.lambda.environment[0].variables), "ENABLE_METRIC_WARM_POOL")
     )
     error_message = "Warm pool settings must reach the pool and scale-up lambdas for repository-level runners."

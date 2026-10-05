@@ -6,6 +6,7 @@ import {
   DeleteTagsCommand,
   DescribeInstancesCommand,
   DescribeInstancesResult,
+  type Instance,
   RunInstancesCommand,
   type RunInstancesCommandInput,
   RunInstancesCommandOutput,
@@ -139,29 +140,23 @@ async function getRunners(
   return runners;
 }
 
+export function toRunnerInfo(i: Instance): RunnerInfo {
+  return {
+    id: i.InstanceId as string,
+    launchTime: i.LaunchTime,
+    owner: i.Tags?.find((e) => e.Key === 'ghr:Owner')?.Value as string,
+    type: i.Tags?.find((e) => e.Key === 'ghr:Type')?.Value as RunnerInfo['type'],
+    repo: i.Tags?.find((e) => e.Key === 'ghr:Repo')?.Value as string,
+    org: i.Tags?.find((e) => e.Key === 'ghr:Org')?.Value as string,
+    orphan: i.Tags?.find((e) => e.Key === 'ghr:orphan')?.Value === 'true',
+    githubRunnerId: i.Tags?.find((e) => e.Key === 'ghr:github_runner_id')?.Value as string,
+    bypassRemoval: i.Tags?.find((e) => e.Key === 'ghr:bypass-removal')?.Value === 'true',
+    idleDetectedAt: i.Tags?.find((e) => e.Key === 'ghr:idle_detected_at')?.Value,
+  };
+}
+
 function getRunnerInfo(runningInstances: DescribeInstancesResult) {
-  const runners: RunnerInfo[] = [];
-  if (runningInstances.Reservations) {
-    for (const r of runningInstances.Reservations) {
-      if (r.Instances) {
-        for (const i of r.Instances) {
-          runners.push({
-            id: i.InstanceId as string,
-            launchTime: i.LaunchTime,
-            owner: i.Tags?.find((e) => e.Key === 'ghr:Owner')?.Value as string,
-            type: i.Tags?.find((e) => e.Key === 'ghr:Type')?.Value as RunnerInfo['type'],
-            repo: i.Tags?.find((e) => e.Key === 'ghr:Repo')?.Value as string,
-            org: i.Tags?.find((e) => e.Key === 'ghr:Org')?.Value as string,
-            orphan: i.Tags?.find((e) => e.Key === 'ghr:orphan')?.Value === 'true',
-            githubRunnerId: i.Tags?.find((e) => e.Key === 'ghr:github_runner_id')?.Value as string,
-            bypassRemoval: i.Tags?.find((e) => e.Key === 'ghr:bypass-removal')?.Value === 'true',
-            idleDetectedAt: i.Tags?.find((e) => e.Key === 'ghr:idle_detected_at')?.Value,
-          });
-        }
-      }
-    }
-  }
-  return runners;
+  return (runningInstances.Reservations ?? []).flatMap((r) => (r.Instances ?? []).map(toRunnerInfo));
 }
 
 async function terminateEc2Runner(

@@ -439,10 +439,11 @@ export async function scaleDown(): Promise<void> {
   // first runners marked to be orphan.
   await terminateOrphan(environment, computeProvider);
 
-  await sweepStandby(environment, computeProvider);
-
   // next scale down idle runners with respect to config and mark potential orphans
   const providerRunners = await listRunners(environment, computeProvider);
+
+  // After the listing, which providers may reuse for the sweep.
+  await sweepStandby(environment, computeProvider);
   const activeProviderRunnersCount = providerRunners.length;
   logger.info(
     `Found: '${activeProviderRunnersCount}' active ${computeProvider.type.toUpperCase()} runners before clean-up.`,

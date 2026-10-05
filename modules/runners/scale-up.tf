@@ -75,7 +75,7 @@ resource "aws_lambda_function" "scale_up" {
       SSM_TOKEN_TTL_SECONDS = tostring(var.ssm_ttl_seconds.tokens)
       } : {}, var.warm_pool.enabled ? {
       WARM_POOL_ENABLED          = "true"
-      WARM_POOL_LEASE_TABLE_NAME = aws_dynamodb_table.warm_pool_leases[0].name
+      WARM_POOL_INDEX_TABLE_NAME = aws_dynamodb_table.warm_pool_index[0].name
       ENABLE_METRIC_WARM_POOL    = tostring(var.metrics.enable)
     } : {})
   }

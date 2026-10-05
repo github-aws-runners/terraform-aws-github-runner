@@ -10,7 +10,7 @@ import { createEc2ScaleDownCapability } from './src/control-plane/scale-down';
 import { createEc2ScaleUpCapability } from './src/control-plane/scale-up';
 import { createEc2RunnerClient } from './src/runners';
 import { createEc2StandbyClient } from './src/standby';
-import { createWarmLeaseStore } from './src/warm-lease';
+import { createWarmIndexStore } from './src/warm-index';
 
 export function createEc2ControlPlanePlugin(
   createStartRunnerConfig: CreateStartRunnerConfig,
@@ -19,15 +19,15 @@ export function createEc2ControlPlanePlugin(
   const ec2Operations = createEc2RunnerClient(ec2Client).forRequest({ signal: undefined });
   const standbyOperations = createEc2StandbyClient(ec2Client).forRequest({ signal: undefined });
   const dynamoClient = getTracedAWSV3Client(new DynamoDBClient({ region: process.env.AWS_REGION }));
-  const warmOperations = {
-    standby: standbyOperations,
-    createLeaseStore: (tableName: string) => createWarmLeaseStore(dynamoClient, tableName),
-  };
+  const createIndexStore = (tableName: string, environment: string) =>
+    createWarmIndexStore(dynamoClient, tableName, environment);
+  const warmOperations = { standby: standbyOperations, createIndexStore };
 
   return {
     type: 'ec2',
     capabilities: {
-      pool: () => createEc2PoolCapability(ec2Operations, createStartRunnerConfig, standbyOperations),
+      pool: () =>
+        createEc2PoolCapability(ec2Operations, createStartRunnerConfig, { standbyOperations, createIndexStore }),
       scaleUp: () => createEc2ScaleUpCapability(ec2Operations, createStartRunnerConfig, warmOperations),
       scaleDown: () => createEc2ScaleDownCapability(ec2Operations, standbyOperations),
     },
