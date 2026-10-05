@@ -495,6 +495,8 @@ describe('readStandby', () => {
           State: { Name: 'stopped' },
           StateReason: { Code: 'Client.InstanceInitiatedShutdown' },
           SpotInstanceRequestId: 'sir-warm',
+          InstanceType: 'm7g.large',
+          Placement: { AvailabilityZone: 'eu-west-1a' },
         },
         {
           InstanceId: 'i-interrupted',
@@ -523,7 +525,13 @@ describe('readStandby', () => {
     expect(spotDescribeInputs()).toEqual([{ SpotInstanceRequestIds: ['sir-warm', 'sir-interrupted'] }]);
     expect(result).toEqual({
       instances: [
-        expect.objectContaining({ instanceId: 'i-warm-spot', state: 'WARM', spotInstanceRequestId: 'sir-warm' }),
+        expect.objectContaining({
+          instanceId: 'i-warm-spot',
+          state: 'WARM',
+          spotInstanceRequestId: 'sir-warm',
+          instanceType: 'm7g.large',
+          availabilityZone: 'eu-west-1a',
+        }),
         expect.objectContaining({ instanceId: 'i-interrupted', state: 'GARBAGE' }),
         expect.objectContaining({ instanceId: 'i-priming-spot', state: 'PRIMING' }),
       ],

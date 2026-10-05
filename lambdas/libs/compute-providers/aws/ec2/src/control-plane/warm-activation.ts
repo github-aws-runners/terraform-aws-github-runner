@@ -26,11 +26,17 @@ const STALE_START_ERRORS = new Set([
   'IncorrectInstanceState',
   'IncorrectSpotRequestState',
 ]);
+// A stopped instance starts only with its own type and AZ, which other warm instances may share.
+const CAPACITY_START_ERRORS = new Set([
+  'InsufficientCapacity',
+  'InsufficientHostCapacity',
+  'InsufficientInstanceCapacity',
+]);
 
 export type WarmActivationFallbackReason = 'no-warm-instance' | 'claim-lost' | 'index-unavailable' | 'start-failed';
 
 export interface Ec2WarmActivationOperations {
-  standby: Pick<Ec2StandbyOperations, 'startInstance' | 'cancelSpotRequest'>;
+  standby: Pick<Ec2StandbyOperations, 'startInstance' | 'cancelSpotRequest' | 'destroyInstance'>;
   createIndexStore: CreateWarmIndexStore;
 }
 
@@ -54,6 +60,8 @@ interface ActivationContext {
   index: WarmIndexStore;
   pool: ListStandbyInput;
   storage: RunnerConfigStorage;
+  /** Instance type and AZ pairs that ran out of capacity during this invocation. */
+  exhaustedCapacity: Set<string>;
 }
 
 interface BatchOutcome {
@@ -65,6 +73,8 @@ interface BatchOutcome {
 }
 
 type FallBack = (reason: WarmActivationFallbackReason, count: number) => void;
+
+type RollbackOutcome = 'release' | 'cooldown' | 'unusable';
 
 export function isWarmActivationEnabled(): boolean {
   return yn(process.env.WARM_POOL_ENABLED, { default: false });
@@ -113,7 +123,14 @@ export async function activateWarmRunners(
     return finish([], 0);
   }
 
-  const context: ActivationContext = { ec2Operations, warmOperations, index, pool, storage: input.storage };
+  const context: ActivationContext = {
+    ec2Operations,
+    warmOperations,
+    index,
+    pool,
+    storage: input.storage,
+    exhaustedCapacity: new Set(),
+  };
   const instances: string[] = [];
   let retryableErrorCount = 0;
   let needed = input.numberOfRunners;
@@ -135,6 +152,7 @@ export async function activateWarmRunners(
     fallBack('start-failed', outcome.coldFallbacks);
     staleCount += outcome.staleCount;
     needed -= outcome.started.length + outcome.retryableErrorCount + outcome.coldFallbacks;
+    candidates = candidates.filter((candidate) => !hasExhaustedCapacity(context, candidate));
   }
   const staleFallbacks = Math.min(needed, staleCount);
   fallBack('start-failed', staleFallbacks);
@@ -150,6 +168,7 @@ function warmCandidates(items: WarmIndexItem[]): StandbyInstance[] {
   return items
     .filter((item) => item.state === 'WARM')
     .filter((item) => item.claimUntil === undefined || item.claimUntil * 1000 < now)
+    .filter((item) => item.cooldownUntil === undefined || item.cooldownUntil * 1000 <= now)
     .filter((item) => {
       const expiresAt = Date.parse(item.expiresAt ?? '');
       return Number.isNaN(expiresAt) || expiresAt > claimableUntil;
@@ -160,8 +179,24 @@ function warmCandidates(items: WarmIndexItem[]): StandbyInstance[] {
       state: 'WARM',
       launchTime: item.launchTime ? new Date(item.launchTime) : undefined,
       expiresAt: item.expiresAt,
+      instanceType: item.instanceType,
+      availabilityZone: item.availabilityZone,
       spotInstanceRequestId: item.spotInstanceRequestId,
     }));
+}
+
+function capacityKey({ instanceType, availabilityZone }: StandbyInstance): string | undefined {
+  return instanceType && availabilityZone ? `${instanceType}/${availabilityZone}` : undefined;
+}
+
+function hasExhaustedCapacity(context: ActivationContext, instance: StandbyInstance): boolean {
+  const key = capacityKey(instance);
+  return key !== undefined && context.exhaustedCapacity.has(key);
+}
+
+// EC2 can prefix codes with the fault, for example `Server.InsufficientInstanceCapacity`.
+function startErrorCode(error: unknown): string {
+  return (awsErrorCode(error) ?? '').replace(/^(Client|Server)\./, '');
 }
 
 async function claimWarmInstances(
@@ -200,45 +235,69 @@ async function activateBatch(
   const outcome: BatchOutcome = { started: [], retryableErrorCount: 0, coldFallbacks: 0, staleCount: 0 };
   const activatedAt = new Date().toISOString();
 
-  const tagged: StandbyInstance[] = [];
+  // Started before registration, like a cold launch: a failed start then leaves no GitHub runner behind.
+  const running: StandbyInstance[] = [];
   for (const instance of claimed) {
+    if (hasExhaustedCapacity(context, instance)) {
+      await releaseClaim(context.index, instance.instanceId);
+      outcome.coldFallbacks++;
+      continue;
+    }
     try {
       await context.ec2Operations.tag(instance.instanceId, activationTags(input.githubRunnerConfig, activatedAt));
-      tagged.push(instance);
     } catch (error) {
       logger.warn(`Failed to tag warm instance '${instance.instanceId}' for activation.`, failureDetails(error));
-      await rollbackActivation(context, instance.instanceId);
+      await rollbackActivation(context, instance.instanceId, 'release');
       outcome.coldFallbacks++;
+      continue;
     }
-  }
-
-  const failedConfig = await createRunnerConfig(context, createStartRunnerConfig, input, tagged);
-  for (const instanceId of failedConfig) await rollbackActivation(context, instanceId);
-  outcome.retryableErrorCount = failedConfig.length;
-
-  for (const instance of tagged.filter(({ instanceId }) => !failedConfig.includes(instanceId))) {
     try {
       await context.warmOperations.standby.startInstance(instance.instanceId);
     } catch (error) {
-      const stale = STALE_START_ERRORS.has(awsErrorCode(error) ?? '');
+      const rollback = startFailureOutcome(startErrorCode(error));
       logger.warn(
-        `Failed to start warm instance '${instance.instanceId}', ${stale ? 'trying another warm instance' : 'falling back to a cold launch'}.`,
-        { spotInstanceRequestId: instance.spotInstanceRequestId, ...failureDetails(error) },
+        `Failed to start warm instance '${instance.instanceId}', ${rollback === 'unusable' ? 'trying another warm instance' : 'falling back to a cold launch'}.`,
+        {
+          instanceType: instance.instanceType,
+          availabilityZone: instance.availabilityZone,
+          spotInstanceRequestId: instance.spotInstanceRequestId,
+          ...failureDetails(error),
+        },
       );
-      await rollbackActivation(context, instance.instanceId, stale);
-      if (stale) outcome.staleCount++;
-      else outcome.coldFallbacks++;
+      await rollbackActivation(context, instance.instanceId, rollback);
+      if (rollback === 'unusable') {
+        outcome.staleCount++;
+        continue;
+      }
+      const key = capacityKey(instance);
+      if (rollback === 'cooldown' && key) context.exhaustedCapacity.add(key);
+      outcome.coldFallbacks++;
+      continue;
+    }
+    if (instance.spotInstanceRequestId) {
+      await detachSpotRequest(context.warmOperations, instance.instanceId, instance.spotInstanceRequestId);
+    }
+    running.push(instance);
+  }
+
+  const failedConfig = await createRunnerConfig(context, createStartRunnerConfig, input, running);
+  for (const instance of running) {
+    if (failedConfig.includes(instance.instanceId)) {
+      await destroyUnregistered(context, instance);
+      outcome.retryableErrorCount++;
       continue;
     }
     outcome.started.push(instance.instanceId);
     await bestEffort('record the activation of', instance.instanceId, () =>
       context.index.markActivated(instance.instanceId, activatedAt),
     );
-    if (instance.spotInstanceRequestId) {
-      await detachSpotRequest(context.warmOperations, instance.instanceId, instance.spotInstanceRequestId);
-    }
   }
   return outcome;
+}
+
+function startFailureOutcome(code: string): RollbackOutcome {
+  if (STALE_START_ERRORS.has(code)) return 'unusable';
+  return CAPACITY_START_ERRORS.has(code) ? 'cooldown' : 'release';
 }
 
 function activationTags(githubRunnerConfig: CreateGitHubRunnerConfig, activatedAt: string): Tag[] {
@@ -279,10 +338,11 @@ async function createRunnerConfig(
   }
 }
 
-async function rollbackActivation(context: ActivationContext, instanceId: string, stale = false): Promise<void> {
-  await bestEffort('delete the runner configuration of', instanceId, () =>
-    context.storage.runnerConfig.delete(instanceId),
-  );
+async function rollbackActivation(
+  context: ActivationContext,
+  instanceId: string,
+  outcome: RollbackOutcome,
+): Promise<void> {
   await bestEffort('remove the activation tag from', instanceId, () =>
     context.ec2Operations.untag(instanceId, [{ Key: WARM_ACTIVATED_TAG }, { Key: TRACE_ID_TAG }]),
   );
@@ -292,11 +352,27 @@ async function rollbackActivation(context: ActivationContext, instanceId: string
       { Key: 'ghr:Type', Value: context.pool.runnerType },
     ]),
   );
-  if (stale) {
+  if (outcome === 'unusable') {
     await bestEffort('mark the index entry unusable of', instanceId, () => context.index.markUnusable(instanceId));
+  } else if (outcome === 'cooldown') {
+    await bestEffort('cool down', instanceId, () => context.index.releaseWithCooldown(instanceId));
   } else {
     await releaseClaim(context.index, instanceId);
   }
+}
+
+// Like a cold instance that fails to register: the started instance cannot return to the pool.
+async function destroyUnregistered(context: ActivationContext, instance: StandbyInstance): Promise<void> {
+  logger.warn(`Destroying warm instance '${instance.instanceId}' because its runner could not be registered.`);
+  await bestEffort('destroy', instance.instanceId, () =>
+    context.warmOperations.standby.destroyInstance({
+      instanceId: instance.instanceId,
+      spotInstanceRequestId: instance.spotInstanceRequestId,
+    }),
+  );
+  await bestEffort('mark the index entry unusable of', instance.instanceId, () =>
+    context.index.markUnusable(instance.instanceId),
+  );
 }
 
 async function releaseClaim(index: WarmIndexStore, instanceId: string): Promise<void> {

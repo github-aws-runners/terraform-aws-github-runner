@@ -511,6 +511,8 @@ function toStandbyInstance(instance: Instance, request: SpotInstanceRequest | un
     launchTime: instance.LaunchTime,
     imageId: instance.ImageId,
     launchTemplateVersion: tagValue(instance, LAUNCH_TEMPLATE_VERSION_TAG),
+    instanceType: instance.InstanceType,
+    availabilityZone: instance.Placement?.AvailabilityZone,
     spotInstanceRequestId: instance.SpotInstanceRequestId,
     expiresAt: tagValue(instance, WARM_EXPIRES_AT_TAG),
   };

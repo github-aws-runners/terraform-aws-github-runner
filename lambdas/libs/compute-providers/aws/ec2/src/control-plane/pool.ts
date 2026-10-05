@@ -73,6 +73,8 @@ function indexUpdate(instance: StandbyInstance): WarmIndexUpdate {
     state: instance.state as WarmIndexState,
     launchTime: instance.launchTime?.toISOString(),
     expiresAt: instance.expiresAt,
+    instanceType: instance.instanceType,
+    availabilityZone: instance.availabilityZone,
     spotInstanceRequestId: instance.spotInstanceRequestId,
   };
 }
@@ -83,6 +85,8 @@ function changed(item: WarmIndexItem | undefined, update: WarmIndexUpdate): bool
     item.state !== update.state ||
     item.launchTime !== update.launchTime ||
     item.expiresAt !== update.expiresAt ||
+    item.instanceType !== update.instanceType ||
+    item.availabilityZone !== update.availabilityZone ||
     item.spotInstanceRequestId !== update.spotInstanceRequestId
   );
 }
@@ -159,8 +163,12 @@ function createEc2StandbyCapability(
         })),
       );
       await syncIndex(index(), items, read);
+      const startFailures = new Map(items.map(({ instanceId, startFailures }) => [instanceId, startFailures]));
       return {
-        instances: read.instances,
+        instances: read.instances.map((instance) => ({
+          ...instance,
+          startFailures: startFailures.get(instance.instanceId),
+        })),
         orphanedSpotRequests: read.orphanedSpotRequests,
         spotStateKnown: read.spotStateKnown,
       };

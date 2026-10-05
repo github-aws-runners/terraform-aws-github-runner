@@ -35,6 +35,7 @@ const ec2Operations = {
 const standby = {
   startInstance: vi.fn<Ec2WarmActivationOperations['standby']['startInstance']>(),
   cancelSpotRequest: vi.fn<Ec2WarmActivationOperations['standby']['cancelSpotRequest']>(),
+  destroyInstance: vi.fn<Ec2WarmActivationOperations['standby']['destroyInstance']>(),
 };
 
 const index = {
@@ -46,6 +47,7 @@ const index = {
   release: vi.fn<WarmIndexStore['release']>(),
   markActivated: vi.fn<WarmIndexStore['markActivated']>(),
   markUnusable: vi.fn<WarmIndexStore['markUnusable']>(),
+  releaseWithCooldown: vi.fn<WarmIndexStore['releaseWithCooldown']>(),
   claimReconcile: vi.fn<WarmIndexStore['claimReconcile']>(),
 } satisfies WarmIndexStore;
 const createIndexStore = vi.fn<Ec2WarmActivationOperations['createIndexStore']>(() => index);
@@ -100,7 +102,6 @@ function callOrder(mock: { mock: { invocationCallOrder: number[] } }, index = 0)
 }
 
 function expectRolledBack(instanceId: string) {
-  expect(runnerConfigStore.delete).toHaveBeenCalledWith(instanceId);
   expect(ec2Operations.untag).toHaveBeenCalledWith(instanceId, [
     { Key: 'ghr:warm-activated' },
     { Key: 'ghr:trace_id' },
@@ -159,6 +160,8 @@ beforeEach(() => {
   index.release.mockResolvedValue(undefined);
   index.markActivated.mockResolvedValue(undefined);
   index.markUnusable.mockResolvedValue(undefined);
+  index.releaseWithCooldown.mockResolvedValue(undefined);
+  standby.destroyInstance.mockResolvedValue(undefined);
   runnerConfigStore.create.mockResolvedValue(undefined);
   runnerConfigStore.delete.mockResolvedValue(undefined);
   mockCreateStartRunnerConfig.mockImplementation(async (config, runnerIds, _client, options) => {
@@ -231,12 +234,29 @@ describe('warm pool activation in EC2 scale-up', () => {
     expect(ec2Operations.untag).not.toHaveBeenCalled();
   });
 
-  it('writes the runner config and activation tag before starting the instance', async () => {
+  it('tags the instance before starting it and registers its runner after the start', async () => {
     await createRunners();
 
     const start = callOrder(standby.startInstance);
     expect(callOrder(ec2Operations.tag)).toBeLessThan(start);
-    expect(callOrder(runnerConfigStore.create)).toBeLessThan(start);
+    expect(callOrder(mockCreateStartRunnerConfig)).toBeGreaterThan(start);
+    expect(callOrder(runnerConfigStore.create)).toBeGreaterThan(start);
+    expect(callOrder(index.markActivated)).toBeGreaterThan(callOrder(runnerConfigStore.create));
+  });
+
+  it('registers no runner for a warm instance that fails to start', async () => {
+    standby.startInstance.mockRejectedValue(new Error('boom'));
+
+    await createRunners();
+
+    expect(mockCreateStartRunnerConfig).toHaveBeenCalledTimes(1);
+    expect(mockCreateStartRunnerConfig).toHaveBeenCalledWith(
+      githubRunnerConfig,
+      ['i-cold-1'],
+      githubClient,
+      expect.anything(),
+    );
+    expect(runnerConfigStore.create).not.toHaveBeenCalledWith(expect.objectContaining({ runnerId: 'i-new' }));
   });
 
   it('restores the environment as pool owner on rollback', async () => {
@@ -471,9 +491,7 @@ describe('warm pool activation in EC2 scale-up', () => {
     });
 
     it('rolls back the activation and launches cold when the start fails', async () => {
-      standby.startInstance.mockRejectedValue(
-        Object.assign(new Error('capacity'), { name: 'InsufficientInstanceCapacity' }),
-      );
+      standby.startInstance.mockRejectedValue(new Error('boom'));
 
       const result = await createRunners();
 
@@ -514,25 +532,115 @@ describe('warm pool activation in EC2 scale-up', () => {
     });
   });
 
-  it('rolls back and reports a retryable error when the runner config cannot be created', async () => {
-    mockCreateStartRunnerConfig.mockResolvedValue(['i-new']);
+  describe('registration after the start', () => {
+    it('destroys a started instance whose runner cannot be registered, for example because it already exists', async () => {
+      mockCreateStartRunnerConfig.mockResolvedValue(['i-new']);
 
-    const result = await createRunners();
+      const result = await createRunners();
 
-    expect(result).toEqual({ instances: [], retryableErrorCount: 1, nonRetryableErrorCount: 0 });
-    expectRolledBack('i-new');
-    expect(standby.startInstance).not.toHaveBeenCalled();
-    expect(ec2Operations.create).not.toHaveBeenCalled();
+      expect(result).toEqual({ instances: [], retryableErrorCount: 1, nonRetryableErrorCount: 0 });
+      expect(standby.startInstance).toHaveBeenCalledWith('i-new');
+      expect(standby.destroyInstance).toHaveBeenCalledWith({ instanceId: 'i-new', spotInstanceRequestId: undefined });
+      expect(index.markUnusable).toHaveBeenCalledWith('i-new');
+      expect(index.markActivated).not.toHaveBeenCalled();
+      expect(index.release).not.toHaveBeenCalled();
+      expect(ec2Operations.create).not.toHaveBeenCalled();
+    });
+
+    it('destroys every started instance when runner config creation throws', async () => {
+      mockCreateStartRunnerConfig.mockRejectedValue(new Error('GitHub down'));
+
+      const result = await createRunners(2);
+
+      expect(result).toEqual({ instances: [], retryableErrorCount: 2, nonRetryableErrorCount: 0 });
+      expect(standby.destroyInstance.mock.calls.map(([input]) => input.instanceId)).toEqual(['i-new', 'i-old']);
+    });
+
+    it('destroys a spot instance with its request after detaching it', async () => {
+      mockWarmIndex([warm('i-spot', 5, { spotInstanceRequestId: 'sir-1' })]);
+      mockCreateStartRunnerConfig.mockResolvedValue(['i-spot']);
+
+      await createRunners();
+
+      expect(standby.destroyInstance).toHaveBeenCalledWith({ instanceId: 'i-spot', spotInstanceRequestId: 'sir-1' });
+      expect(callOrder(standby.cancelSpotRequest)).toBeLessThan(callOrder(standby.destroyInstance));
+    });
+
+    it('keeps the remaining activations when destroying an unregistered instance fails', async () => {
+      mockCreateStartRunnerConfig.mockResolvedValue(['i-new']);
+      standby.destroyInstance.mockRejectedValue(new Error('terminate failed'));
+
+      const result = await createRunners(2);
+
+      expect(result).toEqual({ instances: ['i-old'], retryableErrorCount: 1, nonRetryableErrorCount: 0 });
+      expect(index.markUnusable).toHaveBeenCalledWith('i-new');
+    });
   });
 
-  it('rolls back every claimed instance when runner config creation throws', async () => {
-    mockCreateStartRunnerConfig.mockRejectedValue(new Error('GitHub down'));
+  describe('capacity failures', () => {
+    const nowSeconds = NOW.getTime() / 1000;
+    const m7g = { instanceType: 'm7g.large', availabilityZone: 'eu-west-1a' };
 
-    const result = await createRunners(2);
+    it('cools down an instance whose start failed for lack of capacity and launches cold', async () => {
+      mockWarmIndex([warm('i-new', 5, m7g)]);
+      standby.startInstance.mockRejectedValue(
+        await ec2SdkError('InsufficientInstanceCapacity', "You can't start the Spot Instance.", 500),
+      );
 
-    expect(result).toEqual({ instances: [], retryableErrorCount: 2, nonRetryableErrorCount: 0 });
-    expectRolledBack('i-new');
-    expectRolledBack('i-old');
+      const result = await createRunners();
+
+      expect(result).toEqual({ instances: ['i-cold-1'], retryableErrorCount: 0, nonRetryableErrorCount: 0 });
+      expect(index.releaseWithCooldown).toHaveBeenCalledWith('i-new');
+      expect(index.release).not.toHaveBeenCalled();
+      expect(index.markUnusable).not.toHaveBeenCalled();
+      expectFallbackMetric('start-failed', 1);
+    });
+
+    it('recognizes a capacity code with a fault prefix', async () => {
+      standby.startInstance.mockRejectedValue(await ec2SdkError('Server.InsufficientInstanceCapacity'));
+
+      await createRunners();
+
+      expect(index.releaseWithCooldown).toHaveBeenCalledWith('i-new');
+    });
+
+    it('skips other warm instances of the same type and AZ for the rest of the invocation', async () => {
+      mockWarmIndex([warm('i-new', 5, m7g), warm('i-same', 10, m7g)]);
+      standby.startInstance.mockRejectedValueOnce(await ec2SdkError('InsufficientInstanceCapacity'));
+
+      const result = await createRunners(2);
+
+      expect(result.instances).toEqual(['i-cold-1', 'i-cold-2']);
+      expect(standby.startInstance.mock.calls).toEqual([['i-new']]);
+      expect(index.release).toHaveBeenCalledWith('i-same');
+      expect(index.releaseWithCooldown).not.toHaveBeenCalledWith('i-same');
+      expectFallbackMetric('start-failed', 2);
+    });
+
+    it('still activates warm instances of another type or AZ', async () => {
+      mockWarmIndex([
+        warm('i-new', 5, m7g),
+        warm('i-other-type', 10, { ...m7g, instanceType: 'c7g.large' }),
+        warm('i-unknown', 15),
+      ]);
+      standby.startInstance.mockRejectedValueOnce(await ec2SdkError('InsufficientInstanceCapacity'));
+
+      const result = await createRunners(3);
+
+      expect(result.instances).toEqual(['i-other-type', 'i-unknown', 'i-cold-1']);
+    });
+
+    it('does not select warm instances that are cooling down', async () => {
+      mockWarmIndex([
+        warm('i-cooling', 1, { cooldownUntil: nowSeconds + 60 }),
+        warm('i-cooled', 5, { startFailures: 1, cooldownUntil: nowSeconds - 60 }),
+      ]);
+
+      const result = await createRunners();
+
+      expect(index.claim).not.toHaveBeenCalledWith('i-cooling');
+      expect(result.instances).toEqual(['i-cooled']);
+    });
   });
 
   describe('metrics', () => {

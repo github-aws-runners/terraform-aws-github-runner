@@ -11,7 +11,7 @@ import 'aws-sdk-client-mock-jest/vitest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { dynamoDbSdkError } from '../../../test/aws-sdk-errors';
-import { createWarmIndexStore, WARM_CLAIM_TTL_SECONDS } from './warm-index';
+import { createWarmIndexStore, WARM_CLAIM_TTL_SECONDS, WARM_START_COOLDOWN_SECONDS } from './warm-index';
 
 const mockDynamoClient = mockClient(DynamoDBClient);
 const NOW = new Date('2026-09-30T12:00:00.000Z');
@@ -47,8 +47,12 @@ describe('query', () => {
             state: { S: 'WARM' },
             launchTime: { S: '2026-09-30T10:00:00.000Z' },
             expiresAt: { S: '2026-10-08T10:00:00.000Z' },
+            instanceType: { S: 'm7g.large' },
+            availabilityZone: { S: 'eu-west-1a' },
             spotInstanceRequestId: { S: 'sir-1' },
             claimUntil: { N: '123' },
+            startFailures: { N: '2' },
+            cooldownUntil: { N: '456' },
           },
           { ...KEY('#reconcile'), lastRun: { N: '1' } },
         ],
@@ -62,9 +66,13 @@ describe('query', () => {
         state: 'WARM',
         launchTime: '2026-09-30T10:00:00.000Z',
         expiresAt: '2026-10-08T10:00:00.000Z',
+        instanceType: 'm7g.large',
+        availabilityZone: 'eu-west-1a',
         spotInstanceRequestId: 'sir-1',
         activatedAt: undefined,
         claimUntil: 123,
+        startFailures: 2,
+        cooldownUntil: 456,
       },
       expect.objectContaining({ instanceId: 'i-active', state: 'ACTIVATED', activatedAt: 'then' }),
     ]);
@@ -103,6 +111,21 @@ describe('update', () => {
         ':launchTime': { S: '2026-09-30T10:00:00.000Z' },
         ':expiresAt': { S: '2026-10-08T10:00:00.000Z' },
       },
+    });
+  });
+
+  it('writes the instance type and Availability Zone', async () => {
+    mockDynamoClient.on(UpdateItemCommand).resolves({});
+
+    await index.update({ instanceId: 'i-1', state: 'WARM', instanceType: 'm7g.large', availabilityZone: 'eu-west-1a' });
+
+    expect(updateInputs()[0]).toMatchObject({
+      UpdateExpression:
+        'SET #state = :state, #ttl = :ttl, instanceType = :instanceType, availabilityZone = :availabilityZone',
+      ExpressionAttributeValues: expect.objectContaining({
+        ':instanceType': { S: 'm7g.large' },
+        ':availabilityZone': { S: 'eu-west-1a' },
+      }),
     });
   });
 
@@ -249,6 +272,32 @@ describe('claim outcome', () => {
 
     await expect(index.release('i-1')).resolves.toBeUndefined();
     await expect(index.markUnusable('i-1')).resolves.toBeUndefined();
+  });
+
+  it('releases its own claim with a cool-down and counts the failed start', async () => {
+    mockDynamoClient.on(UpdateItemCommand).resolves({});
+
+    await index.claim('i-1');
+    await index.releaseWithCooldown('i-1');
+
+    const [claim, cooldown] = updateInputs();
+    expect(cooldown).toEqual({
+      TableName: 'warm-index',
+      Key: KEY('i-1'),
+      UpdateExpression: 'SET cooldownUntil = :until ADD startFailures :one REMOVE claimOwner, claimUntil',
+      ConditionExpression: 'claimOwner = :owner',
+      ExpressionAttributeValues: {
+        ':until': { N: String(NOW_SECONDS + WARM_START_COOLDOWN_SECONDS) },
+        ':one': { N: '1' },
+        ':owner': claim.ExpressionAttributeValues?.[':owner'],
+      },
+    });
+  });
+
+  it('ignores a cool-down after another invocation took over the claim', async () => {
+    mockDynamoClient.on(UpdateItemCommand).rejects(conditionalCheckFailed());
+
+    await expect(index.releaseWithCooldown('i-1')).resolves.toBeUndefined();
   });
 
   it('marks an activated item and drops its claim', async () => {
