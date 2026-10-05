@@ -87,6 +87,7 @@ Join our discord community via [this invite link](https://discord.gg/bxgXW8jJGh)
 | <a name="module_runner_binaries"></a> [runner\_binaries](#module\_runner\_binaries) | ./modules/runner-binaries-syncer | n/a |
 | <a name="module_runners"></a> [runners](#module\_runners) | ./modules/runners | n/a |
 | <a name="module_ssm"></a> [ssm](#module\_ssm) | ./modules/storage-providers/aws/ssm | n/a |
+| <a name="module_warm_pool_stop_events"></a> [warm\_pool\_stop\_events](#module\_warm\_pool\_stop\_events) | ./modules/warm-pool-stop-events | n/a |
 | <a name="module_webhook"></a> [webhook](#module\_webhook) | ./modules/webhook | n/a |
 
 ## Resources

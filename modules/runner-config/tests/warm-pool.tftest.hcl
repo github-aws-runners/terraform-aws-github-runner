@@ -150,6 +150,11 @@ run "warm_pool_wires_pool_and_scale_up" {
     )
     error_message = "Warm pool settings must reach the pool and scale-up lambdas for repository-level runners."
   }
+
+  assert {
+    condition     = output.provider.aws.ec2.warm_pool_index_table != null
+    error_message = "The warm pool index table must be exposed for the stop-event consumer."
+  }
 }
 
 run "warm_pool_disabled_leaves_lambdas_unchanged" {
@@ -169,6 +174,7 @@ run "warm_pool_disabled_leaves_lambdas_unchanged" {
     condition = (
       !contains(keys(module.orchestration_webhook[0].pool.lambda.environment[0].variables), "WARM_POOL_ENABLED")
       && !contains(keys(module.orchestration_webhook[0].scale_up.lambda.environment[0].variables), "WARM_POOL_ENABLED")
+      && output.provider.aws.ec2.warm_pool_index_table == null
     )
     error_message = "Disabled warm pool must not change the pool or scale-up lambdas."
   }

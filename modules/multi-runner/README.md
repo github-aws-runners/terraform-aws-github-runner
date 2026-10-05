@@ -124,6 +124,7 @@ module "multi-runner" {
 | <a name="module_runner_configs"></a> [runner\_configs](#module\_runner\_configs) | ../runner-config | n/a |
 | <a name="module_runners"></a> [runners](#module\_runners) | ../runners | n/a |
 | <a name="module_ssm"></a> [ssm](#module\_ssm) | ../storage-providers/aws/ssm | n/a |
+| <a name="module_warm_pool_stop_events"></a> [warm\_pool\_stop\_events](#module\_warm\_pool\_stop\_events) | ../warm-pool-stop-events | n/a |
 | <a name="module_webhook"></a> [webhook](#module\_webhook) | ../webhook | n/a |
 
 ## Resources

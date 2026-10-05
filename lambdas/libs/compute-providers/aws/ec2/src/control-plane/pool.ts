@@ -1,18 +1,19 @@
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import type {
   CreateStartRunnerConfig,
+  ListStandbyInput,
   PoolComputeProvider,
-  PoolStandbyCapability,
+  PoolStandbyOperations,
   RunnerInfo,
   RunnerStatus,
+  StandbyBatchResult,
+  StandbyInstance,
 } from '../../../../core';
 import { bootTimeExceeded, type Ec2RunnerResourceOperations, failureDetails } from '../runners';
 import type { Ec2StandbyOperations, Ec2StandbyRead } from '../standby';
-import type { Ec2PoolStandbyOperations, ListStandbyInput, StandbyBatchResult, StandbyInstance } from '../standby-types';
 import type { WarmIndexItem, WarmIndexState, WarmIndexStore, WarmIndexUpdate } from '../warm-index';
 import { toControlPlaneCreateRunnerResult } from './create-result';
 import { createRunners, loadEc2ProviderConfig } from './runner-creation';
-import { reconcileWarmPool } from './warm-pool';
 
 const logger = createChildLogger('pool');
 
@@ -134,10 +135,10 @@ async function syncIndex(index: WarmIndexStore, items: WarmIndexItem[], read: Ec
   }
 }
 
-export function createEc2PoolStandbyOperations(
+function createEc2StandbyCapability(
   standbyOperations: Ec2StandbyOperations,
   createIndexStore: CreateWarmIndexStore,
-): Ec2PoolStandbyOperations {
+): PoolStandbyOperations {
   let store: WarmIndexStore | undefined;
   const index = (): WarmIndexStore => {
     if (!store) {
@@ -169,7 +170,7 @@ export function createEc2PoolStandbyOperations(
           startFailures: startFailures.get(instance.instanceId),
         })),
         orphanedSpotRequests: read.orphanedSpotRequests,
-        ...(read.spotLookupError ? { spotLookupError: read.spotLookupError } : {}),
+        spotStateKnown: read.spotStateKnown,
       };
     },
     launch: async ({ environment, runnerOwner, runnerType, numberOfInstances, maxAgeHours }) => {
@@ -228,13 +229,34 @@ export function createEc2PoolStandbyOperations(
       const { launchTemplateName, amiIdSsmParameterName } = loadEc2ProviderConfig();
       return standbyOperations.currentImage({ launchTemplateName, amiIdSsmParameterName });
     },
+    // Spot request state is not read: a self-initiated stop is enough to classify a primed instance (D14).
+    markPrimed: async (instanceIds) => {
+      const tables = warmPoolIndexTables();
+      const indexes = new Map<string, WarmIndexStore>();
+      const failed: string[] = [];
+      for (const instance of await standbyOperations.readWarmPoolInstances([...new Set(instanceIds)])) {
+        const tableName = tables[instance.environment];
+        if (!tableName || instance.state !== 'WARM') continue;
+        if (!indexes.has(tableName)) indexes.set(tableName, createIndexStore(tableName, instance.environment));
+        try {
+          // The condition only matches PRIMING items, so instances the index does not track are skipped.
+          if (await indexes.get(tableName)!.markWarm(indexUpdate(instance))) {
+            logger.info(`Warm instance '${instance.instanceId}' finished priming and is available.`);
+          }
+        } catch (error) {
+          logger.warn(`Failed to mark primed instance '${instance.instanceId}' warm.`, failureDetails(error));
+          failed.push(instance.instanceId);
+        }
+      }
+      return failed;
+    },
   };
 }
 
-function createEc2StandbyCapability(operations: Ec2PoolStandbyOperations): PoolStandbyCapability {
-  return {
-    reconcile: (request) => reconcileWarmPool(operations, request),
-  };
+function warmPoolIndexTables(): Record<string, string> {
+  const tables = process.env.WARM_POOL_INDEX_TABLES;
+  if (!tables) throw new Error('WARM_POOL_INDEX_TABLES is not set.');
+  return JSON.parse(tables) as Record<string, string>;
 }
 
 export function createEc2PoolCapability(
@@ -243,13 +265,7 @@ export function createEc2PoolCapability(
   warm?: { standbyOperations: Ec2StandbyOperations; createIndexStore: CreateWarmIndexStore },
 ): Omit<PoolComputeProvider<RunnerInfo>, 'type'> {
   return {
-    ...(warm
-      ? {
-          standby: createEc2StandbyCapability(
-            createEc2PoolStandbyOperations(warm.standbyOperations, warm.createIndexStore),
-          ),
-        }
-      : {}),
+    ...(warm ? { standby: createEc2StandbyCapability(warm.standbyOperations, warm.createIndexStore) } : {}),
     listRunners: ({ environment, runnerOwner, runnerType }) =>
       ec2Operations.list({
         environment,
