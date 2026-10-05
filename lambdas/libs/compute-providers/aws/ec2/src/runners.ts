@@ -205,6 +205,8 @@ const ON_DEMAND_ALLOCATION_STRATEGIES = ['lowest-price', 'prioritized'];
 
 interface AwsErrorLike extends Error {
   code?: string;
+  Code?: string;
+  __type?: string;
   cause?: unknown;
   $fault?: 'client' | 'server';
   $metadata?: {
@@ -220,6 +222,32 @@ function safeFailureIdentifier(value: unknown): string | undefined {
   return typeof value === 'string' && SAFE_FAILURE_IDENTIFIER.test(value) ? value : undefined;
 }
 
+/**
+ * The AWS error code of an error or its causes. The SDK can surface service errors as a plain `Error`
+ * with the code in `Code` (EC2), in `__type` (JSON protocols) or only in the message.
+ */
+export function awsErrorCode(error: unknown): string | undefined {
+  const visited = new Set<Error>();
+  let current = error;
+  for (let depth = 0; depth < MAX_ERROR_CAUSE_DEPTH && current instanceof Error; depth += 1) {
+    if (visited.has(current)) break;
+    visited.add(current);
+    const awsError = current as AwsErrorLike;
+    const code = [
+      awsError.name === 'Error' ? undefined : awsError.name,
+      awsError.Code,
+      awsError.code,
+      awsError.__type?.split('#').pop(),
+      awsError.message,
+    ]
+      .map(safeFailureIdentifier)
+      .find((candidate) => candidate !== undefined);
+    if (code) return code;
+    current = awsError.cause;
+  }
+  return undefined;
+}
+
 export function failureDetails(error: unknown): Record<string, unknown> {
   if (!(error instanceof Error)) return { errorMessage: String(error) };
 
@@ -228,6 +256,7 @@ export function failureDetails(error: unknown): Record<string, unknown> {
     errorName: error.name,
     errorMessage: error.message,
     ...(awsError.code === undefined ? {} : { errorCode: awsError.code }),
+    ...(awsError.Code === undefined ? {} : { awsErrorCode: awsError.Code }),
     ...(awsError.$fault === undefined ? {} : { errorFault: awsError.$fault }),
     ...(awsError.$metadata?.httpStatusCode === undefined ? {} : { httpStatusCode: awsError.$metadata.httpStatusCode }),
     ...(awsError.$metadata?.requestId === undefined ? {} : { requestId: awsError.$metadata.requestId }),
@@ -245,8 +274,10 @@ export function requestFailureCodes(error: unknown): Ec2RunnerFailureCode[] {
     const awsError = current as AwsErrorLike;
     const errorName = safeFailureIdentifier(awsError.name);
     const errorCode = safeFailureIdentifier(awsError.code);
+    const awsCode = safeFailureIdentifier(awsError.Code);
     if (errorName) failureCodes.add(`aws-name:${errorName}`);
     if (errorCode) failureCodes.add(`aws-code:${errorCode}`);
+    if (awsCode) failureCodes.add(`aws-code:${awsCode}`);
     if (awsError.$fault === 'client' || awsError.$fault === 'server') {
       failureCodes.add(`aws-fault:${awsError.$fault}`);
     }

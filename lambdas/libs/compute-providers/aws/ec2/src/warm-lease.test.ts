@@ -9,6 +9,7 @@ import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest/vitest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { dynamoDbSdkError } from '../../../test/aws-sdk-errors';
 import { createWarmLeaseStore, WARM_LEASE_TTL_SECONDS } from './warm-lease';
 
 const mockDynamoClient = mockClient(DynamoDBClient);
@@ -52,6 +53,14 @@ describe('warm lease store', () => {
 
   it('reports a lost claim when the condition failure arrives as a generic error', async () => {
     mockDynamoClient.on(PutItemCommand).rejects(new Error('ConditionalCheckFailedException'));
+
+    await expect(lease.claim('i-1')).resolves.toBe(false);
+  });
+
+  it('reports a lost claim when the installed SDK deserializes the condition failure', async () => {
+    mockDynamoClient
+      .on(PutItemCommand)
+      .rejects(await dynamoDbSdkError('ConditionalCheckFailedException', 'The conditional request failed'));
 
     await expect(lease.claim('i-1')).resolves.toBe(false);
   });
