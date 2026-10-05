@@ -97,7 +97,7 @@ Each time the pool runs, before refilling, it destroys:
 - the oldest warm instances above the pool size;
 - instances that did not finish priming within `runner_boot_time_in_minutes`;
 - stopped instances that did not stop themselves (spot interruption, manual stop) or whose spot request can no longer start them;
-- tagged spot requests without an instance.
+- live spot requests of warm spot instances that were terminated, or that were activated and could not be detached; a replacement instance AWS launched for such a request is terminated too.
 
 Scale-down additionally destroys stopped warm instances past their expiry, or that were activated and later stopped. This also cleans up after warm mode is disabled or the pool is removed.
 
@@ -107,12 +107,13 @@ The boot hook is installed by the default start script. If you use a custom `use
 
 ## Observability
 
-With metrics enabled, the pool publishes `WarmPoolWarmInstances`, `WarmPoolPrimingInstances`, and `WarmPoolEvictions` (by `Reason`), and scale-up publishes `WarmPoolActivations` and `WarmPoolActivationFallbacks` (by `Reason`). Activated instances log `warm-pool-activation-latency-seconds=<n>`, the time from activation until the runner starts.
+With metrics enabled, the pool publishes `WarmPoolWarmInstances`, `WarmPoolPrimingInstances`, `WarmPoolEvictions` (by `Reason`), and `WarmPoolSpotLookupFailures`, and scale-up publishes `WarmPoolActivations` and `WarmPoolActivationFallbacks` (by `Reason`). Activated instances log `warm-pool-activation-latency-seconds=<n>`, the time from activation until the runner starts.
 
 ## Costs and limits
 
 - Every warm instance keeps its EBS volumes. Check the EBS volume and storage quotas for large pools.
 - Warm instances do not count toward `runners_maximum_count`. Activating one does, like launching a new instance.
+- Spot API request limits are shared by everything in the account and region. A spot warm pool reads spot requests only by ID, at most once per run, and only for its own instances; scale-up and on-demand warm pools do not read spot requests at all. If the Spot API throttles that read, the run continues without it: stopped spot instances are classified from EC2 data, spot request cleanup waits for a later run, and `WarmPoolSpotLookupFailures` is published.
 
 ## Disabling
 

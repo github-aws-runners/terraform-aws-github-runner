@@ -36,6 +36,10 @@ const standby = {
   startInstance: vi.fn<Ec2WarmActivationOperations['standby']['startInstance']>(),
   cancelSpotRequest: vi.fn<Ec2WarmActivationOperations['standby']['cancelSpotRequest']>(),
 };
+
+function mockWarmListing(instances: StandbyInstance[]): void {
+  standby.listStandby.mockResolvedValue({ instances, orphanedSpotRequests: [], spotStateKnown: false });
+}
 const lease = {
   claim: vi.fn<WarmLeaseStore['claim']>(),
   release: vi.fn<WarmLeaseStore['release']>(),
@@ -136,7 +140,7 @@ beforeEach(() => {
   }));
   ec2Operations.tag.mockResolvedValue(undefined);
   ec2Operations.untag.mockResolvedValue(undefined);
-  standby.listStandby.mockResolvedValue([
+  mockWarmListing([
     warm('i-old', 60),
     warm('i-new', 5),
     { instanceId: 'i-priming', state: 'PRIMING', launchTime: NOW },
@@ -184,11 +188,10 @@ describe('warm pool activation in EC2 scale-up', () => {
     const result = await createRunners();
 
     expect(result).toEqual({ instances: ['i-new'], retryableErrorCount: 0, nonRetryableErrorCount: 0 });
-    expect(standby.listStandby).toHaveBeenCalledWith({
-      environment: ENVIRONMENT,
-      runnerOwner: POOL_OWNER,
-      runnerType: 'Org',
-    });
+    expect(standby.listStandby).toHaveBeenCalledWith(
+      { environment: ENVIRONMENT, runnerOwner: POOL_OWNER, runnerType: 'Org' },
+      { spotRequests: false },
+    );
     expect(createLeaseStore).toHaveBeenCalledWith('warm-leases');
     expect(lease.claim).toHaveBeenCalledTimes(1);
     expect(lease.claim).toHaveBeenCalledWith('i-new');
@@ -226,11 +229,10 @@ describe('warm pool activation in EC2 scale-up', () => {
 
     await createRunners();
 
-    expect(standby.listStandby).toHaveBeenCalledWith({
-      environment: ENVIRONMENT,
-      runnerOwner: ENVIRONMENT,
-      runnerType: 'Org',
-    });
+    expect(standby.listStandby).toHaveBeenCalledWith(
+      { environment: ENVIRONMENT, runnerOwner: ENVIRONMENT, runnerType: 'Org' },
+      { spotRequests: false },
+    );
   });
 
   it('activates warm instances first and launches the remainder cold', async () => {
@@ -247,7 +249,7 @@ describe('warm pool activation in EC2 scale-up', () => {
 
   describe('spot instances', () => {
     beforeEach(() => {
-      standby.listStandby.mockResolvedValue([warm('i-spot', 5, { spotInstanceRequestId: 'sir-1' })]);
+      mockWarmListing([warm('i-spot', 5, { spotInstanceRequestId: 'sir-1' })]);
     });
 
     it('cancels the spot request right after a successful start', async () => {
@@ -313,7 +315,7 @@ describe('warm pool activation in EC2 scale-up', () => {
 
   describe('claim lease', () => {
     it('skips warm instances that expire before the activation settles', async () => {
-      standby.listStandby.mockResolvedValue([
+      mockWarmListing([
         warm('i-expiring', 1, { expiresAt: new Date(NOW.getTime() + 5 * MINUTE).toISOString() }),
         warm('i-valid', 5, { expiresAt: new Date(NOW.getTime() + 60 * MINUTE).toISOString() }),
       ]);
@@ -344,7 +346,7 @@ describe('warm pool activation in EC2 scale-up', () => {
     });
 
     it('lets exactly one of two concurrent invocations activate the same warm instance', async () => {
-      standby.listStandby.mockResolvedValue([warm('i-new', 5)]);
+      mockWarmListing([warm('i-new', 5)]);
       const held = new Set<string>();
       lease.claim.mockImplementation(async (instanceId) => {
         await Promise.resolve();
@@ -397,7 +399,7 @@ describe('warm pool activation in EC2 scale-up', () => {
 
   describe('fallback to cold', () => {
     it('launches cold when no warm instance is available', async () => {
-      standby.listStandby.mockResolvedValue([{ instanceId: 'i-priming', state: 'PRIMING' }]);
+      mockWarmListing([{ instanceId: 'i-priming', state: 'PRIMING' }]);
 
       const result = await createRunners();
 
@@ -491,7 +493,7 @@ describe('warm pool activation in EC2 scale-up', () => {
 
     it('publishes nothing when warm pool metrics are disabled', async () => {
       delete process.env.ENABLE_METRIC_WARM_POOL;
-      standby.listStandby.mockResolvedValue([]);
+      mockWarmListing([]);
 
       await createRunners();
 

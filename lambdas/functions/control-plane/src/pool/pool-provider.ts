@@ -6,4 +6,5 @@ export type {
   RunnerStatus,
   StandbyImage,
   StandbyInstance,
+  StandbySpotRequest,
 } from '@aws-github-runner/compute-providers/core';

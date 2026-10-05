@@ -47,7 +47,7 @@ data "aws_iam_policy_document" "scale_up_warm_pool" {
 
   statement {
     sid       = "WarmPoolDescribe"
-    actions   = ["ec2:DescribeInstances", "ec2:DescribeSpotInstanceRequests"]
+    actions   = ["ec2:DescribeInstances"]
     resources = ["*"]
   }
 
