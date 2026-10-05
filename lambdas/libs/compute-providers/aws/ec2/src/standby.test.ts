@@ -16,6 +16,7 @@ import { mockClient } from 'aws-sdk-client-mock';
 import 'aws-sdk-client-mock-jest/vitest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ec2SdkError } from '../../../test/aws-sdk-errors';
 import {
   classifyStandbyInstance,
   createEc2StandbyClient,
@@ -269,6 +270,21 @@ describe('launchWarm', () => {
       ['m5.large', 'subnet-a'],
       ['m5.large', 'subnet-b'],
       ['c5.large', 'subnet-a'],
+    ]);
+  });
+
+  it('falls back on a capacity error as the installed SDK deserializes it', async () => {
+    mockEC2Client
+      .on(RunInstancesCommand)
+      .rejectsOnce(await ec2SdkError('InsufficientInstanceCapacity', 'No m5.large capacity.', 500))
+      .resolvesOnce({ Instances: [{ InstanceId: 'i-fallback' }] });
+
+    const result = await standby.launchWarm(baseParameters);
+
+    expect(result.instances).toEqual(['i-fallback']);
+    expect(runInstancesInputs().map((input) => [input.InstanceType, input.SubnetId])).toEqual([
+      ['m5.large', 'subnet-a'],
+      ['m5.large', 'subnet-b'],
     ]);
   });
 
@@ -642,6 +658,16 @@ describe('cancelSpotRequest', () => {
 
   it('tolerates a spot request that no longer exists', async () => {
     mockEC2Client.on(CancelSpotInstanceRequestsCommand).rejects(awsError('InvalidSpotInstanceRequestID.NotFound'));
+
+    await expect(standby.cancelSpotRequest('sir-gone')).resolves.toBeUndefined();
+  });
+
+  it('tolerates a missing spot request as the installed SDK deserializes it', async () => {
+    mockEC2Client
+      .on(CancelSpotInstanceRequestsCommand)
+      .rejects(
+        await ec2SdkError('InvalidSpotInstanceRequestID.NotFound', 'The spot instance request ID does not exist'),
+      );
 
     await expect(standby.cancelSpotRequest('sir-gone')).resolves.toBeUndefined();
   });

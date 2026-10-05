@@ -1,14 +1,13 @@
 import { DeleteItemCommand, type DynamoDBClient, PutItemCommand } from '@aws-sdk/client-dynamodb';
 import { randomUUID } from 'node:crypto';
 
+import { awsErrorCode } from './runners';
+
 export const WARM_LEASE_TTL_SECONDS = 10 * 60;
 const CONDITIONAL_CHECK_FAILED = 'ConditionalCheckFailedException';
 
-// In the Lambda bundle the SDK can surface this as a plain Error whose message is the error code.
 function isConditionalCheckFailed(error: unknown): boolean {
-  return (
-    error instanceof Error && (error.name === CONDITIONAL_CHECK_FAILED || error.message === CONDITIONAL_CHECK_FAILED)
-  );
+  return awsErrorCode(error) === CONDITIONAL_CHECK_FAILED;
 }
 
 export interface WarmLeaseStore {
