@@ -148,9 +148,13 @@ export interface StandbyInstance {
   launchTime?: Date;
   imageId?: string;
   launchTemplateVersion?: string;
+  instanceType?: string;
+  availabilityZone?: string;
   spotInstanceRequestId?: string;
   /** ISO-8601 time after which the instance must be destroyed, from `ghr:warm-expires-at`. */
   expiresAt?: string;
+  /** Starts that failed for lack of capacity since the instance was primed. */
+  startFailures?: number;
 }
 
 export type ListStandbyInput = ListPoolRunnersInput;

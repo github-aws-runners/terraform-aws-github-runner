@@ -195,6 +195,23 @@ describe('adjustWarmPool', () => {
       expect(destroyedIds()).toEqual(['i-g1', 'i-g2']);
     });
 
+    it('replaces WARM instances whose start failed for lack of capacity three times', async () => {
+      process.env.ENABLE_METRIC_WARM_POOL = 'true';
+      mockListing([
+        instance('i-failing', 'WARM', HOUR, { startFailures: 3 }),
+        instance('i-retrying', 'WARM', HOUR, { startFailures: 2 }),
+      ]);
+
+      await adjustWarmPool(provider, 2);
+
+      expect(destroyedIds()).toEqual(['i-failing']);
+      expect(standby.launch).toHaveBeenCalledWith(expect.objectContaining({ numberOfInstances: 1 }));
+      expect(createSingleMetric).toHaveBeenCalledWith('WarmPoolEvictions', 'Count', 1, {
+        Environment: expect.any(String),
+        Reason: 'start-failed',
+      });
+    });
+
     it('never touches ACTIVE instances', async () => {
       mockListing([
         instance('i-active-old', 'ACTIVE', 300 * HOUR, { imageId: 'ami-old', launchTemplateVersion: '1' }),

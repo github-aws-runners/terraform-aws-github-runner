@@ -57,10 +57,10 @@ A warm instance is activated at most once. Runners that ran a job are never park
      |
      v
   WARM     stopped by the instance itself
-     |  scale-up: claim (DynamoDB index), tag, write registration config
-     |            to SSM, StartInstances, cancel spot request if any
+     |  scale-up: claim (DynamoDB index), tag, StartInstances, cancel spot
+     |            request if any, then write registration config to SSM
      v
-  ACTIVE   boot hook finds its config, registers, runs the job
+  ACTIVE   boot hook waits for its config, registers, runs the job
 ```
 
 - **Priming never registers with GitHub.** Warm instances are owner-agnostic,
@@ -88,6 +88,7 @@ On every pool event, before refilling, the pool destroys:
 - warm instances whose AMI or launch-template version is outdated;
 - the oldest warm instances above the target;
 - instances priming longer than `runner_boot_time_in_minutes`;
+- warm instances whose start failed for lack of capacity three times;
 - stopped instances that did not stop themselves, or whose spot request can no
   longer start them;
 - tagged spot requests without a live instance.
@@ -144,8 +145,12 @@ activated spot instances that stopped instead of terminating.
 - Custom user-data templates must keep the start script for the boot hook.
   Otherwise warm instances never park and are evicted.
 - Linux only at first; Windows was added later with a startup scheduled task as its boot hook. macOS is not supported.
-- A spot start can fail for lack of capacity. Scale-up then launches cold, so a
-  failed start is never worse than today.
+- A start can fail for lack of capacity, because a stopped instance starts only
+  with its own instance type in its own Availability Zone. Scale-up then
+  launches cold, so a failed start is never worse than today. The instance is
+  skipped for a cool-down and replaced after repeated failures. Scale-up
+  registers the runner only after a successful start, as for a new instance,
+  so a failed start leaves nothing registered with GitHub.
 
 ## Alternatives Considered
 

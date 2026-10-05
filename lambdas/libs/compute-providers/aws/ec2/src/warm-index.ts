@@ -11,6 +11,7 @@ import type { StandbyInstanceState } from '../../../core';
 import { awsErrorCode } from './runners';
 
 export const WARM_CLAIM_TTL_SECONDS = 10 * 60;
+export const WARM_START_COOLDOWN_SECONDS = 10 * 60;
 const CONDITIONAL_CHECK_FAILED = 'ConditionalCheckFailedException';
 const RECONCILE_MARKER = '#reconcile';
 const DAY_IN_SECONDS = 24 * 60 * 60;
@@ -23,13 +24,19 @@ export interface WarmIndexItem {
   state: WarmIndexState;
   launchTime?: string;
   expiresAt?: string;
+  instanceType?: string;
+  availabilityZone?: string;
   spotInstanceRequestId?: string;
   activatedAt?: string;
   claimUntil?: number;
+  startFailures?: number;
+  cooldownUntil?: number;
 }
 
+const UPDATE_FIELDS = ['launchTime', 'expiresAt', 'instanceType', 'availabilityZone', 'spotInstanceRequestId'] as const;
+
 export type WarmIndexUpdate = Pick<WarmIndexItem, 'instanceId' | 'state'> &
-  Partial<Pick<WarmIndexItem, 'launchTime' | 'expiresAt' | 'spotInstanceRequestId'>>;
+  Partial<Pick<WarmIndexItem, (typeof UPDATE_FIELDS)[number]>>;
 
 export interface WarmIndexStore {
   query(): Promise<WarmIndexItem[]>;
@@ -41,6 +48,8 @@ export interface WarmIndexStore {
   /** Resolves false when the instance is not warm or another invocation holds a live claim. */
   claim(instanceId: string): Promise<boolean>;
   release(instanceId: string): Promise<void>;
+  /** Releases the claim after a start failed for lack of capacity, and keeps the instance out of activation for a while. */
+  releaseWithCooldown(instanceId: string): Promise<void>;
   markActivated(instanceId: string, activatedAt: string): Promise<void>;
   /** Keeps a failed instance out of activation until the pool reads it from EC2 again. */
   markUnusable(instanceId: string): Promise<void>;
@@ -64,6 +73,10 @@ async function unlessConditionFails(operation: () => Promise<unknown>): Promise<
 
 function nowSeconds(): number {
   return Math.floor(Date.now() / 1000);
+}
+
+function numberAttribute(value: { N?: string } | undefined): number | undefined {
+  return value?.N === undefined ? undefined : Number(value.N);
 }
 
 // DynamoDB TTL is a safety net only; the pool removes items itself.
@@ -105,9 +118,13 @@ export function createWarmIndexStore(
             state: (item.state?.S ?? 'PRIMING') as WarmIndexState,
             launchTime: item.launchTime?.S,
             expiresAt: item.expiresAt?.S,
+            instanceType: item.instanceType?.S,
+            availabilityZone: item.availabilityZone?.S,
             spotInstanceRequestId: item.spotInstanceRequestId?.S,
             activatedAt: item.activatedAt?.S,
-            claimUntil: item.claimUntil?.N === undefined ? undefined : Number(item.claimUntil.N),
+            claimUntil: numberAttribute(item.claimUntil),
+            startFailures: numberAttribute(item.startFailures),
+            cooldownUntil: numberAttribute(item.cooldownUntil),
           });
         }
         exclusiveStartKey = result.LastEvaluatedKey;
@@ -122,7 +139,7 @@ export function createWarmIndexStore(
         ':activated': { S: 'ACTIVATED' },
       };
       const assignments = ['#state = :state', '#ttl = :ttl'];
-      for (const field of ['launchTime', 'expiresAt', 'spotInstanceRequestId'] as const) {
+      for (const field of UPDATE_FIELDS) {
         const value = item[field];
         if (value === undefined) continue;
         assignments.push(`${field} = :${field}`);
@@ -188,6 +205,24 @@ export function createWarmIndexStore(
             UpdateExpression: 'REMOVE claimOwner, claimUntil',
             ConditionExpression: 'claimOwner = :owner',
             ExpressionAttributeValues: { ':owner': { S: owner } },
+          }),
+        ),
+      );
+    },
+
+    releaseWithCooldown: async (instanceId) => {
+      await unlessConditionFails(() =>
+        dynamoClient.send(
+          new UpdateItemCommand({
+            TableName: tableName,
+            Key: key(instanceId),
+            UpdateExpression: 'SET cooldownUntil = :until ADD startFailures :one REMOVE claimOwner, claimUntil',
+            ConditionExpression: 'claimOwner = :owner',
+            ExpressionAttributeValues: {
+              ':until': { N: String(nowSeconds() + WARM_START_COOLDOWN_SECONDS) },
+              ':one': { N: '1' },
+              ':owner': { S: owner },
+            },
           }),
         ),
       );

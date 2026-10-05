@@ -8,12 +8,15 @@ const logger = createChildLogger('warm-pool');
 
 const MINUTE_IN_MS = 60 * 1000;
 const HOUR_IN_MS = 60 * MINUTE_IN_MS;
+// A stopped instance starts only with its own type and AZ, so repeated capacity failures are unlikely to clear soon.
+export const WARM_START_FAILURE_LIMIT = 3;
 
 export type WarmPoolEvictionReason =
   | 'max-age'
   | 'drift'
   | 'over-target'
   | 'stuck-priming'
+  | 'start-failed'
   | 'garbage'
   | 'orphaned-spot-request';
 
@@ -126,6 +129,7 @@ function evictionReason(instance: StandbyInstance, policy: EvictionPolicy): Warm
     case 'PRIMING':
       return age !== undefined && age > policy.bootTimeInMinutes * MINUTE_IN_MS ? 'stuck-priming' : undefined;
     case 'WARM':
+      if ((instance.startFailures ?? 0) >= WARM_START_FAILURE_LIMIT) return 'start-failed';
       if (age !== undefined && age > policy.maxAgeHours * HOUR_IN_MS) return 'max-age';
       return isDrifted(instance, policy.current) ? 'drift' : undefined;
     default:

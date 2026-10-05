@@ -190,6 +190,7 @@ describe('createEc2PoolCapability.standby', () => {
     release: vi.fn<WarmIndexStore['release']>(),
     markActivated: vi.fn<WarmIndexStore['markActivated']>(),
     markUnusable: vi.fn<WarmIndexStore['markUnusable']>(),
+    releaseWithCooldown: vi.fn<WarmIndexStore['releaseWithCooldown']>(),
     claimReconcile: vi.fn<WarmIndexStore['claimReconcile']>(),
   } satisfies WarmIndexStore;
   const createIndexStore = vi.fn<CreateWarmIndexStore>(() => index);
@@ -280,6 +281,26 @@ describe('createEc2PoolCapability.standby', () => {
     });
     expect(index.remove).toHaveBeenCalledWith('i-gone');
     expect(standbyOperations.listStandby).not.toHaveBeenCalled();
+  });
+
+  it('records the instance type and AZ, and reports failed starts to the pool', async () => {
+    index.query.mockResolvedValue([{ instanceId: 'i-warm', state: 'WARM', startFailures: 2 }]);
+    standbyOperations.readStandby.mockResolvedValue({
+      ...emptyRead,
+      instances: [{ instanceId: 'i-warm', state: 'WARM', instanceType: 'm7g.large', availabilityZone: 'eu-west-1a' }],
+    });
+
+    await expect(standby.list(poolInput)).resolves.toEqual(
+      expect.objectContaining({
+        instances: [expect.objectContaining({ instanceId: 'i-warm', startFailures: 2 })],
+      }),
+    );
+    expect(index.update).toHaveBeenCalledWith({
+      instanceId: 'i-warm',
+      state: 'WARM',
+      instanceType: 'm7g.large',
+      availabilityZone: 'eu-west-1a',
+    });
   });
 
   it('keeps listing when an index write fails', async () => {

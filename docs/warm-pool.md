@@ -9,7 +9,7 @@ A warm pool keeps stopped, pre-booted runner instances ready. When a job arrives
 
 1. The pool Lambda launches instances until the number of warm and priming instances matches the pool size from `pool_config`.
 2. Each instance installs the runner, prepares itself, and shuts itself down. It never registers with GitHub while it is in the pool.
-3. When a job is queued, scale-up claims the newest warm instance in the warm pool index, writes its registration config, and starts it. A boot hook registers the runner and runs the job.
+3. When a job is queued, scale-up claims the newest warm instance in the warm pool index, starts it, and then writes its registration config, the same order as a new instance. A boot hook waits for the config, registers the runner, and runs the job.
 4. A warm instance is activated at most once and never returns to the pool. After activation it follows the normal runner lifecycle: an ephemeral runner runs one job, a non-ephemeral runner can pick up more jobs until scale-down removes it.
 5. If no warm instance is available, or starting one fails, scale-up launches a new instance as usual.
 
@@ -94,7 +94,7 @@ With `instance_target_capacity_type = "on-demand"`, warm instances are regular o
 
 With `instance_target_capacity_type = "spot"`, warm instances are launched with `RunInstances` from a persistent spot request, because spot instances from a one-time request or a fleet cannot be stopped. The request is tagged like the instance and expires after `max_age_hours` plus 24 hours. The module always cancels the spot request before terminating a warm instance, so AWS never launches a replacement. When a warm spot instance is activated, its request is cancelled right after the start; if that fails, the pool cancels it on a later run.
 
-Starting a stopped spot instance needs spot capacity at that moment. If the start fails, the job gets a new instance and the warm instance stays in the pool. Warm spot launches try the configured instance types and subnets in order; new instances for jobs still use EC2 Fleet.
+A stopped instance can only start with its own instance type in its own Availability Zone, and a spot instance needs spot capacity at that moment. If the start fails, the job gets a new instance and the warm instance stays in the pool. After a start fails for lack of capacity, scale-up skips that instance for 10 minutes, and skips other warm instances of the same type and zone for the rest of that run. The pool replaces an instance whose start failed this way three times. Warm spot launches try the configured instance types and subnets in order; new instances for jobs still use EC2 Fleet.
 
 ## Eviction
 
@@ -104,6 +104,7 @@ Each time the pool runs, before refilling, it destroys:
 - warm instances built from an outdated AMI or launch template version;
 - the oldest warm instances above the pool size;
 - instances that did not finish priming within `runner_boot_time_in_minutes`;
+- warm instances whose start failed for lack of capacity three times;
 - stopped instances that did not stop themselves (spot interruption, manual stop) or whose spot request can no longer start them;
 - live spot requests of warm spot instances that were terminated, or that were activated and could not be detached; a replacement instance AWS launched for such a request is terminated too.
 
