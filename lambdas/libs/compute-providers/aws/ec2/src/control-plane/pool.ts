@@ -63,7 +63,7 @@ async function forEachSettled<TItem>(
 
 export function createEc2PoolStandbyOperations(standbyOperations: Ec2StandbyOperations): Ec2PoolStandbyOperations {
   return {
-    list: (input) => standbyOperations.listStandby(input),
+    list: (input) => standbyOperations.listStandby(input, { spotRequests: true }),
     launch: async ({ environment, runnerOwner, runnerType, numberOfInstances, maxAgeHours }) => {
       const config = loadEc2ProviderConfig();
       const result = await standbyOperations.launchWarm({
@@ -88,13 +88,16 @@ export function createEc2PoolStandbyOperations(standbyOperations: Ec2StandbyOper
         (instance) => standbyOperations.destroyInstance(instance),
         'destroy standby instance',
       ),
-    listOrphanedSpotRequests: (input) => standbyOperations.listOrphanedSpotRequests(input),
-    cancelSpotRequests: (spotInstanceRequestIds) =>
+    cancelSpotRequests: (requests) =>
       forEachSettled(
-        spotInstanceRequestIds,
-        (spotInstanceRequestId) => spotInstanceRequestId,
-        (spotInstanceRequestId) => standbyOperations.cancelSpotRequest(spotInstanceRequestId),
-        'cancel spot instance request',
+        requests,
+        (request) => request.spotInstanceRequestId,
+        // destroyInstance cancels the request before terminating, so the replacement cannot respawn.
+        ({ spotInstanceRequestId, replacementInstanceId }) =>
+          replacementInstanceId
+            ? standbyOperations.destroyInstance({ instanceId: replacementInstanceId, spotInstanceRequestId })
+            : standbyOperations.cancelSpotRequest(spotInstanceRequestId),
+        'clean up spot instance request',
       ),
     currentImage: () => {
       const { launchTemplateName, amiIdSsmParameterName } = loadEc2ProviderConfig();

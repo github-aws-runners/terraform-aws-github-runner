@@ -85,12 +85,9 @@ data "aws_iam_policy_document" "scale_up_warm" {
   count = var.warm_pool.enabled ? 1 : 0
 
   statement {
-    sid    = "WarmPoolDescribe"
-    effect = "Allow"
-    actions = [
-      "ec2:DescribeInstances",
-      "ec2:DescribeSpotInstanceRequests",
-    ]
+    sid       = "WarmPoolDescribe"
+    effect    = "Allow"
+    actions   = ["ec2:DescribeInstances"]
     resources = ["*"]
   }
 
