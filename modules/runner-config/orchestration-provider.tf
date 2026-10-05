@@ -25,16 +25,6 @@ locals {
   }
 }
 
-data "aws_iam_policy_document" "warm_pool_scale_up_storage" {
-  count = local.warm_pool.enabled ? 1 : 0
-
-  statement {
-    sid       = "WarmPoolRollbackRunnerConfig"
-    actions   = ["ssm:DeleteParameter"]
-    resources = ["${local.arn_ssm_parameters_path_tokens}/*"]
-  }
-}
-
 module "orchestration_webhook" {
   source = "../orchestration-providers/webhook"
   count  = local.orchestration_provider_enabled.webhook ? 1 : 0
@@ -74,7 +64,6 @@ module "orchestration_webhook" {
       environment_variables = local.warm_pool.enabled ? {
         ENABLE_METRIC_WARM_POOL = tostring(var.observability.metrics.enabled)
       } : {}
-      iam_policy_json = one(data.aws_iam_policy_document.warm_pool_scale_up_storage[*].json)
     }
   }
   observability = var.observability
