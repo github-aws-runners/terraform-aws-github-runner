@@ -270,6 +270,21 @@ check "mode WAIT" mode_is WAIT
 check "runs with JIT config" called "run.sh --jitconfig jit-config-blob"
 check "no shutdown" not_called "shutdown"
 
+echo "# primed instance started by scale-up before its config is written, boot via systemd unit -> WAIT"
+new_sandbox
+set_tag ghr:warm-pool true
+boot "$SANDBOX/user-data.sh"
+hook="$SANDBOX/usr/local/sbin/ghr-start-runner.sh"
+set_tag ghr:warm-activated 2026-09-30T12:00:00Z
+export CONFIG_AFTER=3
+boot "$hook"
+check "mode WAIT" mode_is WAIT
+check "polls for config" grep -q "Waiting for GH Runner config" "$SANDBOX/out.log"
+check "runs with JIT config" called "run.sh --jitconfig jit-config-blob"
+check "disables boot hook (single use)" called "systemctl disable $unit"
+check "logs activation latency" grep -qE '^warm-pool-activation-latency-seconds=-?[0-9]+$' "$SANDBOX/out.log"
+check "no shutdown" not_called "shutdown"
+
 echo
 echo "passed: $pass, failed: $fail"
 [ "$fail" -eq 0 ]

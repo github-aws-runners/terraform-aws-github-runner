@@ -182,6 +182,22 @@ Check 'logs activation latency' { $script:output -match '(?m)^warm-pool-activati
 Check 'ephemeral self-terminates' { Called 'aws ec2 terminate-instances' }
 Check 'no shutdown' { -not (Called 'shutdown.exe') }
 
+Write-Host '# primed instance started by scale-up before its config is written, boot from the startup task -> WAIT'
+New-Sandbox @{ 'ghr:warm-pool' = 'true' }
+Invoke-Boot "$env:SANDBOX/start-runner.ps1"
+$activated = [DateTimeOffset]::UtcNow.AddSeconds(-42).ToString('yyyy-MM-ddTHH:mm:ss.fffZ')
+Set-Content "$env:SANDBOX/tags.json" (@{ Tags = @(
+            @{ Key = 'ghr:environment'; Value = 'test' }, @{ Key = 'ghr:ssm_config_path'; Value = '/ghr/config' },
+            @{ Key = 'ghr:warm-pool'; Value = 'true' }, @{ Key = 'ghr:warm-activated'; Value = $activated }) } | ConvertTo-Json -Depth 4)
+$env:CONFIG_AFTER = '3'
+Invoke-Boot (& $hook)
+Check 'mode WAIT' { ModeIs 'WAIT' }
+Check 'polls for config' { $script:output.Contains('Waiting for GH Runner config') }
+Check 'runs with JIT config' { Called 'run.cmd --jitconfig jit-config-blob' }
+Check 'disables boot hook (single use)' { Called 'Disable-ScheduledTask ghr-start-runner' }
+Check 'logs activation latency' { $script:output -match '(?m)^warm-pool-activation-latency-seconds=\d+\r?$' }
+Check 'no shutdown' { -not (Called 'shutdown.exe') }
+
 Write-Host '# task registration fails -> PRIME fails without shutdown'
 New-Sandbox @{ 'ghr:warm-pool' = 'true' }
 $env:REGISTER_FAIL = '1'
