@@ -1,0 +1,31 @@
+matcherConfig:
+  exactMatch: true
+  labelMatchers:
+    - [self-hosted, linux, x64, warm-spot]
+fifo: true
+runner_config:
+  runner_os: linux
+  runner_architecture: x64
+  runner_name_prefix: warm-spot-x64_
+  enable_ssm_on_runners: true
+  vpc_id: ${vpc_id}
+  subnet_ids: ${subnet_ids}
+  instance_types:
+    - m5a.large
+    - m5ad.large
+    - m6a.large
+  # Warm spot instances use persistent spot requests so they can be stopped and started.
+  instance_target_capacity_type: spot
+  runners_maximum_count: 2
+  enable_ephemeral_runners: true
+  delay_webhook_event: 0
+  # Batch bursts and allow parallel scale-up so several jobs activate warm instances at once.
+  lambda_event_source_mapping_maximum_batching_window_in_seconds: 10
+  scale_up_reserved_concurrent_executions: 5
+  scale_down_schedule_expression: cron(* * * * ? *)
+  pool_config:
+    - size: 1
+      schedule_expression: cron(* * * * ? *)
+  warm_pool:
+    enabled: true
+    max_age_hours: 24
