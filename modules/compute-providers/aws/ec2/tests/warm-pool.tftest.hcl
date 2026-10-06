@@ -95,8 +95,12 @@ run "warm_pool_disabled_by_default" {
   command = plan
 
   assert {
-    condition     = length(aws_dynamodb_table.warm_pool_leases) == 0 && !contains(keys(local.provider_environment_variables.scale_up), "WARM_POOL_ENABLED")
-    error_message = "No lease table or scale-up warm env vars without warm_pool."
+    condition = (
+      length(aws_dynamodb_table.warm_pool_index) == 0
+      && !contains(keys(local.provider_environment_variables.scale_up), "WARM_POOL_ENABLED")
+      && !contains(keys(local.provider_environment_variables.pool), "WARM_POOL_INDEX_TABLE_NAME")
+    )
+    error_message = "No index table or warm env vars without warm_pool."
   }
 }
 
@@ -109,14 +113,17 @@ run "warm_pool_enabled" {
 
   assert {
     condition = (
-      length(aws_dynamodb_table.warm_pool_leases) == 1
-      && aws_dynamodb_table.warm_pool_leases[0].name == "provider-test-warm-pool-leases"
+      length(aws_dynamodb_table.warm_pool_index) == 1
+      && aws_dynamodb_table.warm_pool_index[0].name == "provider-test-warm-pool-index"
+      && aws_dynamodb_table.warm_pool_index[0].hash_key == "environment"
+      && aws_dynamodb_table.warm_pool_index[0].range_key == "instanceId"
       && local.provider_environment_variables.scale_up["WARM_POOL_ENABLED"] == "true"
-      && local.provider_environment_variables.scale_up["WARM_POOL_LEASE_TABLE_NAME"] == "provider-test-warm-pool-leases"
+      && local.provider_environment_variables.scale_up["WARM_POOL_INDEX_TABLE_NAME"] == "provider-test-warm-pool-index"
+      && local.provider_environment_variables.pool["WARM_POOL_INDEX_TABLE_NAME"] == "provider-test-warm-pool-index"
       && length(data.aws_iam_policy_document.pool_warm) == 1
       && length(data.aws_iam_policy_document.scale_up_warm) == 1
     )
-    error_message = "Warm pool must create the lease table, scale-up env vars, and pool/scale-up policies."
+    error_message = "Warm pool must create the index table, warm env vars, and pool/scale-up policies."
   }
 }
 
@@ -129,7 +136,7 @@ run "warm_pool_windows" {
   }
 
   assert {
-    condition     = length(aws_dynamodb_table.warm_pool_leases) == 1
+    condition     = length(aws_dynamodb_table.warm_pool_index) == 1
     error_message = "Warm pool should plan for windows runners"
   }
 }

@@ -41,6 +41,7 @@ module "pool" {
     pool                      = var.pool_config
     include_busy_runners      = var.pool_include_busy_runners
     warm_pool                 = var.warm_pool
+    warm_pool_index_table     = var.warm_pool.enabled ? { name = aws_dynamodb_table.warm_pool_index[0].name, arn = aws_dynamodb_table.warm_pool_index[0].arn } : null
     metrics                   = { enable = var.metrics.enable, namespace = var.metrics.namespace }
     role_path                 = local.role_path
     role_permissions_boundary = var.role_permissions_boundary

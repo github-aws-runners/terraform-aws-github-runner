@@ -70,6 +70,10 @@ variable "config" {
       enabled       = optional(bool, false)
       max_age_hours = optional(number, 168)
     }), {})
+    warm_pool_index_table = optional(object({
+      name = string
+      arn  = string
+    }))
     metrics = optional(object({
       enable    = optional(bool, false)
       namespace = optional(string, null)

@@ -8,12 +8,15 @@ const logger = createChildLogger('warm-pool');
 
 const MINUTE_IN_MS = 60 * 1000;
 const HOUR_IN_MS = 60 * MINUTE_IN_MS;
+// A stopped instance starts only with its own type and AZ, so repeated capacity failures are unlikely to clear soon.
+export const WARM_START_FAILURE_LIMIT = 3;
 
 export type WarmPoolEvictionReason =
   | 'max-age'
   | 'drift'
   | 'over-target'
   | 'stuck-priming'
+  | 'start-failed'
   | 'garbage'
   | 'orphaned-spot-request';
 
@@ -50,7 +53,7 @@ export async function adjustWarmPool(
   const maxAgeHours = parseInt(process.env.WARM_POOL_MAX_AGE_HOURS || '168');
   const bootTimeInMinutes = parseInt(process.env.RUNNER_BOOT_TIME_IN_MINUTES || '5');
 
-  const instances = await standby.list(input);
+  const { instances, orphanedSpotRequests, spotStateKnown } = await standby.list(input);
   const current = standby.currentImage ? await standby.currentImage() : {};
   const evictions = selectEvictions(instances, { poolSize, current, maxAgeHours, bootTimeInMinutes, now: Date.now() });
 
@@ -75,12 +78,9 @@ export async function adjustWarmPool(
     }
   }
 
-  if (standby.listOrphanedSpotRequests && standby.cancelSpotRequests) {
-    const orphaned = await standby.listOrphanedSpotRequests(input);
-    if (orphaned.length > 0) {
-      const result = await standby.cancelSpotRequests(orphaned.map((request) => request.spotInstanceRequestId));
-      if (result.succeeded.length > 0) evictionCounts.set('orphaned-spot-request', result.succeeded.length);
-    }
+  if (orphanedSpotRequests.length > 0 && standby.cancelSpotRequests) {
+    const result = await standby.cancelSpotRequests(orphanedSpotRequests);
+    if (result.succeeded.length > 0) evictionCounts.set('orphaned-spot-request', result.succeeded.length);
   }
 
   const remaining = instances.filter((instance) => !destroyed.has(instance.instanceId));
@@ -102,7 +102,7 @@ export async function adjustWarmPool(
     logger.info(`Warm pool will not be refilled. Found ${warm} warm and ${priming} priming instance(s).`);
   }
 
-  publishWarmPoolMetrics(environment, warm, priming, evictionCounts);
+  publishWarmPoolMetrics(environment, warm, priming, evictionCounts, spotStateKnown);
 }
 
 function selectEvictions(instances: StandbyInstance[], policy: EvictionPolicy): Eviction[] {
@@ -129,6 +129,7 @@ function evictionReason(instance: StandbyInstance, policy: EvictionPolicy): Warm
     case 'PRIMING':
       return age !== undefined && age > policy.bootTimeInMinutes * MINUTE_IN_MS ? 'stuck-priming' : undefined;
     case 'WARM':
+      if ((instance.startFailures ?? 0) >= WARM_START_FAILURE_LIMIT) return 'start-failed';
       if (age !== undefined && age > policy.maxAgeHours * HOUR_IN_MS) return 'max-age';
       return isDrifted(instance, policy.current) ? 'drift' : undefined;
     default:
@@ -148,11 +149,15 @@ function publishWarmPoolMetrics(
   warm: number,
   priming: number,
   evictionCounts: Map<WarmPoolEvictionReason, number>,
+  spotStateKnown: boolean,
 ): void {
   if (!yn(process.env.ENABLE_METRIC_WARM_POOL, { default: false })) return;
   createSingleMetric('WarmPoolWarmInstances', MetricUnit.Count, warm, { Environment: environment });
   createSingleMetric('WarmPoolPrimingInstances', MetricUnit.Count, priming, { Environment: environment });
   for (const [reason, count] of evictionCounts) {
     createSingleMetric('WarmPoolEvictions', MetricUnit.Count, count, { Environment: environment, Reason: reason });
+  }
+  if (!spotStateKnown) {
+    createSingleMetric('WarmPoolSpotLookupFailures', MetricUnit.Count, 1, { Environment: environment });
   }
 }

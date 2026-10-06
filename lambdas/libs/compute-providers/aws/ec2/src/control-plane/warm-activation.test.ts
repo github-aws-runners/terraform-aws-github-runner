@@ -3,9 +3,10 @@ import type { RunnerConfigStorage, RunnerConfigStore } from '@aws-github-runner/
 import type { Octokit } from '@octokit/rest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { CreateGitHubRunnerConfig, CreateStartRunnerConfig, StandbyInstance } from '../../../../core';
+import { ec2SdkError } from '../../../../test/aws-sdk-errors';
+import type { CreateGitHubRunnerConfig, CreateStartRunnerConfig } from '../../../../core';
 import type { Ec2RunnerProvisioningOperations } from '../runners';
-import type { WarmLeaseStore } from '../warm-lease';
+import type { WarmIndexItem, WarmIndexStore } from '../warm-index';
 import { createEc2ScaleUpCapability } from './scale-up';
 import type { Ec2WarmActivationOperations } from './warm-activation';
 
@@ -32,15 +33,28 @@ const ec2Operations = {
     vi.fn<Ec2RunnerProvisioningOperations['getDefaultBlockDeviceNameFromLaunchTemplate']>(),
 } satisfies Ec2RunnerProvisioningOperations;
 const standby = {
-  listStandby: vi.fn<Ec2WarmActivationOperations['standby']['listStandby']>(),
   startInstance: vi.fn<Ec2WarmActivationOperations['standby']['startInstance']>(),
   cancelSpotRequest: vi.fn<Ec2WarmActivationOperations['standby']['cancelSpotRequest']>(),
+  destroyInstance: vi.fn<Ec2WarmActivationOperations['standby']['destroyInstance']>(),
 };
-const lease = {
-  claim: vi.fn<WarmLeaseStore['claim']>(),
-  release: vi.fn<WarmLeaseStore['release']>(),
-};
-const createLeaseStore = vi.fn<Ec2WarmActivationOperations['createLeaseStore']>(() => lease);
+
+const index = {
+  query: vi.fn<WarmIndexStore['query']>(),
+  update: vi.fn<WarmIndexStore['update']>(),
+  remove: vi.fn<WarmIndexStore['remove']>(),
+  removeUnclaimed: vi.fn<WarmIndexStore['removeUnclaimed']>(),
+  claim: vi.fn<WarmIndexStore['claim']>(),
+  release: vi.fn<WarmIndexStore['release']>(),
+  markActivated: vi.fn<WarmIndexStore['markActivated']>(),
+  markUnusable: vi.fn<WarmIndexStore['markUnusable']>(),
+  releaseWithCooldown: vi.fn<WarmIndexStore['releaseWithCooldown']>(),
+  claimReconcile: vi.fn<WarmIndexStore['claimReconcile']>(),
+} satisfies WarmIndexStore;
+const createIndexStore = vi.fn<Ec2WarmActivationOperations['createIndexStore']>(() => index);
+
+function mockWarmIndex(items: WarmIndexItem[]): void {
+  index.query.mockResolvedValue(items);
+}
 const runnerConfigStore = {
   create: vi.fn<RunnerConfigStore['create']>(),
   delete: vi.fn<RunnerConfigStore['delete']>(),
@@ -49,7 +63,7 @@ const storage = { runnerConfig: runnerConfigStore } as unknown as RunnerConfigSt
 const mockCreateStartRunnerConfig = vi.fn<CreateStartRunnerConfig>();
 const capability = createEc2ScaleUpCapability(ec2Operations, mockCreateStartRunnerConfig, {
   standby,
-  createLeaseStore,
+  createIndexStore,
 });
 
 const githubRunnerConfig: CreateGitHubRunnerConfig = {
@@ -63,11 +77,11 @@ const githubRunnerConfig: CreateGitHubRunnerConfig = {
   disableAutoUpdate: false,
 };
 
-function warm(instanceId: string, ageInMinutes: number, overrides: Partial<StandbyInstance> = {}): StandbyInstance {
+function warm(instanceId: string, ageInMinutes: number, overrides: Partial<WarmIndexItem> = {}): WarmIndexItem {
   return {
     instanceId,
     state: 'WARM',
-    launchTime: new Date(NOW.getTime() - ageInMinutes * MINUTE),
+    launchTime: new Date(NOW.getTime() - ageInMinutes * MINUTE).toISOString(),
     ...overrides,
   };
 }
@@ -88,7 +102,6 @@ function callOrder(mock: { mock: { invocationCallOrder: number[] } }, index = 0)
 }
 
 function expectRolledBack(instanceId: string) {
-  expect(runnerConfigStore.delete).toHaveBeenCalledWith(instanceId);
   expect(ec2Operations.untag).toHaveBeenCalledWith(instanceId, [
     { Key: 'ghr:warm-activated' },
     { Key: 'ghr:trace_id' },
@@ -97,7 +110,7 @@ function expectRolledBack(instanceId: string) {
     { Key: 'ghr:Owner', Value: POOL_OWNER },
     { Key: 'ghr:Type', Value: 'Org' },
   ]);
-  expect(lease.release).toHaveBeenCalledWith(instanceId);
+  expect(index.release).toHaveBeenCalledWith(instanceId);
 }
 
 function expectFallbackMetric(reason: string, count: number) {
@@ -118,7 +131,7 @@ beforeEach(() => {
   process.env.INSTANCE_TARGET_CAPACITY_TYPE = 'spot';
   process.env.SCALE_ERRORS = '["UnfulfillableCapacity"]';
   process.env.WARM_POOL_ENABLED = 'true';
-  process.env.WARM_POOL_LEASE_TABLE_NAME = 'warm-leases';
+  process.env.WARM_POOL_INDEX_TABLE_NAME = 'warm-index';
   process.env.RUNNER_OWNER = POOL_OWNER;
   process.env.ENABLE_METRIC_WARM_POOL = 'true';
   delete process.env.INSTANCE_TYPE_PRIORITIES;
@@ -136,15 +149,19 @@ beforeEach(() => {
   }));
   ec2Operations.tag.mockResolvedValue(undefined);
   ec2Operations.untag.mockResolvedValue(undefined);
-  standby.listStandby.mockResolvedValue([
+  mockWarmIndex([
     warm('i-old', 60),
     warm('i-new', 5),
-    { instanceId: 'i-priming', state: 'PRIMING', launchTime: NOW },
+    { instanceId: 'i-priming', state: 'PRIMING', launchTime: NOW.toISOString() },
   ]);
   standby.startInstance.mockResolvedValue(undefined);
   standby.cancelSpotRequest.mockResolvedValue(undefined);
-  lease.claim.mockResolvedValue(true);
-  lease.release.mockResolvedValue(undefined);
+  index.claim.mockResolvedValue(true);
+  index.release.mockResolvedValue(undefined);
+  index.markActivated.mockResolvedValue(undefined);
+  index.markUnusable.mockResolvedValue(undefined);
+  index.releaseWithCooldown.mockResolvedValue(undefined);
+  standby.destroyInstance.mockResolvedValue(undefined);
   runnerConfigStore.create.mockResolvedValue(undefined);
   runnerConfigStore.delete.mockResolvedValue(undefined);
   mockCreateStartRunnerConfig.mockImplementation(async (config, runnerIds, _client, options) => {
@@ -167,8 +184,7 @@ describe('warm pool activation in EC2 scale-up', () => {
     const result = await createRunners();
 
     expect(result).toEqual({ instances: ['i-cold-1'], retryableErrorCount: 0, nonRetryableErrorCount: 0 });
-    expect(standby.listStandby).not.toHaveBeenCalled();
-    expect(createLeaseStore).not.toHaveBeenCalled();
+    expect(createIndexStore).not.toHaveBeenCalled();
     expect(ec2Operations.create).toHaveBeenCalledWith(expect.objectContaining({ numberOfRunners: 1 }));
     expect(createSingleMetric).not.toHaveBeenCalled();
   });
@@ -177,21 +193,16 @@ describe('warm pool activation in EC2 scale-up', () => {
     const result = await createRunners(1, ['ghr-ec2-instance-type:c5.large']);
 
     expect(result.instances).toEqual(['i-cold-1']);
-    expect(standby.listStandby).not.toHaveBeenCalled();
+    expect(index.query).not.toHaveBeenCalled();
   });
 
   it('activates the newest warm instance instead of launching cold', async () => {
     const result = await createRunners();
 
     expect(result).toEqual({ instances: ['i-new'], retryableErrorCount: 0, nonRetryableErrorCount: 0 });
-    expect(standby.listStandby).toHaveBeenCalledWith({
-      environment: ENVIRONMENT,
-      runnerOwner: POOL_OWNER,
-      runnerType: 'Org',
-    });
-    expect(createLeaseStore).toHaveBeenCalledWith('warm-leases');
-    expect(lease.claim).toHaveBeenCalledTimes(1);
-    expect(lease.claim).toHaveBeenCalledWith('i-new');
+    expect(createIndexStore).toHaveBeenCalledWith('warm-index', ENVIRONMENT);
+    expect(index.claim).toHaveBeenCalledTimes(1);
+    expect(index.claim).toHaveBeenCalledWith('i-new');
     expect(ec2Operations.tag).toHaveBeenNthCalledWith(1, 'i-new', [
       { Key: 'ghr:warm-activated', Value: NOW.toISOString() },
       { Key: 'ghr:Owner', Value: JOB_OWNER },
@@ -209,28 +220,55 @@ describe('warm pool activation in EC2 scale-up', () => {
     ]);
     expect(standby.startInstance).toHaveBeenCalledWith('i-new');
     expect(standby.cancelSpotRequest).not.toHaveBeenCalled();
+    expect(index.markActivated).toHaveBeenCalledWith('i-new', NOW.toISOString());
     expect(ec2Operations.create).not.toHaveBeenCalled();
-    expect(lease.release).not.toHaveBeenCalled();
+    expect(index.release).not.toHaveBeenCalled();
   });
 
-  it('writes the runner config and activation tag before starting the instance', async () => {
+  it('keeps the activation when recording it in the index fails', async () => {
+    index.markActivated.mockRejectedValue(new Error('throttled'));
+
+    const result = await createRunners();
+
+    expect(result.instances).toEqual(['i-new']);
+    expect(ec2Operations.untag).not.toHaveBeenCalled();
+  });
+
+  it('tags the instance before starting it and registers its runner after the start', async () => {
     await createRunners();
 
     const start = callOrder(standby.startInstance);
     expect(callOrder(ec2Operations.tag)).toBeLessThan(start);
-    expect(callOrder(runnerConfigStore.create)).toBeLessThan(start);
+    expect(callOrder(mockCreateStartRunnerConfig)).toBeGreaterThan(start);
+    expect(callOrder(runnerConfigStore.create)).toBeGreaterThan(start);
+    expect(callOrder(index.markActivated)).toBeGreaterThan(callOrder(runnerConfigStore.create));
   });
 
-  it('defaults the pool owner to the environment', async () => {
-    delete process.env.RUNNER_OWNER;
+  it('registers no runner for a warm instance that fails to start', async () => {
+    standby.startInstance.mockRejectedValue(new Error('boom'));
 
     await createRunners();
 
-    expect(standby.listStandby).toHaveBeenCalledWith({
-      environment: ENVIRONMENT,
-      runnerOwner: ENVIRONMENT,
-      runnerType: 'Org',
-    });
+    expect(mockCreateStartRunnerConfig).toHaveBeenCalledTimes(1);
+    expect(mockCreateStartRunnerConfig).toHaveBeenCalledWith(
+      githubRunnerConfig,
+      ['i-cold-1'],
+      githubClient,
+      expect.anything(),
+    );
+    expect(runnerConfigStore.create).not.toHaveBeenCalledWith(expect.objectContaining({ runnerId: 'i-new' }));
+  });
+
+  it('restores the environment as pool owner on rollback', async () => {
+    delete process.env.RUNNER_OWNER;
+    standby.startInstance.mockRejectedValue(new Error('capacity'));
+
+    await createRunners();
+
+    expect(ec2Operations.tag).toHaveBeenCalledWith('i-new', [
+      { Key: 'ghr:Owner', Value: ENVIRONMENT },
+      { Key: 'ghr:Type', Value: 'Org' },
+    ]);
   });
 
   it('activates warm instances first and launches the remainder cold', async () => {
@@ -247,7 +285,7 @@ describe('warm pool activation in EC2 scale-up', () => {
 
   describe('spot instances', () => {
     beforeEach(() => {
-      standby.listStandby.mockResolvedValue([warm('i-spot', 5, { spotInstanceRequestId: 'sir-1' })]);
+      mockWarmIndex([warm('i-spot', 5, { spotInstanceRequestId: 'sir-1' })]);
     });
 
     it('cancels the spot request right after a successful start', async () => {
@@ -266,7 +304,7 @@ describe('warm pool activation in EC2 scale-up', () => {
       expect(result).toEqual({ instances: ['i-spot'], retryableErrorCount: 0, nonRetryableErrorCount: 0 });
       expect(standby.cancelSpotRequest).toHaveBeenCalledTimes(3);
       expect(ec2Operations.untag).not.toHaveBeenCalled();
-      expect(lease.release).not.toHaveBeenCalled();
+      expect(index.release).not.toHaveBeenCalled();
     });
 
     it('retries a failed spot request cancellation', async () => {
@@ -311,30 +349,44 @@ describe('warm pool activation in EC2 scale-up', () => {
     });
   });
 
-  describe('claim lease', () => {
+  describe('claim', () => {
     it('skips warm instances that expire before the activation settles', async () => {
-      standby.listStandby.mockResolvedValue([
+      mockWarmIndex([
         warm('i-expiring', 1, { expiresAt: new Date(NOW.getTime() + 5 * MINUTE).toISOString() }),
         warm('i-valid', 5, { expiresAt: new Date(NOW.getTime() + 60 * MINUTE).toISOString() }),
       ]);
 
       const result = await createRunners();
 
-      expect(lease.claim).not.toHaveBeenCalledWith('i-expiring');
+      expect(index.claim).not.toHaveBeenCalledWith('i-expiring');
       expect(result.instances).toEqual(['i-valid']);
     });
+
+    it('skips warm instances with a live claim and retries expired claims', async () => {
+      const nowSeconds = NOW.getTime() / 1000;
+      mockWarmIndex([
+        warm('i-claimed', 1, { claimOwner: 'other', claimUntil: nowSeconds + 60 }),
+        warm('i-abandoned', 5, { claimOwner: 'crashed', claimUntil: nowSeconds - 60 }),
+      ]);
+
+      const result = await createRunners();
+
+      expect(index.claim).not.toHaveBeenCalledWith('i-claimed');
+      expect(result.instances).toEqual(['i-abandoned']);
+    });
+
     it('tries the next warm instance when a claim is lost', async () => {
-      lease.claim.mockResolvedValueOnce(false);
+      index.claim.mockResolvedValueOnce(false);
 
       const result = await createRunners();
 
       expect(result.instances).toEqual(['i-old']);
-      expect(lease.claim.mock.calls).toEqual([['i-new'], ['i-old']]);
+      expect(index.claim.mock.calls).toEqual([['i-new'], ['i-old']]);
       expect(ec2Operations.create).not.toHaveBeenCalled();
     });
 
     it('launches cold when every claim is lost', async () => {
-      lease.claim.mockResolvedValue(false);
+      index.claim.mockResolvedValue(false);
 
       const result = await createRunners();
 
@@ -344,9 +396,9 @@ describe('warm pool activation in EC2 scale-up', () => {
     });
 
     it('lets exactly one of two concurrent invocations activate the same warm instance', async () => {
-      standby.listStandby.mockResolvedValue([warm('i-new', 5)]);
+      mockWarmIndex([warm('i-new', 5)]);
       const held = new Set<string>();
-      lease.claim.mockImplementation(async (instanceId) => {
+      index.claim.mockImplementation(async (instanceId) => {
         await Promise.resolve();
         if (held.has(instanceId)) return false;
         held.add(instanceId);
@@ -360,71 +412,92 @@ describe('warm pool activation in EC2 scale-up', () => {
       expectFallbackMetric('claim-lost', 1);
     });
 
-    it('skips warm activation when the lease table is unavailable', async () => {
-      lease.claim.mockRejectedValue(Object.assign(new Error('missing'), { name: 'ResourceNotFoundException' }));
+    it('skips warm activation when the index rejects claims', async () => {
+      index.claim.mockRejectedValue(Object.assign(new Error('missing'), { name: 'ResourceNotFoundException' }));
 
       const result = await createRunners(2);
 
       expect(result.instances).toEqual(['i-cold-1', 'i-cold-2']);
-      expect(lease.claim).toHaveBeenCalledTimes(1);
+      expect(index.claim).toHaveBeenCalledTimes(1);
       expect(ec2Operations.tag).not.toHaveBeenCalledWith('i-new', expect.anything());
-      expectFallbackMetric('lease-unavailable', 2);
+      expectFallbackMetric('index-unavailable', 2);
     });
 
-    it('releases held claims when the lease table fails part way', async () => {
-      lease.claim
+    it('releases held claims when the index fails part way', async () => {
+      index.claim
         .mockResolvedValueOnce(true)
         .mockRejectedValueOnce(Object.assign(new Error('throttled'), { name: 'ThrottlingException' }));
 
       const result = await createRunners(2);
 
-      expect(lease.release).toHaveBeenCalledWith('i-new');
+      expect(index.release).toHaveBeenCalledWith('i-new');
       expect(result.instances).toEqual(['i-cold-1', 'i-cold-2']);
       expect(standby.startInstance).not.toHaveBeenCalled();
-      expectFallbackMetric('lease-unavailable', 2);
+      expectFallbackMetric('index-unavailable', 2);
     });
 
-    it('skips warm activation when no lease table is configured', async () => {
-      delete process.env.WARM_POOL_LEASE_TABLE_NAME;
+    it('skips warm activation when no index table is configured', async () => {
+      delete process.env.WARM_POOL_INDEX_TABLE_NAME;
 
       const result = await createRunners();
 
       expect(result.instances).toEqual(['i-cold-1']);
-      expect(standby.listStandby).not.toHaveBeenCalled();
-      expectFallbackMetric('lease-unavailable', 1);
+      expect(createIndexStore).not.toHaveBeenCalled();
+      expectFallbackMetric('index-unavailable', 1);
+    });
+
+    it('launches cold when the index cannot be read', async () => {
+      index.query.mockRejectedValue(new Error('throttled'));
+
+      const result = await createRunners();
+
+      expect(result.instances).toEqual(['i-cold-1']);
+      expect(index.claim).not.toHaveBeenCalled();
+      expectFallbackMetric('index-unavailable', 1);
     });
   });
 
   describe('fallback to cold', () => {
     it('launches cold when no warm instance is available', async () => {
-      standby.listStandby.mockResolvedValue([{ instanceId: 'i-priming', state: 'PRIMING' }]);
+      mockWarmIndex([{ instanceId: 'i-priming', state: 'PRIMING' }]);
 
       const result = await createRunners();
 
       expect(result.instances).toEqual(['i-cold-1']);
-      expect(lease.claim).not.toHaveBeenCalled();
+      expect(index.claim).not.toHaveBeenCalled();
       expectFallbackMetric('no-warm-instance', 1);
     });
 
-    it('launches cold when the warm pool cannot be listed', async () => {
-      standby.listStandby.mockRejectedValue(new Error('describe failed'));
+    it('marks a stale index entry unusable and activates the next warm instance', async () => {
+      standby.startInstance.mockRejectedValueOnce(await ec2SdkError('IncorrectInstanceState'));
+
+      const result = await createRunners();
+
+      expect(result).toEqual({ instances: ['i-old'], retryableErrorCount: 0, nonRetryableErrorCount: 0 });
+      expect(index.markUnusable).toHaveBeenCalledWith('i-new');
+      expect(index.release).not.toHaveBeenCalled();
+      expect(index.claim.mock.calls).toEqual([['i-new'], ['i-old']]);
+      expect(ec2Operations.create).not.toHaveBeenCalled();
+    });
+
+    it('launches cold when every warm instance turns out stale', async () => {
+      standby.startInstance.mockRejectedValue(await ec2SdkError('InvalidInstanceID.NotFound'));
 
       const result = await createRunners();
 
       expect(result.instances).toEqual(['i-cold-1']);
-      expectFallbackMetric('no-warm-instance', 1);
+      expect(index.markUnusable.mock.calls).toEqual([['i-new'], ['i-old']]);
+      expectFallbackMetric('start-failed', 1);
     });
 
     it('rolls back the activation and launches cold when the start fails', async () => {
-      standby.startInstance.mockRejectedValue(
-        Object.assign(new Error('capacity'), { name: 'InsufficientInstanceCapacity' }),
-      );
+      standby.startInstance.mockRejectedValue(new Error('boom'));
 
       const result = await createRunners();
 
       expect(result).toEqual({ instances: ['i-cold-1'], retryableErrorCount: 0, nonRetryableErrorCount: 0 });
       expectRolledBack('i-new');
-      expect(callOrder(lease.release)).toBeLessThan(callOrder(ec2Operations.create));
+      expect(callOrder(index.release)).toBeLessThan(callOrder(ec2Operations.create));
       expect(ec2Operations.create).toHaveBeenCalledWith(expect.objectContaining({ numberOfRunners: 1 }));
       expectFallbackMetric('start-failed', 1);
     });
@@ -448,7 +521,7 @@ describe('warm pool activation in EC2 scale-up', () => {
     });
 
     it('continues the rollback when a rollback step fails', async () => {
-      standby.startInstance.mockRejectedValue(new Error('IncorrectInstanceState'));
+      standby.startInstance.mockRejectedValue(new Error('capacity'));
       runnerConfigStore.delete.mockRejectedValue(new Error('ssm down'));
       ec2Operations.untag.mockRejectedValue(new Error('untag failed'));
 
@@ -459,25 +532,115 @@ describe('warm pool activation in EC2 scale-up', () => {
     });
   });
 
-  it('rolls back and reports a retryable error when the runner config cannot be created', async () => {
-    mockCreateStartRunnerConfig.mockResolvedValue(['i-new']);
+  describe('registration after the start', () => {
+    it('destroys a started instance whose runner cannot be registered, for example because it already exists', async () => {
+      mockCreateStartRunnerConfig.mockResolvedValue(['i-new']);
 
-    const result = await createRunners();
+      const result = await createRunners();
 
-    expect(result).toEqual({ instances: [], retryableErrorCount: 1, nonRetryableErrorCount: 0 });
-    expectRolledBack('i-new');
-    expect(standby.startInstance).not.toHaveBeenCalled();
-    expect(ec2Operations.create).not.toHaveBeenCalled();
+      expect(result).toEqual({ instances: [], retryableErrorCount: 1, nonRetryableErrorCount: 0 });
+      expect(standby.startInstance).toHaveBeenCalledWith('i-new');
+      expect(standby.destroyInstance).toHaveBeenCalledWith({ instanceId: 'i-new', spotInstanceRequestId: undefined });
+      expect(index.markUnusable).toHaveBeenCalledWith('i-new');
+      expect(index.markActivated).not.toHaveBeenCalled();
+      expect(index.release).not.toHaveBeenCalled();
+      expect(ec2Operations.create).not.toHaveBeenCalled();
+    });
+
+    it('destroys every started instance when runner config creation throws', async () => {
+      mockCreateStartRunnerConfig.mockRejectedValue(new Error('GitHub down'));
+
+      const result = await createRunners(2);
+
+      expect(result).toEqual({ instances: [], retryableErrorCount: 2, nonRetryableErrorCount: 0 });
+      expect(standby.destroyInstance.mock.calls.map(([input]) => input.instanceId)).toEqual(['i-new', 'i-old']);
+    });
+
+    it('destroys a spot instance with its request after detaching it', async () => {
+      mockWarmIndex([warm('i-spot', 5, { spotInstanceRequestId: 'sir-1' })]);
+      mockCreateStartRunnerConfig.mockResolvedValue(['i-spot']);
+
+      await createRunners();
+
+      expect(standby.destroyInstance).toHaveBeenCalledWith({ instanceId: 'i-spot', spotInstanceRequestId: 'sir-1' });
+      expect(callOrder(standby.cancelSpotRequest)).toBeLessThan(callOrder(standby.destroyInstance));
+    });
+
+    it('keeps the remaining activations when destroying an unregistered instance fails', async () => {
+      mockCreateStartRunnerConfig.mockResolvedValue(['i-new']);
+      standby.destroyInstance.mockRejectedValue(new Error('terminate failed'));
+
+      const result = await createRunners(2);
+
+      expect(result).toEqual({ instances: ['i-old'], retryableErrorCount: 1, nonRetryableErrorCount: 0 });
+      expect(index.markUnusable).toHaveBeenCalledWith('i-new');
+    });
   });
 
-  it('rolls back every claimed instance when runner config creation throws', async () => {
-    mockCreateStartRunnerConfig.mockRejectedValue(new Error('GitHub down'));
+  describe('capacity failures', () => {
+    const nowSeconds = NOW.getTime() / 1000;
+    const m7g = { instanceType: 'm7g.large', availabilityZone: 'eu-west-1a' };
 
-    const result = await createRunners(2);
+    it('cools down an instance whose start failed for lack of capacity and launches cold', async () => {
+      mockWarmIndex([warm('i-new', 5, m7g)]);
+      standby.startInstance.mockRejectedValue(
+        await ec2SdkError('InsufficientInstanceCapacity', "You can't start the Spot Instance.", 500),
+      );
 
-    expect(result).toEqual({ instances: [], retryableErrorCount: 2, nonRetryableErrorCount: 0 });
-    expectRolledBack('i-new');
-    expectRolledBack('i-old');
+      const result = await createRunners();
+
+      expect(result).toEqual({ instances: ['i-cold-1'], retryableErrorCount: 0, nonRetryableErrorCount: 0 });
+      expect(index.releaseWithCooldown).toHaveBeenCalledWith('i-new');
+      expect(index.release).not.toHaveBeenCalled();
+      expect(index.markUnusable).not.toHaveBeenCalled();
+      expectFallbackMetric('start-failed', 1);
+    });
+
+    it('recognizes a capacity code with a fault prefix', async () => {
+      standby.startInstance.mockRejectedValue(await ec2SdkError('Server.InsufficientInstanceCapacity'));
+
+      await createRunners();
+
+      expect(index.releaseWithCooldown).toHaveBeenCalledWith('i-new');
+    });
+
+    it('skips other warm instances of the same type and AZ for the rest of the invocation', async () => {
+      mockWarmIndex([warm('i-new', 5, m7g), warm('i-same', 10, m7g)]);
+      standby.startInstance.mockRejectedValueOnce(await ec2SdkError('InsufficientInstanceCapacity'));
+
+      const result = await createRunners(2);
+
+      expect(result.instances).toEqual(['i-cold-1', 'i-cold-2']);
+      expect(standby.startInstance.mock.calls).toEqual([['i-new']]);
+      expect(index.release).toHaveBeenCalledWith('i-same');
+      expect(index.releaseWithCooldown).not.toHaveBeenCalledWith('i-same');
+      expectFallbackMetric('start-failed', 2);
+    });
+
+    it('still activates warm instances of another type or AZ', async () => {
+      mockWarmIndex([
+        warm('i-new', 5, m7g),
+        warm('i-other-type', 10, { ...m7g, instanceType: 'c7g.large' }),
+        warm('i-unknown', 15),
+      ]);
+      standby.startInstance.mockRejectedValueOnce(await ec2SdkError('InsufficientInstanceCapacity'));
+
+      const result = await createRunners(3);
+
+      expect(result.instances).toEqual(['i-other-type', 'i-unknown', 'i-cold-1']);
+    });
+
+    it('does not select warm instances that are cooling down', async () => {
+      mockWarmIndex([
+        warm('i-cooling', 1, { cooldownUntil: nowSeconds + 60 }),
+        warm('i-cooled', 5, { startFailures: 1, cooldownUntil: nowSeconds - 60 }),
+      ]);
+
+      const result = await createRunners();
+
+      expect(index.claim).not.toHaveBeenCalledWith('i-cooling');
+      expect(result.instances).toEqual(['i-cooled']);
+    });
   });
 
   describe('metrics', () => {
@@ -491,7 +654,7 @@ describe('warm pool activation in EC2 scale-up', () => {
 
     it('publishes nothing when warm pool metrics are disabled', async () => {
       delete process.env.ENABLE_METRIC_WARM_POOL;
-      standby.listStandby.mockResolvedValue([]);
+      mockWarmIndex([]);
 
       await createRunners();
 

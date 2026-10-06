@@ -372,7 +372,7 @@ describe('pool adjustment', () => {
 
     beforeEach(() => {
       process.env.WARM_POOL_ENABLED = 'true';
-      standby.list.mockResolvedValue([]);
+      standby.list.mockResolvedValue({ instances: [], orphanedSpotRequests: [], spotStateKnown: true });
       standby.launch.mockResolvedValue({ instances: ['i-1'], retryableErrorCount: 0, nonRetryableErrorCount: 0 });
       mockedResolveCapability.mockReturnValue(() => ({ ...poolProvider, standby }));
     });

@@ -148,9 +148,13 @@ export interface StandbyInstance {
   launchTime?: Date;
   imageId?: string;
   launchTemplateVersion?: string;
+  instanceType?: string;
+  availabilityZone?: string;
   spotInstanceRequestId?: string;
   /** ISO-8601 time after which the instance must be destroyed, from `ghr:warm-expires-at`. */
   expiresAt?: string;
+  /** Starts that failed for lack of capacity since the instance was primed. */
+  startFailures?: number;
 }
 
 export type ListStandbyInput = ListPoolRunnersInput;
@@ -166,6 +170,16 @@ export interface StandbySpotRequest {
   spotInstanceRequestId: string;
   state?: string;
   instanceId?: string;
+  /** Instance AWS launched for the request after its standby instance went away. */
+  replacementInstanceId?: string;
+}
+
+export interface StandbyListing {
+  instances: StandbyInstance[];
+  /** Live spot requests of standby instances that are gone, or that were activated and not detached. */
+  orphanedSpotRequests: StandbySpotRequest[];
+  /** False when spot request state could not be read; stopped spot instances are then classified from EC2 data. */
+  spotStateKnown: boolean;
 }
 
 export interface StandbyBatchResult {
@@ -180,11 +194,11 @@ export interface StandbyImage {
 }
 
 export interface PoolStandbyOperations {
-  list(input: ListStandbyInput): Promise<StandbyInstance[]>;
+  list(input: ListStandbyInput): Promise<StandbyListing>;
   launch(input: LaunchStandbyInput): Promise<CreateRunnerResult>;
   destroy(instances: DestroyStandbyInput[]): Promise<StandbyBatchResult>;
-  listOrphanedSpotRequests?(input: ListStandbyInput): Promise<StandbySpotRequest[]>;
-  cancelSpotRequests?(spotInstanceRequestIds: string[]): Promise<StandbyBatchResult>;
+  /** Cancels each request and terminates its replacement instance, if any. */
+  cancelSpotRequests?(requests: StandbySpotRequest[]): Promise<StandbyBatchResult>;
   currentImage?(): Promise<StandbyImage>;
 }
 
