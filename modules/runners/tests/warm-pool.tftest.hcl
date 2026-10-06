@@ -81,6 +81,11 @@ run "warm_pool_disabled_by_default" {
     && !contains(keys(module.pool[0].lambda.environment[0].variables), "WARM_POOL_ENABLED"))
     error_message = "Warm pool env vars should not be set when warm_pool is disabled"
   }
+
+  assert {
+    condition     = output.warm_pool_index_table == null
+    error_message = "No warm pool index table should be exposed when warm_pool is disabled"
+  }
 }
 
 run "warm_pool_enabled" {
@@ -113,6 +118,11 @@ run "warm_pool_enabled" {
       && module.pool[0].lambda.environment[0].variables["WARM_POOL_MAX_AGE_HOURS"] == "24"
     && module.pool[0].lambda.environment[0].variables["WARM_POOL_INDEX_TABLE_NAME"] == aws_dynamodb_table.warm_pool_index[0].name)
     error_message = "The pool should receive the warm pool env vars"
+  }
+
+  assert {
+    condition     = output.warm_pool_index_table.name == aws_dynamodb_table.warm_pool_index[0].name
+    error_message = "The warm pool index table should be exposed for the stop-event consumer"
   }
 }
 

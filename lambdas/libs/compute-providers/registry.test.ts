@@ -54,6 +54,7 @@ it('exposes every configured provider through both capability registries', () =>
     destroy: expect.any(Function),
     cancelSpotRequests: expect.any(Function),
     currentImage: expect.any(Function),
+    markPrimed: expect.any(Function),
   });
   expect(controlPlaneRegistry.capability('ec2', 'scaleDown')().sweepStandby).toEqual(expect.any(Function));
 });
