@@ -202,6 +202,12 @@ describe('launchWarm', () => {
     ]);
   });
 
+  it('does not tag the pool trace on warm instances', async () => {
+    await standby.launchWarm({ ...baseParameters, tracingEnabled: true });
+
+    expect(runInstancesInputs()[0].TagSpecifications?.[0].Tags).toEqual(expectedTags);
+  });
+
   it('launches spot warm instances as persistent requests with tagged spot requests', async () => {
     vi.mocked(getParameter).mockResolvedValue('ami-123');
 
