@@ -66,6 +66,11 @@ resource "aws_lambda_function" "pool" {
       INCLUDE_BUSY_RUNNERS                     = var.config.include_busy_runners
       }, var.config.ssm_ttl_seconds.tokens != null ? {
       SSM_TOKEN_TTL_SECONDS = tostring(var.config.ssm_ttl_seconds.tokens)
+      } : {}, var.config.warm_pool.enabled ? {
+      WARM_POOL_ENABLED            = "true"
+      WARM_POOL_MAX_AGE_HOURS      = tostring(var.config.warm_pool.max_age_hours)
+      ENABLE_METRIC_WARM_POOL      = tostring(var.config.metrics.enable)
+      POWERTOOLS_METRICS_NAMESPACE = var.config.metrics.namespace
     } : {})
   }
 

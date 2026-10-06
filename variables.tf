@@ -896,6 +896,21 @@ variable "pool_include_busy_runners" {
   default     = false
 }
 
+variable "warm_pool" {
+  description = "Warm pool standby. When enabled, the pool keeps the `pool_config` size of stopped, pre-booted instances instead of idle runners, and scale-up starts them for jobs. Requires `pool_config`, linux runners, and instance metadata tags. `max_age_hours` is the age after which a warm instance is replaced."
+  type = object({
+    enabled       = optional(bool, false)
+    max_age_hours = optional(number, 168)
+  })
+  default  = {}
+  nullable = false
+
+  validation {
+    condition     = var.warm_pool.max_age_hours >= 1 && floor(var.warm_pool.max_age_hours) == var.warm_pool.max_age_hours
+    error_message = "warm_pool.max_age_hours must be a whole number of hours, at least 1."
+  }
+}
+
 variable "aws_partition" {
   description = "(optiona) partition in the arn namespace to use if not 'aws'"
   type        = string
