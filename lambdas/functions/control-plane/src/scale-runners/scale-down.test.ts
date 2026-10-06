@@ -783,6 +783,36 @@ describe('Scale down runners', () => {
       expect(mockTerminateRunners).toHaveBeenCalledWith(runners[0].id);
     });
   });
+
+  describe('Scale down with a standby sweep', () => {
+    const mockSweepStandby = vi.fn<NonNullable<ScaleDownComputeProvider['sweepStandby']>>();
+
+    beforeEach(() => {
+      mockedResolveCapability.mockReturnValue(() => ({ ...mockComputeProvider, sweepStandby: mockSweepStandby }));
+    });
+
+    it('sweeps standby instances of the environment even when there are no runners', async () => {
+      mockSweepStandby.mockResolvedValue();
+      mockProviderRunners([]);
+
+      await scaleDown();
+
+      expect(mockSweepStandby).toHaveBeenCalledWith(ENVIRONMENT);
+      expect(mockListRunners).toHaveBeenCalledWith(ENVIRONMENT);
+    });
+
+    it('continues scale-down when the sweep fails', async () => {
+      mockSweepStandby.mockRejectedValue(new Error('DescribeInstances failed'));
+      const runners = [createRunnerTestData('idle-1', 'Org', MINIMUM_TIME_RUNNING_IN_MINUTES + 1, true, false, true)];
+      mockGitHubRunners(runners);
+      mockProviderRunners(runners);
+
+      await expect(scaleDown()).resolves.toBeUndefined();
+
+      expect(mockSweepStandby).toHaveBeenCalledWith(ENVIRONMENT);
+      expect(mockTerminateRunners).toHaveBeenCalledWith(runners[0].id);
+    });
+  });
 });
 
 function mockProviderRunners(runners: RunnerTestItem[]) {
