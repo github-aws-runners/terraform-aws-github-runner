@@ -29,6 +29,14 @@ locals {
     INCLUDE_BUSY_RUNNERS                     = var.config.include_busy_runners
   }
 
+  warm_environment_variables = var.config.warm.enabled ? merge({
+    WARM_POOL_ENABLED       = "true"
+    WARM_POOL_MAX_AGE_HOURS = tostring(var.config.warm.max_age_hours)
+    ENABLE_METRIC_WARM_POOL = tostring(var.config.metrics.enabled)
+    }, var.config.metrics.namespace != null ? {
+    POWERTOOLS_METRICS_NAMESPACE = var.config.metrics.namespace
+  } : {}) : {}
+
   ssm_environment_variables = {
     PARAMETER_GITHUB_APP_ID_NAME         = var.config.github_app_parameters.id.name
     PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.config.github_app_parameters.key_base64.name
@@ -62,6 +70,7 @@ resource "aws_lambda_function" "pool" {
       local.common_environment_variables,
       local.ssm_environment_variables,
       var.storage_provider.environment_variables,
+      local.warm_environment_variables,
     )
   }
 
