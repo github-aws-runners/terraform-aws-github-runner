@@ -1,13 +1,10 @@
-import { createAppAuth } from '@octokit/auth-app';
-import { Octokit } from '@octokit/rest';
-import { throttling } from '@octokit/plugin-throttling';
-import { request } from '@octokit/request';
+import type { Octokit } from '@octokit/rest';
 import { Instance } from '@aws-sdk/client-ec2';
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
-import { createCommonStorage, type GitHubAppCredential } from '@aws-github-runner/storage-providers';
-import type { EndpointDefaults } from '@octokit/types';
 import type { Config } from './ConfigResolver';
+import { createRunnerInstallationClient } from './github-app-client';
+export { createThrottleOptions, resetAppCredentialsCache } from './github-app-client';
 
 export interface DeregisterRetryMessage {
   instanceId: string;
@@ -21,117 +18,12 @@ const sqsClient = new SQSClient({ region: process.env.AWS_REGION });
 
 const logger = createChildLogger('deregister');
 
-let appCredentialsPromise: Promise<GitHubAppCredential> | undefined;
-
-export function createThrottleOptions() {
-  return {
-    onRateLimit: (_retryAfter: number, options: Required<EndpointDefaults>) => {
-      logger.warn(`Rate limit hit for ${options.method} ${options.url}`);
-      return false;
-    },
-    onSecondaryRateLimit: (_retryAfter: number, options: Required<EndpointDefaults>) => {
-      logger.warn(`Secondary rate limit hit for ${options.method} ${options.url}`);
-      return false;
-    },
-  };
-}
-
-async function loadAppCredentials(): Promise<GitHubAppCredential> {
-  const credentials = await createCommonStorage().githubAppCredentials.get();
-  const credential = credentials[0];
-  if (!credential) {
-    throw new Error('No GitHub App credentials found');
-  }
-  return credential;
-}
-
-function getAppCredentials(): Promise<GitHubAppCredential> {
-  if (!appCredentialsPromise) {
-    appCredentialsPromise = loadAppCredentials().catch((error: unknown) => {
-      appCredentialsPromise = undefined;
-      throw error;
-    });
-  }
-  return appCredentialsPromise;
-}
-
-export function resetAppCredentialsCache(): void {
-  appCredentialsPromise = undefined;
-}
-
-function createOctokitInstance(token: string, ghesApiUrl: string): Octokit {
-  const CustomOctokit = Octokit.plugin(throttling);
-  const octokitOptions: ConstructorParameters<typeof Octokit>[0] = {
-    auth: token,
-  };
-  if (ghesApiUrl) {
-    octokitOptions.baseUrl = ghesApiUrl;
-  }
-  return new CustomOctokit({
-    ...octokitOptions,
-    userAgent: 'github-aws-runners-termination-watcher',
-    throttle: createThrottleOptions(),
-  });
-}
-
-async function createAuthenticatedClient(ghesApiUrl: string): Promise<Octokit> {
-  const { appId, privateKey } = await getAppCredentials();
-  const authOptions: { appId: number; privateKey: string; request?: typeof request } = {
-    appId,
-    privateKey,
-  };
-  if (ghesApiUrl) {
-    authOptions.request = request.defaults({ baseUrl: ghesApiUrl });
-  }
-  const auth = createAppAuth(authOptions);
-  const appAuth = await auth({ type: 'app' });
-  return createOctokitInstance(appAuth.token, ghesApiUrl);
-}
-
 function getOwnerFromTags(instance: Instance): string | undefined {
   return instance.Tags?.find((tag) => tag.Key === 'ghr:Owner')?.Value;
 }
 
 function getRunnerTypeFromTags(instance: Instance): string | undefined {
   return instance.Tags?.find((tag) => tag.Key === 'ghr:Type')?.Value;
-}
-
-async function getInstallationId(octokit: Octokit, owner: string): Promise<number> {
-  const { data: installation } = await octokit.apps.getOrgInstallation({ org: owner });
-  return installation.id;
-}
-
-async function getInstallationIdForRepo(octokit: Octokit, owner: string, repo: string): Promise<number> {
-  const { data: installation } = await octokit.apps.getRepoInstallation({ owner, repo });
-  return installation.id;
-}
-
-async function createInstallationClient(
-  appOctokit: Octokit,
-  owner: string,
-  runnerType: string,
-  ghesApiUrl: string,
-): Promise<Octokit> {
-  let installationId: number;
-  if (runnerType === 'Repo') {
-    const [repoOwner, repo] = owner.split('/');
-    installationId = await getInstallationIdForRepo(appOctokit, repoOwner, repo);
-  } else {
-    installationId = await getInstallationId(appOctokit, owner);
-  }
-
-  const { appId, privateKey } = await getAppCredentials();
-  const authOptions: { appId: number; privateKey: string; installationId: number; request?: typeof request } = {
-    appId,
-    privateKey,
-    installationId,
-  };
-  if (ghesApiUrl) {
-    authOptions.request = request.defaults({ baseUrl: ghesApiUrl });
-  }
-  const auth = createAppAuth(authOptions);
-  const installationAuth = await auth({ type: 'installation' });
-  return createOctokitInstance(installationAuth.token, ghesApiUrl);
 }
 
 async function findRunnerByInstanceId(
@@ -206,8 +98,7 @@ export async function deregisterRunner(instance: Instance, config: Config): Prom
   try {
     logger.info('Attempting to deregister runner from GitHub', { instanceId, owner, runnerType });
 
-    const appOctokit = await createAuthenticatedClient(config.ghesApiUrl);
-    const installationOctokit = await createInstallationClient(appOctokit, owner, runnerType, config.ghesApiUrl);
+    const installationOctokit = await createRunnerInstallationClient(owner, runnerType, config.ghesApiUrl);
 
     const runner = await findRunnerByInstanceId(installationOctokit, owner, instanceId, runnerType);
     if (!runner) {
@@ -261,8 +152,7 @@ export async function handleDeregisterRetry(queueUrl: string, message: Deregiste
   logger.info('Processing deregistration retry from SQS', { instanceId, owner, runnerType, retryCount });
 
   try {
-    const appOctokit = await createAuthenticatedClient('');
-    const installationOctokit = await createInstallationClient(appOctokit, owner, runnerType, '');
+    const installationOctokit = await createRunnerInstallationClient(owner, runnerType, process.env.GHES_URL ?? '');
 
     const runner = await findRunnerByInstanceId(installationOctokit, owner, instanceId, runnerType);
     if (!runner) {
