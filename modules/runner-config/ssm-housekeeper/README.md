@@ -1,5 +1,7 @@
 # SSM housekeeper module
 
+Cleanup is stateless: each invocation lists current parameters and deletes eligible items page by page. It starts deleting before listing the next page, including after empty pages. Individual deletion failures do not block other items, and a later listing failure leaves earlier deletions completed. A deadline guard stops new work with ten seconds remaining. The next scheduled invocation starts a fresh scan; deleted parameters are no longer listed. No scan cursor or completed-item list is stored. Age and dry-run protections remain in place.
+
 > This module is treated as an internal module; breaking changes do not trigger a major release bump.
 
 This provider-neutral child module owns the Lambda function, EventBridge schedule, IAM policies, and CloudWatch log group used to remove expired runner registration parameters from Parameter Store.
