@@ -255,8 +255,8 @@ describe('clean SSM tokens / JIT config', () => {
     );
   });
 
-  it('does not start listing with less than ten seconds remaining', async () => {
-    await clean({}, () => 9999);
+  it('does not start listing with less than twenty seconds remaining', async () => {
+    await clean({}, () => 19999);
     expect(mockSSMClient.calls()).toHaveLength(0);
     expect(info).toHaveBeenCalledWith(
       'Runner configuration cleanup summary',
@@ -275,7 +275,7 @@ describe('clean SSM tokens / JIT config', () => {
     expect(mockSSMClient).toHaveReceivedCommandTimes(DeleteParametersCommand, 0);
   });
 
-  it('leaves a buffered partial batch for the next run when a later page exhausts runtime', async () => {
+  it('leaves a buffered partial batch for the next run when one listing call exhausts the flush reserve', async () => {
     let remaining = 60000;
     mockSSMClient
       .on(GetParametersByPathCommand)
@@ -290,9 +290,48 @@ describe('clean SSM tokens / JIT config', () => {
   });
 
   it('checks the remaining time again after the pacing delay', async () => {
-    const deadline = now.getTime() + 10300;
+    let deadline = Infinity;
+    mockSSMClient.on(GetParametersByPathCommand).callsFake(() => {
+      deadline = Date.now() + 10300;
+      return { Parameters: staleParameters(1) };
+    });
     await clean({}, () => deadline - Date.now());
+    expect(mockSSMClient).toHaveReceivedCommandTimes(GetParametersByPathCommand, 1);
     expect(mockSSMClient).toHaveReceivedCommandTimes(DeleteParametersCommand, 0);
+  });
+
+  it('flushes a partial batch before slow listing exhausts runtime on repeated scans', async () => {
+    // 20 pages: six stale names on the first page, young parameters on the rest.
+    let inventory = [
+      ...staleParameters(6),
+      ...Array.from({ length: 194 }, (_, i) => ({ Name: `${tokenPath}young-${i}`, LastModifiedDate: now })),
+    ];
+    mockSSMClient.on(GetParametersByPathCommand).callsFake((input) => {
+      vi.setSystemTime(Date.now() + 5000); // each listing call takes five seconds
+      const offset = Number(input.NextToken ?? 0);
+      return {
+        Parameters: inventory.slice(offset, offset + 10),
+        NextToken: offset + 10 < inventory.length ? String(offset + 10) : undefined,
+      };
+    });
+    mockSSMClient.on(DeleteParametersCommand).callsFake((input) => {
+      inventory = inventory.filter((parameter) => !input.Names.includes(parameter.Name));
+      return { DeletedParameters: input.Names };
+    });
+
+    for (let scan = 0; scan < 3; scan++) {
+      const deadline = Date.now() + 60000;
+      await clean({}, () => deadline - Date.now());
+      expect(inventory.filter((parameter) => parameter.LastModifiedDate === old)).toEqual([]);
+    }
+    expect(mockSSMClient).toHaveReceivedCommandTimes(DeleteParametersCommand, 1);
+    expect(mockSSMClient).toHaveReceivedCommandWith(DeleteParametersCommand, {
+      Names: staleParameters(6).map((parameter) => parameter.Name),
+    });
+    expect(info).toHaveBeenCalledWith(
+      'Runner configuration cleanup summary',
+      expect.objectContaining({ status: 'runtime-limit', attempted: 6, deleted: 6, pending: 0 }),
+    );
   });
 
   it('starts a fresh scan of remaining parameters after stopping between pages', async () => {

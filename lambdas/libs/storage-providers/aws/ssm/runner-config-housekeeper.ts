@@ -8,6 +8,10 @@ const logger = createAwsSsmStorageLogger('runner-config-housekeeper');
 const DELETE_BATCH_SIZE = 10;
 // Pacing is per invocation; other housekeepers share the account/Region quota.
 const DELETE_BATCH_DELAY_MS = 350;
+// No delete request starts with less than this remaining.
+const DELETE_RUNTIME_GUARD_MS = 10000;
+// Listing stops earlier, reserving time to flush a buffered partial batch.
+const LISTING_RUNTIME_GUARD_MS = 20000;
 
 export interface SSMCleanupOptions {
   dryRun: boolean;
@@ -37,9 +41,9 @@ export async function cleanSSMTokens(options: SSMCleanupOptions, remainingTime =
 
   async function flushPendingNames(): Promise<boolean> {
     if (!pendingNames.length) return true;
-    if (remainingTime() < 10000) return false;
+    if (remainingTime() < DELETE_RUNTIME_GUARD_MS) return false;
     await new Promise((resolve) => setTimeout(resolve, DELETE_BATCH_DELAY_MS));
-    if (remainingTime() < 10000) return false;
+    if (remainingTime() < DELETE_RUNTIME_GUARD_MS) return false;
     const names = pendingNames.splice(0, DELETE_BATCH_SIZE);
     summary.attempted += names.length;
     try {
@@ -67,10 +71,10 @@ export async function cleanSSMTokens(options: SSMCleanupOptions, remainingTime =
 
   try {
     do {
-      if (remainingTime() < 10000) return;
+      if (remainingTime() < LISTING_RUNTIME_GUARD_MS) return;
       const page = await client.send(new GetParametersByPathCommand({ Path: options.tokenPath, NextToken: nextToken }));
       for (const parameter of page.Parameters ?? []) {
-        if (remainingTime() < 10000) return;
+        if (remainingTime() < DELETE_RUNTIME_GUARD_MS) return;
         if (!parameter.Name || !parameter.LastModifiedDate || !(new Date(parameter.LastModifiedDate) < minimumDate)) {
           summary.skipped++;
           continue;
