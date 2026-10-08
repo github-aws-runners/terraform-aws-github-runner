@@ -1,12 +1,18 @@
 # SSM housekeeper module
 
-Cleanup is stateless: each invocation lists current parameters and deletes eligible items page by page. It starts deleting before listing the next page, including after empty pages. Individual deletion failures do not block other items, and a later listing failure leaves earlier deletions completed. A deadline guard stops new work with ten seconds remaining. The next scheduled invocation starts a fresh scan; deleted parameters are no longer listed. No scan cursor or completed-item list is stored. Age and dry-run protections remain in place.
+Cleanup is stateless: each invocation lists current parameters and deletes eligible items page by page. It starts deleting before listing the next page, including after empty pages. Individual deletion failures do not block other items, and a later listing failure leaves earlier deletions completed. A deadline guard stops listing with twenty seconds remaining, reserving time to flush buffered names, and stops deleting with ten seconds remaining. The next scheduled invocation starts a fresh scan; deleted parameters are no longer listed. No scan cursor or completed-item list is stored. Age and dry-run protections remain in place.
 
 > This module is treated as an internal module; breaking changes do not trigger a major release bump.
 
 This provider-neutral child module owns the Lambda function, EventBridge schedule, IAM policies, and CloudWatch log group used to remove expired runner registration parameters from Parameter Store.
 
 The module is an implementation detail of the experimental runner configuration. It is composed by `runner-config` and is not intended to be called directly.
+
+Cleanup collects names older than the configured minimum age across listing pages, deleting batches of 10 with a 350 ms delay before each batch. Any partial batch is flushed when listing finishes or fails, provided enough runtime remains. It checks the remaining runtime before and after the delay. Dry-run mode only reports candidates. SDK retries handle retryable failures; exhausted batch failures and invalid parameter names are logged, and cleanup continues with later batches. Remaining parameters can be attempted on a later scheduled run. Pacing is per invocation, while AWS delete quotas are shared across the account and Region.
+
+Each batch logs `Successfully deleted expired runner configuration batch` only for names acknowledged in AWS's `DeletedParameters` response, with `deletedCount`. Sum `deletedCount` to measure confirmed deletions; counting these log entries measures successful batches. The `Runner configuration cleanup summary` log reports parameter counts: `attempted` (submitted names, excluding SDK retries), `deleted` (AWS-confirmed names), `failed` (invalid names or names in failed requests), `skipped` (ineligible entries), and `pending` (buffered names not submitted). It includes `dryRun` and a `status` of `completed`, `runtime-limit`, or `listing-failed`; completed means the scan finished, not that every deletion succeeded. Dry runs report no deletion attempts or successes. Summaries are emitted on normal completion, guarded runtime exits, and listing failures, but cannot be guaranteed after a hard Lambda timeout.
+
+Deploy the Lambda update together with the Terraform IAM policy update: batch deletion requires `ssm:DeleteParameters` on the configured token path.
 
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
