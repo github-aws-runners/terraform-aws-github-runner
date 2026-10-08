@@ -16,6 +16,7 @@
 
 | Name | Source | Version |
 |------|--------|---------|
+| <a name="module_computed_microvm"></a> [computed\_microvm](#module\_computed\_microvm) | ../../.. | n/a |
 | <a name="module_external_iam"></a> [external\_iam](#module\_external\_iam) | ../../.. | n/a |
 | <a name="module_generated_policy"></a> [generated\_policy](#module\_generated\_policy) | ../../.. | n/a |
 
@@ -25,6 +26,7 @@
 |------|------|
 | [random_id.external](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/id) | resource |
 | [random_id.generated_policy](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/id) | resource |
+| [random_id.microvm](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/id) | resource |
 
 ## Inputs
 
@@ -34,6 +36,7 @@ No inputs.
 
 | Name | Description |
 |------|-------------|
+| <a name="output_computed_microvm_role_runner_count"></a> [computed\_microvm\_role\_runner\_count](#output\_computed\_microvm\_role\_runner\_count) | n/a |
 | <a name="output_external_role_runner_count"></a> [external\_role\_runner\_count](#output\_external\_role\_runner\_count) | n/a |
 | <a name="output_generated_policy_role_runner_count"></a> [generated\_policy\_role\_runner\_count](#output\_generated\_policy\_role\_runner\_count) | n/a |
 <!-- END_TF_DOCS -->

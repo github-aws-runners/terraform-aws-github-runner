@@ -1,12 +1,28 @@
 repos:
   - repo: https://github.com/antonbabenko/pre-commit-terraform
-    rev: v1.96.2
+    rev: 581213484f4262600d17c71e272176d4eb6724a5  # frozen: v1.109.0
     hooks:
       - id: terraform_fmt
+        name: Terraform · Format
       - id: terraform_tflint
+        name: Terraform · TFLint
         args:
           - --args=--config=__GIT_WORKING_DIR__/.tflint.hcl --var-file __GIT_WORKING_DIR__/.github/lint/tflint.tfvars
+      - id: terraform_validate
+        name: Terraform · Validate 
+        args:
+          - --hook-config=--retry-once-with-cleanup=true
+          - --tf-init-args=-backend=false
+          - --tf-init-args=--upgrade=false
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c  # frozen: v6.0.0
     hooks:
       - id: check-merge-conflict
+        name: Git · Check merge conflict
+        always_run: true
+      - id: check-case-conflict
+        name: Git · Case conflict
+        always_run: true
+      - id: forbid-new-submodules
+        name: Git · Forbid new submodules
+        always_run: true
