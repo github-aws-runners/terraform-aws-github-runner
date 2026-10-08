@@ -105,3 +105,22 @@ run "reject_non_positive_token_ttl" {
   }
   expect_failures = [var.ssm_ttl_seconds]
 }
+
+run "multi_org_flag_reaches_control_plane" {
+  command = plan
+  variables {
+    enable_multi_org_runners = true
+    pool_config = [
+      { schedule_expression = "cron(0 8 * * ? *)", size = 2, org = "org-a" },
+      { schedule_expression = "cron(0 8 * * ? *)", size = 5, org = "org-b" },
+    ]
+  }
+  assert {
+    condition = (
+      aws_lambda_function.scale_up.environment[0].variables["ENABLE_MULTI_ORG_RUNNERS"] == "true" &&
+      aws_lambda_function.scale_down.environment[0].variables["ENABLE_MULTI_ORG_RUNNERS"] == "true" &&
+      module.pool[0].lambda.environment[0].variables["ENABLE_MULTI_ORG_RUNNERS"] == "true"
+    )
+    error_message = "Multi-org mode must reach the scale-up, scale-down and pool Lambdas."
+  }
+}

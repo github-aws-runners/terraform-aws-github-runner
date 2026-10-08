@@ -361,3 +361,23 @@ describe('Test job retry handler (batch processing)', () => {
     expect(publishMessage).toHaveBeenCalledTimes(2);
   });
 });
+
+it.each([true, false])('normalizes retry ownership only in multi-org mode (%s)', async (enabled) => {
+  process.env.ENABLE_MULTI_ORG_RUNNERS = String(enabled);
+  process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+  mockOctokit.actions.getJobForWorkflowRun.mockResolvedValue({ data: { status: 'queued' }, headers: {} });
+  const payload: ActionRequestMessageRetry = {
+    id: 1,
+    eventType: 'workflow_job',
+    installationId: 1,
+    repositoryOwner: 'Org-A',
+    repositoryName: 'repo',
+    repoOwnerType: 'Organization',
+  };
+  await checkAndRetryJob(payload);
+  const owner = enabled ? 'org-a' : 'Org-A';
+  expect(mockCreateOctokitClient).toHaveBeenCalledWith('', true, expect.objectContaining({ repositoryOwner: owner }));
+  expect(mockOctokit.actions.getJobForWorkflowRun).toHaveBeenCalledWith(expect.objectContaining({ owner }));
+  expect(JSON.parse(vi.mocked(publishMessage).mock.calls[0][0]).repositoryOwner).toBe(owner);
+  expect(payload.repositoryOwner).toBe('Org-A');
+});

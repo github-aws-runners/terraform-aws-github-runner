@@ -21,6 +21,7 @@ variable "config" {
     - `lambda.role.principals`: Extra principals allowed to assume the Lambda role, for example during local testing.
     - `runner.name_prefix`: Prefix used to identify runners belonging to this runner configuration.
     - `github.organization_runners`: Enables organization runners.
+    - `github.multi_org_runners`: Opt-in multi-organization runners. Overrides repository scope, resolves installations per organization, and scopes runner-group caching and idle retention to each organization. Defaults to false.
     - `github.enterprise_server.url`: Optional GitHub Enterprise Server URL.
     - `github.enterprise_server.ssl_verify`: Enables TLS certificate verification for GitHub Enterprise Server requests.
     - `github.user_agent`: Optional User-Agent sent to GitHub.
@@ -80,6 +81,7 @@ variable "config" {
     })
     github = object({
       organization_runners = bool
+      multi_org_runners    = optional(bool, false)
       enterprise_server = object({
         url        = optional(string, null)
         ssl_verify = optional(bool, true)

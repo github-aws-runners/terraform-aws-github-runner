@@ -4,6 +4,7 @@ import { resolveComputeProviderType } from '@aws-github-runner/compute-providers
 import { createStorageProviders, type StorageProviders } from '@aws-github-runner/storage-providers';
 import yn from 'yn';
 
+import { multiOrgEnabled, normalizeOrganization } from '../github/multi-org';
 import {
   createGithubAppAuth,
   createGithubInstallationAuth,
@@ -18,6 +19,7 @@ const logger = createChildLogger('pool');
 
 export interface PoolEvent {
   poolSize: number;
+  org?: string;
   type?: string;
 }
 
@@ -36,7 +38,18 @@ export async function adjust(event: PoolEvent): Promise<void> {
   const ephemeral = yn(process.env.ENABLE_EPHEMERAL_RUNNERS, { default: false });
   const enableJitConfig = yn(process.env.ENABLE_JIT_CONFIG, { default: ephemeral });
   const disableAutoUpdate = yn(process.env.DISABLE_RUNNER_AUTOUPDATE, { default: false });
-  const runnerOwner = process.env.RUNNER_OWNER;
+  let runnerOwner = multiOrgEnabled() ? (event.org ?? process.env.RUNNER_OWNER) : process.env.RUNNER_OWNER;
+  if (
+    multiOrgEnabled() &&
+    (!runnerOwner ||
+      runnerOwner.length > 39 ||
+      runnerOwner.match(/^[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*$/)?.[0] !== runnerOwner)
+  ) {
+    throw new Error(
+      'Multi-org pools require an organization in event.org or RUNNER_OWNER: 1-39 alphanumeric characters or single hyphens, with no leading or trailing hyphen',
+    );
+  }
+  if (multiOrgEnabled()) runnerOwner = normalizeOrganization(runnerOwner);
   // -1 disables the maximum check, matching the scale-up lambda's semantics. Defaults to unlimited
   // when unset so the pool keeps its previous behavior on stacks that do not provide the variable.
   const maximumRunners = parseInt(process.env.RUNNERS_MAXIMUM_COUNT || '-1');
@@ -65,6 +78,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
     environment,
     runnerOwner,
     runnerType: 'Org',
+    ...(multiOrgEnabled() ? { runnerOwnerIgnoreCase: true } : {}),
   });
 
   const numberOfRunnersInPool = computeProvider.countAvailableRunners(poolRunners, runnerStatusses, includeBusyRunners);
@@ -117,7 +131,9 @@ async function getInstallationId(
   storage?: StorageProviders,
 ): Promise<number> {
   // Use the pre-configured installation ID when available (avoids an API call).
-  const storedId = await getStoredInstallationId(appIndex, storage?.githubAppCredentials);
+  const storedId = multiOrgEnabled()
+    ? undefined
+    : await getStoredInstallationId(appIndex, storage?.githubAppCredentials);
   if (storedId !== undefined) return storedId;
 
   const githubClient = await createOctokitClient(appToken, ghesApiUrl, appIndex);

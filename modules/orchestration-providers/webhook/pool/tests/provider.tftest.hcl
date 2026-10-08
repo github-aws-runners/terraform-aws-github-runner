@@ -293,3 +293,176 @@ run "requires_enabled_compute_provider_managed_policy_arn" {
 
   expect_failures = [terraform_data.validate_config]
 }
+
+
+run "multi_org_pool_schedules" {
+  command = plan
+  variables {
+    config = merge(var.config, {
+      enable_multi_org_runners = true
+      pool = [
+        { schedule_expression = "cron(0 8 * * ? *)", schedule_expression_timezone = "UTC", size = 2, org = "org-a" },
+        { schedule_expression = "cron(0 8 * * ? *)", schedule_expression_timezone = "UTC", size = 5, org = "org-b" },
+      ]
+    })
+  }
+  assert {
+    condition = (
+      aws_lambda_function.pool.environment[0].variables["ENABLE_MULTI_ORG_RUNNERS"] == "true" &&
+      jsondecode(aws_scheduler_schedule.pool["0"].target[0].input).org == "org-a" &&
+      jsondecode(aws_scheduler_schedule.pool["1"].target[0].input).org == "org-b" &&
+      jsondecode(aws_scheduler_schedule.pool["1"].target[0].input).poolSize == 5
+    )
+    error_message = "Each pool schedule must preserve its organization and capacity."
+  }
+}
+
+run "legacy_pool_payload_is_unchanged" {
+  command = plan
+  assert {
+    condition = (
+      aws_lambda_function.pool.environment[0].variables["ENABLE_MULTI_ORG_RUNNERS"] == "false" &&
+      !contains(keys(jsondecode(aws_scheduler_schedule.pool["0"].target[0].input)), "org")
+    )
+    error_message = "Legacy pool payloads must not include organization overrides."
+  }
+}
+
+run "multi_org_pool_requires_an_owner" {
+  command = plan
+  variables {
+    config = merge(var.config, {
+      enable_multi_org_runners = true
+      runner                   = merge(var.config.runner, { pool_owner = null })
+    })
+  }
+  expect_failures = [var.config]
+}
+
+
+run "multi_org_pool_rejects_empty_override" {
+  command = plan
+  variables {
+    config = merge(var.config, {
+      enable_multi_org_runners = true
+      pool                     = [{ schedule_expression = "cron(0 8 * * ? *)", schedule_expression_timezone = "UTC", size = 2, org = "" }]
+    })
+  }
+  expect_failures = [var.config]
+}
+
+run "rejects_trailing_hyphen_override" {
+  command = plan
+  variables {
+    config = merge(var.config, {
+      enable_multi_org_runners = true
+      pool                     = [merge(var.config.pool[0], { org = "org-" })]
+    })
+  }
+  expect_failures = [var.config]
+}
+
+run "rejects_trailing_hyphen_default" {
+  command = plan
+  variables {
+    config = merge(var.config, {
+      enable_multi_org_runners = true
+      runner                   = merge(var.config.runner, { pool_owner = "org-" })
+    })
+  }
+  expect_failures = [var.config]
+}
+
+run "rejects_repeated_hyphen_override" {
+  command = plan
+  variables {
+    config = merge(var.config, {
+      enable_multi_org_runners = true
+      pool                     = [merge(var.config.pool[0], { org = "org--name" })]
+    })
+  }
+  expect_failures = [var.config]
+}
+
+run "rejects_repeated_hyphen_default" {
+  command = plan
+  variables {
+    config = merge(var.config, {
+      enable_multi_org_runners = true
+      runner                   = merge(var.config.runner, { pool_owner = "org--name" })
+    })
+  }
+  expect_failures = [var.config]
+}
+
+run "rejects_leading_hyphen_override" {
+  command = plan
+  variables {
+    config = merge(var.config, {
+      enable_multi_org_runners = true
+      pool                     = [merge(var.config.pool[0], { org = "-org" })]
+    })
+  }
+  expect_failures = [var.config]
+}
+
+run "rejects_leading_hyphen_default" {
+  command = plan
+  variables {
+    config = merge(var.config, {
+      enable_multi_org_runners = true
+      runner                   = merge(var.config.runner, { pool_owner = "-org" })
+    })
+  }
+  expect_failures = [var.config]
+}
+
+run "rejects_too_long_override" {
+  command = plan
+  variables {
+    config = merge(var.config, {
+      enable_multi_org_runners = true
+      pool                     = [merge(var.config.pool[0], { org = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" })]
+    })
+  }
+  expect_failures = [var.config]
+}
+
+run "rejects_too_long_default" {
+  command = plan
+  variables {
+    config = merge(var.config, {
+      enable_multi_org_runners = true
+      runner                   = merge(var.config.runner, { pool_owner = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" })
+    })
+  }
+  expect_failures = [var.config]
+}
+
+run "accepts_valid_logins_and_length_boundary" {
+  command = plan
+  variables {
+    config = merge(var.config, {
+      enable_multi_org_runners = true
+      pool                     = [for org in ["a", "Org-1", "org-a-b", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-1"] : merge(var.config.pool[0], { org = org })]
+    })
+  }
+  assert {
+    condition     = length(aws_scheduler_schedule.pool) == 5
+    error_message = "Valid logins including the 39-character boundary must be accepted."
+  }
+}
+
+run "preserves_disabled_mode_login_handling" {
+  command = plan
+  variables {
+    config = merge(var.config, {
+      enable_multi_org_runners = false
+      runner                   = merge(var.config.runner, { pool_owner = "org--name" })
+    })
+  }
+  assert {
+    condition     = aws_lambda_function.pool.environment[0].variables["RUNNER_OWNER"] == "org--name"
+    error_message = "Stricter validation must remain gated by multi-org mode."
+  }
+}
