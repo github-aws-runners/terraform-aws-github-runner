@@ -24,24 +24,33 @@ type OrgRunnerList = Endpoints['GET /orgs/{org}/actions/runners']['response']['d
 type RepoRunnerList = Endpoints['GET /repos/{owner}/{repo}/actions/runners']['response']['data']['runners'];
 type RunnerState = OrgRunnerList[number] | RepoRunnerList[number];
 
+function trackAppQuota(client: Octokit, appIdx: number | undefined): void {
+  client.hook.after('request', async (response) => {
+    await metricGitHubAppRateLimit(response.headers, appIdx);
+  });
+  client.hook.error('request', async (error) => {
+    if (error instanceof RequestError && error.response?.headers) {
+      await metricGitHubAppRateLimit(error.response.headers, appIdx);
+    }
+    throw error;
+  });
+}
+
 async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
-  const key = runner.owner;
-  const cachedOctokit = githubCache.clients.get(key);
-
-  if (cachedOctokit) {
-    logger.debug(`[createGitHubClientForRunner] Cache hit for ${key}`);
-    return cachedOctokit;
-  }
-
-  logger.debug(`[createGitHubClientForRunner] Cache miss for ${key}`);
   const { ghesApiUrl } = getGitHubEnterpriseApiUrl();
   const ghAuthPre = await createGithubAppAuth(undefined, ghesApiUrl);
   const appIdx = ghAuthPre.appIndex;
+  // Re-evaluate quota before consulting the cache; an owner can use another
+  // installation when the previously selected app becomes exhausted.
+  const key = `${appIdx ?? 0}:${runner.type}:${runner.owner}`;
+  const cachedOctokit = githubCache.clients.get(key);
+  if (cachedOctokit) return cachedOctokit;
 
   // Use the pre-configured installation ID when available (avoids an API call).
   let installationId = await getStoredInstallationId(appIdx);
   if (installationId === undefined) {
     const githubClientPre = await createOctokitClient(ghAuthPre.token, ghesApiUrl, appIdx);
+    trackAppQuota(githubClientPre, appIdx);
     installationId =
       runner.type === 'Org'
         ? (
@@ -58,6 +67,7 @@ async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
   }
   const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl, appIdx);
   const octokit = await createOctokitClient(ghAuth.token, ghesApiUrl, appIdx);
+  trackAppQuota(octokit, appIdx);
   githubCache.clients.set(key, octokit);
 
   return octokit;
@@ -80,7 +90,6 @@ async function getGitHubSelfHostedRunnerState(
             owner: runner.owner.split('/')[0],
             repo: runner.owner.split('/')[1],
           });
-    metricGitHubAppRateLimit(state.headers);
 
     return state.data;
   } catch (error) {
