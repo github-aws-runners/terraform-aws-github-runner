@@ -1,12 +1,17 @@
 import { publishMessage } from '../aws/sqs';
 import { publishRetryMessage, checkAndRetryJob } from './job-retry';
 import type { ActionRequestMessage, ActionRequestMessageRetry } from './types';
-import { getOctokit } from '../github/octokit';
+import { getOctokitWithFailover } from '../github/octokit';
+import { metricGitHubAppRateLimit } from '../github/rate-limit';
 import { jobRetryCheck } from '../lambda';
 import { Octokit } from '@octokit/rest';
 import { createSingleMetric } from '@aws-github-runner/aws-powertools-util';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { SQSRecord } from 'aws-lambda';
+
+vi.mock('../github/rate-limit', async () => ({
+  metricGitHubAppRateLimit: vi.fn(),
+}));
 
 vi.mock('../aws/sqs', async () => ({
   publishMessage: vi.fn(),
@@ -49,11 +54,11 @@ vi.mock('@octokit/rest', async () => ({
   }),
 }));
 vi.mock('../github/octokit', async () => ({
-  getOctokit: vi.fn(),
+  getOctokitWithFailover: vi.fn(),
 }));
 
-const mockCreateOctokitClient = vi.mocked(getOctokit);
-mockCreateOctokitClient.mockResolvedValue(new Octokit());
+const mockGetOctokitWithFailover = vi.mocked(getOctokitWithFailover);
+mockGetOctokitWithFailover.mockImplementation((_ghesApiUrl, _enableOrgLevel, _payload, work) => work(new Octokit(), 0));
 
 describe('Test job retry publish message', () => {
   const data = [
@@ -245,6 +250,40 @@ describe(`Test job retry check`, () => {
     expect(publishMessage).not.toHaveBeenCalled();
   });
 
+  it(`should attribute the job-status check to the app getOctokitWithFailover actually selected.`, async () => {
+    // setup: failover selected app index 1 for this attempt (e.g. app 0 was rate-limited)
+    mockGetOctokitWithFailover.mockImplementationOnce((_ghesApiUrl, _enableOrgLevel, _payload, work) =>
+      work(new Octokit(), 1),
+    );
+    mockOctokit.actions.getJobForWorkflowRun.mockImplementation(() => ({
+      data: { status: 'queued' },
+      headers: { 'x-ratelimit-remaining': '10', 'x-ratelimit-limit': '60' },
+    }));
+
+    const message: ActionRequestMessageRetry = {
+      eventType: 'workflow_job',
+      id: 0,
+      installationId: 0,
+      repositoryName: 'test',
+      repositoryOwner: 'github-aws-runners',
+      repoOwnerType: 'Organization',
+      retryCounter: 0,
+    };
+    process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+    process.env.RUNNER_NAME_PREFIX = 'test';
+    process.env.JOB_QUEUE_SCALE_UP_URL =
+      'https://sqs.eu-west-1.amazonaws.com/123456789/webhook_events_workflow_job_queue';
+
+    // act
+    await checkAndRetryJob(message);
+
+    // assert
+    expect(metricGitHubAppRateLimit).toHaveBeenCalledWith(
+      { 'x-ratelimit-remaining': '10', 'x-ratelimit-limit': '60' },
+      1,
+    );
+  });
+
   it(`should not publish a message for retry if job is no longer queued.`, async () => {
     // setup
     mockOctokit.actions.getJobForWorkflowRun.mockImplementation(() => ({
@@ -340,10 +379,10 @@ describe('Test job retry handler (batch processing)', () => {
   });
 
   it('should continue processing other records when one fails', async () => {
-    mockCreateOctokitClient
-      .mockResolvedValueOnce(new Octokit()) // First record succeeds
+    mockGetOctokitWithFailover
+      .mockImplementationOnce((_ghesApiUrl, _enableOrgLevel, _payload, work) => work(new Octokit(), 0)) // First record succeeds
       .mockRejectedValueOnce(new Error('API error')) // Second record fails
-      .mockResolvedValueOnce(new Octokit()); // Third record succeeds
+      .mockImplementationOnce((_ghesApiUrl, _enableOrgLevel, _payload, work) => work(new Octokit(), 0)); // Third record succeeds
 
     mockOctokit.actions.getJobForWorkflowRun.mockImplementation(() => ({
       data: {
