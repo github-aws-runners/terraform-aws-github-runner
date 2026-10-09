@@ -230,9 +230,6 @@ run "includes_managed_ami_read_in_scale_set_contract" {
         enabled = false
         s3      = null
       }
-      ami = {
-        id_ssm_parameter = null
-      }
     }
   }
 
