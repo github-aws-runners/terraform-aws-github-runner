@@ -18,7 +18,7 @@ permissions:
 
 env:
   AWS_REGION: eu-west-1
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   verify_packer:
@@ -26,25 +26,66 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: index.docker.io/hashicorp/packer@sha256:12c441b8a3994e7df9f0e2692d9298f14c387e70bcc06139420977dbf80a137b # 1.11.2
-    strategy:
-      matrix:
-        image: ["linux-al2023", "windows-core-2019", "windows-core-2022", "ubuntu-focal", "ubuntu-jammy", "ubuntu-jammy-arm64"]
-    defaults:
-      run:
-        working-directory: images/${{ matrix.image }}
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
         with:
           egress-policy: audit
 
-      - name: "Checkout"
+      - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      - name: Discover Packer template directories
+        run: |
+          images="$(
+            find images \
+              \( -type d \( -name .git -o -name .terraform \) -prune \) -o \
+              \( -type f \( -name '*.pkr.hcl' -o -name '*.pkr.json' \) -print \) |
+            while IFS= read -r template; do
+              dirname "${template}"
+            done |
+            sort -u
+          )"
+
+          if [ -z "${images}" ]; then
+            echo "::error::No Packer templates found under images/"
+            exit 1
+          fi
+
+          {
+            printf 'IMAGES<<EOF\n'
+            printf '%s\n' "${images}"
+            printf 'EOF\n'
+          } >> "${GITHUB_ENV}"
+
       - name: packer init
-        run: packer init .
-      - name: check packer formatting
-        run: packer fmt -recursive -check=true .
-      - name: packer validate
-        run: packer validate -evaluate-datasources .
+        run: |
+          printf '%s\n' "${IMAGES}" | while IFS= read -r image; do
+            [ -z "${image}" ] && continue
+
+            echo "::group::Running packer init for image: ${image}"
+            (cd "${image}" && packer init .)
+            echo "::endgroup::"
+          done
+
+      - name: Check packer formatting
+        run: |
+          printf '%s\n' "${IMAGES}" | while IFS= read -r image; do
+            [ -z "${image}" ] && continue
+
+            echo "::group::Checking packer formatting for image: ${image}"
+            (cd "${image}" && packer fmt -recursive -check=true .)
+            echo "::endgroup::"
+          done
+
+      - name: Validate packer
+        run: |
+          printf '%s\n' "${IMAGES}" | while IFS= read -r image; do
+            [ -z "${image}" ] && continue
+
+            echo "::group::Validating image: ${image}"
+            (cd "${image}" && packer validate -evaluate-datasources .)
+            echo "::endgroup::"
+          done
