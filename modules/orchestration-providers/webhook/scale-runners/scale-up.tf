@@ -41,12 +41,14 @@ resource "aws_lambda_function" "scale_up" {
       POWERTOOLS_SERVICE_NAME                  = "${var.config.prefix}-scale-up"
       JOB_RETRY_CONFIG                         = jsonencode(local.job_retry_config)
       }, {
-      PARAMETER_GITHUB_APP_ID_NAME         = var.config.github.app_parameters.id.name
-      PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.config.github.app_parameters.key_base64.name
-      PARAMETER_GITHUB_APPS_MANIFEST_NAME  = var.config.github.app_parameters.additional_apps_manifest != null ? var.config.github.app_parameters.additional_apps_manifest.name : ""
-      SSM_TOKEN_PATH                       = var.storage_provider.aws.ssm.token_path
-      SSM_CONFIG_PATH                      = var.storage_provider.aws.ssm.config_path
-      SSM_PARAMETER_STORE_TAGS             = var.storage_provider.aws.ssm.parameter_store_tags
+      PARAMETER_GITHUB_APP_ID_NAME                   = var.config.github.app_parameters.id.name
+      PARAMETER_GITHUB_APP_KEY_BASE64_NAME           = var.config.github.app_parameters.key_base64.name
+      PARAMETER_GITHUB_APPS_MANIFEST_NAME            = var.config.github.app_parameters.additional_apps_manifest != null ? var.config.github.app_parameters.additional_apps_manifest.name : ""
+      SSM_TOKEN_PATH                                 = var.storage_provider.aws.ssm.token_path
+      SSM_CONFIG_PATH                                = var.storage_provider.aws.ssm.config_path
+      SSM_PARAMETER_STORE_TAGS                       = var.storage_provider.aws.ssm.parameter_store_tags
+      SSM_PARAMETER_STORE_MAX_CONCURRENT_INVOCATIONS = var.storage_provider.aws.ssm.parameter_store_max_concurrent_invocations
+      SSM_PARAMETER_STORE_MAX_WRITES_PER_SECOND      = var.storage_provider.aws.ssm.parameter_store_max_writes_per_second
     }, var.storage_provider.scale_up.environment_variables)
   }
 

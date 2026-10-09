@@ -27,6 +27,9 @@ variables {
           Value = "test"
         }])
         kms_key_id = "arn:aws-us-gov:kms:us-gov-west-1:123456789012:key/scale-runners-test"
+
+        parameter_store_max_concurrent_invocations = 3
+        parameter_store_max_writes_per_second      = 120
       }
     }
   }
@@ -250,6 +253,8 @@ run "assembles_provider_neutral_scaling_control_plane" {
       && aws_lambda_function.scale_down.environment[0].variables["MINIMUM_RUNNING_TIME_IN_MINUTES"] == "15"
       && aws_lambda_function.scale_up.environment[0].variables["NODE_TLS_REJECT_UNAUTHORIZED"] == "0"
       && jsondecode(aws_lambda_function.scale_up.environment[0].variables["SSM_PARAMETER_STORE_TAGS"])[0].Value == "test"
+      && aws_lambda_function.scale_up.environment[0].variables["SSM_PARAMETER_STORE_MAX_CONCURRENT_INVOCATIONS"] == "3"
+      && aws_lambda_function.scale_up.environment[0].variables["SSM_PARAMETER_STORE_MAX_WRITES_PER_SECOND"] == "120"
     )
     error_message = "Scale runners must assemble shared runner, logging, TLS, lifetime, and Parameter Store environment variables."
   }

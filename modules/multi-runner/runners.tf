@@ -97,6 +97,8 @@ module "runners" {
   runner_group_name                                              = each.value.runner.group_name
   runner_name_prefix                                             = each.value.runner.name_prefix
   parameter_store_tags                                           = each.value.storage_provider.aws.ssm.parameters.tags
+  ssm_parameter_store_max_concurrent_invocations                 = each.value.storage_provider.aws.ssm.parameters.max_concurrent_invocations
+  ssm_parameter_store_max_writes_per_second                      = each.value.storage_provider.aws.ssm.parameters.max_writes_per_second
 
   scale_up_reserved_concurrent_executions = each.value.orchestration_provider.webhook.lambda.scale.up.reserved_concurrent_executions
 
