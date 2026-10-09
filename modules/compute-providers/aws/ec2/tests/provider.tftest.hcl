@@ -1,7 +1,7 @@
 mock_provider "aws" {
   mock_data "aws_iam_policy_document" {
     defaults = {
-      json = "{}"
+      json = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":[\"ssm:GetParameter\",\"ssm:GetParameters\"],\"Resource\":\"arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/ami-id\"}]}"
     }
   }
 
@@ -17,6 +17,12 @@ mock_provider "aws" {
   mock_data "aws_caller_identity" {
     defaults = {
       account_id = "123456789012"
+    }
+  }
+
+  mock_resource "aws_ssm_parameter" {
+    defaults = {
+      arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/provider-test/config/cloudwatch_agent_config_runner"
     }
   }
 }
@@ -46,7 +52,7 @@ variables {
     ami = {
       filter = { state = ["available"] }
       owners = ["amazon"]
-      id_ssm_parameter = {
+      ssm_parameter = {
         arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/ami-id"
       }
       kms_key = null
@@ -88,6 +94,119 @@ variables {
         }
       }
     }
+  }
+}
+
+run "merges_ssm_cloudwatch_policy_when_enabled" {
+  command = plan
+
+  assert {
+    condition = (
+      length(data.aws_iam_policy_document.cloudwatch) == 1
+      && length(data.aws_iam_policy_document.ssm_cloudwatch) == 1
+      && length(data.aws_iam_policy_document.cloudwatch[0].source_policy_documents) == 1
+      && contains(data.aws_iam_policy_document.cloudwatch[0].statement[0].actions, "cloudwatch:PutMetricData")
+    )
+    error_message = "An enabled CloudWatch agent with SSM must merge the SSM CloudWatch policy document."
+  }
+}
+
+run "does_not_create_cloudwatch_policy_when_disabled_with_ssm" {
+  command = plan
+
+  variables {
+    config = {
+      ami = {
+        filter = { state = ["available"] }
+        owners = ["amazon"]
+        ssm_parameter = {
+          arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/ami-id"
+        }
+        kms_key = null
+      }
+      vpc_id         = "vpc-12345678"
+      subnet_ids     = ["subnet-12345678"]
+      instance_types = ["m5.large"]
+      binaries_syncer = {
+        enabled = false
+        s3      = null
+      }
+      cloudwatch_agent = {
+        enabled = false
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      length(data.aws_iam_policy_document.cloudwatch) == 0
+      && length(data.aws_iam_policy_document.ssm_cloudwatch) == 0
+      && !contains(keys(output.provider.policies.runner.inline_policies), "cloudwatch")
+    )
+    error_message = "A disabled CloudWatch agent must not create or attach CloudWatch policies, even with SSM enabled."
+  }
+}
+
+run "does_not_merge_ssm_cloudwatch_policy_without_ssm" {
+  command = plan
+
+  variables {
+    storage_provider = {
+      aws = {
+        ssm = null
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      length(data.aws_iam_policy_document.cloudwatch) == 1
+      && length(data.aws_iam_policy_document.ssm_cloudwatch) == 0
+      && length(data.aws_iam_policy_document.cloudwatch[0].source_policy_documents) == 0
+      && contains(data.aws_iam_policy_document.cloudwatch[0].statement[0].actions, "cloudwatch:PutMetricData")
+    )
+    error_message = "An enabled CloudWatch agent without SSM must retain only its base CloudWatch policy."
+  }
+}
+
+run "does_not_create_cloudwatch_policy_when_disabled_without_ssm" {
+  command = plan
+
+  variables {
+    config = {
+      ami = {
+        filter = { state = ["available"] }
+        owners = ["amazon"]
+        ssm_parameter = {
+          arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/ami-id"
+        }
+        kms_key = null
+      }
+      vpc_id         = "vpc-12345678"
+      subnet_ids     = ["subnet-12345678"]
+      instance_types = ["m5.large"]
+      binaries_syncer = {
+        enabled = false
+        s3      = null
+      }
+      cloudwatch_agent = {
+        enabled = false
+      }
+    }
+    storage_provider = {
+      aws = {
+        ssm = null
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      length(data.aws_iam_policy_document.cloudwatch) == 0
+      && length(data.aws_iam_policy_document.ssm_cloudwatch) == 0
+      && !contains(keys(output.provider.policies.runner.inline_policies), "cloudwatch")
+    )
+    error_message = "A disabled CloudWatch agent without SSM must not create any CloudWatch policy."
   }
 }
 
@@ -150,11 +269,11 @@ run "separates_control_plane_contract_from_ec2_resources" {
 
   assert {
     condition = (
-      contains(output.provider.capabilities.scale_set.iam_statements.read_ami_parameter.actions, "ssm:GetParameter")
-      && contains(output.provider.capabilities.scale_set.iam_statements.read_ami_parameter.actions, "ssm:GetParameters")
-      && contains(output.provider.capabilities.scale_set.iam_statements.read_ami_parameter.resources, "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/ami-id")
+      strcontains(output.provider.capabilities.scale_set.iam_statements.ssm_parameters, "ssm:GetParameter")
+      && strcontains(output.provider.capabilities.scale_set.iam_statements.ssm_parameters, "ssm:GetParameters")
+      && strcontains(output.provider.capabilities.scale_set.iam_statements.ssm_parameters, "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/ami-id")
     )
-    error_message = "The scale-set compute role must read an external AMI parameter with both single and batched SSM actions."
+    error_message = "The grouped scale-set SSM policy must read an external AMI parameter with both single and batched SSM actions."
   }
 
   assert {
@@ -235,10 +354,10 @@ run "includes_managed_ami_read_in_scale_set_contract" {
 
   assert {
     condition = (
-      contains(output.provider.capabilities.scale_set.iam_statements.read_ami_parameter.actions, "ssm:GetParameters")
-      && output.provider.capabilities.scale_set.iam_statements.read_ami_parameter.resources != toset([])
+      strcontains(output.provider.capabilities.scale_set.iam_statements.ssm_parameters, "ssm:GetParameters")
+      && strcontains(output.provider.capabilities.scale_set.iam_statements.ssm_parameters, ":parameter/")
     )
-    error_message = "The scale-set compute role must read the module-managed AMI parameter."
+    error_message = "The grouped scale-set SSM policy must read the module-managed AMI parameter."
   }
 }
 
@@ -253,7 +372,7 @@ run "accepts_partial_typed_compute_options" {
       ami = {
         filter = { state = ["available"] }
         owners = ["amazon"]
-        id_ssm_parameter = {
+        ssm_parameter = {
           arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/ami-id"
         }
         kms_key = null
@@ -310,10 +429,12 @@ run "separates_provider_runner_and_ssm_tags" {
       subnet_ids     = ["subnet-12345678"]
       instance_types = ["m5.large"]
       ami = {
-        filter           = { state = ["available"] }
-        owners           = ["amazon"]
-        id_ssm_parameter = null
-        kms_key          = null
+        filter = { state = ["available"] }
+        owners = ["amazon"]
+        ssm_parameter = {
+          path = "/github-runner/provider-test/config"
+        }
+        kms_key = null
       }
       binaries_syncer = {
         enabled = false
@@ -414,11 +535,11 @@ run "separates_provider_runner_and_ssm_tags" {
 
   assert {
     condition = (
-      aws_ssm_parameter.runner_config_run_as.tags["Name"] == "ssm-name"
-      && aws_ssm_parameter.runner_config_run_as.tags["Scope"] == "ssm"
-      && aws_ssm_parameter.runner_config_run_as.tags["SsmOnly"] == "ssm"
-      && !contains(keys(aws_ssm_parameter.runner_config_run_as.tags), "RunnerOnly")
-      && !contains(keys(aws_ssm_parameter.runner_config_run_as.tags), "ghr:environment")
+      aws_ssm_parameter.runner_config_run_as[0].tags["Name"] == "ssm-name"
+      && aws_ssm_parameter.runner_config_run_as[0].tags["Scope"] == "ssm"
+      && aws_ssm_parameter.runner_config_run_as[0].tags["SsmOnly"] == "ssm"
+      && !contains(keys(aws_ssm_parameter.runner_config_run_as[0].tags), "RunnerOnly")
+      && !contains(keys(aws_ssm_parameter.runner_config_run_as[0].tags), "ghr:environment")
     )
     error_message = "EC2 SSM parameters must merge SSM component tags over provider tags."
   }
@@ -454,6 +575,14 @@ run "network_interfaces_default_matches_associate_public_ipv4_address" {
 
   variables {
     config = {
+      ami = {
+        filter = { state = ["available"] }
+        owners = ["amazon"]
+        ssm_parameter = {
+          arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/ami-id"
+        }
+        kms_key = null
+      }
       vpc_id                         = "vpc-12345678"
       subnet_ids                     = ["subnet-12345678"]
       instance_types                 = ["m5.large"]
@@ -479,6 +608,14 @@ run "network_interfaces_accepts_explicit_configuration" {
 
   variables {
     config = {
+      ami = {
+        filter = { state = ["available"] }
+        owners = ["amazon"]
+        ssm_parameter = {
+          arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/ami-id"
+        }
+        kms_key = null
+      }
       vpc_id         = "vpc-12345678"
       subnet_ids     = ["subnet-12345678"]
       instance_types = ["m5.large"]
@@ -516,6 +653,14 @@ run "rejects_external_instance_profile_with_managed_role" {
 
   variables {
     config = {
+      ami = {
+        filter = { state = ["available"] }
+        owners = ["amazon"]
+        ssm_parameter = {
+          arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/ami-id"
+        }
+        kms_key = null
+      }
       vpc_id         = "vpc-12345678"
       subnet_ids     = ["subnet-12345678"]
       instance_types = ["m5.large"]
@@ -546,6 +691,14 @@ run "requires_distribution_object_when_sync_is_enabled" {
 
   variables {
     config = {
+      ami = {
+        filter = { state = ["available"] }
+        owners = ["amazon"]
+        ssm_parameter = {
+          arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/ami-id"
+        }
+        kms_key = null
+      }
       vpc_id         = "vpc-12345678"
       subnet_ids     = ["subnet-12345678"]
       instance_types = ["m5.large"]
