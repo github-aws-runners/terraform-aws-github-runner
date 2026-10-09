@@ -337,6 +337,12 @@ run "v2_inputs_resolve_lane_over_global" {
         }
         orchestration_provider = {
           webhook = {
+            job_retry = {
+              enabled = true
+              lambda = {
+                reserved_concurrent_executions = 3
+              }
+            }
             matcherConfig = {
               labelMatchers          = [["self-hosted", "linux", "arm64"]]
               dynamic_labels_enabled = true
@@ -396,6 +402,8 @@ run "v2_inputs_resolve_lane_over_global" {
       && local.resolved_config.multi_runner_config["lane"].compute_provider.aws.ec2.vpc_id == "vpc-global"
       && toset(local.resolved_config.multi_runner_config["lane"].compute_provider.aws.ec2.subnet_ids) == toset(["subnet-lane"])
       && local.resolved_config.multi_runner_config["lane"].orchestration_provider.webhook.matcherConfig.dynamic_labels_enabled
+      && local.resolved_config.multi_runner_config["lane"].orchestration_provider.webhook.job_retry.enabled
+      && local.resolved_config.multi_runner_config["lane"].orchestration_provider.webhook.job_retry.lambda.reserved_concurrent_executions == 3
       && !local.resolved_config.multi_runner_config["lane"].observability.metrics.enabled
       && local.resolved_config.multi_runner_config["lane"].observability.metrics.metric.github_app_rate_limit.enabled
       && local.resolved_config.multi_runner_config["lane"].observability.metrics.metric.job_retry.enabled
@@ -445,6 +453,9 @@ run "v2_inputs_do_not_require_legacy_arguments" {
       lane = {
         orchestration_provider = {
           webhook = {
+            job_retry = {
+              enabled = true
+            }
             matcherConfig = {
               labelMatchers = [["self-hosted", "linux", "x64"]]
             }
@@ -470,6 +481,8 @@ run "v2_inputs_do_not_require_legacy_arguments" {
       && keys(module.runner_configs) == ["lane"]
       && length(module.runners) == 0
       && local.resolved_config.multi_runner_config["lane"].compute_provider.aws.ec2.vpc_id == "vpc-v2"
+      && local.resolved_config.multi_runner_config["lane"].orchestration_provider.webhook.job_retry.enabled
+      && local.resolved_config.multi_runner_config["lane"].orchestration_provider.webhook.job_retry.lambda.reserved_concurrent_executions == null
     )
     error_message = "The v2 interface must work without the stable v1 GitHub App, VPC, subnet, or runner configuration inputs."
   }

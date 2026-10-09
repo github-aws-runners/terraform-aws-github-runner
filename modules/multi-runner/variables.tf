@@ -423,7 +423,7 @@ variable "multi_runner_config" {
           tags             = optional(map(string), {})
           lambda = optional(object({
             memory_size                    = optional(number, 256)
-            reserved_concurrent_executions = optional(number, 1)
+            reserved_concurrent_executions = optional(number, null)
             timeout                        = optional(number, 30)
           }), {})
         }), {})

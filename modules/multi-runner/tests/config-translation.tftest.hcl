@@ -340,6 +340,9 @@ run "empty_v2_map_translates_stable_inputs" {
           instance_types        = ["m5.large"]
           runners_maximum_count = 2
           runner_group_name     = "stable-group"
+          job_retry = {
+            enable = true
+          }
           ssm_ttl_seconds = {
             tokens = 3600
           }
@@ -447,6 +450,8 @@ run "empty_v2_map_translates_stable_inputs" {
       && local.normalized_config.multi_runner_config["stable"].runner.group_name == "stable-group"
       && local.normalized_config.multi_runner_config["stable"].runner.iam.managed_policy_arns["legacy-0"] == "arn:aws:iam::123456789012:policy/stable-runner"
       && local.normalized_config.multi_runner_config["stable"].orchestration_provider.webhook.runner.maximum_count == 2
+      && local.normalized_config.multi_runner_config["stable"].orchestration_provider.webhook.job_retry.enabled
+      && local.normalized_config.multi_runner_config["stable"].orchestration_provider.webhook.job_retry.lambda.reserved_concurrent_executions == null
       && jsonencode(local.normalized_config.multi_runner_config["stable"].orchestration_provider.webhook.matcherConfig.labelMatchers) == jsonencode([["self-hosted", "linux", "x64"]])
       && toset(local.normalized_config.multi_runner_config["stable"].compute_provider.aws.ec2.instance_types) == toset(["m5.large"])
     )
