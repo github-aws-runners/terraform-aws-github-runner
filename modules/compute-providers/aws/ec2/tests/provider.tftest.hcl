@@ -338,7 +338,14 @@ run "separates_control_plane_contract_from_ec2_resources" {
 }
 
 run "includes_managed_ami_read_in_scale_set_contract" {
-  command = plan
+  command = apply
+
+  override_resource {
+    target = aws_ssm_parameter.runner_ami_id
+    values = {
+      arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-action-runners/provider-test/runners/config/ami_id"
+    }
+  }
 
   variables {
     config = {
@@ -354,10 +361,11 @@ run "includes_managed_ami_read_in_scale_set_contract" {
 
   assert {
     condition = (
-      strcontains(output.provider.capabilities.scale_set.iam_policy_documents.ssm_parameters, "ssm:GetParameters")
-      && strcontains(output.provider.capabilities.scale_set.iam_policy_documents.ssm_parameters, ":parameter/")
+      contains(data.aws_iam_policy_document.ami_id_ssm.statement[0].actions, "ssm:GetParameter")
+      && contains(data.aws_iam_policy_document.ami_id_ssm.statement[0].actions, "ssm:GetParameters")
+      && contains(data.aws_iam_policy_document.ami_id_ssm.statement[0].resources, aws_ssm_parameter.runner_ami_id[0].arn)
     )
-    error_message = "The grouped scale-set SSM policy must read the module-managed AMI parameter."
+    error_message = "The SSM read policy must use the managed AMI parameter ARN for both single and batched reads."
   }
 }
 

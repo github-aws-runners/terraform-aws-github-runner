@@ -18,7 +18,7 @@ locals {
   ami_id_ssm_external             = local.ami_config.ssm_parameter != null && try(local.ami_config.ssm_parameter.path, null) == null
   ami_id_ssm_module_managed       = !local.ami_id_ssm_external
   ami_id_ssm_parameter_arn        = local.ami_id_ssm_external ? local.ami_config.ssm_parameter.arn : null
-  ami_id_ssm_policy_parameter_arn = local.ami_id_ssm_external ? local.ami_id_ssm_parameter_arn : "${local.ami_ssm_parameter_path}/ami_id"
+  ami_id_ssm_policy_parameter_arn = local.ami_id_ssm_external ? local.ami_id_ssm_parameter_arn : aws_ssm_parameter.runner_ami_id[0].arn
   # Extract parameter name from ARN (format: arn:aws:ssm:region:account:parameter/path/to/param)
   ami_id_ssm_parameter_name = local.ami_id_ssm_external ? try(regex("parameter(/.+)$", local.ami_id_ssm_parameter_arn)[0], null) : null
 
