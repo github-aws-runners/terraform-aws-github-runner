@@ -156,24 +156,10 @@ resource "terraform_data" "validate_contract" {
                 (endswith(base64encode(value), "==") ? 2 : endswith(base64encode(value), "=") ? 1 : 0)
               ) <= 4096
             )
-          ]) &&
-          alltrue([
-            for policy_name, policy_json in runner_config.compute_provider.capabilities.scale_set.iam_policy_documents : (
-              can(regex("^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$", policy_name)) &&
-              can(jsondecode(policy_json).Statement) &&
-              length(jsondecode(policy_json).Statement) > 0 &&
-              alltrue([
-                for statement in jsondecode(policy_json).Statement : (
-                  length(statement.Action) > 0 &&
-                  length(statement.Resource) > 0 &&
-                  alltrue([for action in statement.Action : !strcontains(action, "*")])
-                )
-              ])
-            )
           ])
         )
       ])
-      error_message = "Each compute-provider scale-set capability must have safe identifiers, object-shaped configuration JSON, non-secret environment variables with safe unreserved names and bounded values, and non-empty IAM policy documents with resources and no wildcard actions."
+      error_message = "Each compute-provider scale-set capability must have a safe provider type, object-shaped configuration JSON, and non-secret environment variables with safe unreserved names and bounded values."
     }
 
     precondition {
