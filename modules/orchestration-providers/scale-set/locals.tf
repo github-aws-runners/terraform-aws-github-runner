@@ -187,10 +187,10 @@ locals {
     )
   }
 
-  reconciler_compute_iam_policy_json = {
+  reconciler_compute_iam_policy_documents = {
     for config_key, config in local.compute_role_configs : config_key => {
-      for statement_name, statement in var.runner_configs[config.runner_name].compute_provider.capabilities.scale_set.iam_policy_json :
-      statement_name => statement
+      for policy_name, policy_json in var.runner_configs[config.runner_name].compute_provider.capabilities.scale_set.iam_policy_documents :
+      policy_name => policy_json
     }
   }
 

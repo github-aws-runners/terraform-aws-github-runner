@@ -128,7 +128,7 @@ resource "aws_iam_role" "compute" {
 data "aws_iam_policy_document" "compute" {
   for_each = local.compute_role_configs
 
-  source_policy_documents = values(local.reconciler_compute_iam_policy_json[each.key])
+  source_policy_documents = values(local.reconciler_compute_iam_policy_documents[each.key])
 }
 
 resource "aws_iam_role_policy" "compute" {

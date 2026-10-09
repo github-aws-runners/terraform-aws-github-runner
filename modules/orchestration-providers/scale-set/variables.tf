@@ -62,7 +62,7 @@ variable "runner_configs" {
           role_arn              = optional(string, null)
           configuration_json    = optional(string, "{}")
           environment_variables = optional(map(string), {})
-          iam_policy_json       = optional(string, null)
+          iam_policy_documents  = optional(map(string), {})
         })
       })
     })
