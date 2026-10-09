@@ -177,6 +177,8 @@ You can enable the job retry function to retry a job after a delay for a configu
 
 For checking the job status a API call is made to GitHub. Which can exhaust the GitHub API more quickly for larger deployments and cause rate limits. For larger deployment with a lot of frequent jobs having a small pool available could be a better choice. See [Rate Limits and Batch Size Tuning](rate-limits-and-tuning.md) for details on GitHub and AWS rate limits.
 
+The job status check of the retry function is always performed, independent of `enable_job_queued_check`. That setting only applies to the scale-up function. The retry function runs for a small share of the events, so the check saves little API budget when skipped. It also runs up to 15 minutes after the original event, when the job is more likely cancelled or already picked up by another runner, so skipping it would create more unused runners.
+
 The option `job_retry.delay_in_seconds` is the delay before the job status is checked. The delay is increased by the factor `job_retry.delay_backoff` for each attempt. The upper bound for a delay is 900 seconds, which is the max message delay on SQS. The maximum number of attempts is configured via `job_retry.max_attempts`. The delay should be set to a higher value than the time it takes to start a runner.
 
 ## Prebuilt Images
