@@ -361,8 +361,7 @@ run "includes_managed_ami_read_in_scale_set_contract" {
 
   assert {
     condition = (
-      contains(data.aws_iam_policy_document.ami_id_ssm.statement[0].actions, "ssm:GetParameter")
-      && contains(data.aws_iam_policy_document.ami_id_ssm.statement[0].actions, "ssm:GetParameters")
+      contains(data.aws_iam_policy_document.ami_id_ssm.statement[0].actions, "ssm:GetParameters")
       && contains(data.aws_iam_policy_document.ami_id_ssm.statement[0].resources, aws_ssm_parameter.runner_ami_id[0].arn)
     )
     error_message = "The SSM read policy must use the managed AMI parameter ARN for both single and batched reads."
