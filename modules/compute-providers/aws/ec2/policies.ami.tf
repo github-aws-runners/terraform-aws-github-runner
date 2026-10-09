@@ -89,7 +89,6 @@ data "aws_iam_policy_document" "ami_id_ssm" {
     effect = "Allow"
     sid    = "AllowSSMParameterRead"
     actions = [
-      "ssm:GetParameter",
       "ssm:GetParameters",
     ]
     resources = [local.ami_id_ssm_policy_parameter_arn]
