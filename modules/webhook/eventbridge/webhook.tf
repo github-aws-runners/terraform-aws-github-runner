@@ -33,12 +33,12 @@ resource "aws_lambda_function" "webhook" {
         POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.config.tracing_config.capture_http_requests
         POWERTOOLS_TRACER_CAPTURE_ERROR          = var.config.tracing_config.capture_error
         # Parameters required for lambda configuration
-        ACCEPT_EVENTS                        = jsonencode(var.config.accept_events)
-        EVENT_BUS_NAME                       = aws_cloudwatch_event_bus.main.name
-        PARAMETER_GITHUB_APP_WEBHOOK_SECRET  = var.config.github_app_parameters.webhook_secret.name
-        PARAMETER_RUNNER_MATCHER_CONFIG_PATH = join(":", [for p in var.config.ssm_parameter_runner_matcher_config : p.name])
+        ACCEPT_EVENTS  = jsonencode(var.config.accept_events)
+        EVENT_BUS_NAME = aws_cloudwatch_event_bus.main.name
       } : k => v if v != null
-    })
+      },
+      local.ssm_environment_variables
+    )
   }
 
   dynamic "vpc_config" {
@@ -122,24 +122,6 @@ resource "aws_iam_role_policy" "webhook_eventbridge" {
 
   policy = templatefile("${path.module}/../policies/lambda-publish-eventbridge-policy.json", {
     resource_arns = jsonencode(aws_cloudwatch_event_bus.main.arn)
-  })
-}
-
-resource "aws_iam_role_policy" "webhook_ssm" {
-  name = "publish-ssm-policy"
-  role = aws_iam_role.webhook_lambda.name
-
-  policy = templatefile("${path.module}/../policies/lambda-ssm.json", {
-    resource_arns = jsonencode([var.config.github_app_parameters.webhook_secret.arn])
-  })
-}
-
-resource "aws_iam_role_policy" "webhook_kms" {
-  name = "kms-policy"
-  role = aws_iam_role.webhook_lambda.name
-
-  policy = templatefile("${path.module}/../policies/lambda-kms.json", {
-    kms_key_arn = var.config.storage_provider.aws.ssm.kms_key_id != null ? var.config.storage_provider.aws.ssm.kms_key_id : "arn:${var.config.aws_partition}:kms:::CMK_NOT_IN_USE"
   })
 }
 

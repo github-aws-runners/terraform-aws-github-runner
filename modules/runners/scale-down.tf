@@ -39,6 +39,7 @@ resource "aws_lambda_function" "scale_down" {
       PARAMETER_GITHUB_APPS_MANIFEST_NAME      = var.github_app_parameters.additional_apps_manifest != null ? var.github_app_parameters.additional_apps_manifest.name : ""
       POWERTOOLS_LOGGER_LOG_EVENT              = var.log_level == "debug" ? "true" : "false"
       RUNNER_BOOT_TIME_IN_MINUTES              = var.runner_boot_time_in_minutes
+      SSM_TOKEN_PATH                           = local.token_path
       SCALE_DOWN_CONFIG                        = jsonencode(var.idle_config)
       SCALE_DOWN_IDLE_CONFIRMATION_SECONDS     = var.scale_down_idle_confirmation_seconds
       POWERTOOLS_SERVICE_NAME                  = "${var.prefix}-scale-down"

@@ -43,12 +43,5 @@ module "job_retry" {
     }
   }
 
-  storage_provider = merge(
-    {
-      aws = {
-        ssm = local.resolved_config.storage_provider.aws.ssm
-      }
-    },
-    local.resolved_config.storage_provider.job_retry,
-  )
+  storage_provider = local.resolved_config.storage_provider
 }

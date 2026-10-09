@@ -158,17 +158,23 @@ resource "terraform_data" "validate_contract" {
             )
           ]) &&
           alltrue([
-            for statement_name, statement in runner_config.compute_provider.capabilities.scale_set.iam_statements : (
+            for statement_name, policy_json in runner_config.compute_provider.capabilities.scale_set.iam_statements : (
               can(regex("^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$", statement_name)) &&
-              length(statement.actions) > 0 &&
-              length(statement.resources) > 0 &&
-              alltrue([for action in statement.actions : !strcontains(action, "*")]) &&
+              can(jsondecode(policy_json).Statement) &&
               alltrue([
-                for condition in statement.conditions : (
-                  length(condition.test) > 0 &&
-                  length(condition.variable) > 0 &&
-                  length(condition.values) > 0
-                )
+                for statement in try(tolist(jsondecode(policy_json).Statement), [jsondecode(policy_json).Statement]) : try((
+                  lower(statement.Effect) == "allow" &&
+                  length(try(tolist(statement.Action), [statement.Action])) > 0 &&
+                  length(try(tolist(statement.Resource), [statement.Resource])) > 0 &&
+                  alltrue([
+                    for action in try(tolist(statement.Action), [statement.Action]) :
+                    length(action) > 0 && !strcontains(action, "*")
+                  ]) &&
+                  alltrue([
+                    for resource in try(tolist(statement.Resource), [statement.Resource]) :
+                    length(resource) > 0
+                  ])
+                ), false)
               ])
             )
           ])

@@ -1,12 +1,26 @@
 locals {
-  ssm_housekeeper_token_path = coalesce(var.storage_provider.aws.ssm.housekeeper.config.tokenPath, local.token_path)
+  ssm_housekeeper_token_path = coalesce(try(var.storage_provider.aws.ssm.housekeeper.config.tokenPath, null), local.token_path)
   ssm_housekeeper_parameter_path_arn = (
     "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${local.ssm_housekeeper_token_path}*"
   )
+  ssm_housekeeper_cleanup = {
+    token_path         = local.ssm_housekeeper_token_path
+    parameter_path_arn = local.ssm_housekeeper_parameter_path_arn
+    minimum_days_old   = var.storage_provider.aws.ssm.housekeeper.config.minimumDaysOld
+    dry_run            = var.storage_provider.aws.ssm.housekeeper.config.dryRun
+  }
 }
 
-module "ssm_housekeeper" {
-  source = "./ssm-housekeeper"
+module "runner_config_housekeeper" {
+  source = "./runner-config-housekeeper"
+
+  storage_provider = {
+    aws = {
+      ssm = var.storage_provider.aws.ssm == null ? null : {
+        cleanup = local.ssm_housekeeper_cleanup
+      }
+    }
+  }
 
   config = {
     prefix        = var.prefix
@@ -14,12 +28,6 @@ module "ssm_housekeeper" {
     schedule = {
       expression = var.storage_provider.aws.ssm.housekeeper.schedule_expression
       state      = var.storage_provider.aws.ssm.housekeeper.state
-    }
-    cleanup = {
-      token_path         = local.ssm_housekeeper_token_path
-      parameter_path_arn = local.ssm_housekeeper_parameter_path_arn
-      minimum_days_old   = var.storage_provider.aws.ssm.housekeeper.config.minimumDaysOld
-      dry_run            = var.storage_provider.aws.ssm.housekeeper.config.dryRun
     }
     lambda = {
       # The housekeeper resolves only its component-owned selector and never

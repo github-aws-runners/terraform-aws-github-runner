@@ -46,7 +46,7 @@ module "orchestration_webhook" {
   }
   storage_provider = {
     aws = {
-      ssm = {
+      ssm = var.storage_provider.aws.ssm == null ? null : {
         token_path           = local.token_path
         token_path_arn       = local.arn_ssm_parameters_path_tokens
         config_path          = "${var.storage_provider.aws.ssm.paths.root}/${var.storage_provider.aws.ssm.paths.config}"

@@ -221,7 +221,7 @@ configuration it helps produce.
 | `modules/orchestration-providers/webhook/scale-runners` | Owns scale-up and scale-down Lambdas, schedules, queue integration, IAM, and outputs. |
 | `modules/orchestration-providers/webhook/pool` | Owns optional scheduled pool resources and IAM. |
 | `modules/orchestration-providers/webhook/job-retry` | Owns optional queued-job retry resources and IAM. |
-| `modules/runner-config/ssm-housekeeper` | Owns provider-neutral cleanup of runner token and configuration parameters. |
+| `modules/runner-config/runner-config-housekeeper` | Owns provider-neutral cleanup of runner token and configuration parameters. |
 | `modules/compute-providers/<namespace>/<provider>` | Owns provider-specific capacity resources and returns policy, environment, managed-policy, and resource capabilities. |
 
 Provider leaf modules live below `modules/orchestration-providers/<provider>`,
