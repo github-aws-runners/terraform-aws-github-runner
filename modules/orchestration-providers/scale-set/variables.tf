@@ -62,15 +62,7 @@ variable "runner_configs" {
           role_arn              = optional(string, null)
           configuration_json    = optional(string, "{}")
           environment_variables = optional(map(string), {})
-          iam_statements = optional(map(object({
-            actions   = set(string)
-            resources = set(string)
-            conditions = optional(list(object({
-              test     = string
-              variable = string
-              values   = set(string)
-            })), [])
-          })), {})
+          iam_policy_json       = optional(string, null)
         })
       })
     })

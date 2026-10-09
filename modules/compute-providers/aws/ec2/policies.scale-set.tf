@@ -229,7 +229,7 @@ locals {
     } : {},
   )
 
-  scale_set_iam_statements = merge(
+  scale_set_iam_policy_json = merge(
     {
       capacity_launch  = data.aws_iam_policy_document.scale_set_capacity_launch.json
       runner_lifecycle = data.aws_iam_policy_document.scale_set_runner_lifecycle.json
@@ -243,6 +243,6 @@ locals {
   scale_set_capability = {
     configuration_json    = jsonencode(local.scale_set_runtime_configuration)
     environment_variables = {}
-    iam_statements        = local.scale_set_iam_statements
+    iam_policy_json       = local.scale_set_iam_policy_json
   }
 }
