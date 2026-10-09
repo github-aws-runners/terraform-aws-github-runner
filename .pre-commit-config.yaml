@@ -24,3 +24,11 @@ repos:
       - id: hadolint
         name: Docker · Linter
         exclude: (docs/operations/repo-blueprints/)
+
+  - repo: https://github.com/gruntwork-io/pre-commit
+    rev: 40f924cd642f5dc98d12bd97b07f3752223553da  # frozen: v0.1.30
+    hooks:
+      - id: terragrunt-hcl-fmt
+        name: IaC · Terragrunt fmt
+      - id: packer-validate
+        name: IaC · Packer validate

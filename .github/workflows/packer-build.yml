@@ -25,8 +25,6 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: index.docker.io/hashicorp/packer@sha256:12c441b8a3994e7df9f0e2692d9298f14c387e70bcc06139420977dbf80a137b # 1.11.2
-    env:
-      PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
