@@ -269,9 +269,9 @@ run "separates_control_plane_contract_from_ec2_resources" {
 
   assert {
     condition = (
-      strcontains(output.provider.capabilities.scale_set.iam_statements.ssm_parameters, "ssm:GetParameter")
-      && strcontains(output.provider.capabilities.scale_set.iam_statements.ssm_parameters, "ssm:GetParameters")
-      && strcontains(output.provider.capabilities.scale_set.iam_statements.ssm_parameters, "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/ami-id")
+      strcontains(output.provider.capabilities.scale_set.iam_policy_json.ssm_parameters, "ssm:GetParameter")
+      && strcontains(output.provider.capabilities.scale_set.iam_policy_json.ssm_parameters, "ssm:GetParameters")
+      && strcontains(output.provider.capabilities.scale_set.iam_policy_json.ssm_parameters, "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/ami-id")
     )
     error_message = "The grouped scale-set SSM policy must read an external AMI parameter with both single and batched SSM actions."
   }
@@ -354,8 +354,8 @@ run "includes_managed_ami_read_in_scale_set_contract" {
 
   assert {
     condition = (
-      strcontains(output.provider.capabilities.scale_set.iam_statements.ssm_parameters, "ssm:GetParameters")
-      && strcontains(output.provider.capabilities.scale_set.iam_statements.ssm_parameters, ":parameter/")
+      strcontains(output.provider.capabilities.scale_set.iam_policy_json.ssm_parameters, "ssm:GetParameters")
+      && strcontains(output.provider.capabilities.scale_set.iam_policy_json.ssm_parameters, ":parameter/")
     )
     error_message = "The grouped scale-set SSM policy must read the module-managed AMI parameter."
   }
