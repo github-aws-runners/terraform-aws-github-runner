@@ -37,7 +37,7 @@ variables {
       runtime                        = "nodejs24.x"
       memory_size                    = 256
       timeout                        = 30
-      reserved_concurrent_executions = 1
+      reserved_concurrent_executions = null
       environment_variables = {
         CUSTOM_ENV         = "preserved"
         RUNNER_NAME_PREFIX = "caller-prefix-"
@@ -166,7 +166,7 @@ run "preserves_nested_job_retry_configuration" {
       toset(keys(output.lambda)) == toset(["function", "log_group", "role"])
       && output.lambda.function.s3_bucket == "lambda-artifacts"
       && output.lambda.function.s3_key == "job-retry.zip"
-      && output.lambda.function.reserved_concurrent_executions == 1
+      && output.lambda.function.reserved_concurrent_executions == null
     )
     error_message = "The nested Lambda configuration and direct resource output contract must be preserved."
   }
@@ -245,7 +245,7 @@ run "does_not_enable_partial_vpc_configuration" {
         runtime                        = "nodejs24.x"
         memory_size                    = 256
         timeout                        = 30
-        reserved_concurrent_executions = 1
+        reserved_concurrent_executions = 4
         environment_variables          = {}
         vpc = {
           security_group_ids = []
@@ -330,6 +330,11 @@ run "does_not_enable_partial_vpc_configuration" {
       ]) == 0
     )
     error_message = "Partial VPC inputs must stay disabled and a null KMS key must omit the KMS statement entirely."
+  }
+
+  assert {
+    condition     = output.lambda.function.reserved_concurrent_executions == 4
+    error_message = "An explicit job-retry Lambda concurrency limit must reach the Lambda resource."
   }
 }
 
