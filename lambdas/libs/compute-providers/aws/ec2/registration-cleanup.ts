@@ -13,6 +13,7 @@ export const provider: RegistrationCleanupProviderModule = {
       throw new Error('Invalid EC2 registration cleanup regions');
     }
     const sortedRegions = [...new Set(regions)].sort();
+    const clients = sortedRegions.map((region) => new EC2Client({ region }));
     return {
       scope: JSON.stringify(sortedRegions),
       resourceIdFromRunnerName(name) {
@@ -22,9 +23,9 @@ export const provider: RegistrationCleanupProviderModule = {
       },
       async exists(resourceId) {
         // No tag filters: stopped or retagged instances still protect registrations.
-        for (const region of sortedRegions) {
+        for (const client of clients) {
           for await (const page of paginateDescribeInstances(
-            { client: new EC2Client({ region }) },
+            { client },
             { Filters: [{ Name: 'instance-id', Values: [resourceId] }] },
           )) {
             for (const reservation of page.Reservations ?? []) {
