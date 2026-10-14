@@ -205,4 +205,81 @@ describe('multi-App installation clients', () => {
     await createRunnerInstallationClient('owner', 'Org', '', clients);
     expect(clients.size).toBe(1);
   });
+
+  it('isolates primary budgets and cooldowns between owners on a warm invocation', async () => {
+    mockGetCredentials.mockResolvedValue([
+      { appId: 1, privateKey: 'one' },
+      { appId: 2, privateKey: 'two' },
+    ]);
+    mockApps.getOrgInstallation.mockResolvedValue({ data: { id: 222 } });
+    const random = vi.spyOn(Math, 'random').mockReturnValue(0);
+    try {
+      await createRunnerInstallationClient('owner-a', 'Org', '');
+      mockHookAfter.mock.calls.at(-1)![1]({ headers: { 'x-ratelimit-remaining': '0' } });
+      createThrottleOptions(1, 'owner-a').onRateLimit(60, {
+        method: 'GET',
+        url: '/runners',
+      } as Required<EndpointDefaults>);
+      await createRunnerInstallationClient('owner-b', 'Org', '');
+      expect(mockCreateAppAuth).toHaveBeenLastCalledWith({ appId: 1, privateKey: 'one', installationId: 222 });
+      mockHookAfter.mock.calls.at(-1)![1]({ headers: { 'x-ratelimit-remaining': '4000' } });
+      await createRunnerInstallationClient('OWNER-A', 'Org', '');
+      expect(mockCreateAppAuth).toHaveBeenLastCalledWith({ appId: 2, privateKey: 'two', installationId: 222 });
+    } finally {
+      random.mockRestore();
+    }
+  });
+
+  it.each(['secondary', 'authentication', 'primary'])('recovers selection after %s expiry', async (kind) => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    mockGetCredentials.mockResolvedValue([
+      { appId: 1, privateKey: 'one' },
+      { appId: 2, privateKey: 'two' },
+    ]);
+    mockApps.getOrgInstallation.mockResolvedValue({ data: { id: 222 } });
+    const random = vi.spyOn(Math, 'random').mockReturnValue(0);
+    try {
+      await createRunnerInstallationClient('owner', 'Org', '');
+      mockHookAfter.mock.calls.at(-1)![1]({
+        headers: {
+          'x-ratelimit-remaining': kind === 'primary' ? '0' : '4000',
+          'x-ratelimit-reset': String(Math.floor(Date.now() / 1000) + (kind === 'primary' ? 60 : 3600)),
+        },
+      });
+      if (kind === 'secondary')
+        createThrottleOptions(1, 'owner').onSecondaryRateLimit(60, {
+          method: 'GET',
+          url: '/runners',
+        } as Required<EndpointDefaults>);
+      if (kind === 'authentication') {
+        await createRunnerInstallationClient('owner', 'Org', '');
+        mockHookAfter.mock.calls.at(-1)![1]({
+          headers: {
+            'x-ratelimit-remaining': '3000',
+            'x-ratelimit-reset': String(Math.floor(Date.now() / 1000) + 3600),
+          },
+        });
+        mockApps.getOrgInstallation.mockRejectedValueOnce(new Error('temporary failure'));
+      }
+      if (kind !== 'authentication') random.mockReturnValue(0.99);
+      await createRunnerInstallationClient('owner', 'Org', '');
+      mockHookAfter.mock.calls.at(-1)![1]({
+        headers: {
+          'x-ratelimit-remaining': '3000',
+          'x-ratelimit-reset': String(Math.floor(Date.now() / 1000) + 3600),
+        },
+      });
+      random.mockReturnValue(0);
+      if (kind !== 'primary') {
+        await createRunnerInstallationClient('owner', 'Org', '');
+        expect(mockCreateAppAuth).toHaveBeenLastCalledWith({ appId: 2, privateKey: 'two', installationId: 222 });
+      }
+      vi.setSystemTime(Date.now() + 61000);
+      await createRunnerInstallationClient('owner', 'Org', '');
+      expect(mockCreateAppAuth).toHaveBeenLastCalledWith({ appId: 1, privateKey: 'one', installationId: 222 });
+    } finally {
+      random.mockRestore();
+      vi.useRealTimers();
+    }
+  });
 });

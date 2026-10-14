@@ -10,34 +10,58 @@ const logger = createChildLogger('github-app-client');
 
 let appCredentialsPromise: Promise<GitHubAppCredential[]> | undefined;
 
-const appBudgets = new Map<number, { remaining: number; cooldownUntil: number }>();
+const appBudgets = new Map<string, { remaining: number; resetAt: number }>();
+const cooldowns = new Map<string, number>();
 
-function coolDown(appId?: number): void {
-  if (appId !== undefined) appBudgets.set(appId, { remaining: 0, cooldownUntil: Date.now() + 60000 });
+function appKey(appId: number, endpoint: string): string {
+  return JSON.stringify([endpoint, appId]);
 }
 
-function selectCredential(credentials: GitHubAppCredential[]): GitHubAppCredential {
+function budgetKey(appId: number, endpoint: string, owner: string): string {
+  return JSON.stringify([endpoint, appId, owner.split('/')[0].toLowerCase()]);
+}
+
+function budget(key: string) {
+  const observed = appBudgets.get(key);
+  if (observed && observed.resetAt <= Date.now()) {
+    appBudgets.delete(key);
+    return undefined;
+  }
+  return observed;
+}
+
+function coolDown(key: string, retryAfter = 60): void {
+  cooldowns.set(key, Date.now() + Math.max(60, retryAfter) * 1000);
+}
+
+function selectCredential(credentials: GitHubAppCredential[], owner: string, endpoint: string): GitHubAppCredential {
   const offset = Math.floor(Math.random() * credentials.length);
   const rotated = [...credentials.slice(offset), ...credentials.slice(0, offset)];
-  const available = rotated.filter(
-    (credential) => (appBudgets.get(credential.appId)?.cooldownUntil ?? 0) <= Date.now(),
-  );
+  const available = rotated.filter((credential) => {
+    const key = budgetKey(credential.appId, endpoint, owner);
+    return (
+      (cooldowns.get(key) ?? 0) <= Date.now() &&
+      (cooldowns.get(appKey(credential.appId, endpoint)) ?? 0) <= Date.now() &&
+      budget(key)?.remaining !== 0
+    );
+  });
   return (available.length ? available : rotated).reduce((best, credential) =>
-    (appBudgets.get(credential.appId)?.remaining ?? Infinity) > (appBudgets.get(best.appId)?.remaining ?? Infinity)
+    (budget(budgetKey(credential.appId, endpoint, owner))?.remaining ?? Infinity) >
+    (budget(budgetKey(best.appId, endpoint, owner))?.remaining ?? Infinity)
       ? credential
       : best,
   );
 }
 
-export function createThrottleOptions(appId?: number) {
+export function createThrottleOptions(appId?: number, owner = '', endpoint = '') {
   return {
-    onRateLimit: (_retryAfter: number, options: Required<EndpointDefaults>) => {
-      coolDown(appId);
+    onRateLimit: (retryAfter: number, options: Required<EndpointDefaults>) => {
+      if (appId !== undefined) coolDown(budgetKey(appId, endpoint, owner), retryAfter);
       logger.warn(`Rate limit hit for ${options.method} ${options.url}`);
       return false;
     },
-    onSecondaryRateLimit: (_retryAfter: number, options: Required<EndpointDefaults>) => {
-      coolDown(appId);
+    onSecondaryRateLimit: (retryAfter: number, options: Required<EndpointDefaults>) => {
+      if (appId !== undefined) coolDown(appKey(appId, endpoint), retryAfter);
       logger.warn(`Secondary rate limit hit for ${options.method} ${options.url}`);
       return false;
     },
@@ -65,9 +89,10 @@ function getAppCredentials(): Promise<GitHubAppCredential[]> {
 export function resetAppCredentialsCache(): void {
   appCredentialsPromise = undefined;
   appBudgets.clear();
+  cooldowns.clear();
 }
 
-function createOctokitInstance(token: string, ghesApiUrl: string, appId?: number): Octokit {
+function createOctokitInstance(token: string, ghesApiUrl: string, appId?: number, owner = ''): Octokit {
   const CustomOctokit = Octokit.plugin(throttling);
   const octokitOptions: ConstructorParameters<typeof Octokit>[0] = {
     auth: token,
@@ -78,15 +103,16 @@ function createOctokitInstance(token: string, ghesApiUrl: string, appId?: number
   const client = new CustomOctokit({
     ...octokitOptions,
     userAgent: 'github-aws-runners-termination-watcher',
-    throttle: createThrottleOptions(appId),
+    throttle: createThrottleOptions(appId, owner, ghesApiUrl),
   });
   if (appId !== undefined)
     client.hook.after('request', (response) => {
       const remaining = Number.parseInt(String(response.headers['x-ratelimit-remaining']), 10);
+      const resetAt = Number(response.headers['x-ratelimit-reset']) * 1000;
       if (Number.isFinite(remaining))
-        appBudgets.set(appId, {
+        appBudgets.set(budgetKey(appId, ghesApiUrl, owner), {
           remaining,
-          cooldownUntil: remaining === 0 ? Date.now() + 60000 : 0,
+          resetAt: Number.isFinite(resetAt) && resetAt > 0 ? resetAt : Date.now() + 60000,
         });
     });
   return client;
@@ -142,7 +168,7 @@ async function createInstallationClient(
   }
   const auth = createAppAuth(authOptions);
   const installationAuth = await auth({ type: 'installation' });
-  return createOctokitInstance(installationAuth.token, ghesApiUrl, appId);
+  return createOctokitInstance(installationAuth.token, ghesApiUrl, appId, owner);
 }
 
 /** Kept by the caller for one invocation; never stores scan progress. */
@@ -156,7 +182,7 @@ export async function createRunnerInstallationClient(
 ): Promise<Octokit> {
   const remaining = [...(await getAppCredentials())];
   while (remaining.length) {
-    const credential = selectCredential(remaining);
+    const credential = selectCredential(remaining, owner, ghesApiUrl);
     remaining.splice(remaining.indexOf(credential), 1);
     // Select against current quota before consulting the cache, so a reused
     // client never pins a batch to an exhausted or cooling-down App.
@@ -169,7 +195,7 @@ export async function createRunnerInstallationClient(
       clients?.set(key, client);
       return client;
     } catch (error) {
-      coolDown(credential.appId);
+      coolDown(budgetKey(credential.appId, ghesApiUrl, owner));
       if (!remaining.length) throw error;
       logger.warn('GitHub App authentication failed; trying another configured app', { appId: credential.appId });
     }
