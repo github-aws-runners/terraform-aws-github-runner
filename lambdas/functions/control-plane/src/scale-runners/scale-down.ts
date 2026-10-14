@@ -116,6 +116,12 @@ function hasGitHubRunnerId(runner: RunnerInfo): boolean {
   return /^[1-9]\d*$/.test(runner.githubRunnerId ?? '') && Number.isSafeInteger(Number(runner.githubRunnerId));
 }
 
+function matchesRunner(runner: RunnerInfo, registered: { id: number; name: string }): boolean {
+  if (hasGitHubRunnerId(runner)) return registered.id === Number(runner.githubRunnerId);
+  if (runner.githubRunnerName !== undefined) return registered.name === runner.githubRunnerName;
+  return registered.name.endsWith(runner.id);
+}
+
 class UnverifiableRunnerError extends Error {}
 
 async function listGitHubRunners(runner: RunnerInfo, computeProvider: ScaleDownComputeProvider): Promise<GhRunners> {
@@ -137,7 +143,9 @@ async function listGitHubRunners(runner: RunnerInfo, computeProvider: ScaleDownC
           };
     const method =
       runner.type === 'Org' ? client.actions.listSelfHostedRunnersForOrg : client.actions.listSelfHostedRunnersForRepo;
-    const matches = await client.paginate(method, { ...owner, name: runner.githubRunnerName, per_page: 100 });
+    const matches = (await client.paginate(method, { ...owner, name: runner.githubRunnerName, per_page: 100 })).filter(
+      (registered) => registered.name === runner.githubRunnerName,
+    );
     if (matches.length > 0) return matches;
     // Custom start scripts may register another name. A filtered miss alone
     // cannot prove that this instance has no live (possibly busy) registration.
@@ -285,6 +293,15 @@ async function removeRunner(
       if (!(await idleConfirmed(runner, computeProvider))) {
         return;
       }
+      if (computeProvider.listPage && !hasGitHubRunnerId(runner)) {
+        if (!computeProvider.setGitHubRunnerId || ghRunnerIds.length !== 1) {
+          throw new UnverifiableRunnerError(
+            `Runner '${runner.id}' cannot persist its verified GitHub identity; retaining instance`,
+          );
+        }
+        await computeProvider.setGitHubRunnerId(runner.id, String(ghRunnerIds[0]));
+        runner.githubRunnerId = String(ghRunnerIds[0]);
+      }
       const results = await Promise.all(
         ghRunnerIds.map((ghRunnerId) => deleteGitHubRunner(githubInstallationClient, runner, ghRunnerId)),
       );
@@ -342,7 +359,7 @@ async function evaluateAndRemoveRunners(
           continue;
         }
         const ghRunners = await listGitHubRunners(runner, computeProvider);
-        const ghRunnersFiltered = ghRunners.filter((ghRunner: { name: string }) => ghRunner.name.endsWith(runner.id));
+        const ghRunnersFiltered = ghRunners.filter((ghRunner) => matchesRunner(runner, ghRunner));
         logger.debug(`Found: '${ghRunnersFiltered.length}' GitHub runners for runner: '${runner.id}'`);
         logger.debug(`GitHub runners for runner: '${runner.id}': ${JSON.stringify(ghRunnersFiltered)}`);
         if (ghRunnersFiltered.length) {
@@ -447,7 +464,7 @@ async function terminateOrphan(
       // registration ID back to the compute provider failed. Check GitHub again.
       const isOrphan = hasGitHubRunnerId(runner)
         ? await lastChanceCheckOrphanRunner(runner)
-        : !(await listGitHubRunners(runner, computeProvider)).some((registered) => registered.name.endsWith(runner.id));
+        : !(await listGitHubRunners(runner, computeProvider)).some((registered) => matchesRunner(runner, registered));
       if (isOrphan) {
         logger.info(`Terminating orphan runner '${runner.id}'.`);
         await computeProvider.terminate(runner.id);
