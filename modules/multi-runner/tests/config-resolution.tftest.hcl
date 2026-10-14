@@ -654,6 +654,14 @@ run "scale_set_only_lane_omits_webhook_queues" {
     )
     error_message = "A scale-set-only lane must not create or access webhook SQS resources."
   }
+
+  assert {
+    condition = format(
+      "%s/ami_id",
+      local.resolved_config.multi_runner_config["scale"].compute_provider.aws.ec2.ami.ssm_parameter.path,
+    ) == "/github-action-runners/test/scale/runners/config/ami_id"
+    error_message = "A multi-runner v2 EC2 lane without an explicit AMI must create its managed AMI parameter under the global prefix and runner entry key."
+  }
 }
 
 run "mixed_webhook_and_scale_set_lanes_create_webhook_queues_only_for_webhook" {
