@@ -31,6 +31,7 @@ resource "aws_lambda_function" "pool" {
       DISABLE_RUNNER_AUTOUPDATE                = var.config.runner.disable_runner_autoupdate
       ENABLE_EPHEMERAL_RUNNERS                 = var.config.runner.ephemeral
       ENABLE_JIT_CONFIG                        = var.config.runner.enable_jit_config
+      ENABLE_METRIC_GITHUB_APP_RATE_LIMIT      = var.metrics.enable && var.metrics.metric.enable_github_app_rate_limit
       ENVIRONMENT                              = var.config.prefix
       GHES_URL                                 = var.config.ghes.url
       USER_AGENT                               = var.config.user_agent
@@ -46,6 +47,7 @@ resource "aws_lambda_function" "pool" {
       PARAMETER_GITHUB_APP_KEY_BASE64_NAME     = var.config.github_app_parameters.key_base64.name
       PARAMETER_GITHUB_APPS_MANIFEST_NAME      = var.config.github_app_parameters.additional_apps_manifest != null ? var.config.github_app_parameters.additional_apps_manifest.name : ""
       POWERTOOLS_LOGGER_LOG_EVENT              = var.config.lambda.log_level == "debug" ? "true" : "false"
+      POWERTOOLS_METRICS_NAMESPACE             = var.metrics.namespace
       RUNNER_BOOT_TIME_IN_MINUTES              = var.config.runner.boot_time_in_minutes
       RUNNER_LABELS                            = lower(join(",", var.config.runner.labels))
       RUNNER_GROUP_NAME                        = var.config.runner.group_name

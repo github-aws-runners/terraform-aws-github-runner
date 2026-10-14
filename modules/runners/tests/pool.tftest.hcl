@@ -105,3 +105,41 @@ run "reject_non_positive_token_ttl" {
   }
   expect_failures = [var.ssm_ttl_seconds]
 }
+
+run "every_github_client_lambda_records_the_app_rate_limit" {
+  command = plan
+  variables {
+    metrics   = { enable = true, namespace = "RateLimitTest" }
+    job_retry = { enable = true }
+  }
+  assert {
+    condition = alltrue([
+      for variables in [
+        aws_lambda_function.scale_up.environment[0].variables,
+        aws_lambda_function.scale_down.environment[0].variables,
+        module.pool[0].lambda.environment[0].variables,
+        module.job_retry[0].lambda.function.function.environment[0].variables,
+      ] : variables["ENABLE_METRIC_GITHUB_APP_RATE_LIMIT"] == "true" && variables["POWERTOOLS_METRICS_NAMESPACE"] == "RateLimitTest"
+    ])
+    error_message = "Every Lambda that builds the GitHub client (scale-up, scale-down, pool, job retry) must enable the GitHub App rate limit metric in the configured namespace."
+  }
+}
+
+run "github_app_rate_limit_metric_follows_the_switch" {
+  command = plan
+  variables {
+    metrics   = { enable = true, metric = { enable_github_app_rate_limit = false } }
+    job_retry = { enable = true }
+  }
+  assert {
+    condition = alltrue([
+      for variables in [
+        aws_lambda_function.scale_up.environment[0].variables,
+        aws_lambda_function.scale_down.environment[0].variables,
+        module.pool[0].lambda.environment[0].variables,
+        module.job_retry[0].lambda.function.function.environment[0].variables,
+      ] : variables["ENABLE_METRIC_GITHUB_APP_RATE_LIMIT"] == "false"
+    ])
+    error_message = "Disabling the GitHub App rate limit metric must disable it in every Lambda that builds the GitHub client."
+  }
+}
