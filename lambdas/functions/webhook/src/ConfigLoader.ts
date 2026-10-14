@@ -17,7 +17,7 @@ abstract class BaseConfig {
 
   static async load<T extends BaseConfig>(): Promise<T> {
     if (!this.instance) {
-      // Cache only a successful load, so a failed load is retried on the next call.
+      // Cache only a successful load.
       const instance = new (this as unknown as { new (): T })();
       await instance.loadConfig();
 
