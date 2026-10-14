@@ -359,6 +359,49 @@ describe('Scale down runners', () => {
     }
   });
 
+  it.each(['identity', 'busy', 'persist', 'delete', 'orphan-absent', 'orphan-present'])(
+    'stops new cleanup operations when %s consumes the deadline reserve',
+    async (stage) => {
+      let remaining = 11000;
+      const runner = createRunnerTestData('deadline', 'Org', 60, true, false, true);
+      runner.githubRunnerName = 'build-worker';
+      runner.githubRunnerId = undefined;
+      runner.orphan = stage.startsWith('orphan');
+      if (stage === 'orphan-absent') runner.githubRunnerId = '42';
+      const registered = { id: 42, name: 'build-worker', busy: false, status: 'online' };
+      mockOctokit.paginate.mockImplementation(async () => {
+        if (stage === 'identity' || stage === 'orphan-present') remaining = 9000;
+        return [registered];
+      });
+      mockOctokit.actions.getSelfHostedRunnerForOrg.mockImplementation(async () => {
+        if (stage === 'busy' || stage === 'orphan-absent') remaining = 9000;
+        if (stage === 'orphan-absent')
+          throw new RequestError('missing', 404, {
+            request: { method: 'GET', url: 'https://api.github.com/test', headers: {} },
+          });
+        return { data: registered };
+      });
+      const persist = vi.fn(async () => {
+        if (stage === 'persist') remaining = 9000;
+      });
+      mockOctokit.actions.deleteSelfHostedRunnerFromOrg.mockImplementation(async () => {
+        if (stage === 'delete') remaining = 9000;
+        return { status: 204 };
+      });
+      mockedResolveCapability.mockReturnValue(() => ({
+        ...mockComputeProvider,
+        setGitHubRunnerId: persist,
+        listPage: vi.fn().mockResolvedValue({ runners: [runner] }),
+      }));
+      await scaleDown(() => remaining);
+      expect(mockTerminateRunners).not.toHaveBeenCalled();
+      expect(mockUnmarkOrphan).not.toHaveBeenCalled();
+      expect(mockMarkOrphan).not.toHaveBeenCalled();
+      if (stage !== 'delete') expect(mockOctokit.actions.deleteSelfHostedRunnerFromOrg).not.toHaveBeenCalled();
+      if (stage === 'identity' || stage === 'busy') expect(persist).not.toHaveBeenCalled();
+    },
+  );
+
   it('retains paged EC2 records without a trusted identity across sweeps', async () => {
     const runner = createRunnerTestData('untrusted-prefix', 'Org', 60, false, false, false);
     delete runner.githubRunnerName;
