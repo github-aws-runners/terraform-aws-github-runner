@@ -34,6 +34,7 @@ vi.mock('../github/auth', () => ({
 }));
 
 const mockOctokit = {
+  hook: { wrap: vi.fn() },
   apps: {
     getOrgInstallation: vi.fn(),
     getRepoInstallation: vi.fn(),
@@ -401,6 +402,64 @@ describe('Scale down runners', () => {
       if (stage === 'identity' || stage === 'busy') expect(persist).not.toHaveBeenCalled();
     },
   );
+
+  it.each([false, true])(
+    'does not verify registrations after authentication consumes the reserve (orphan: %s)',
+    async (orphan) => {
+      let remaining = 11000;
+      const runner = createRunnerTestData('auth-deadline', 'Org', 60, true, false, true);
+      runner.githubRunnerId = '42';
+      runner.orphan = orphan;
+      mockedInstallationAuth.mockImplementationOnce(async () => {
+        remaining = 9000;
+        return { token: 'token' } as never;
+      });
+      mockedResolveCapability.mockReturnValue(() => ({
+        ...mockComputeProvider,
+        listPage: vi.fn().mockResolvedValue({ runners: [runner] }),
+      }));
+      await scaleDown(() => remaining);
+      expect(mockOctokit.actions.getSelfHostedRunnerForOrg).not.toHaveBeenCalled();
+      expect(mockTerminateRunners).not.toHaveBeenCalled();
+      expect(mockMarkOrphan).not.toHaveBeenCalled();
+    },
+  );
+
+  it('guards every pagination request and never caches incomplete verification', async () => {
+    let remaining = 11000;
+    const runner = createRunnerTestData('paged-deadline', 'Org', 60, true, false, true);
+    delete runner.githubRunnerId;
+    delete runner.githubRunnerName;
+    mockListRunners.mockResolvedValueOnce([]).mockResolvedValueOnce([runner]);
+    const request = vi.fn(async () => {
+      remaining = 9000;
+      return {};
+    });
+    mockOctokit.paginate.mockImplementationOnce(async () => {
+      const guard = mockOctokit.hook.wrap.mock.calls.at(-1)![1];
+      await guard(request, {});
+      await guard(request, {});
+      return [];
+    });
+    await scaleDown(() => remaining);
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(githubCache.runners.size).toBe(0);
+    expect(mockMarkOrphan).not.toHaveBeenCalled();
+    expect(mockTerminateRunners).not.toHaveBeenCalled();
+    expect(mockListRunners).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([0, 1, 2])('stops legacy inventory listings after phase %s exhausts the reserve', async (phase) => {
+    let remaining = phase === 0 ? 9000 : 11000;
+    const runner = createRunnerTestData('legacy-deadline', 'Org', 60, true, false, true);
+    mockListRunners.mockImplementation(async () => {
+      if (mockListRunners.mock.calls.length === phase) remaining = 9000;
+      return phase === 2 && mockListRunners.mock.calls.length === 2 ? [runner] : [];
+    });
+    await scaleDown(() => remaining);
+    expect(mockListRunners).toHaveBeenCalledTimes(phase);
+    expect(mockTerminateRunners).not.toHaveBeenCalled();
+  });
 
   it('retains paged EC2 records without a trusted identity across sweeps', async () => {
     const runner = createRunnerTestData('untrusted-prefix', 'Org', 60, false, false, false);
