@@ -51,6 +51,7 @@ const mockOctokit = {
 
 const mockComputeProvider = {
   list: vi.fn(),
+  setGitHubRunnerId: vi.fn(),
   bootTimeExceeded: vi.fn(),
   markOrphan: vi.fn(),
   unmarkOrphan: vi.fn(),
@@ -290,6 +291,72 @@ describe('Scale down runners', () => {
       expect.not.objectContaining({ name: expect.anything() }),
     );
     expect(mockTerminateRunners).toHaveBeenCalledWith(runner.id);
+  });
+
+  it.each(['id', 'name'] as const)('preserves a busy custom-name paged runner verified by %s', async (identity) => {
+    const runner = createRunnerTestData('vm-123', 'Org', 60, true, true, false);
+    runner.githubRunnerName = 'build-worker';
+    runner.githubRunnerId = identity === 'id' ? '42' : undefined;
+    const registered = { id: 42, name: 'build-worker', status: 'online', busy: true };
+    mockOctokit.paginate.mockResolvedValue([registered]);
+    mockOctokit.actions.getSelfHostedRunnerForOrg.mockResolvedValue({ data: registered });
+    mockedResolveCapability.mockReturnValue(() => ({
+      ...mockComputeProvider,
+      listPage: vi.fn().mockResolvedValue({ runners: [runner] }),
+    }));
+    await scaleDown();
+    runner.orphan = true;
+    await scaleDown();
+    expect(mockMarkOrphan).not.toHaveBeenCalled();
+    expect(mockTerminateRunners).not.toHaveBeenCalled();
+    expect(mockUnmarkOrphan).toHaveBeenCalledWith(runner.id);
+  });
+
+  it.each([false, true])('persists a name-verified identity before deletion (persistence fails: %s)', async (fails) => {
+    const runner = createRunnerTestData('vm-123', 'Org', 60, true, false, true);
+    runner.githubRunnerName = 'build-worker';
+    delete runner.githubRunnerId;
+    let storedId: string | undefined;
+    let registered = true;
+    let orphan = false;
+    const setGitHubRunnerId = vi.fn(async (_id: string, value: string) => {
+      if (fails) throw new Error('tag failed');
+      storedId = value;
+    });
+    mockMarkOrphan.mockImplementation(async () => {
+      orphan = true;
+    });
+    mockOctokit.paginate.mockResolvedValue([{ id: 42, name: 'build-worker', busy: false, status: 'online' }]);
+    mockOctokit.actions.getSelfHostedRunnerForOrg.mockImplementation(async () => {
+      if (!registered)
+        throw new RequestError('missing', 404, {
+          request: { method: 'GET', url: 'https://api.github.com/test', headers: {} },
+        });
+      return { data: { id: 42, name: 'build-worker', busy: false, status: 'online' } };
+    });
+    mockOctokit.actions.deleteSelfHostedRunnerFromOrg.mockImplementation(async () => {
+      expect(storedId).toBe('42');
+      registered = false;
+      return { status: 204 };
+    });
+    if (!fails)
+      mockTerminateRunners.mockRejectedValueOnce(new Error('termination failed')).mockResolvedValue(undefined);
+    mockedResolveCapability.mockReturnValue(() => ({
+      ...mockComputeProvider,
+      setGitHubRunnerId,
+      listPage: vi.fn(async () => ({ runners: [{ ...runner, githubRunnerId: storedId, orphan }] })),
+    }));
+    await scaleDown();
+    if (fails) {
+      expect(mockOctokit.actions.deleteSelfHostedRunnerFromOrg).not.toHaveBeenCalled();
+      expect(mockTerminateRunners).not.toHaveBeenCalled();
+    } else {
+      expect(storedId).toBe('42');
+      await scaleDown();
+      await scaleDown();
+      expect(mockTerminateRunners).toHaveBeenCalledTimes(2);
+      expect(mockOctokit.actions.deleteSelfHostedRunnerFromOrg).toHaveBeenCalledTimes(1);
+    }
   });
 
   it('retains paged EC2 records without a trusted identity across sweeps', async () => {

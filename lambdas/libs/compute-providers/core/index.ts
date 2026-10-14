@@ -111,6 +111,8 @@ export interface ScaleDownComputeProvider extends ComputeProvider {
   /** Bounded inventory page; tokens are local to an invocation. Supply a GitHub ID or trusted complete name for cleanup. */
   listPage?(environment: string, nextToken?: string): Promise<{ runners: RunnerInfo[]; nextToken?: string }>;
 
+  /** Persist a verified registration ID so cleanup can recover after partial removal. */
+  setGitHubRunnerId?(id: string, githubRunnerId: string): Promise<void>;
   bootTimeExceeded(runner: RunnerInfo): boolean;
   markOrphan(id: string): Promise<void>;
   unmarkOrphan(id: string): Promise<void>;
