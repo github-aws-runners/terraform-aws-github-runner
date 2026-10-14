@@ -316,6 +316,22 @@ run "owns_webhook_control_plane" {
   }
 }
 
+run "every_github_client_lambda_records_the_app_rate_limit" {
+  command = plan
+
+  assert {
+    condition = alltrue([
+      for variables in [
+        output.scale_up.lambda.environment[0].variables,
+        output.scale_down.lambda.environment[0].variables,
+        output.pool.lambda.environment[0].variables,
+        output.job_retry.lambda.function.environment[0].variables,
+      ] : variables["ENABLE_METRIC_GITHUB_APP_RATE_LIMIT"] == "true" && variables["POWERTOOLS_METRICS_NAMESPACE"] == "WebhookTest"
+    ])
+    error_message = "Every Lambda that builds the GitHub client (scale-up, scale-down, pool, job retry) must enable the GitHub App rate limit metric in the configured namespace."
+  }
+}
+
 run "rejects_conflicting_artifact_sources" {
   command = plan
 

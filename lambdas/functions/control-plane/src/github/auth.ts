@@ -1,6 +1,6 @@
 import { createAppAuth, type AppAuthentication, type InstallationAccessTokenAuthentication } from '@octokit/auth-app';
 import type { OctokitOptions, Octokit as CoreOctokit } from '@octokit/core';
-import type { RequestInterface } from '@octokit/types';
+import type { RequestInterface, ResponseHeaders } from '@octokit/types';
 import { createSign, randomUUID } from 'node:crypto';
 import { request } from '@octokit/request';
 import { Octokit } from '@octokit/rest';
@@ -13,6 +13,7 @@ import {
   type GitHubAppCredentialsStore,
 } from '@aws-github-runner/storage-providers';
 import { EndpointDefaults } from '@octokit/types';
+import { metricGitHubAppRateLimit } from './rate-limit';
 
 type AppAuthOptions = { type: 'app' };
 type InstallationAuthOptions = { type: 'installation'; installationId?: number };
@@ -158,9 +159,40 @@ export async function getAppId(appIndex = 0, credentialsStore?: GitHubAppCredent
   return credential.appId.toString();
 }
 
+// Records the rate limit headers of every GitHub reply the client receives, failed
+// replies included. Applied before the retry and throttling plugins so each
+// attempt and each page is recorded, not only the final result of a call.
+// Replies to an app (JWT) token are skipped: they report the app's own limit,
+// not the installation limit the metric and the app selector track.
+export function rateLimitMetric(octokit: CoreOctokit, options: OctokitOptions): void {
+  const appIndex = options.appIndex as number | undefined;
+  let installationToken: Promise<boolean> | undefined;
+  // The hooks do not await the record, so a failure here must be caught here:
+  // an escaped rejection would crash the process, and a metric must never fail a request.
+  const record = async (headers: ResponseHeaders) => {
+    try {
+      installationToken ??= Promise.resolve(octokit.auth()).then(
+        (auth) => (auth as { tokenType?: string }).tokenType !== 'app',
+      );
+      if (await installationToken) await metricGitHubAppRateLimit(headers, appIndex);
+    } catch (e) {
+      installationToken = undefined;
+      logger.warn('Failed to record the GitHub App rate limit metric', { error: e as Error });
+    }
+  };
+  octokit.hook.after('request', (response) => {
+    void record(response.headers);
+  });
+  octokit.hook.error('request', (error) => {
+    const headers = (error as { response?: { headers?: ResponseHeaders } }).response?.headers;
+    if (headers) void record(headers);
+    throw error;
+  });
+}
+
 export async function createOctokitClient(token: string, ghesApiUrl = '', appIndex?: number): Promise<Octokit> {
-  const CustomOctokit = Octokit.plugin(retry, throttling);
-  const octokitOptions: OctokitOptions = { auth: token };
+  const CustomOctokit = Octokit.plugin(rateLimitMetric, retry, throttling);
+  const octokitOptions: OctokitOptions = { auth: token, appIndex };
   if (ghesApiUrl) {
     octokitOptions.baseUrl = ghesApiUrl;
     octokitOptions.previews = ['antiope'];

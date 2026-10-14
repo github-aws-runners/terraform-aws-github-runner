@@ -50,6 +50,7 @@ module "pool" {
 
   aws_partition  = var.aws_partition
   tracing_config = local.resolved_config.observability.tracing
+  metrics        = local.resolved_config.observability.metrics
   storage_provider = merge(
     {
       aws = {

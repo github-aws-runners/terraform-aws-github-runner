@@ -256,7 +256,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
       if (enableJobQueuedCheck) {
         let jobQueued = true;
         try {
-          jobQueued = await isJobQueued(githubInstallationClient, message, appIdx);
+          jobQueued = await isJobQueued(githubInstallationClient, message);
         } catch (e) {
           // An unsupported event type is not a transient fault — the check can never
           // succeed for it, so lets skip

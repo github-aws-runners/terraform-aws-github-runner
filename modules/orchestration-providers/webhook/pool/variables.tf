@@ -171,3 +171,23 @@ variable "tracing_config" {
   })
   default = {}
 }
+
+variable "metrics" {
+  description = <<-EOF
+    Metrics configuration for the pool Lambda. The pool Lambda calls the GitHub API like scale-up, so it records the same GitHub App rate limit metric.
+
+    - `enabled`: Whether the module's metrics are enabled.
+    - `namespace`: CloudWatch namespace for the metrics.
+    - `metric.github_app_rate_limit.enabled`: Whether the GitHub App rate limit metric is recorded.
+  EOF
+  type = object({
+    enabled   = bool
+    namespace = string
+    metric = object({
+      github_app_rate_limit = object({
+        enabled = bool
+      })
+    })
+  })
+  nullable = false
+}

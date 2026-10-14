@@ -10,12 +10,14 @@ locals {
     DISABLE_RUNNER_AUTOUPDATE                = var.config.runner.disable_runner_autoupdate
     ENABLE_EPHEMERAL_RUNNERS                 = var.config.runner.ephemeral
     ENABLE_JIT_CONFIG                        = var.config.runner.enable_jit_config
+    ENABLE_METRIC_GITHUB_APP_RATE_LIMIT      = var.metrics.enabled && var.metrics.metric.github_app_rate_limit.enabled
     ENVIRONMENT                              = var.config.prefix
     GHES_URL                                 = var.config.ghes.url
     USER_AGENT                               = var.config.user_agent
     LOG_LEVEL                                = upper(var.config.lambda.log_level)
     NODE_TLS_REJECT_UNAUTHORIZED             = var.config.ghes.url != null && !var.config.ghes.ssl_verify ? 0 : 1
     POWERTOOLS_LOGGER_LOG_EVENT              = var.config.lambda.log_level == "debug" ? "true" : "false"
+    POWERTOOLS_METRICS_NAMESPACE             = var.metrics.namespace
     RUNNER_LABELS                            = lower(join(",", var.config.runner.labels))
     RUNNER_GROUP_NAME                        = var.config.runner.group_name
     RUNNER_NAME_PREFIX                       = var.config.runner.name_prefix

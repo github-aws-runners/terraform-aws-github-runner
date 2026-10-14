@@ -122,6 +122,16 @@ variables {
     managed_policy_arn     = "arn:aws:iam::123456789012:policy/microvm-pool"
   }
 
+  metrics = {
+    enabled   = true
+    namespace = "PoolTest"
+    metric = {
+      github_app_rate_limit = {
+        enabled = true
+      }
+    }
+  }
+
   tracing_config = {
     mode                  = "Active"
     capture_http_requests = true
@@ -165,6 +175,14 @@ run "provider_supplies_only_compute_specific_pool_configuration" {
       && contains(data.aws_iam_policy_document.pool_common.statement[2].resources, "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/additional-apps-manifest")
     )
     error_message = "Pool must receive the new GitHub App parameter format and grant access to every corresponding SSM ARN."
+  }
+
+  assert {
+    condition = (
+      aws_lambda_function.pool.environment[0].variables["ENABLE_METRIC_GITHUB_APP_RATE_LIMIT"] == "true"
+      && aws_lambda_function.pool.environment[0].variables["POWERTOOLS_METRICS_NAMESPACE"] == "PoolTest"
+    )
+    error_message = "The pool Lambda builds the GitHub client, so it must record the GitHub App rate limit metric in the configured namespace."
   }
 
   assert {

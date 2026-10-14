@@ -70,4 +70,5 @@ module "pool" {
 
   aws_partition  = var.aws_partition
   tracing_config = var.tracing_config
+  metrics        = var.metrics
 }
