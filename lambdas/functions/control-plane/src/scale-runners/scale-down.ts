@@ -25,7 +25,21 @@ type OrgRunnerList = Endpoints['GET /orgs/{org}/actions/runners']['response']['d
 type RepoRunnerList = Endpoints['GET /repos/{owner}/{repo}/actions/runners']['response']['data']['runners'];
 type RunnerState = OrgRunnerList[number] | RepoRunnerList[number];
 
-async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
+class VerificationDeadlineError extends Error {}
+
+function requireTime(remainingTime: () => number): void {
+  if (remainingTime() < 10000) throw new VerificationDeadlineError('Insufficient time to complete GitHub verification');
+}
+
+function guardRequests(client: Octokit, remainingTime: () => number): void {
+  client.hook.wrap('request', async (request, options) => {
+    requireTime(remainingTime);
+    return request(options);
+  });
+}
+
+async function getOrCreateOctokit(runner: RunnerInfo, remainingTime: () => number): Promise<Octokit> {
+  requireTime(remainingTime);
   const key = runner.owner;
   const cachedOctokit = githubCache.clients.get(key);
 
@@ -37,18 +51,23 @@ async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
   logger.debug(`[createGitHubClientForRunner] Cache miss for ${key}`);
   const { ghesApiUrl } = getGitHubEnterpriseApiUrl();
   const scope = installationScope(ghesApiUrl, runner.owner);
+  requireTime(remainingTime);
   const ghAuthPre = await createGithubAppAuth(undefined, ghesApiUrl, undefined, undefined, scope);
   const octokit = await withAppFailover(
     ghAuthPre.appIndex,
     async (appIdx) => {
+      requireTime(remainingTime);
       // Use the pre-configured installation ID when available (avoids an API call).
       let installationId = await getStoredInstallationId(appIdx);
       if (installationId === undefined) {
+        requireTime(remainingTime);
         const githubClientPre = await createOctokitClient(
           (appIdx === ghAuthPre.appIndex ? ghAuthPre : await createGithubAppAuth(undefined, ghesApiUrl, appIdx)).token,
           ghesApiUrl,
           appIdx,
         );
+        guardRequests(githubClientPre, remainingTime);
+        requireTime(remainingTime);
         installationId =
           runner.type === 'Org'
             ? (
@@ -63,8 +82,12 @@ async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
                 })
               ).data.id;
       }
+      requireTime(remainingTime);
       const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl, appIdx);
-      return await createOctokitClient(ghAuth.token, ghesApiUrl, appIdx);
+      requireTime(remainingTime);
+      const client = await createOctokitClient(ghAuth.token, ghesApiUrl, appIdx);
+      guardRequests(client, remainingTime);
+      return client;
     },
     undefined,
     scope,
@@ -124,11 +147,16 @@ function matchesRunner(runner: RunnerInfo, registered: { id: number; name: strin
 
 class UnverifiableRunnerError extends Error {}
 
-async function listGitHubRunners(runner: RunnerInfo, computeProvider: ScaleDownComputeProvider): Promise<GhRunners> {
+async function listGitHubRunners(
+  runner: RunnerInfo,
+  computeProvider: ScaleDownComputeProvider,
+  remainingTime: () => number,
+): Promise<GhRunners> {
   if (computeProvider.listPage && !hasGitHubRunnerId(runner) && runner.githubRunnerName === undefined) {
     throw new UnverifiableRunnerError(`Runner '${runner.id}' has no trusted GitHub identity; retaining instance`);
   }
-  const client = await getOrCreateOctokit(runner);
+  const client = await getOrCreateOctokit(runner, remainingTime);
+  requireTime(remainingTime);
   if (hasGitHubRunnerId(runner)) {
     const state = await getGitHubSelfHostedRunnerState(client, runner, Number(runner.githubRunnerId));
     return state ? [state] : [];
@@ -167,6 +195,7 @@ async function listGitHubRunners(runner: RunnerInfo, computeProvider: ScaleDownC
             repo: runner.owner.split('/')[1],
             per_page: 100,
           });
+    requireTime(remainingTime);
     githubCache.runners.set(key, runners);
     return runners;
   }
@@ -275,7 +304,7 @@ async function removeRunner(
   remainingTime = () => Infinity,
 ): Promise<void> {
   if (remainingTime() < 10000) return;
-  const githubInstallationClient = await getOrCreateOctokit(runner);
+  const githubInstallationClient = await getOrCreateOctokit(runner, remainingTime);
   if (remainingTime() < 10000) return;
   try {
     if (runner.bypassRemoval) {
@@ -365,7 +394,7 @@ async function evaluateAndRemoveRunners(
           logger.debug(`Runner '${runner.id}' has bypass-removal tag set, skipping evaluation.`);
           continue;
         }
-        const ghRunners = await listGitHubRunners(runner, computeProvider);
+        const ghRunners = await listGitHubRunners(runner, computeProvider, remainingTime);
         if (remainingTime() < 10000) return;
         const ghRunnersFiltered = ghRunners.filter((ghRunner) => matchesRunner(runner, ghRunner));
         logger.debug(`Found: '${ghRunnersFiltered.length}' GitHub runners for runner: '${runner.id}'`);
@@ -421,8 +450,9 @@ async function unMarkOrphan(id: string, computeProvider: ScaleDownComputeProvide
   }
 }
 
-async function lastChanceCheckOrphanRunner(runner: RunnerInfo): Promise<boolean> {
-  const client = await getOrCreateOctokit(runner);
+async function lastChanceCheckOrphanRunner(runner: RunnerInfo, remainingTime: () => number): Promise<boolean> {
+  const client = await getOrCreateOctokit(runner, remainingTime);
+  requireTime(remainingTime);
   const runnerId = parseInt(runner.githubRunnerId || '0');
   const state = await getGitHubSelfHostedRunnerState(client, runner, runnerId);
   let isOrphan = false;
@@ -472,8 +502,10 @@ async function terminateOrphan(
       // A runner can register after it was marked orphan, even if writing its
       // registration ID back to the compute provider failed. Check GitHub again.
       const isOrphan = hasGitHubRunnerId(runner)
-        ? await lastChanceCheckOrphanRunner(runner)
-        : !(await listGitHubRunners(runner, computeProvider)).some((registered) => matchesRunner(runner, registered));
+        ? await lastChanceCheckOrphanRunner(runner, remainingTime)
+        : !(await listGitHubRunners(runner, computeProvider, remainingTime)).some((registered) =>
+            matchesRunner(runner, registered),
+          );
       if (remainingTime() < 10000) return;
       if (isOrphan) {
         logger.info(`Terminating orphan runner '${runner.id}'.`);
@@ -586,10 +618,12 @@ export async function scaleDown(remainingTime = () => Infinity): Promise<void> {
     return;
   }
 
+  if (remainingTime() < 10000) return;
   // first runners marked to be orphan.
   await terminateOrphan(environment, computeProvider, undefined, remainingTime);
 
   // next scale down idle runners with respect to config and mark potential orphans
+  if (remainingTime() < 10000) return;
   const providerRunners = await listRunners(environment, computeProvider);
   const activeProviderRunnersCount = providerRunners.length;
   logger.info(
@@ -605,6 +639,7 @@ export async function scaleDown(remainingTime = () => Infinity): Promise<void> {
   const runners = filterRunners(providerRunners);
   await evaluateAndRemoveRunners(runners, scaleDownConfigs, computeProvider, undefined, remainingTime);
 
+  if (remainingTime() < 10000) return;
   const activeProviderRunnersCountAfter = (await listRunners(environment, computeProvider)).length;
   logger.info(
     `Found: '${activeProviderRunnersCountAfter}' active ${computeProvider.type.toUpperCase()} runners after clean-up.`,
