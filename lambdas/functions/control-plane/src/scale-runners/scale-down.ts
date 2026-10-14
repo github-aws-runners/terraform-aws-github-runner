@@ -171,6 +171,8 @@ async function listGitHubRunners(
     }
   }
   if (!computeProvider.listPage) {
+    // The exact-name miss is now verified through the legacy suffix contract.
+    runner.githubRunnerName = undefined;
     // Preserve the legacy provider contract. Cache only a complete successful
     // listing; a failed/partial lookup must never establish absence.
     const key = `${runner.type}:${runner.owner}`;
@@ -363,11 +365,14 @@ async function evaluateAndRemoveRunners(
   runners: RunnerInfo[],
   scaleDownConfigs: ScalingDownConfigList,
   computeProvider: ScaleDownComputeProvider,
-  sweep = { idleRemaining: getIdleRunnerCount(scaleDownConfigs) },
+  sweep = {
+    idleRemaining: getIdleRunnerCount(scaleDownConfigs),
+    evictionStrategy: getEvictionStrategy(scaleDownConfigs),
+  },
   remainingTime = () => Infinity,
 ): Promise<void> {
   let idleCounter = sweep.idleRemaining;
-  const evictionStrategy = getEvictionStrategy(scaleDownConfigs);
+  const evictionStrategy = sweep.evictionStrategy;
   const ownerTags = new Set(runners.map((runner) => runner.owner));
 
   for (const ownerTag of ownerTags) {
@@ -490,11 +495,20 @@ async function terminateOrphan(
     try {
       // A runner can register after it was marked orphan, even if writing its
       // registration ID back to the compute provider failed. Check GitHub again.
-      const isOrphan = hasGitHubRunnerId(runner)
-        ? await lastChanceCheckOrphanRunner(runner, remainingTime)
-        : !(await listGitHubRunners(runner, computeProvider, remainingTime)).some((registered) =>
-            matchesRunner(runner, registered),
-          );
+      let isOrphan = true;
+      if (hasGitHubRunnerId(runner)) {
+        isOrphan = await lastChanceCheckOrphanRunner(runner, remainingTime);
+      } else {
+        const matches = (await listGitHubRunners(runner, computeProvider, remainingTime)).filter((registered) =>
+          matchesRunner(runner, registered),
+        );
+        for (const match of matches) {
+          if (!(await lastChanceCheckOrphanRunner({ ...runner, githubRunnerId: String(match.id) }, remainingTime))) {
+            isOrphan = false;
+            break;
+          }
+        }
+      }
       if (remainingTime() < 10000) return;
       if (isOrphan) {
         logger.info(`Terminating orphan runner '${runner.id}'.`);
@@ -557,7 +571,10 @@ export async function scaleDown(remainingTime = () => Infinity): Promise<void> {
   };
 
   if (computeProvider.listPage) {
-    const sweep = { idleRemaining: getIdleRunnerCount(scaleDownConfigs) };
+    const sweep = {
+      idleRemaining: getIdleRunnerCount(scaleDownConfigs),
+      evictionStrategy: getEvictionStrategy(scaleDownConfigs),
+    };
     let pages = 0;
     let scannedRunners = 0;
     let terminatedRunners = 0;
