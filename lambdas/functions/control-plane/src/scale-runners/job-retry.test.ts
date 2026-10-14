@@ -270,6 +270,59 @@ describe(`Test job retry check`, () => {
     // assert
     expect(publishMessage).not.toHaveBeenCalled();
   });
+
+  it(`should still publish a retry and record the metric when isJobQueued throws a transient error (fail-open)`, async () => {
+    // setup
+    mockOctokit.actions.getJobForWorkflowRun.mockRejectedValue(new Error('GitHub API 502'));
+
+    const message: ActionRequestMessageRetry = {
+      eventType: 'workflow_job',
+      id: 0,
+      installationId: 0,
+      repositoryName: 'test',
+      repositoryOwner: 'github-aws-runners',
+      repoOwnerType: 'Organization',
+      retryCounter: 0,
+    };
+    process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+    process.env.ENVIRONMENT = 'test';
+    process.env.RUNNER_NAME_PREFIX = 'test';
+    process.env.ENABLE_METRIC_JOB_RETRY = 'true';
+    process.env.JOB_QUEUE_SCALE_UP_URL =
+      'https://sqs.eu-west-1.amazonaws.com/123456789/webhook_events_workflow_job_queue';
+
+    // act
+    await checkAndRetryJob(message);
+
+    // assert
+    expect(publishMessage).toHaveBeenCalledWith(
+      JSON.stringify({ ...message }),
+      'https://sqs.eu-west-1.amazonaws.com/123456789/webhook_events_workflow_job_queue',
+    );
+    expect(createSingleMetric).toHaveBeenCalled();
+  });
+
+  it(`should not publish a retry when the event type is unsupported`, async () => {
+    const message = {
+      eventType: 'check_run',
+      id: 0,
+      installationId: 0,
+      repositoryName: 'test',
+      repositoryOwner: 'github-aws-runners',
+      repoOwnerType: 'Organization',
+      retryCounter: 0,
+    } as unknown as ActionRequestMessageRetry;
+    process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+    process.env.RUNNER_NAME_PREFIX = 'test';
+    process.env.JOB_QUEUE_SCALE_UP_URL =
+      'https://sqs.eu-west-1.amazonaws.com/123456789/webhook_events_workflow_job_queue';
+
+    // act
+    await checkAndRetryJob(message);
+
+    // assert
+    expect(publishMessage).not.toHaveBeenCalled();
+  });
 });
 
 describe('Test job retry handler (batch processing)', () => {
