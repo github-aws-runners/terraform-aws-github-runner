@@ -12,6 +12,7 @@ vi.mock('../github/auth', () => ({
   createGithubInstallationAuth: vi.fn().mockResolvedValue({ token: 'installation-token' }),
   getStoredInstallationId: vi.fn().mockResolvedValue(123),
   createOctokitClient: vi.fn().mockResolvedValue({
+    hook: { wrap: vi.fn() },
     actions: { listSelfHostedRunnersForOrg: vi.fn() },
     paginate: vi.fn().mockResolvedValue([]),
   }),
