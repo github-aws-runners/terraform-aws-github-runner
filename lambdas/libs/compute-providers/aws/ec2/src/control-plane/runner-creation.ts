@@ -26,6 +26,7 @@ export interface Ec2ProviderConfig {
   environment: string;
   subnets: string[];
   launchTemplateName: string;
+  onDemandOverrideLaunchTemplateName?: string;
   ec2instanceCriteria: RunnerInputParameters['ec2instanceCriteria'];
   amiIdSsmParameterName?: string;
   tracingEnabled?: boolean;
@@ -44,6 +45,7 @@ export function loadEc2ProviderConfig(): Ec2ProviderConfig {
     environment: process.env.ENVIRONMENT,
     subnets: process.env.SUBNET_IDS.split(','),
     launchTemplateName: process.env.LAUNCH_TEMPLATE_NAME,
+    onDemandOverrideLaunchTemplateName: process.env.ON_DEMAND_OVERRIDE_LAUNCH_TEMPLATE_NAME || undefined,
     ec2instanceCriteria: {
       instanceTypes: process.env.INSTANCE_TYPES.split(','),
       instanceTypePriorities: process.env.INSTANCE_TYPE_PRIORITIES
@@ -78,8 +80,14 @@ function resolveCapacityType(config: CreateEC2RunnerConfig): CreateEC2RunnerConf
     if (TargetCapacityType === 'on-demand') delete overrides.MaxPrice;
   }
 
+  const launchTemplateName =
+    targetCapacityType === 'on-demand' && config.onDemandOverrideLaunchTemplateName
+      ? config.onDemandOverrideLaunchTemplateName
+      : config.launchTemplateName;
+
   return {
     ...config,
+    launchTemplateName,
     ec2instanceCriteria: { ...config.ec2instanceCriteria, targetCapacityType },
     ec2OverrideConfig: Object.keys(overrides).length > 0 ? overrides : undefined,
   };
