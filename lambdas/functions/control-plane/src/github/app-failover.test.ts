@@ -72,6 +72,58 @@ describe('request-level app failover with real Octokit retry/throttling hooks', 
     expect(metricGitHubAppRateLimit).toHaveBeenLastCalledWith(expect.objectContaining(headers), 1, expect.anything());
   });
 
+  it('keeps core requests available after every App exhausts registration quota', async () => {
+    const { client: gh } = await client();
+    const exhausted = {
+      'x-ratelimit-remaining': '0',
+      'x-ratelimit-resource': 'actions_runner_registration',
+      'x-ratelimit-reset': String(Math.floor(Date.now() / 1000) + 600),
+    };
+    const first = api('app-0').post(path).reply(403, { message: 'API rate limit exceeded' }, exhausted);
+    const second = api('app-1').post(path).reply(403, { message: 'API rate limit exceeded' }, exhausted);
+    await expect(gh.request(`POST ${path}`)).rejects.toMatchObject({ status: 403 });
+    expect(first.isDone() && second.isDone()).toBe(true);
+    await expect(selectAppIndex(store, new Set(), 'actions_runner_registration')).rejects.toThrow(
+      'No eligible GitHub App',
+    );
+    const core = api('app-0')
+      .get('/repos/example/repo/actions/jobs/1')
+      .reply(200, { id: 1 }, { ...headers, 'x-ratelimit-resource': 'core' });
+    await expect(gh.request('GET /repos/example/repo/actions/jobs/1')).resolves.toMatchObject({ data: { id: 1 } });
+    expect(core.isDone()).toBe(true);
+  });
+
+  it.each([
+    '/orgs/example/actions/runners/generate-jitconfig',
+    '/repos/example/repo/actions/runners/generate-jitconfig',
+  ])('selects the registration budget before the first request to %s', async (jitPath) => {
+    const { client: gh } = await client();
+    for (const index of [0, 1]) {
+      const core = api(`app-${index}`)
+        .get('/repos/example/repo/actions/jobs/1')
+        .reply(
+          200,
+          {},
+          {
+            'x-ratelimit-remaining': '0',
+            'x-ratelimit-resource': 'core',
+            'x-ratelimit-reset': String(Math.floor(Date.now() / 1000) + 600),
+          },
+        );
+      await gh.request('GET /repos/example/repo/actions/jobs/1');
+      expect(core.isDone()).toBe(true);
+    }
+    const jit = api('app-0')
+      .post(jitPath)
+      .reply(
+        200,
+        { encoded_jit_config: 'config' },
+        { ...headers, 'x-ratelimit-resource': 'actions_runner_registration' },
+      );
+    await expect(gh.request(`POST ${jitPath}`)).resolves.toMatchObject({ data: { encoded_jit_config: 'config' } });
+    expect(jit.isDone()).toBe(true);
+  });
+
   it('tries each app at most once and returns the last HTTP error without sleeping', async () => {
     const { client: gh } = await client();
     const first = api('app-0').get('/test').reply(429, { message: 'Too many requests' }, headers);

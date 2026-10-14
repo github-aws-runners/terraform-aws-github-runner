@@ -13,7 +13,7 @@ type GitHubError = {
   response?: { status?: number; headers?: ResponseHeaders };
 };
 
-function rateLimit(error: unknown): { headers: ResponseHeaders; until: number } | undefined {
+function rateLimit(error: unknown): { headers: ResponseHeaders; until: number; primary: boolean } | undefined {
   if (!error || typeof error !== 'object') return;
   const failure = error as GitHubError;
   const status = failure.status ?? failure.response?.status;
@@ -38,7 +38,14 @@ function rateLimit(error: unknown): { headers: ResponseHeaders; until: number } 
   // Never sleep inside a Lambda. Keep this app unavailable until the server's
   // deadline (at least a minute when GitHub gives no usable deadline).
   const deadlines = [retryAt, resetAt].filter((value) => Number.isFinite(value) && value > now);
-  return { headers, until: deadlines.length ? Math.max(...deadlines) + 1000 : now + 60_000 };
+  return {
+    headers,
+    until: deadlines.length ? Math.max(...deadlines) + 1000 : now + 60_000,
+    primary:
+      headers['x-ratelimit-remaining'] === '0' &&
+      retryAfter === undefined &&
+      !/secondary|abuse/i.test(failure.message ?? ''),
+  };
 }
 
 function observe(appIndex: number, headers: ResponseHeaders): void {
@@ -94,7 +101,8 @@ export async function withAppFailover(
         resource = String(limited.headers['x-ratelimit-resource'] ?? resource);
         observe(index, limited.headers);
         await metricGitHubAppRateLimit(limited.headers, index, selectionStore);
-        reportAppSecondaryRateLimit(index, limited.until);
+        if (limited.primary) reportAppRateLimit(index, 0, limited.until, resource);
+        else reportAppSecondaryRateLimit(index, limited.until);
         let next: number;
         try {
           next = await selectAppIndex(selectionStore, tried, resource);
@@ -130,7 +138,11 @@ export async function withAppFailover(
         return response;
       },
       undefined,
-      resources.get(route),
+      resources.get(route) ??
+        (options.method === 'POST' &&
+        /\/(?:orgs\/[^/]+|repos\/[^/]+\/[^/]+)\/actions\/runners\/generate-jitconfig(?:\?.*)?$/.test(options.url)
+          ? 'actions_runner_registration'
+          : 'core'),
     );
   });
   return initial;
