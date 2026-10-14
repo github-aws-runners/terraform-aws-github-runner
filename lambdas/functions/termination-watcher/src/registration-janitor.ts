@@ -135,7 +135,7 @@ async function discover(
           const client = await createRunnerInstallationClient(config.organization, 'Org', config.ghesApiUrl, clients);
           if (shouldStop()) return;
           let result = page === 1 && firstPage ? firstPage : await groupPage(client, config, groupId, page);
-          summary.pagesScanned++;
+          if (!(page === 1 && firstPage)) summary.pagesScanned++;
           if (page === 1 && !firstPage && Number.isSafeInteger(result.total_count) && result.total_count >= 0) {
             firstPage = result;
             pageCount = Math.max(1, Math.ceil(result.total_count / 100));

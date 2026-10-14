@@ -143,7 +143,7 @@ describe('registration janitor discovery', () => {
     expect(github.request.mock.calls.map(([, options]) => options.page)).toEqual([1, 2, 3]);
     expect(janitorLogs.info).toHaveBeenCalledWith(
       'Registration discovery finished.',
-      expect.objectContaining({ stopReason: 'completed' }),
+      expect.objectContaining({ stopReason: 'completed', pagesScanned: 3 }),
     );
   });
 
