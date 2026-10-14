@@ -13,6 +13,7 @@ import { createRunnerInstallationClient, type InstallationClientCache } from './
 
 const logger = createChildLogger('registration-janitor');
 const confirmationSeconds = 900;
+const sqsClient = new SQSClient({});
 
 export interface RegistrationJanitorConfig {
   organization: string;
@@ -82,7 +83,7 @@ async function groupPage(client: Octokit, config: RegistrationJanitorConfig, gro
 async function enqueue(candidate: Candidate, delaySeconds: number): Promise<void> {
   const queueUrl = process.env.REGISTRATION_JANITOR_QUEUE_URL;
   if (!queueUrl) throw new Error('REGISTRATION_JANITOR_QUEUE_URL is required');
-  await new SQSClient({}).send(
+  await sqsClient.send(
     new SendMessageCommand({
       QueueUrl: queueUrl,
       DelaySeconds: delaySeconds,
