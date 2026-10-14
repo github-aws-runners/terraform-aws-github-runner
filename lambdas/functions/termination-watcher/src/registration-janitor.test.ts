@@ -88,6 +88,38 @@ afterEach(() => {
 });
 
 describe('registration janitor discovery', () => {
+  it('stops before fetching a page when authentication consumes the deadline reserve', async () => {
+    let remaining = 60000;
+    vi.mocked(createRunnerInstallationClient).mockImplementationOnce(async () => {
+      remaining = 9000;
+      return github as unknown as Awaited<ReturnType<typeof createRunnerInstallationClient>>;
+    });
+    await registrationJanitor({}, { getRemainingTimeInMillis: () => remaining } as Context);
+    expect(github.request).not.toHaveBeenCalled();
+    expect(sqs).not.toHaveReceivedCommand(SendMessageCommand);
+    expect(janitorLogs.info).toHaveBeenCalledWith(
+      'Registration discovery finished.',
+      expect.objectContaining({ stopReason: 'deadline', pagesScanned: 0 }),
+    );
+  });
+
+  it('stops before queueing when resource lookup consumes the deadline reserve', async () => {
+    let remaining = 60000;
+    configure({ computeProvider: { type: 'test-provider', options: {} } });
+    customProvider.resourceIdFromRunnerName.mockReturnValue(instanceId);
+    customProvider.exists.mockImplementationOnce(async () => {
+      remaining = 9000;
+      return false;
+    });
+    await registrationJanitor({}, { getRemainingTimeInMillis: () => remaining } as Context);
+    expect(customProvider.exists).toHaveBeenCalledWith(instanceId);
+    expect(sqs).not.toHaveReceivedCommand(SendMessageCommand);
+    expect(janitorLogs.info).toHaveBeenCalledWith(
+      'Registration discovery finished.',
+      expect.objectContaining({ stopReason: 'deadline', candidatesQueued: 0 }),
+    );
+  });
+
   it('discovers remaining inventory after earlier candidates have been removed', async () => {
     configure({ maxCandidates: 1 });
     const second = { ...runner, id: 20, name: 'account-prod_i-11111111111111111' };

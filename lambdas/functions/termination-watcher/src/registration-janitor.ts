@@ -126,6 +126,7 @@ async function discover(
         let runners;
         try {
           const client = await createRunnerInstallationClient(config.organization, 'Org', config.ghesApiUrl, clients);
+          if (shouldStop()) return;
           runners = await groupPage(client, config, groupId, page);
           summary.pagesScanned++;
           failures = 0;
@@ -158,6 +159,7 @@ async function discover(
               logger.info('Would confirm stale registration', { candidate });
               summary.dryRunCandidates++;
             } else {
+              if (shouldStop()) return;
               await enqueue(candidate, confirmationSeconds);
               summary.candidatesQueued++;
             }
