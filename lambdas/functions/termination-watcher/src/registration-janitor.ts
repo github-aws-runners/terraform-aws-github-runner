@@ -143,7 +143,14 @@ async function discover(
             page = 1 + Math.floor(Math.random() * pageCount);
             if (page !== 1) {
               if (shouldStop()) return;
-              result = await groupPage(client, config, groupId, page);
+              const selectedClient = await createRunnerInstallationClient(
+                config.organization,
+                'Org',
+                config.ghesApiUrl,
+                clients,
+              );
+              if (shouldStop()) return;
+              result = await groupPage(selectedClient, config, groupId, page);
               summary.pagesScanned++;
             }
           }
@@ -229,13 +236,31 @@ async function confirm(
   if (elapsed < confirmationSeconds * 1000) throw new Error('Registration confirmation arrived too early');
   if (config.dryRun) return;
 
-  // A runner moved out of the configured groups is no longer ours to remove.
-  for (let pageNumber = 1; ; pageNumber++) {
+  // Rotate the remaining membership pages independently on each SQS attempt.
+  // Incomplete or failed verification throws, leaving the message retryable.
+  let pageCount: number | undefined;
+  let pagesRemaining = Infinity;
+  let memberFound = false;
+  for (
+    let pageNumber = 1;
+    pagesRemaining > 0;
+    pageNumber = pageCount ? 2 + ((pageNumber - 1) % (pageCount - 1)) : pageNumber + 1, pagesRemaining--
+  ) {
     requireConfirmationTime(context);
-    const { runners: members } = await groupPage(client, config, candidate.groupId, pageNumber);
-    if (members.some((runner) => runner.id === candidate.runnerId)) break;
-    if (members.length < 100) return;
+    const result = await groupPage(client, config, candidate.groupId, pageNumber);
+    const members = result.runners;
+    if (members.some((runner) => runner.id === candidate.runnerId)) {
+      memberFound = true;
+      break;
+    }
+    if (pageNumber === 1 && Number.isSafeInteger(result.total_count) && result.total_count >= 0) {
+      pageCount = Math.max(1, Math.ceil(result.total_count / 100));
+      if (pageCount === 1) return;
+      pagesRemaining = pageCount;
+      pageNumber = 1 + Math.floor(Math.random() * (pageCount - 1));
+    } else if (pageCount === undefined && members.length < 100) return;
   }
+  if (!memberFound) return;
   requireConfirmationTime(context);
   if (await provider.exists(candidate.resourceId)) return;
   requireConfirmationTime(context);

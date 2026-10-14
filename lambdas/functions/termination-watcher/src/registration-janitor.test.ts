@@ -90,6 +90,18 @@ afterEach(() => {
 });
 
 describe('registration janitor discovery', () => {
+  it('reselects the App after fetching metadata before requesting a random starting page', async () => {
+    const nextRequest = vi.fn().mockResolvedValue({ data: { total_count: 200, runners: [] } });
+    vi.mocked(createRunnerInstallationClient)
+      .mockResolvedValueOnce(github as never)
+      .mockResolvedValueOnce({ ...github, request: nextRequest } as never);
+    github.request.mockResolvedValue({ data: { total_count: 200, runners: [runner] } });
+    vi.mocked(Math.random).mockReturnValueOnce(0).mockReturnValueOnce(0.99).mockReturnValue(0);
+    await registrationJanitor({}, context);
+    expect(nextRequest).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ page: 2 }));
+    expect(github.request).toHaveBeenCalledTimes(1);
+  });
+
   it('reaches later groups and pages across deadline-limited scans with unchanged retained inventory', async () => {
     configure({ runnerGroupIds: [1, 2], computeProvider: { type: 'test-provider', options: {} } });
     let remaining = 11000;
@@ -501,6 +513,29 @@ describe('provider-independent registration cleanup', () => {
 });
 
 describe('confirmation deadline guards', () => {
+  it('reaches a late membership page on a retry without accepting incomplete verification', async () => {
+    const event = await confirmationEvent();
+    let remaining = 11000;
+    github.request.mockImplementation(async (_route, options) => {
+      if (options.page === 2) remaining = 9000;
+      return {
+        data: {
+          total_count: 300,
+          runners: options.page === 3 ? [runner] : Array.from({ length: 100 }, (_, i) => ({ ...runner, id: i + 100 })),
+        },
+      };
+    });
+    const limitedContext = { getRemainingTimeInMillis: () => remaining } as Context;
+    expect(await registrationJanitor(event, limitedContext)).toEqual({
+      batchItemFailures: [{ itemIdentifier: 'candidate-1' }],
+    });
+    expect(github.actions.deleteSelfHostedRunnerFromOrg).not.toHaveBeenCalled();
+    remaining = 11000;
+    vi.mocked(Math.random).mockReturnValue(0.99);
+    expect(await registrationJanitor(event, limitedContext)).toEqual({ batchItemFailures: [] });
+    expect(github.actions.deleteSelfHostedRunnerFromOrg).toHaveBeenCalledWith({ org: 'example', runner_id: runner.id });
+  });
+
   it.each([
     { stage: 'authentication', checks: 0, membership: 0, inventory: 0, recheck: 0 },
     { stage: 'inventory after membership', checks: 2, membership: 1, inventory: 0, recheck: 0 },
