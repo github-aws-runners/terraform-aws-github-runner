@@ -1,3 +1,4 @@
+import { installationScope } from '../github/installation-scope';
 import { Octokit } from '@octokit/rest';
 import { withAppFailover } from '../github/app-failover';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
@@ -46,7 +47,8 @@ export async function adjust(event: PoolEvent): Promise<void> {
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
 
   // Seed the shared client; it can select another app before each request.
-  const ghAppAuth = await createGithubAppAuth(undefined, ghesApiUrl, undefined, storage.githubAppCredentials);
+  const scope = installationScope(ghesApiUrl, runnerOwner);
+  const ghAppAuth = await createGithubAppAuth(undefined, ghesApiUrl, undefined, storage.githubAppCredentials, scope);
   const appIdx = ghAppAuth.appIndex;
 
   const githubInstallationClient = await withAppFailover(
@@ -66,6 +68,7 @@ export async function adjust(event: PoolEvent): Promise<void> {
       return createOctokitClient(ghAuth.token, ghesApiUrl, selectedIndex);
     },
     storage.githubAppCredentials,
+    scope,
   );
 
   // Get statuses of runners registered in GitHub

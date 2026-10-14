@@ -1,3 +1,4 @@
+import { installationScope } from '../github/installation-scope';
 import { addPersistentContextToChildLogger, createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import { InvalidRunnerLabelsError } from '@aws-github-runner/compute-providers/core';
 import { resolveComputeProviderType } from '@aws-github-runner/compute-providers/provider-types';
@@ -102,6 +103,7 @@ async function createGithubInstallationClient(
       }
     },
     storage?.githubAppCredentials,
+    installationScope(ghesApiUrl, payload.repositoryOwner),
   );
 }
 

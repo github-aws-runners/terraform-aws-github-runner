@@ -72,8 +72,14 @@ const appRateLimitStates = new Map<string, AppRateLimitState>();
 const appCooldowns = new Map<number, number>();
 const SECONDARY_RATE_LIMIT_COOLDOWN_MS = 60_000;
 
-export function reportAppRateLimit(appIndex: number, remaining: number, resetAt?: number, resource = 'core'): void {
-  const state = appRateLimitStates.get(`${appIndex}:${resource}`) ?? { remaining };
+export function reportAppRateLimit(
+  appIndex: number,
+  remaining: number,
+  resetAt?: number,
+  resource = 'core',
+  scope = '',
+): void {
+  const state = appRateLimitStates.get(`${scope}:${appIndex}:${resource}`) ?? { remaining };
   const exhaustionUntil = state.remaining === 0 ? (state.resetAt ?? (state.observedAt ?? 0) + 60_000) : 0;
   if (exhaustionUntil > Date.now()) {
     // Concurrent requests may deliver an older positive observation after exhaustion.
@@ -83,7 +89,7 @@ export function reportAppRateLimit(appIndex: number, remaining: number, resetAt?
   state.remaining = remaining;
   state.resetAt = resetAt;
   state.observedAt = Date.now();
-  appRateLimitStates.set(`${appIndex}:${resource}`, state);
+  appRateLimitStates.set(`${scope}:${appIndex}:${resource}`, state);
 }
 
 export function reportAppSecondaryRateLimit(
@@ -98,11 +104,14 @@ export function reportAppSecondaryRateLimit(
 // apps cooling down after a secondary rate limit. Apps with no observed state
 // are assumed full. Iteration starts at a random offset so concurrent
 // cold-started lambdas do not all converge on the same app.
+export class NoEligibleGitHubAppError extends Error {}
+
 export async function selectAppIndex(
   credentialsStore?: GitHubAppCredentialsStore,
   excluded = new Set<number>(),
   resource = 'core',
   preferredIndex?: number,
+  scope = '',
 ): Promise<number> {
   const credentials = await getAppCredentials(credentialsStore);
 
@@ -112,7 +121,7 @@ export async function selectAppIndex(
   let bestRemaining = -1;
   for (let n = 0; n < credentials.length; n++) {
     const i = (offset + n) % credentials.length;
-    const state = appRateLimitStates.get(`${i}:${resource}`);
+    const state = appRateLimitStates.get(`${scope}:${i}:${resource}`);
     if (excluded.has(i) || (appCooldowns.get(i) ?? 0) > now) continue;
     // Forget observations after their reset, or after one minute without headers.
     const fresh = state && (state.resetAt ? state.resetAt > now : (state.observedAt ?? 0) + 60_000 > now);
@@ -124,7 +133,9 @@ export async function selectAppIndex(
     }
   }
   if (best === -1) {
-    throw new Error('No eligible GitHub App: all apps are rate limited or have already been attempted');
+    throw new NoEligibleGitHubAppError(
+      'No eligible GitHub App: all apps are rate limited or have already been attempted',
+    );
   }
   // Info so the app selection distribution is observable at default log level.
   logger.info(`Selected GitHub App index ${best} with ${bestRemaining} rate limit remaining`);
@@ -221,8 +232,9 @@ export async function createGithubAppAuth(
   ghesApiUrl = '',
   appIndex?: number,
   credentialsStore?: GitHubAppCredentialsStore,
+  scope = '',
 ): Promise<AppAuthentication & { appIndex: number }> {
-  const idx = appIndex ?? (await selectAppIndex(credentialsStore));
+  const idx = appIndex ?? (await selectAppIndex(credentialsStore, undefined, 'core', undefined, scope));
   const auth = await createAuth(installationId, ghesApiUrl, idx, credentialsStore);
   return { ...(await auth({ type: 'app' })), appIndex: idx };
 }

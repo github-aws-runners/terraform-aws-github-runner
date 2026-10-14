@@ -1,3 +1,4 @@
+import { NoEligibleGitHubAppError } from './github/auth';
 import { captureLambdaHandler, logger } from '@aws-github-runner/aws-powertools-util';
 import { createRunnerConfigHousekeeper } from '@aws-github-runner/storage-providers';
 import { Context, SQSEvent, SQSRecord } from 'aws-lambda';
@@ -322,6 +323,15 @@ describe('Test runnerConfigHousekeeper lambda wrapper.', () => {
 });
 
 describe('Test job retry check wrapper', () => {
+  it.each([
+    { status: 429, message: 'Too many requests' },
+    { status: 403, message: 'API rate limit exceeded', response: { headers: { 'x-ratelimit-remaining': '0' } } },
+    new NoEligibleGitHubAppError('No eligible GitHub App'),
+  ])('rejects transient app exhaustion so SQS retries the message', async (error) => {
+    vi.mocked(checkAndRetryJob).mockRejectedValue(error);
+    await expect(jobRetryCheck(sqsEvent, context)).rejects.toBe(error);
+  });
+
   it('Handle without error should resolve.', async () => {
     vi.mocked(checkAndRetryJob).mockResolvedValue();
     await expect(jobRetryCheck(sqsEvent, context)).resolves.not.toThrow();

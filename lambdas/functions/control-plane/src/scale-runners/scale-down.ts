@@ -1,3 +1,4 @@
+import { installationScope } from '../github/installation-scope';
 import { Octokit } from '@octokit/rest';
 import { withAppFailover } from '../github/app-failover';
 import { Endpoints } from '@octokit/types';
@@ -35,33 +36,39 @@ async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
 
   logger.debug(`[createGitHubClientForRunner] Cache miss for ${key}`);
   const { ghesApiUrl } = getGitHubEnterpriseApiUrl();
-  const ghAuthPre = await createGithubAppAuth(undefined, ghesApiUrl);
-  const octokit = await withAppFailover(ghAuthPre.appIndex, async (appIdx) => {
-    // Use the pre-configured installation ID when available (avoids an API call).
-    let installationId = await getStoredInstallationId(appIdx);
-    if (installationId === undefined) {
-      const githubClientPre = await createOctokitClient(
-        (appIdx === ghAuthPre.appIndex ? ghAuthPre : await createGithubAppAuth(undefined, ghesApiUrl, appIdx)).token,
-        ghesApiUrl,
-        appIdx,
-      );
-      installationId =
-        runner.type === 'Org'
-          ? (
-              await githubClientPre.apps.getOrgInstallation({
-                org: runner.owner,
-              })
-            ).data.id
-          : (
-              await githubClientPre.apps.getRepoInstallation({
-                owner: runner.owner.split('/')[0],
-                repo: runner.owner.split('/')[1],
-              })
-            ).data.id;
-    }
-    const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl, appIdx);
-    return await createOctokitClient(ghAuth.token, ghesApiUrl, appIdx);
-  });
+  const scope = installationScope(ghesApiUrl, runner.owner);
+  const ghAuthPre = await createGithubAppAuth(undefined, ghesApiUrl, undefined, undefined, scope);
+  const octokit = await withAppFailover(
+    ghAuthPre.appIndex,
+    async (appIdx) => {
+      // Use the pre-configured installation ID when available (avoids an API call).
+      let installationId = await getStoredInstallationId(appIdx);
+      if (installationId === undefined) {
+        const githubClientPre = await createOctokitClient(
+          (appIdx === ghAuthPre.appIndex ? ghAuthPre : await createGithubAppAuth(undefined, ghesApiUrl, appIdx)).token,
+          ghesApiUrl,
+          appIdx,
+        );
+        installationId =
+          runner.type === 'Org'
+            ? (
+                await githubClientPre.apps.getOrgInstallation({
+                  org: runner.owner,
+                })
+              ).data.id
+            : (
+                await githubClientPre.apps.getRepoInstallation({
+                  owner: runner.owner.split('/')[0],
+                  repo: runner.owner.split('/')[1],
+                })
+              ).data.id;
+      }
+      const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl, appIdx);
+      return await createOctokitClient(ghAuth.token, ghesApiUrl, appIdx);
+    },
+    undefined,
+    scope,
+  );
   githubCache.clients.set(key, octokit);
 
   return octokit;

@@ -1,3 +1,4 @@
+import { installationScope } from './installation-scope';
 import { Octokit } from '@octokit/rest';
 import { withAppFailover } from './app-failover';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
@@ -87,42 +88,48 @@ export async function getOctokit(
   payload: ActionRequestMessage,
 ): Promise<Octokit> {
   // Seed the shared client; authentication and individual requests can fail over.
-  const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl);
-  return withAppFailover(ghAuth.appIndex, async (appIdx) => {
-    const githubAppClient = await createOctokitClient(
-      (appIdx === ghAuth.appIndex ? ghAuth : await createGithubAppAuth(undefined, ghesApiUrl, appIdx)).token,
-      ghesApiUrl,
-      appIdx,
-    );
+  const scope = installationScope(ghesApiUrl, payload.repositoryOwner);
+  const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl, undefined, undefined, scope);
+  return withAppFailover(
+    ghAuth.appIndex,
+    async (appIdx) => {
+      const githubAppClient = await createOctokitClient(
+        (appIdx === ghAuth.appIndex ? ghAuth : await createGithubAppAuth(undefined, ghesApiUrl, appIdx)).token,
+        ghesApiUrl,
+        appIdx,
+      );
 
-    const installationId = await resolveInstallationId(githubAppClient, enableOrgLevel, payload, appIdx);
+      const installationId = await resolveInstallationId(githubAppClient, enableOrgLevel, payload, appIdx);
 
-    try {
-      const installationAuth = await createGithubInstallationAuth(installationId, ghesApiUrl, appIdx);
-      return await createOctokitClient(installationAuth.token, ghesApiUrl, appIdx);
-    } catch (error) {
-      // The installation id can be stale when it was reused from the webhook payload or from the
-      // pre-configured per-app value while the app was uninstalled and reinstalled. Re-resolve the
-      // installation via the API once and retry with the same app before giving up.
-      if (getErrorStatus(error) !== 404) {
-        throw error;
+      try {
+        const installationAuth = await createGithubInstallationAuth(installationId, ghesApiUrl, appIdx);
+        return await createOctokitClient(installationAuth.token, ghesApiUrl, appIdx);
+      } catch (error) {
+        // The installation id can be stale when it was reused from the webhook payload or from the
+        // pre-configured per-app value while the app was uninstalled and reinstalled. Re-resolve the
+        // installation via the API once and retry with the same app before giving up.
+        if (getErrorStatus(error) !== 404) {
+          throw error;
+        }
+
+        const resolvedInstallationId = await resolveInstallationIdFromApi(githubAppClient, enableOrgLevel, payload);
+        if (resolvedInstallationId === installationId) {
+          throw error;
+        }
+
+        logger.warn('Retrying GitHub installation auth with installation resolved for the selected app', {
+          staleInstallationId: installationId,
+          resolvedInstallationId,
+          appIndex: appIdx,
+          repositoryOwner: payload.repositoryOwner,
+          repositoryName: payload.repositoryName,
+        });
+
+        const installationAuth = await createGithubInstallationAuth(resolvedInstallationId, ghesApiUrl, appIdx);
+        return await createOctokitClient(installationAuth.token, ghesApiUrl, appIdx);
       }
-
-      const resolvedInstallationId = await resolveInstallationIdFromApi(githubAppClient, enableOrgLevel, payload);
-      if (resolvedInstallationId === installationId) {
-        throw error;
-      }
-
-      logger.warn('Retrying GitHub installation auth with installation resolved for the selected app', {
-        staleInstallationId: installationId,
-        resolvedInstallationId,
-        appIndex: appIdx,
-        repositoryOwner: payload.repositoryOwner,
-        repositoryName: payload.repositoryName,
-      });
-
-      const installationAuth = await createGithubInstallationAuth(resolvedInstallationId, ghesApiUrl, appIdx);
-      return await createOctokitClient(installationAuth.token, ghesApiUrl, appIdx);
-    }
-  });
+    },
+    undefined,
+    scope,
+  );
 }

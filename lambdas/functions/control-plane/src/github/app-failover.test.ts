@@ -10,6 +10,7 @@ import {
   resetAppCredentialsCache,
   selectAppIndex,
 } from './auth';
+import { installationScope } from './installation-scope';
 import { withAppFailover } from './app-failover';
 import { metricGitHubAppRateLimit } from './rate-limit';
 
@@ -64,7 +65,8 @@ describe('request-level app failover with real Octokit retry/throttling hooks', 
     const second = api('app-1').post(path, { name: 'runner-2' }).reply(200, { id: 2 }, headers);
     expect((await gh.request(`POST ${path}`, { name: 'runner-1' })).data).toEqual({ id: 1 });
     // Prefer the observed app rather than the as-yet unobserved second app.
-    reportAppRateLimit(1, 10000);
+    reportAppRateLimit(0, 13000, undefined, 'actions_runner_registration');
+    reportAppRateLimit(1, 10000, undefined, 'actions_runner_registration');
     expect((await gh.request(`POST ${path}`, { name: 'runner-2' })).data).toEqual({ id: 2 });
     expect(first.isDone()).toBe(true);
     expect(second.isDone()).toBe(true);
@@ -113,13 +115,8 @@ describe('request-level app failover with real Octokit retry/throttling hooks', 
       await gh.request('GET /repos/example/repo/actions/jobs/1');
       expect(core.isDone()).toBe(true);
     }
-    const jit = api('app-0')
-      .post(jitPath)
-      .reply(
-        200,
-        { encoded_jit_config: 'config' },
-        { ...headers, 'x-ratelimit-resource': 'actions_runner_registration' },
-      );
+    const jit = api('app-0').post(jitPath).twice().reply(200, { encoded_jit_config: 'config' }, headers);
+    await expect(gh.request(`POST ${jitPath}`)).resolves.toMatchObject({ data: { encoded_jit_config: 'config' } });
     await expect(gh.request(`POST ${jitPath}`)).resolves.toMatchObject({ data: { encoded_jit_config: 'config' } });
     expect(jit.isDone()).toBe(true);
   });
@@ -144,10 +141,41 @@ describe('request-level app failover with real Octokit retry/throttling hooks', 
     reportAppRateLimit(0, 100, Date.now() + 600000, 'actions_runner_registration');
     const jit = api('app-0')
       .post(path)
+      .twice()
       .reply(200, { id: 1 }, { ...headers, 'x-ratelimit-resource': 'actions_runner_registration' });
+    await expect(gh.request(`POST ${path}`)).resolves.toMatchObject({ data: { id: 1 } });
     await expect(gh.request(`POST ${path}`)).resolves.toMatchObject({ data: { id: 1 } });
     expect(jit.isDone()).toBe(true);
     expect(factory.mock.calls.map(([index]) => index)).toEqual([0, 1]);
+  });
+
+  it('isolates installation budgets between owners and GitHub endpoints, including seed selection', async () => {
+    const a = installationScope('', 'OWNER-A/repo');
+    const b = installationScope('', 'owner-b');
+    const enterprise = installationScope('https://github.example/api/v3', 'owner-a');
+    expect(a).toBe(installationScope('', 'owner-a'));
+    for (const index of [0, 1]) reportAppRateLimit(index, 0, Date.now() + 600000, 'core', a);
+    await expect(selectAppIndex(store, undefined, 'core', undefined, a)).rejects.toThrow('No eligible GitHub App');
+    expect(await selectAppIndex(store, undefined, 'core', undefined, b)).toBe(0);
+    expect(await selectAppIndex(store, undefined, 'core', undefined, enterprise)).toBe(0);
+    const factory = vi.fn(async (index: number) => createOctokitClient(`app-${index}`, '', index));
+    await expect(withAppFailover(0, factory, store, a)).rejects.toThrow('No eligible GitHub App');
+    const gh = await withAppFailover(0, factory, store, b);
+    const request = api('app-0')
+      .get('/orgs/owner-b/actions/runners')
+      .reply(
+        200,
+        {},
+        {
+          'x-ratelimit-remaining': '0',
+          'x-ratelimit-resource': 'core',
+          'x-ratelimit-reset': String(Math.floor(Date.now() / 1000) + 600),
+        },
+      );
+    await gh.request('GET /orgs/owner-b/actions/runners');
+    expect(request.isDone()).toBe(true);
+    expect(await selectAppIndex(store, undefined, 'core', undefined, b)).toBe(1);
+    expect(await selectAppIndex(store, undefined, 'core', undefined, enterprise)).toBe(0);
   });
 
   it('preserves exhaustion against out-of-order positive responses and earlier reset times', async () => {

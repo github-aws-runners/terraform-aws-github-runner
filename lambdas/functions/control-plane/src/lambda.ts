@@ -1,3 +1,4 @@
+import { isRetryableAppError } from './github/app-failover';
 import middy from '@middy/core';
 import { logger, setContext } from '@aws-github-runner/aws-powertools-util';
 import { captureLambdaHandler, tracer } from '@aws-github-runner/aws-powertools-util';
@@ -141,6 +142,7 @@ export async function jobRetryCheck(event: SQSEvent, context: Context): Promise<
     const payload = JSON.parse(record.body);
     await checkAndRetryJob(payload).catch((e) => {
       logger.warn(`Error processing job retry: ${e.message}`, { error: e });
+      if (isRetryableAppError(e)) throw e;
     });
   }
   return Promise.resolve();
