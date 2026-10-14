@@ -98,10 +98,10 @@ export async function withAppFailover(
       } catch (error) {
         const limited = rateLimit(error);
         if (!limited) throw error;
-        resource = String(limited.headers['x-ratelimit-resource'] ?? resource);
+        const failedResource = String(limited.headers['x-ratelimit-resource'] ?? resource);
         observe(index, limited.headers);
         await metricGitHubAppRateLimit(limited.headers, index, selectionStore);
-        if (limited.primary) reportAppRateLimit(index, 0, limited.until, resource);
+        if (limited.primary) reportAppRateLimit(index, 0, limited.until, failedResource);
         else reportAppSecondaryRateLimit(index, limited.until);
         let next: number;
         try {

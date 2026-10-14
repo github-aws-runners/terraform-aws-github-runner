@@ -74,6 +74,12 @@ const SECONDARY_RATE_LIMIT_COOLDOWN_MS = 60_000;
 
 export function reportAppRateLimit(appIndex: number, remaining: number, resetAt?: number, resource = 'core'): void {
   const state = appRateLimitStates.get(`${appIndex}:${resource}`) ?? { remaining };
+  const exhaustionUntil = state.remaining === 0 ? (state.resetAt ?? (state.observedAt ?? 0) + 60_000) : 0;
+  if (exhaustionUntil > Date.now()) {
+    // Concurrent requests may deliver an older positive observation after exhaustion.
+    state.resetAt = Math.max(exhaustionUntil, remaining === 0 ? (resetAt ?? 0) : 0);
+    return;
+  }
   state.remaining = remaining;
   state.resetAt = resetAt;
   state.observedAt = Date.now();

@@ -124,6 +124,45 @@ describe('request-level app failover with real Octokit retry/throttling hooks', 
     expect(jit.isDone()).toBe(true);
   });
 
+  it('keeps JIT selection on registration quota after another client fails core authentication', async () => {
+    const factory = vi.fn(async (index: number) => {
+      if (index === 1)
+        throw {
+          status: 403,
+          response: {
+            headers: {
+              'x-ratelimit-resource': 'core',
+              'x-ratelimit-remaining': '0',
+              'x-ratelimit-reset': String(Math.floor(Date.now() / 1000) + 600),
+            },
+          },
+        };
+      return createOctokitClient('app-0', '', index);
+    });
+    const gh = await withAppFailover(0, factory, store);
+    reportAppRateLimit(0, 0, Date.now() + 600000, 'core');
+    reportAppRateLimit(0, 100, Date.now() + 600000, 'actions_runner_registration');
+    const jit = api('app-0')
+      .post(path)
+      .reply(200, { id: 1 }, { ...headers, 'x-ratelimit-resource': 'actions_runner_registration' });
+    await expect(gh.request(`POST ${path}`)).resolves.toMatchObject({ data: { id: 1 } });
+    expect(jit.isDone()).toBe(true);
+    expect(factory.mock.calls.map(([index]) => index)).toEqual([0, 1]);
+  });
+
+  it('preserves exhaustion against out-of-order positive responses and earlier reset times', async () => {
+    const now = Date.now();
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(now);
+    reportAppRateLimit(0, 0, now + 120000, 'actions_runner_registration');
+    reportAppRateLimit(0, 500, now + 60000, 'actions_runner_registration');
+    reportAppRateLimit(0, 0, now + 30000, 'actions_runner_registration');
+    clock.mockReturnValue(now + 61000);
+    expect(await selectAppIndex(store, new Set(), 'actions_runner_registration')).toBe(1);
+    expect(await selectAppIndex(store, new Set(), 'core')).toBe(0);
+    clock.mockReturnValue(now + 121000);
+    expect(await selectAppIndex(store, new Set(), 'actions_runner_registration')).toBe(0);
+  });
+
   it('tries each app at most once and returns the last HTTP error without sleeping', async () => {
     const { client: gh } = await client();
     const first = api('app-0').get('/test').reply(429, { message: 'Too many requests' }, headers);
