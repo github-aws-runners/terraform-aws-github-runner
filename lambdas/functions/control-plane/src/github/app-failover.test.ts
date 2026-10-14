@@ -1,3 +1,4 @@
+import { RequestError } from '@octokit/request-error';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import nock from 'nock';
 import { createAppAuth } from '@octokit/auth-app';
@@ -74,6 +75,63 @@ describe('request-level app failover with real Octokit retry/throttling hooks', 
     expect(metricGitHubAppRateLimit).toHaveBeenLastCalledWith(expect.objectContaining(headers), 1, expect.anything());
   });
 
+  it.each([200, 403])('keeps core available after headerless-resource JIT exhaustion (%s)', async (status) => {
+    const { client: gh } = await client();
+    const exhausted = {
+      'x-ratelimit-remaining': '0',
+      'x-ratelimit-reset': String(Math.floor(Date.now() / 1000) + 600),
+    };
+    const calls = [0, 1].map((index) =>
+      api(`app-${index}`).post(path).reply(status, { message: 'API rate limit exceeded' }, exhausted),
+    );
+    if (status === 200) {
+      await gh.request(`POST ${path}`);
+      await gh.request(`POST ${path}`);
+    } else await expect(gh.request(`POST ${path}`)).rejects.toMatchObject({ status: 403 });
+    expect(calls.every((call) => call.isDone())).toBe(true);
+    await expect(selectAppIndex(store, new Set(), 'actions_runner_registration')).rejects.toThrow(
+      'No eligible GitHub App',
+    );
+    const core = api('app-0').get('/test').reply(200, {});
+    await expect(gh.request('GET /test')).resolves.toMatchObject({ status: 200 });
+    expect(core.isDone()).toBe(true);
+  });
+
+  it('records ordinary HTTP failure quota without replaying the failed operation', async () => {
+    const { client: gh, factory } = await client();
+    const exhausted = {
+      'x-ratelimit-remaining': '0',
+      'x-ratelimit-resource': 'core',
+      'x-ratelimit-reset': String(Math.floor(Date.now() / 1000) + 600),
+    };
+    const first = api('app-0').get('/missing').reply(404, {}, exhausted);
+    await expect(gh.request('GET /missing')).rejects.toMatchObject({ status: 404 });
+    expect(first.isDone()).toBe(true);
+    expect(factory).toHaveBeenCalledTimes(1);
+    expect(metricGitHubAppRateLimit).toHaveBeenLastCalledWith(expect.objectContaining(exhausted), 0, expect.anything());
+    const second = api('app-1').get('/next').reply(200, {});
+    await gh.request('GET /next');
+    expect(second.isDone()).toBe(true);
+  });
+
+  it('does not expose an installation 404 as a missing runner after state-check failover', async () => {
+    const initializationFailure = new RequestError('Installation missing', 404, {
+      request: { method: 'GET', url: 'https://api.github.com/orgs/example/installation', headers: {} },
+    });
+    const factory = vi.fn(async (index: number) => {
+      if (index === 1) throw initializationFailure;
+      return createOctokitClient('app-0', '', index);
+    });
+    const gh = await withAppFailover(0, factory, store);
+    const state = api('app-0').get('/orgs/example/actions/runners/42').reply(429, { message: 'rate limit exceeded' });
+    const error = await gh.actions.getSelfHostedRunnerForOrg({ org: 'example', runner_id: 42 }).catch((error) => error);
+    expect(state.isDone()).toBe(true);
+    expect(error).toBeInstanceOf(Error);
+    expect(error).not.toBeInstanceOf(RequestError);
+    expect(error.status).toBeUndefined();
+    expect(error.cause).toBe(initializationFailure);
+  });
+
   it('keeps core requests available after every App exhausts registration quota', async () => {
     const { client: gh } = await client();
     const exhausted = {
@@ -115,10 +173,11 @@ describe('request-level app failover with real Octokit retry/throttling hooks', 
       await gh.request('GET /repos/example/repo/actions/jobs/1');
       expect(core.isDone()).toBe(true);
     }
-    const jit = api('app-0').post(jitPath).twice().reply(200, { encoded_jit_config: 'config' }, headers);
+    const jit = api('app-0').post(jitPath).reply(200, { encoded_jit_config: 'config' }, headers);
+    const nextJit = api('app-1').post(jitPath).reply(200, { encoded_jit_config: 'config' }, headers);
     await expect(gh.request(`POST ${jitPath}`)).resolves.toMatchObject({ data: { encoded_jit_config: 'config' } });
     await expect(gh.request(`POST ${jitPath}`)).resolves.toMatchObject({ data: { encoded_jit_config: 'config' } });
-    expect(jit.isDone()).toBe(true);
+    expect(jit.isDone() && nextJit.isDone()).toBe(true);
   });
 
   it('keeps JIT selection on registration quota after another client fails core authentication', async () => {

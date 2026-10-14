@@ -58,7 +58,9 @@ export function isRetryableAppError(error: unknown): boolean {
   return error instanceof NoEligibleGitHubAppError || rateLimit(error) !== undefined;
 }
 
-function observe(appIndex: number, headers: ResponseHeaders, scope: string): void {
+class ClientInitializationError extends Error {}
+
+function observe(appIndex: number, headers: ResponseHeaders, scope: string, resource: string): void {
   const remaining = Number(headers['x-ratelimit-remaining']);
   const resetAt = Number(headers['x-ratelimit-reset']) * 1000;
   if (Number.isFinite(remaining))
@@ -66,7 +68,7 @@ function observe(appIndex: number, headers: ResponseHeaders, scope: string): voi
       appIndex,
       remaining,
       Number.isFinite(resetAt) ? resetAt : undefined,
-      String(headers['x-ratelimit-resource'] ?? 'core'),
+      String(headers['x-ratelimit-resource'] ?? resource),
       scope,
     );
 }
@@ -93,7 +95,7 @@ export async function withAppFailover(
     if (!client) {
       client = createClient(appIndex).catch((error) => {
         clients.delete(appIndex);
-        throw error;
+        throw new ClientInitializationError('Failed to initialize GitHub installation client', { cause: error });
       });
       clients.set(appIndex, client);
     }
@@ -126,11 +128,16 @@ export async function withAppFailover(
       try {
         return await run(index);
       } catch (error) {
-        const limited = rateLimit(error);
+        const failure = error instanceof ClientInitializationError ? error.cause : error;
+        const fallbackResource = error instanceof ClientInitializationError ? 'core' : resource;
+        const headers = (failure as GitHubError | undefined)?.response?.headers;
+        if (headers) {
+          observe(index, headers, scope, fallbackResource);
+          await metricGitHubAppRateLimit(headers, index, selectionStore);
+        }
+        const limited = rateLimit(failure);
         if (!limited) throw error;
-        const failedResource = String(limited.headers['x-ratelimit-resource'] ?? resource);
-        observe(index, limited.headers, scope);
-        await metricGitHubAppRateLimit(limited.headers, index, selectionStore);
+        const failedResource = String(limited.headers['x-ratelimit-resource'] ?? fallbackResource);
         if (limited.primary) reportAppRateLimit(index, 0, limited.until, failedResource, scope);
         else reportAppSecondaryRateLimit(index, limited.until);
         let next: number;
@@ -138,7 +145,7 @@ export async function withAppFailover(
           next = await select(tried, resource);
         } catch {
           // Preserve the original HTTP error so existing queue retry paths work.
-          throw error;
+          throw failure;
         }
         logger.warn('Retrying rate-limited GitHub request with another app', { appIndex: index, nextAppIndex: next });
         index = next;
@@ -149,6 +156,12 @@ export async function withAppFailover(
   const initial = await attempt(getClient, initialAppIndex);
   initial.hook.wrap('request', async (request, options) => {
     const route = `${options.method} ${options.url}`;
+    const resource =
+      resources.get(route) ??
+      (options.method === 'POST' &&
+      /\/(?:orgs\/[^/]+|repos\/[^/]+\/[^/]+)\/actions\/runners\/generate-jitconfig(?:\?.*)?$/.test(options.url)
+        ? 'actions_runner_registration'
+        : 'core');
     return attempt(
       async (index) => {
         const client = await getClient(index);
@@ -164,16 +177,12 @@ export async function withAppFailover(
             }));
         const reportedResource = response.headers['x-ratelimit-resource'];
         if (reportedResource !== undefined) resources.set(route, String(reportedResource));
-        observe(index, response.headers, scope);
+        observe(index, response.headers, scope, resource);
         await metricGitHubAppRateLimit(response.headers, index, selectionStore);
         return response;
       },
       undefined,
-      resources.get(route) ??
-        (options.method === 'POST' &&
-        /\/(?:orgs\/[^/]+|repos\/[^/]+\/[^/]+)\/actions\/runners\/generate-jitconfig(?:\?.*)?$/.test(options.url)
-          ? 'actions_runner_registration'
-          : 'core'),
+      resource,
     );
   });
   return initial;
