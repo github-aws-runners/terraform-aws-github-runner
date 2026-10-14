@@ -14,7 +14,6 @@ import {
 import { controlPlaneProviderRegistry } from '../control-plane-providers';
 import { GhRunners, githubCache } from './cache';
 import { ScalingDownConfigList, getEvictionStrategy, getIdleRunnerCount } from './scale-down-config';
-import { metricGitHubAppRateLimit } from '../github/rate-limit';
 import { getGitHubEnterpriseApiUrl } from './github-runner';
 import type { RunnerInfo, ScaleDownComputeProvider } from './types';
 
@@ -80,7 +79,6 @@ async function getGitHubSelfHostedRunnerState(
             owner: runner.owner.split('/')[0],
             repo: runner.owner.split('/')[1],
           });
-    metricGitHubAppRateLimit(state.headers);
 
     return state.data;
   } catch (error) {
