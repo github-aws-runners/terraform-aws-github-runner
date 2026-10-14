@@ -63,6 +63,7 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] });
   vi.setSystemTime(new Date('2026-09-23T00:00:00Z'));
   vi.clearAllMocks();
+  vi.spyOn(Math, 'random').mockReturnValue(0);
   ec2.reset();
   sqs.reset();
   ec2.on(DescribeInstancesCommand).resolves({ Reservations: [] });
@@ -84,10 +85,56 @@ beforeEach(() => {
 });
 afterEach(() => {
   vi.useRealTimers();
+  vi.mocked(Math.random).mockRestore();
   vi.unstubAllEnvs();
 });
 
 describe('registration janitor discovery', () => {
+  it('reaches later groups and pages across deadline-limited scans with unchanged retained inventory', async () => {
+    configure({ runnerGroupIds: [1, 2], computeProvider: { type: 'test-provider', options: {} } });
+    let remaining = 11000;
+    const stale = { ...runner, id: 999, name: 'stale' };
+    const retained = Array.from({ length: 100 }, (_, i) => ({ ...runner, id: i + 100, name: `retained-${i}` }));
+    customProvider.resourceIdFromRunnerName.mockImplementation((name) => name);
+    customProvider.exists.mockImplementation(async (id) => {
+      if (id !== 'stale') remaining = 9000;
+      return id !== 'stale';
+    });
+    github.request.mockImplementation(async (_route, options) => ({
+      data: {
+        total_count: 200,
+        runners: options.runner_group_id === 2 && options.page === 2 ? [stale, ...retained.slice(1)] : retained,
+      },
+    }));
+    await registrationJanitor({}, { getRemainingTimeInMillis: () => remaining } as Context);
+    expect(sqs).not.toHaveReceivedCommand(SendMessageCommand);
+    remaining = 11000;
+    vi.mocked(Math.random).mockReturnValueOnce(0.99).mockReturnValueOnce(0.99).mockReturnValue(0);
+    await registrationJanitor({}, { getRemainingTimeInMillis: () => remaining } as Context);
+    expect(sqs).toHaveReceivedCommandTimes(SendMessageCommand, 1);
+    expect(JSON.parse(sqs.commandCalls(SendMessageCommand)[0].args[0].input.MessageBody!).runnerId).toBe(999);
+    expect(github.request).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ runner_group_id: 2, page: 2 }),
+    );
+  });
+
+  it('wraps randomized page traversal and visits each page once', async () => {
+    github.request.mockImplementation(async (_route, options) => ({
+      data: {
+        total_count: 201,
+        runners: [{ ...runner, id: options.page, status: 'online' }],
+      },
+    }));
+    vi.mocked(Math.random).mockReturnValueOnce(0).mockReturnValueOnce(0.5).mockReturnValue(0);
+    await registrationJanitor({}, context);
+    expect(github.request.mock.calls.map(([, options]) => options.page)).toEqual([1, 2, 3]);
+    expect(janitorLogs.info).toHaveBeenCalledWith(
+      'Registration discovery finished.',
+      expect.objectContaining({ stopReason: 'completed' }),
+    );
+  });
+
   it('stops before fetching a page when authentication consumes the deadline reserve', async () => {
     let remaining = 60000;
     vi.mocked(createRunnerInstallationClient).mockImplementationOnce(async () => {
