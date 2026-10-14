@@ -167,11 +167,18 @@ export async function getAppId(appIndex = 0, credentialsStore?: GitHubAppCredent
 export function rateLimitMetric(octokit: CoreOctokit, options: OctokitOptions): void {
   const appIndex = options.appIndex as number | undefined;
   let installationToken: Promise<boolean> | undefined;
+  // The hooks do not await the record, so a failure here must be caught here:
+  // an escaped rejection would crash the process, and a metric must never fail a request.
   const record = async (headers: ResponseHeaders) => {
-    installationToken ??= Promise.resolve(octokit.auth()).then(
-      (auth) => (auth as { tokenType?: string }).tokenType !== 'app',
-    );
-    if (await installationToken) await metricGitHubAppRateLimit(headers, appIndex);
+    try {
+      installationToken ??= Promise.resolve(octokit.auth()).then(
+        (auth) => (auth as { tokenType?: string }).tokenType !== 'app',
+      );
+      if (await installationToken) await metricGitHubAppRateLimit(headers, appIndex);
+    } catch (e) {
+      installationToken = undefined;
+      logger.warn('Failed to record the GitHub App rate limit metric', { error: e as Error });
+    }
   };
   octokit.hook.after('request', (response) => {
     void record(response.headers);

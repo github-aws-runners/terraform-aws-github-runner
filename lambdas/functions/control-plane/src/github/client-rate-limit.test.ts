@@ -103,4 +103,29 @@ describe('createOctokitClient rate limit metric', () => {
     await settle();
     expect(mockedMetric).not.toHaveBeenCalled();
   });
+  it('keeps the reply and raises no unhandled rejection when the metric fails', async () => {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown) => unhandled.push(reason);
+    process.on('unhandledRejection', onUnhandled);
+    try {
+      mockedMetric.mockRejectedValueOnce(new Error('metric rejected'));
+      mockedMetric.mockImplementationOnce(() => {
+        throw new Error('metric threw');
+      });
+      nock(API).get('/orgs/octo-org/actions/runners/1').twice().reply(200, { id: 1 }, headers(4999));
+      const client = await createOctokitClient(INSTALLATION_TOKEN, '', 2);
+
+      const first = await client.actions.getSelfHostedRunnerForOrg({ org: 'octo-org', runner_id: 1 });
+      const second = await client.actions.getSelfHostedRunnerForOrg({ org: 'octo-org', runner_id: 1 });
+
+      await settle();
+      await settle();
+      expect(first.data).toEqual({ id: 1 });
+      expect(second.data).toEqual({ id: 1 });
+      expect(mockedMetric).toHaveBeenCalledTimes(2);
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.off('unhandledRejection', onUnhandled);
+    }
+  });
 });
