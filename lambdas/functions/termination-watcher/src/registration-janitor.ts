@@ -77,7 +77,7 @@ async function groupPage(client: Octokit, config: RegistrationJanitorConfig, gro
       page,
       per_page: 100,
     })
-  ).data.runners;
+  ).data;
 }
 
 async function enqueue(candidate: Candidate, delaySeconds: number): Promise<void> {
@@ -120,16 +120,34 @@ async function discover(
     return false;
   };
   try {
-    for (const groupId of config.runnerGroupIds) {
+    // Rotate independently on every invocation; no persisted cursor is needed.
+    const groupOffset = Math.floor(Math.random() * config.runnerGroupIds.length);
+    const groups = [...config.runnerGroupIds.slice(groupOffset), ...config.runnerGroupIds.slice(0, groupOffset)];
+    for (const groupId of groups) {
       let failures = 0;
-      for (let page = 1; ; page++) {
+      let pageCount: number | undefined;
+      let pagesRemaining = Infinity;
+      let firstPage: Awaited<ReturnType<typeof groupPage>> | undefined;
+      for (let page = 1; pagesRemaining > 0; page = pageCount ? (page % pageCount) + 1 : page + 1, pagesRemaining--) {
         if (shouldStop()) return;
         let runners;
         try {
           const client = await createRunnerInstallationClient(config.organization, 'Org', config.ghesApiUrl, clients);
           if (shouldStop()) return;
-          runners = await groupPage(client, config, groupId, page);
+          let result = page === 1 && firstPage ? firstPage : await groupPage(client, config, groupId, page);
           summary.pagesScanned++;
+          if (page === 1 && !firstPage && Number.isSafeInteger(result.total_count) && result.total_count >= 0) {
+            firstPage = result;
+            pageCount = Math.max(1, Math.ceil(result.total_count / 100));
+            pagesRemaining = pageCount;
+            page = 1 + Math.floor(Math.random() * pageCount);
+            if (page !== 1) {
+              if (shouldStop()) return;
+              result = await groupPage(client, config, groupId, page);
+              summary.pagesScanned++;
+            }
+          }
+          runners = result.runners;
           failures = 0;
         } catch (error) {
           summary.pageFailures++;
@@ -138,7 +156,8 @@ async function discover(
           if (++failures >= 3) break;
           continue;
         }
-        for (const runner of runners) {
+        const runnerOffset = Math.floor(Math.random() * runners.length);
+        for (const runner of [...runners.slice(runnerOffset), ...runners.slice(0, runnerOffset)]) {
           if (shouldStop()) return;
           if (runner.status !== 'offline' || runner.busy !== false) continue;
           try {
@@ -170,7 +189,7 @@ async function discover(
             logger.warn('Skipping unverified candidate', { error, runnerId: runner.id });
           }
         }
-        if (runners.length < 100) break;
+        if (pageCount === undefined && runners.length < 100) break;
       }
     }
   } finally {
@@ -213,7 +232,7 @@ async function confirm(
   // A runner moved out of the configured groups is no longer ours to remove.
   for (let pageNumber = 1; ; pageNumber++) {
     requireConfirmationTime(context);
-    const members = await groupPage(client, config, candidate.groupId, pageNumber);
+    const { runners: members } = await groupPage(client, config, candidate.groupId, pageNumber);
     if (members.some((runner) => runner.id === candidate.runnerId)) break;
     if (members.length < 100) return;
   }
