@@ -272,8 +272,11 @@ async function removeRunner(
   runner: RunnerInfo,
   ghRunnerIds: number[],
   computeProvider: ScaleDownComputeProvider,
+  remainingTime = () => Infinity,
 ): Promise<void> {
+  if (remainingTime() < 10000) return;
   const githubInstallationClient = await getOrCreateOctokit(runner);
+  if (remainingTime() < 10000) return;
   try {
     if (runner.bypassRemoval) {
       logger.info(
@@ -289,10 +292,12 @@ async function removeRunner(
       }),
     );
 
+    if (remainingTime() < 10000) return;
     if (states.every((busy) => busy === false)) {
       if (!(await idleConfirmed(runner, computeProvider))) {
         return;
       }
+      if (remainingTime() < 10000) return;
       if (computeProvider.listPage && !hasGitHubRunnerId(runner)) {
         if (!computeProvider.setGitHubRunnerId || ghRunnerIds.length !== 1) {
           throw new UnverifiableRunnerError(
@@ -302,6 +307,7 @@ async function removeRunner(
         await computeProvider.setGitHubRunnerId(runner.id, String(ghRunnerIds[0]));
         runner.githubRunnerId = String(ghRunnerIds[0]);
       }
+      if (remainingTime() < 10000) return;
       const results = await Promise.all(
         ghRunnerIds.map((ghRunnerId) => deleteGitHubRunner(githubInstallationClient, runner, ghRunnerId)),
       );
@@ -309,6 +315,7 @@ async function removeRunner(
       const allSucceeded = results.every((r) => r.success);
       const failedRunners = results.filter((r) => !r.success);
 
+      if (remainingTime() < 10000) return;
       if (allSucceeded) {
         await computeProvider.terminate(runner.id);
         logger.info(
@@ -359,6 +366,7 @@ async function evaluateAndRemoveRunners(
           continue;
         }
         const ghRunners = await listGitHubRunners(runner, computeProvider);
+        if (remainingTime() < 10000) return;
         const ghRunnersFiltered = ghRunners.filter((ghRunner) => matchesRunner(runner, ghRunner));
         logger.debug(`Found: '${ghRunnersFiltered.length}' GitHub runners for runner: '${runner.id}'`);
         logger.debug(`GitHub runners for runner: '${runner.id}': ${JSON.stringify(ghRunnersFiltered)}`);
@@ -377,6 +385,7 @@ async function evaluateAndRemoveRunners(
                 runner,
                 ghRunnersFiltered.map((runner: { id: number }) => runner.id),
                 computeProvider,
+                remainingTime,
               );
             }
           }
@@ -465,6 +474,7 @@ async function terminateOrphan(
       const isOrphan = hasGitHubRunnerId(runner)
         ? await lastChanceCheckOrphanRunner(runner)
         : !(await listGitHubRunners(runner, computeProvider)).some((registered) => matchesRunner(runner, registered));
+      if (remainingTime() < 10000) return;
       if (isOrphan) {
         logger.info(`Terminating orphan runner '${runner.id}'.`);
         await computeProvider.terminate(runner.id);
