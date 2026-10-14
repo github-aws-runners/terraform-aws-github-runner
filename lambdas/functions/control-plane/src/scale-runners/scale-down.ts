@@ -1,4 +1,5 @@
 import { Octokit } from '@octokit/rest';
+import { withAppFailover } from '../github/app-failover';
 import { Endpoints } from '@octokit/types';
 import { RequestError } from '@octokit/request-error';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
@@ -14,7 +15,6 @@ import {
 import { controlPlaneProviderRegistry } from '../control-plane-providers';
 import { GhRunners, githubCache } from './cache';
 import { ScalingDownConfigList, getEvictionStrategy, getIdleRunnerCount } from './scale-down-config';
-import { metricGitHubAppRateLimit } from '../github/rate-limit';
 import { getGitHubEnterpriseApiUrl } from './github-runner';
 import type { RunnerInfo, ScaleDownComputeProvider } from './types';
 
@@ -36,28 +36,32 @@ async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
   logger.debug(`[createGitHubClientForRunner] Cache miss for ${key}`);
   const { ghesApiUrl } = getGitHubEnterpriseApiUrl();
   const ghAuthPre = await createGithubAppAuth(undefined, ghesApiUrl);
-  const appIdx = ghAuthPre.appIndex;
-
-  // Use the pre-configured installation ID when available (avoids an API call).
-  let installationId = await getStoredInstallationId(appIdx);
-  if (installationId === undefined) {
-    const githubClientPre = await createOctokitClient(ghAuthPre.token, ghesApiUrl, appIdx);
-    installationId =
-      runner.type === 'Org'
-        ? (
-            await githubClientPre.apps.getOrgInstallation({
-              org: runner.owner,
-            })
-          ).data.id
-        : (
-            await githubClientPre.apps.getRepoInstallation({
-              owner: runner.owner.split('/')[0],
-              repo: runner.owner.split('/')[1],
-            })
-          ).data.id;
-  }
-  const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl, appIdx);
-  const octokit = await createOctokitClient(ghAuth.token, ghesApiUrl, appIdx);
+  const octokit = await withAppFailover(ghAuthPre.appIndex, async (appIdx) => {
+    // Use the pre-configured installation ID when available (avoids an API call).
+    let installationId = await getStoredInstallationId(appIdx);
+    if (installationId === undefined) {
+      const githubClientPre = await createOctokitClient(
+        (appIdx === ghAuthPre.appIndex ? ghAuthPre : await createGithubAppAuth(undefined, ghesApiUrl, appIdx)).token,
+        ghesApiUrl,
+        appIdx,
+      );
+      installationId =
+        runner.type === 'Org'
+          ? (
+              await githubClientPre.apps.getOrgInstallation({
+                org: runner.owner,
+              })
+            ).data.id
+          : (
+              await githubClientPre.apps.getRepoInstallation({
+                owner: runner.owner.split('/')[0],
+                repo: runner.owner.split('/')[1],
+              })
+            ).data.id;
+    }
+    const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl, appIdx);
+    return await createOctokitClient(ghAuth.token, ghesApiUrl, appIdx);
+  });
   githubCache.clients.set(key, octokit);
 
   return octokit;
@@ -80,7 +84,6 @@ async function getGitHubSelfHostedRunnerState(
             owner: runner.owner.split('/')[0],
             repo: runner.owner.split('/')[1],
           });
-    metricGitHubAppRateLimit(state.headers);
 
     return state.data;
   } catch (error) {

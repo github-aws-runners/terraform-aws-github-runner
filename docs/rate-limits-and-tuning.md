@@ -52,7 +52,11 @@ Without a token cache, each runner also costs a `POST /app/installations/{id}/ac
 
 ### Distributing load across multiple GitHub Apps
 
-Rate limits are per App installation and cannot be raised. To scale beyond one App's budget, configure extra Apps with `additional_github_apps`. The control-plane lambdas select one App per invocation, making the effective limit N × the per-App limit. Selection prefers the App with the most rate-limit budget remaining, based on the `x-ratelimit-remaining` headers observed by the running Lambda container; Apps that hit a secondary rate limit are skipped for 60 seconds.
+Configure extra Apps with `additional_github_apps` to distribute API traffic. Scale-up, pool, scale-down, and job-retry clients select the eligible App with the highest recently observed remaining budget before each request, tracking primary resources separately once reported by GitHub. Selection state is local to a warm Lambda execution environment, not a globally synchronized quota measurement. Unknown or expired observations are explored with randomized tie-breaking; observations expire at the reported reset time, or after one minute without a reset header.
+
+Every HTTP 429 and rate-limit-specific 403 triggers bounded failover, including responses with nonzero primary quota remaining. The failed App is excluded until `Retry-After` or the primary reset deadline (with a one-second margin), defaulting to 60 seconds when neither is usable. The client resolves the replacement App's own installation and retries only the failed GitHub operation. Installation lookup and token minting use the same failover policy. Successful runner registrations and compute-provider operations are not replayed.
+
+Each App is attempted at most once per operation. If no eligible App remains, the error is returned to the caller's existing failure/retry path instead of sleeping through the Lambda timeout or ignoring cooldowns. Ordinary permission, authentication, and validation failures do not trigger app switching. Secondary limits can still affect multiple Apps; adding Apps does not guarantee linearly increasing throughput or replace concurrency control.
 
 > [!IMPORTANT]
 > Every additional App must be installed on the same organizations or repositories as the primary App. The module cannot verify this. A missing installation surfaces at runtime as installation lookup 404s on the fraction of invocations that select the misconfigured App, which is hard to trace back to the installation.
