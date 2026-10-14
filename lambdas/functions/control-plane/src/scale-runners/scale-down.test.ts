@@ -6,6 +6,7 @@ import { defaultComputeProvider } from '@aws-github-runner/compute-providers/pro
 
 import { controlPlaneProviderRegistry } from '../control-plane-providers';
 import * as ghAuth from '../github/auth';
+import * as scaleDownConfig from './scale-down-config';
 import { githubCache } from './cache';
 import { newestFirstStrategy, oldestFirstStrategy, scaleDown } from './scale-down';
 import type { RunnerInfo, RunnerType, ScaleDownComputeProvider } from './types';
@@ -292,6 +293,60 @@ describe('Scale down runners', () => {
       expect.not.objectContaining({ name: expect.anything() }),
     );
     expect(mockTerminateRunners).toHaveBeenCalledWith(runner.id);
+  });
+
+  it.each([false, true])(
+    'retains a busy legacy suffix match after an expected-name miss (orphan: %s)',
+    async (orphan) => {
+      const runner = createRunnerTestData('vm-123', 'Org', 60, true, true, false);
+      runner.githubRunnerName = `configured-${runner.id}`;
+      delete runner.githubRunnerId;
+      runner.orphan = orphan;
+      const registered = { id: 42, name: `custom-${runner.id}`, busy: true, status: 'online' };
+      mockOctokit.paginate.mockResolvedValueOnce([]).mockResolvedValue([registered]);
+      mockOctokit.actions.getSelfHostedRunnerForOrg.mockResolvedValue({ data: registered });
+      mockListRunners
+        .mockResolvedValueOnce(orphan ? [runner] : [])
+        .mockResolvedValueOnce(orphan ? [] : [runner])
+        .mockResolvedValue([]);
+      await scaleDown();
+      expect(mockMarkOrphan).not.toHaveBeenCalled();
+      expect(mockTerminateRunners).not.toHaveBeenCalled();
+      if (orphan) expect(mockUnmarkOrphan).toHaveBeenCalledWith(runner.id);
+    },
+  );
+
+  it('rechecks name-matched orphans and terminates an offline busy registration', async () => {
+    const runner = createRunnerTestData('offline-orphan', 'Org', 60, true, true, false);
+    runner.orphan = true;
+    runner.githubRunnerName = runner.id;
+    delete runner.githubRunnerId;
+    mockOctokit.paginate.mockResolvedValue([{ id: 42, name: runner.id, busy: false, status: 'online' }]);
+    mockOctokit.actions.getSelfHostedRunnerForOrg.mockResolvedValue({
+      data: { id: 42, name: runner.id, busy: true, status: 'offline' },
+    });
+    mockedResolveCapability.mockReturnValue(() => ({
+      ...mockComputeProvider,
+      listPage: vi.fn().mockResolvedValue({ runners: [runner] }),
+    }));
+    await scaleDown();
+    expect(mockTerminateRunners).toHaveBeenCalledWith(runner.id);
+    expect(mockUnmarkOrphan).not.toHaveBeenCalled();
+  });
+
+  it('captures eviction strategy once when page processing crosses the schedule window', async () => {
+    const strategy = vi
+      .spyOn(scaleDownConfig, 'getEvictionStrategy')
+      .mockReturnValueOnce('newest_first')
+      .mockReturnValue('oldest_first');
+    const listPage = vi
+      .fn()
+      .mockResolvedValueOnce({ runners: [], nextToken: 'next' })
+      .mockResolvedValueOnce({ runners: [] });
+    mockedResolveCapability.mockReturnValue(() => ({ ...mockComputeProvider, listPage }));
+    await scaleDown();
+    expect(strategy).toHaveBeenCalledTimes(1);
+    strategy.mockRestore();
   });
 
   it.each(['id', 'name'] as const)('preserves a busy custom-name paged runner verified by %s', async (identity) => {
