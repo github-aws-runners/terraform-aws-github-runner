@@ -1838,3 +1838,16 @@ describe('create runner with useDedicatedHost', () => {
     expect(runInstancesInput).not.toHaveProperty('WeightedCapacity');
   });
 });
+
+it('counts owners across pages without retaining runner records', async () => {
+  mockEC2Client
+    .on(DescribeInstancesCommand)
+    .resolvesOnce({ ...mockRunningInstances, NextToken: 'next' })
+    .resolvesOnce(mockRunningInstances);
+  const counts = await ec2Operations.countByOwner({ environment: ENVIRONMENT, runnerType: 'Org' });
+  expect(counts.get('codertocat')).toBe(2);
+  expect(mockEC2Client.commandCalls(DescribeInstancesCommand).at(-1)?.args[0].input).toEqual({
+    Filters: expect.arrayContaining([{ Name: 'tag:ghr:Type', Values: ['Org'] }]),
+    NextToken: 'next',
+  });
+});
