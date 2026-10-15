@@ -47,9 +47,11 @@ export function defineScaleDownContractTests<TType extends string>({
         expect(provider.list).toHaveBeenNthCalledWith(2, 'test-environment');
       });
 
-      it('terminates an orphan that has no GitHub runner identity', async () => {
+      it('terminates an orphan after GitHub confirms no matching registration', async () => {
         vi.mocked(provider.list)
-          .mockResolvedValueOnce([{ id: 'orphan-runner', owner: 'owner', type: 'Org', orphan: true }])
+          .mockResolvedValueOnce([
+            { id: 'orphan-runner', githubRunnerName: 'orphan-runner', owner: 'owner', type: 'Org', orphan: true },
+          ])
           .mockResolvedValue([]);
 
         await scaleDown();
