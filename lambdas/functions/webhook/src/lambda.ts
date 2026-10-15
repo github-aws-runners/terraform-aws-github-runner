@@ -9,15 +9,22 @@ import { EventWrapper } from './types';
 import { WorkflowJobEvent } from '@octokit/webhooks-types';
 import { ConfigDispatcher, ConfigWebhook, ConfigWebhookEventBridge } from './ConfigLoader';
 import { dispatch } from './runners/dispatch';
+import { githubEventTracingMiddleware } from './tracing/githubEventTracingMiddleware';
 
 export interface Response {
   statusCode: number;
   body: string;
 }
 
-middy(directWebhook).use(captureLambdaHandler(tracer));
+export const directWebhook = middy(directWebhookHandler)
+  .use(captureLambdaHandler(tracer))
+  .use(githubEventTracingMiddleware());
 
-export async function directWebhook(event: APIGatewayEvent, context: Context): Promise<Response> {
+export const eventBridgeWebhook = middy(eventBridgeWebhookHandler)
+  .use(captureLambdaHandler(tracer))
+  .use(githubEventTracingMiddleware());
+
+async function directWebhookHandler(event: APIGatewayEvent, context: Context): Promise<Response> {
   setContext(context, 'lambda.ts');
   logger.logEventIfEnabled(event);
 
@@ -42,7 +49,7 @@ export async function directWebhook(event: APIGatewayEvent, context: Context): P
   return result;
 }
 
-export async function eventBridgeWebhook(event: APIGatewayEvent, context: Context): Promise<Response> {
+async function eventBridgeWebhookHandler(event: APIGatewayEvent, context: Context): Promise<Response> {
   setContext(context, 'lambda.ts');
   logger.logEventIfEnabled(event);
 
