@@ -35,6 +35,14 @@ These apply in addition to primary limits, regardless of authentication method:
 
 Some REST API endpoints have a different point cost that is not shared publicly.
 
+### Request failover and retries
+
+Control-plane GitHub requests try another eligible App when a rate limit is reached, including job checks, registration-token requests, JIT configuration, and scale-down operations. Each App is tried at most once per operation. Primary quotas are tracked separately by resource and installation owner; secondary cooldowns apply across the App.
+
+This changes single-App behavior too: the throttling plugin no longer waits inside the Lambda for quota to reset. When no App is eligible, the operation fails promptly. Scale-up and job-retry queue consumers report failed records for SQS redelivery; scheduled pool and scale-down invocations can try again on their next run.
+
+The job-retry event source enables `ReportBatchItemFailures`. Failed authentication, job-status checks (including 5xx and timeouts), and queue publications return only their failed message IDs. Successfully processed records are acknowledged. A failed status check is retried before deciding whether to publish a scale-up request; it is not treated as evidence that the job is still queued. SQS remains an at-least-once service, so partial batch responses do not guarantee exactly-once processing.
+
 ### Maximum runner creation rate per App
 
 With an installation token cache (token mints ≈ 0 per runner), the per-runner API cost is:

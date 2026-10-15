@@ -1,4 +1,3 @@
-import { isRetryableAppError } from './github/app-failover';
 import middy from '@middy/core';
 import { logger, setContext } from '@aws-github-runner/aws-powertools-util';
 import { captureLambdaHandler, tracer } from '@aws-github-runner/aws-powertools-util';
@@ -134,16 +133,19 @@ export async function runnerConfigHousekeeper(event: unknown, context: Context):
 /** @deprecated Use runnerConfigHousekeeper. Kept for existing Terraform handler configuration. */
 export const ssmHousekeeper = runnerConfigHousekeeper;
 
-export async function jobRetryCheck(event: SQSEvent, context: Context): Promise<void> {
+export async function jobRetryCheck(event: SQSEvent, context: Context): Promise<SQSBatchResponse> {
   setContext(context, 'lambda.ts');
   logger.logEventIfEnabled(event);
 
+  const batchItemFailures: SQSBatchItemFailure[] = [];
   for (const record of event.Records) {
-    const payload = JSON.parse(record.body);
-    await checkAndRetryJob(payload).catch((e) => {
-      logger.warn(`Error processing job retry: ${e.message}`, { error: e });
-      if (isRetryableAppError(e)) throw e;
-    });
+    try {
+      const payload = JSON.parse(record.body);
+      await checkAndRetryJob(payload);
+    } catch (error) {
+      logger.warn('Error processing job retry', { error, messageId: record.messageId });
+      batchItemFailures.push({ itemIdentifier: record.messageId });
+    }
   }
-  return Promise.resolve();
+  return { batchItemFailures };
 }

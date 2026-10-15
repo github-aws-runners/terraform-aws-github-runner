@@ -54,10 +54,6 @@ function rateLimit(error: unknown): { headers: ResponseHeaders; until: number; p
   };
 }
 
-export function isRetryableAppError(error: unknown): boolean {
-  return error instanceof NoEligibleGitHubAppError || rateLimit(error) !== undefined;
-}
-
 class ClientInitializationError extends Error {}
 
 function observe(appIndex: number, headers: ResponseHeaders, scope: string, resource: string): void {

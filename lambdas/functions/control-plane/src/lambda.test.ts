@@ -323,26 +323,37 @@ describe('Test runnerConfigHousekeeper lambda wrapper.', () => {
 });
 
 describe('Test job retry check wrapper', () => {
+  beforeEach(() => vi.mocked(checkAndRetryJob).mockReset());
   it.each([
     { status: 429, message: 'Too many requests' },
     { status: 403, message: 'API rate limit exceeded', response: { headers: { 'x-ratelimit-remaining': '0' } } },
     new NoEligibleGitHubAppError('No eligible GitHub App'),
-  ])('rejects transient app exhaustion so SQS retries the message', async (error) => {
-    vi.mocked(checkAndRetryJob).mockRejectedValue(error);
-    await expect(jobRetryCheck(sqsEvent, context)).rejects.toBe(error);
+    { status: 502, message: 'Bad gateway' },
+    new Error('Request timed out'),
+    new Error('SQS publication failed'),
+  ])('retries only the failed record and continues processing the batch', async (error) => {
+    vi.mocked(checkAndRetryJob).mockResolvedValueOnce().mockRejectedValueOnce(error).mockResolvedValueOnce();
+    const records = ['first', 'failed', 'last'].map((messageId) => ({ ...sqsEvent.Records[0], messageId }));
+    await expect(jobRetryCheck({ Records: records }, context)).resolves.toEqual({
+      batchItemFailures: [{ itemIdentifier: 'failed' }],
+    });
+    expect(checkAndRetryJob).toHaveBeenCalledTimes(3);
   });
 
-  it('Handle without error should resolve.', async () => {
+  it('acknowledges successful records', async () => {
     vi.mocked(checkAndRetryJob).mockResolvedValue();
-    await expect(jobRetryCheck(sqsEvent, context)).resolves.not.toThrow();
+    await expect(jobRetryCheck(sqsEvent, context)).resolves.toEqual({ batchItemFailures: [] });
   });
 
-  it('Handle with error should resolve and log only a warning.', async () => {
-    const error = new Error('Error handling retry check.');
-    vi.mocked(checkAndRetryJob).mockRejectedValue(error);
-
-    const logSpyWarn = vi.spyOn(logger, 'warn');
-    await expect(jobRetryCheck(sqsEvent, context)).resolves.not.toThrow();
-    expect(logSpyWarn).toHaveBeenCalledWith(`Error processing job retry: ${error.message}`, { error });
+  it('isolates malformed JSON without replaying successful records', async () => {
+    vi.mocked(checkAndRetryJob).mockResolvedValue();
+    const records = [
+      { ...sqsEvent.Records[0], messageId: 'invalid', body: '{' },
+      { ...sqsEvent.Records[0], messageId: 'valid' },
+    ];
+    await expect(jobRetryCheck({ Records: records }, context)).resolves.toEqual({
+      batchItemFailures: [{ itemIdentifier: 'invalid' }],
+    });
+    expect(checkAndRetryJob).toHaveBeenCalledTimes(1);
   });
 });

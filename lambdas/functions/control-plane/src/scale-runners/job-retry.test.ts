@@ -339,6 +339,23 @@ describe('Test job retry handler (batch processing)', () => {
     expect(publishMessage).toHaveBeenCalledTimes(3);
   });
 
+  it.each([new Error('Request timed out'), { status: 502, message: 'Bad gateway' }])(
+    'retains a failed queued-job check for redelivery without republishing successful records',
+    async (error) => {
+      mockOctokit.actions.getJobForWorkflowRun
+        .mockResolvedValueOnce({ data: { status: 'queued' }, headers: {} })
+        .mockRejectedValueOnce(error)
+        .mockResolvedValue({ data: { status: 'queued' }, headers: {} });
+      const records = [createSQSRecord('msg-1'), createSQSRecord('msg-2'), createSQSRecord('msg-3')];
+      await expect(jobRetryCheck({ Records: records }, context)).resolves.toEqual({
+        batchItemFailures: [{ itemIdentifier: 'msg-2' }],
+      });
+      expect(publishMessage).toHaveBeenCalledTimes(2);
+      await expect(jobRetryCheck({ Records: [records[1]] }, context)).resolves.toEqual({ batchItemFailures: [] });
+      expect(publishMessage).toHaveBeenCalledTimes(3);
+    },
+  );
+
   it('should continue processing other records when one fails', async () => {
     mockCreateOctokitClient
       .mockResolvedValueOnce(new Octokit()) // First record succeeds
@@ -356,7 +373,7 @@ describe('Test job retry handler (batch processing)', () => {
       Records: [createSQSRecord('msg-1'), createSQSRecord('msg-2'), createSQSRecord('msg-3')],
     };
 
-    await expect(jobRetryCheck(event, context)).resolves.not.toThrow();
+    await expect(jobRetryCheck(event, context)).resolves.toEqual({ batchItemFailures: [{ itemIdentifier: 'msg-2' }] });
     // There were two successful calls to publishMessage
     expect(publishMessage).toHaveBeenCalledTimes(2);
   });
