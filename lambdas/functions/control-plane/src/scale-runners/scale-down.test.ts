@@ -203,6 +203,8 @@ describe('Scale down runners', () => {
     process.env.COMPUTE_PROVIDER_TYPE = defaultComputeProvider;
 
     vi.clearAllMocks();
+    mockOctokit.actions.listSelfHostedRunnersForRepo.mockResolvedValue({ data: { runners: [] }, headers: {} });
+    mockOctokit.actions.listSelfHostedRunnersForOrg.mockResolvedValue({ data: { runners: [] }, headers: {} });
     githubCache.clients.clear();
     githubCache.runners.clear();
 
@@ -966,6 +968,68 @@ describe('Scale down runners', () => {
         await scaleDown();
 
         expect(mockTerminateRunners).toHaveBeenCalledWith(orphanRunner.id);
+      });
+
+      it.each([false, true])('retains a runner after 404 when owner access fails (orphan=%s)', async (orphan) => {
+        const runner = createRunnerTestData(
+          'lost-access',
+          type,
+          MINIMUM_TIME_RUNNING_IN_MINUTES + 1,
+          false,
+          orphan,
+          true,
+          undefined,
+          1234567890,
+        );
+        mockGitHubRunners([runner]);
+        mockProviderRunners([runner]);
+        const missing = new RequestError('Not found', 404, {
+          request: { method: 'GET', url: 'https://api.github.com/test', headers: {} },
+        });
+        const get =
+          type === 'Repo'
+            ? mockOctokit.actions.getSelfHostedRunnerForRepo
+            : mockOctokit.actions.getSelfHostedRunnerForOrg;
+        const list =
+          type === 'Repo'
+            ? mockOctokit.actions.listSelfHostedRunnersForRepo
+            : mockOctokit.actions.listSelfHostedRunnersForOrg;
+        get.mockRejectedValue(missing);
+        list.mockRejectedValue(missing);
+        await scaleDown();
+        expect(list).toHaveBeenCalledWith(expect.objectContaining({ per_page: 1 }));
+        expect(mockTerminateRunners).not.toHaveBeenCalled();
+        expect(mockMarkOrphan).not.toHaveBeenCalled();
+      });
+
+      it('retains an orphan when the deadline expires before collection access verification', async () => {
+        const runner = createRunnerTestData(
+          'deadline-access',
+          type,
+          MINIMUM_TIME_RUNNING_IN_MINUTES + 1,
+          false,
+          true,
+          true,
+          undefined,
+          1234567890,
+        );
+        mockGitHubRunners([]);
+        mockProviderRunners([runner]);
+        let remaining = 60000;
+        const get =
+          type === 'Repo'
+            ? mockOctokit.actions.getSelfHostedRunnerForRepo
+            : mockOctokit.actions.getSelfHostedRunnerForOrg;
+        get.mockImplementationOnce(async () => {
+          remaining = 9000;
+          throw new RequestError('Not found', 404, {
+            request: { method: 'GET', url: 'https://api.github.com/test', headers: {} },
+          });
+        });
+        await scaleDown(() => remaining);
+        expect(mockOctokit.actions.listSelfHostedRunnersForRepo).not.toHaveBeenCalled();
+        expect(mockOctokit.actions.listSelfHostedRunnersForOrg).not.toHaveBeenCalled();
+        expect(mockTerminateRunners).not.toHaveBeenCalled();
       });
 
       it('Should handle 404 error when checking orphaned runner (JIT) - treat as orphaned', async () => {

@@ -101,6 +101,7 @@ async function getGitHubSelfHostedRunnerState(
   client: Octokit,
   runner: RunnerInfo,
   runnerId: number,
+  remainingTime: () => number,
 ): Promise<RunnerState | null> {
   try {
     const state =
@@ -118,6 +119,19 @@ async function getGitHubSelfHostedRunnerState(
     return state.data;
   } catch (error) {
     if (error instanceof RequestError && error.status === 404) {
+      // GitHub also hides inaccessible private resources behind 404. Confirm access
+      // with the same installation client before treating this registration as absent.
+      requireTime(remainingTime);
+      const access =
+        runner.type === 'Org'
+          ? await client.actions.listSelfHostedRunnersForOrg({ org: runner.owner, per_page: 1 })
+          : await client.actions.listSelfHostedRunnersForRepo({
+              owner: runner.owner.split('/')[0],
+              repo: runner.owner.split('/')[1],
+              per_page: 1,
+            });
+      requireTime(remainingTime);
+      metricGitHubAppRateLimit(access.headers);
       logger.info(`Runner '${runner.id}' with GitHub Runner ID '${runnerId}' not found on GitHub (404)`);
       return null;
     }
@@ -125,8 +139,13 @@ async function getGitHubSelfHostedRunnerState(
   }
 }
 
-async function getGitHubRunnerBusyState(client: Octokit, runner: RunnerInfo, runnerId: number): Promise<boolean> {
-  const state = await getGitHubSelfHostedRunnerState(client, runner, runnerId);
+async function getGitHubRunnerBusyState(
+  client: Octokit,
+  runner: RunnerInfo,
+  runnerId: number,
+  remainingTime: () => number,
+): Promise<boolean> {
+  const state = await getGitHubSelfHostedRunnerState(client, runner, runnerId, remainingTime);
   if (state === null) {
     logger.info(`Runner '${runner.id}' - GitHub Runner ID '${runnerId}' - Not found on GitHub, treating as not busy`);
     return false;
@@ -158,7 +177,7 @@ async function listGitHubRunners(
   const client = await getOrCreateOctokit(runner, remainingTime);
   requireTime(remainingTime);
   if (hasGitHubRunnerId(runner)) {
-    const state = await getGitHubSelfHostedRunnerState(client, runner, Number(runner.githubRunnerId));
+    const state = await getGitHubSelfHostedRunnerState(client, runner, Number(runner.githubRunnerId), remainingTime);
     return state ? [state] : [];
   }
   if (runner.githubRunnerName !== undefined) {
@@ -319,7 +338,7 @@ async function removeRunner(
     const states = await Promise.all(
       ghRunnerIds.map(async (ghRunnerId) => {
         // Get busy state instead of using the output of listGitHubRunners(...) to minimize to race condition.
-        return await getGitHubRunnerBusyState(githubInstallationClient, runner, ghRunnerId);
+        return await getGitHubRunnerBusyState(githubInstallationClient, runner, ghRunnerId, remainingTime);
       }),
     );
 
@@ -459,7 +478,7 @@ async function lastChanceCheckOrphanRunner(runner: RunnerInfo, remainingTime: ()
   const client = await getOrCreateOctokit(runner, remainingTime);
   requireTime(remainingTime);
   const runnerId = parseInt(runner.githubRunnerId || '0');
-  const state = await getGitHubSelfHostedRunnerState(client, runner, runnerId);
+  const state = await getGitHubSelfHostedRunnerState(client, runner, runnerId, remainingTime);
   let isOrphan = false;
 
   if (state === null) {
