@@ -7,6 +7,7 @@ import {
   createOctokitClient,
   getStoredInstallationId,
 } from './auth';
+import { multiOrgEnabled, normalizeOrganization } from './multi-org';
 
 const logger = createChildLogger('octokit');
 
@@ -27,7 +28,7 @@ async function resolveInstallationIdFromApi(
   return enableOrgLevel
     ? (
         await githubClient.apps.getOrgInstallation({
-          org: payload.repositoryOwner,
+          org: normalizeOrganization(payload.repositoryOwner),
         })
       ).data.id
     : (
@@ -45,7 +46,7 @@ async function resolveInstallationId(
   appIndex?: number,
 ): Promise<number> {
   // Use pre-stored installation ID when available (avoids an API call)
-  if (appIndex !== undefined) {
+  if (!multiOrgEnabled() && appIndex !== undefined) {
     const storedId = await getStoredInstallationId(appIndex);
     if (storedId !== undefined) return storedId;
   }

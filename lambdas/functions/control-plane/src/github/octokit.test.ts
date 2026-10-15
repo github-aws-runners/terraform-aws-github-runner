@@ -190,3 +190,30 @@ describe('Test getOctokit stale installation fallback', () => {
     expect(createGithubInstallationAuth).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('multi-org retry authentication', () => {
+  it.each([0, 1])('ignores global installation for app %s', async (appIndex) => {
+    vi.clearAllMocks();
+    vi.stubEnv('ENABLE_MULTI_ORG_RUNNERS', 'true');
+    try {
+      vi.mocked(createGithubAppAuth).mockResolvedValue({ token: 'token', appIndex } as Awaited<
+        ReturnType<typeof createGithubAppAuth>
+      >);
+      vi.mocked(getStoredInstallationId).mockResolvedValue(999);
+      mockOctokit.apps.getOrgInstallation.mockResolvedValue({ data: { id: 20 } });
+      await getOctokit('', true, {
+        eventType: 'workflow_job',
+        id: 1,
+        repositoryOwner: 'org-b',
+        repositoryName: 'repo',
+        repoOwnerType: 'Organization',
+        installationId: 10,
+      });
+      expect(getStoredInstallationId).not.toHaveBeenCalled();
+      expect(createGithubInstallationAuth).toHaveBeenCalledWith(appIndex === 0 ? 10 : 20, '', appIndex);
+      if (appIndex === 1) expect(mockOctokit.apps.getOrgInstallation).toHaveBeenCalledWith({ org: 'org-b' });
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+});

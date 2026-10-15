@@ -4,7 +4,8 @@ module "pool" {
   source = "./pool"
 
   config = {
-    prefix = var.prefix
+    enable_multi_org_runners = var.enable_multi_org_runners
+    prefix                   = var.prefix
     ghes = {
       ssl_verify = var.ghes_ssl_verify
       url        = var.ghes_url
