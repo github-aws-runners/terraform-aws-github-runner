@@ -46,6 +46,7 @@ export interface Ec2RunnerResourceOperations {
 }
 
 export interface Ec2RunnerProvisioningOperations extends Ec2RunnerResourceOperations {
+  countByOwner(filters: Ec2ListRunnerFilters): Promise<Map<string, number>>;
   getDefaultBlockDeviceNameFromLaunchTemplate(launchTemplateName: string): Promise<string>;
 }
 
@@ -64,6 +65,19 @@ async function runWithRequestSignal<TResult>(
 export function createEc2RunnerClient(ec2Client: EC2Client): Ec2RunnerClient {
   return {
     forRequest: ({ signal }) => ({
+      countByOwner: (filters) =>
+        runWithRequestSignal(signal, async () => {
+          const counts = new Map<string, number>();
+          for (const filter of constructFilters(filters)) {
+            await getRunners(ec2Client, filter, signal, (page) => {
+              for (const runner of page) {
+                const owner = runner.owner?.toLowerCase();
+                if (owner) counts.set(owner, (counts.get(owner) ?? 0) + 1);
+              }
+            });
+          }
+          return counts;
+        }),
       list: (filters) => runWithRequestSignal(signal, () => listEc2Runners(ec2Client, filters, signal)),
       create: (runnerParameters) =>
         runWithRequestSignal(signal, () => createEc2Runner(ec2Client, runnerParameters, signal)),
@@ -88,13 +102,14 @@ async function listEc2Runners(
 ): Promise<RunnerInfo[]> {
   const ec2Filters = constructFilters(filters);
   const runners: RunnerInfo[] = [];
-  for (const filter of ec2Filters) {
-    runners.push(...(await getRunners(ec2Client, filter, signal)));
-  }
-  // EC2 tag filters are case-sensitive. In opt-in mode retain the environment/type
-  // filters in AWS, then match ownership locally so pre-existing mixed-case tags count too.
+  // Match each page locally because EC2 tag filters are case-sensitive.
   const owner = filters?.runnerOwnerIgnoreCase ? filters.runnerOwner?.toLowerCase() : undefined;
-  return owner ? runners.filter((runner) => runner.owner?.toLowerCase() === owner) : runners;
+  for (const filter of ec2Filters) {
+    await getRunners(ec2Client, filter, signal, (page) => {
+      runners.push(...(owner ? page.filter((runner) => runner.owner?.toLowerCase() === owner) : page));
+    });
+  }
+  return runners;
 }
 
 function constructFilters(filters?: Ec2ListRunnerFilters): Ec2Filter[][] {
@@ -105,9 +120,9 @@ function constructFilters(filters?: Ec2ListRunnerFilters): Ec2Filter[][] {
     if (filters.environment !== undefined) {
       ec2FiltersBase.push({ Name: 'tag:ghr:environment', Values: [filters.environment] });
     }
-    if (filters.runnerType && filters.runnerOwner) {
+    if (filters.runnerType) {
       ec2FiltersBase.push({ Name: `tag:ghr:Type`, Values: [filters.runnerType] });
-      if (!filters.runnerOwnerIgnoreCase) {
+      if (filters.runnerOwner && !filters.runnerOwnerIgnoreCase) {
         ec2FiltersBase.push({ Name: `tag:ghr:Owner`, Values: [filters.runnerOwner] });
       }
     }
@@ -128,6 +143,7 @@ async function getRunners(
   ec2Client: EC2Client,
   ec2Filters: Ec2Filter[],
   signal: AbortSignal | undefined,
+  onPage?: (runners: RunnerInfo[]) => void,
 ): Promise<RunnerInfo[]> {
   const runners: RunnerInfo[] = [];
   let nextToken;
@@ -139,7 +155,9 @@ async function getRunners(
     );
     hasNext = instances.NextToken ? true : false;
     nextToken = instances.NextToken;
-    runners.push(...getRunnerInfo(instances));
+    const page = getRunnerInfo(instances);
+    if (onPage) onPage(page);
+    else runners.push(...page);
   }
   return runners;
 }

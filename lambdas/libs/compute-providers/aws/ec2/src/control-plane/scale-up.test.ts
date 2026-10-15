@@ -24,6 +24,7 @@ const repositoryRunnerOwner = 'Codertocat/hello-world';
 const cleanEnv = process.env;
 const ec2Operations: Ec2RunnerProvisioningOperations = {
   list: mockListRunners,
+  countByOwner: vi.fn().mockResolvedValue(new Map()),
   create: mockCreateRunner,
   terminate: mockTerminateRunner,
   tag: mockTag,
@@ -1426,18 +1427,31 @@ describe('parseEc2OverrideConfig', () => {
   });
 });
 
-it('forwards case-insensitive owner matching for capacity counts', async () => {
-  mockListRunners.mockResolvedValue([]);
-  const resolution = await capability.resolveLabelsForRunners([]);
-  await capability.getCurrentRunners(resolution.state, {
-    runnerType: 'Org',
-    runnerOwner: 'org-a',
-    runnerOwnerIgnoreCase: true,
+it('shares a case-insensitive owner snapshot across groups and counts successful launches', async () => {
+  const counts = vi.fn().mockResolvedValue(
+    new Map([
+      ['codertocat', 2],
+      ['other', 7],
+    ]),
+  );
+  const scoped = createEc2ScaleUpCapability({ ...ec2Operations, countByOwner: counts }, mockCreateStartRunnerConfig);
+  const { state } = await scoped.resolveLabelsForRunners([]);
+  const filters = { runnerType: 'Org' as const, runnerOwner: 'CoderToCat', runnerOwnerIgnoreCase: true };
+  expect(await scoped.getCurrentRunners(state, filters)).toBe(2);
+  expect(await scoped.getCurrentRunners(state, { ...filters, runnerOwner: 'OTHER' })).toBe(7);
+  mockCreateRunner.mockResolvedValue(createRunnerResult(['i-new']));
+  await scoped.createRunners({
+    githubRunnerConfig: runnerConfig(),
+    numberOfRunners: 1,
+    githubInstallationClient: githubClient,
+    state,
   });
-  expect(mockListRunners).toHaveBeenCalledWith({
-    environment: 'unit-test-environment',
-    runnerType: 'Org',
-    runnerOwner: 'org-a',
-    runnerOwnerIgnoreCase: true,
-  });
+  expect(await scoped.getCurrentRunners(state, filters)).toBe(3);
+  expect(counts).toHaveBeenCalledTimes(1);
+  const nextInvocation = createEc2ScaleUpCapability(
+    { ...ec2Operations, countByOwner: counts },
+    mockCreateStartRunnerConfig,
+  );
+  await nextInvocation.getCurrentRunners(state, filters);
+  expect(counts).toHaveBeenCalledTimes(2);
 });
