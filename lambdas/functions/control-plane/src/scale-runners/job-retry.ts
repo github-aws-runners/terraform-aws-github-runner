@@ -38,6 +38,13 @@ export async function publishRetryMessage(payload: ActionRequestMessage): Promis
 }
 
 export async function checkAndRetryJob(payload: ActionRequestMessageRetry): Promise<void> {
+  // Only workflow jobs have a queued-status API. Retrying other event types
+  // cannot make that check succeed and would waste authentication requests.
+  if (payload.eventType !== 'workflow_job') {
+    logger.debug('Unsupported event type, skipping job retry', { eventType: payload.eventType });
+    return;
+  }
+
   const enableOrgLevel = yn(process.env.ENABLE_ORGANIZATION_RUNNERS, { default: true });
   const runnerType = enableOrgLevel ? 'Org' : 'Repo';
   const runnerOwner = enableOrgLevel ? payload.repositoryOwner : `${payload.repositoryOwner}/${payload.repositoryName}`;
