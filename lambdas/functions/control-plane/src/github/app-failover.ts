@@ -41,16 +41,17 @@ function rateLimit(error: unknown): { headers: ResponseHeaders; until: number; p
   const retryAt =
     retryAfter === undefined ? NaN : Number.isFinite(seconds) ? now + seconds * 1000 : Date.parse(String(retryAfter));
   const resetAt = headers['x-ratelimit-remaining'] === '0' ? Number(headers['x-ratelimit-reset']) * 1000 : NaN;
-  // Never sleep inside a Lambda. Keep this app unavailable until the server's
-  // deadline (at least a minute when GitHub gives no usable deadline).
-  const deadlines = [retryAt, resetAt].filter((value) => Number.isFinite(value) && value > now);
+  const primary =
+    headers['x-ratelimit-remaining'] === '0' &&
+    retryAfter === undefined &&
+    !/secondary|abuse/i.test(failure.message ?? '');
+  // Primary resets belong only to their resource. A combined response must
+  // not extend the app-wide secondary cooldown to the primary reset time.
+  const deadline = primary ? resetAt : retryAt;
   return {
     headers,
-    until: deadlines.length ? Math.max(...deadlines) + 1000 : now + 60_000,
-    primary:
-      headers['x-ratelimit-remaining'] === '0' &&
-      retryAfter === undefined &&
-      !/secondary|abuse/i.test(failure.message ?? ''),
+    until: Number.isFinite(deadline) && deadline > now ? deadline + 1000 : now + 60_000,
+    primary,
   };
 }
 

@@ -278,6 +278,32 @@ describe('request-level app failover with real Octokit retry/throttling hooks', 
     expect(factory.mock.calls.map(([index]) => index)).toEqual([0, 1]);
   });
 
+  it.each(['60', undefined, 'invalid'])(
+    'expires secondary cooldown independently of a longer core reset (Retry-After: %s)',
+    async (retryAfter) => {
+      const now = Date.now();
+      const clock = vi.spyOn(Date, 'now').mockReturnValue(now);
+      const single = { get: vi.fn().mockResolvedValue([{ appId: 1, privateKey: 'key' }]) };
+      const gh = await withAppFailover(0, (index) => createOctokitClient('app-0', '', index), single);
+      const limitedHeaders = {
+        'x-ratelimit-remaining': '0',
+        'x-ratelimit-resource': 'core',
+        'x-ratelimit-reset': String(Math.floor(now / 1000) + 600),
+        ...(retryAfter === undefined ? {} : { 'retry-after': retryAfter }),
+      };
+      const core = api('app-0').get('/test').reply(429, { message: 'Secondary rate limit exceeded' }, limitedHeaders);
+      await expect(gh.request('GET /test')).rejects.toMatchObject({ status: 429 });
+      expect(core.isDone()).toBe(true);
+      clock.mockReturnValue(now + 59000);
+      await expect(selectAppIndex(single, new Set(), 'actions_runner_registration')).rejects.toThrow(
+        'No eligible GitHub App',
+      );
+      clock.mockReturnValue(now + 62000);
+      await expect(selectAppIndex(single, new Set(), 'core')).rejects.toThrow('No eligible GitHub App');
+      expect(await selectAppIndex(single, new Set(), 'actions_runner_registration')).toBe(0);
+    },
+  );
+
   it('honors Retry-After beyond the default minute, then makes the app eligible again', async () => {
     const now = Date.now();
     const clock = vi.spyOn(Date, 'now').mockReturnValue(now);
