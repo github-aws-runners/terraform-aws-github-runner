@@ -15,6 +15,7 @@
       "Effect": "Allow",
       "Action": [
         "ec2:TerminateInstances",
+        "ec2:CancelSpotInstanceRequests",
         "ec2:CreateTags",
         "ec2:DeleteTags"
       ],
