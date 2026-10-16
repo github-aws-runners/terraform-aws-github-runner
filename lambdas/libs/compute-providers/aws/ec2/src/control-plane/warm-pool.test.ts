@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { Ec2PoolStandbyOperations, StandbyInstance } from '../standby-types';
+import type { Ec2PoolStandbyOperations, StandbyInstance, StandbySpotRequest } from '../standby-types';
 import { reconcileWarmPool } from './warm-pool';
 
 const NOW = new Date('2026-09-30T12:00:00.000Z');
@@ -13,9 +13,9 @@ const standby = {
   list: vi.fn<Ec2PoolStandbyOperations['list']>(),
   launch: vi.fn<Ec2PoolStandbyOperations['launch']>(),
   destroy: vi.fn<Ec2PoolStandbyOperations['destroy']>(),
-  listOrphanedSpotRequests: vi.fn<Ec2PoolStandbyOperations['listOrphanedSpotRequests']>(),
   cancelSpotRequests: vi.fn<Ec2PoolStandbyOperations['cancelSpotRequests']>(),
   currentImage: vi.fn<Ec2PoolStandbyOperations['currentImage']>(),
+  markPrimed: vi.fn<Ec2PoolStandbyOperations['markPrimed']>(),
 } satisfies Ec2PoolStandbyOperations;
 
 function reconcile(desiredSize: number, overrides: { maxAgeHours?: number; bootTimeoutMinutes?: number } = {}) {
@@ -28,8 +28,12 @@ function reconcile(desiredSize: number, overrides: { maxAgeHours?: number; bootT
   });
 }
 
-function mockListing(instances: StandbyInstance[]): void {
-  standby.list.mockResolvedValue(instances);
+function mockListing(
+  instances: StandbyInstance[],
+  orphanedSpotRequests: StandbySpotRequest[] = [],
+  spotLookupError?: string,
+): void {
+  standby.list.mockResolvedValue({ instances, orphanedSpotRequests, ...(spotLookupError ? { spotLookupError } : {}) });
 }
 
 function instance(
@@ -66,8 +70,10 @@ beforeEach(() => {
     succeeded: instances.map((i) => i.instanceId),
     failed: [],
   }));
-  standby.listOrphanedSpotRequests.mockResolvedValue([]);
-  standby.cancelSpotRequests.mockImplementation(async (ids) => ({ succeeded: ids, failed: [] }));
+  standby.cancelSpotRequests.mockImplementation(async (requests) => ({
+    succeeded: requests.map((request) => request.spotInstanceRequestId),
+    failed: [],
+  }));
   standby.currentImage.mockResolvedValue({ imageId: 'ami-current', launchTemplateVersion: '3' });
 });
 
@@ -144,6 +150,19 @@ describe('reconcileWarmPool', () => {
       expect(destroyedIds()).toEqual(['i-g1', 'i-g2']);
     });
 
+    it('replaces WARM instances whose start failed for lack of capacity three times', async () => {
+      mockListing([
+        instance('i-failing', 'WARM', HOUR, { startFailures: 3 }),
+        instance('i-retrying', 'WARM', HOUR, { startFailures: 2 }),
+      ]);
+
+      const result = await reconcile(2);
+
+      expect(destroyedIds()).toEqual(['i-failing']);
+      expect(standby.launch).toHaveBeenCalledWith(expect.objectContaining({ numberOfInstances: 1 }));
+      expect(result.evictions).toEqual({ 'start-failed': 1 });
+    });
+
     it('never touches ACTIVE instances', async () => {
       mockListing([
         instance('i-active-old', 'ACTIVE', 300 * HOUR, { imageId: 'ami-old', launchTemplateVersion: '1' }),
@@ -177,22 +196,36 @@ describe('reconcileWarmPool', () => {
       expect(standby.launch).not.toHaveBeenCalled();
     });
 
-    it('cancels orphaned spot requests', async () => {
-      standby.listOrphanedSpotRequests.mockResolvedValue([
-        { spotInstanceRequestId: 'sir-1', state: 'open' },
-        { spotInstanceRequestId: 'sir-2', state: 'disabled', instanceId: 'i-gone' },
-      ]);
+    it('cleans up orphaned spot requests from the listing', async () => {
+      const orphaned = [
+        { spotInstanceRequestId: 'sir-1', state: 'active', instanceId: 'i-gone', replacementInstanceId: 'i-respawn' },
+        { spotInstanceRequestId: 'sir-2', state: 'disabled', instanceId: 'i-activated' },
+      ];
+      mockListing([], orphaned);
 
       await reconcile(0);
 
-      expect(standby.listOrphanedSpotRequests).toHaveBeenCalledWith(POOL_INPUT);
-      expect(standby.cancelSpotRequests).toHaveBeenCalledWith(['sir-1', 'sir-2']);
+      expect(standby.cancelSpotRequests).toHaveBeenCalledWith(orphaned);
     });
 
     it('does not cancel spot requests when none are orphaned', async () => {
       await reconcile(0);
 
       expect(standby.cancelSpotRequests).not.toHaveBeenCalled();
+    });
+
+    it('still evicts and refills, and reports the error, when spot request state could not be read', async () => {
+      mockListing(
+        [instance('i-stuck', 'PRIMING', 6 * MINUTE), instance('i-w1', 'WARM', HOUR)],
+        [],
+        'RequestResourceCountExceeded',
+      );
+
+      const result = await reconcile(2);
+
+      expect(destroyedIds()).toEqual(['i-stuck']);
+      expect(standby.launch).toHaveBeenCalledWith(expect.objectContaining({ numberOfInstances: 1 }));
+      expect(result.errors).toEqual([{ operation: 'describe-spot-requests', code: 'RequestResourceCountExceeded' }]);
     });
   });
 
@@ -240,18 +273,20 @@ describe('reconcileWarmPool', () => {
 
   describe('result', () => {
     it('reports pool counts and successful evictions by reason', async () => {
-      mockListing([
-        instance('i-old', 'WARM', 11 * HOUR),
-        instance('i-drift', 'WARM', HOUR, { imageId: 'ami-old' }),
-        instance('i-w1', 'WARM', HOUR),
-        instance('i-w2', 'WARM', 2 * HOUR),
-        instance('i-stuck', 'PRIMING', 6 * MINUTE),
-        instance('i-p1', 'PRIMING', MINUTE),
-        instance('i-g1', 'GARBAGE', MINUTE),
-        instance('i-g2', 'GARBAGE', MINUTE),
-        instance('i-a1', 'ACTIVE', MINUTE),
-      ]);
-      standby.listOrphanedSpotRequests.mockResolvedValue([{ spotInstanceRequestId: 'sir-1' }]);
+      mockListing(
+        [
+          instance('i-old', 'WARM', 11 * HOUR),
+          instance('i-drift', 'WARM', HOUR, { imageId: 'ami-old' }),
+          instance('i-w1', 'WARM', HOUR),
+          instance('i-w2', 'WARM', 2 * HOUR),
+          instance('i-stuck', 'PRIMING', 6 * MINUTE),
+          instance('i-p1', 'PRIMING', MINUTE),
+          instance('i-g1', 'GARBAGE', MINUTE),
+          instance('i-g2', 'GARBAGE', MINUTE),
+          instance('i-a1', 'ACTIVE', MINUTE),
+        ],
+        [{ spotInstanceRequestId: 'sir-1' }],
+      );
       standby.destroy.mockImplementation(async (instances) => ({
         succeeded: instances.map((i) => i.instanceId).filter((id) => id !== 'i-g2'),
         failed: ['i-g2'],

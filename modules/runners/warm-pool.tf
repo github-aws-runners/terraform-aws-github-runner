@@ -17,13 +17,19 @@ resource "terraform_data" "warm_pool_validation" {
   }
 }
 
-# Short-lived claims that stop concurrent scale-up invocations from starting the same warm instance.
-resource "aws_dynamodb_table" "warm_pool_leases" {
+# Tracks the standby instances of the pool so the pool and scale-up read EC2 by instance ID instead of tag scans.
+resource "aws_dynamodb_table" "warm_pool_index" {
   count = var.warm_pool.enabled ? 1 : 0
 
-  name         = "${var.prefix}-warm-pool-leases"
+  name         = "${var.prefix}-warm-pool-index"
   billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "instanceId"
+  hash_key     = "environment"
+  range_key    = "instanceId"
+
+  attribute {
+    name = "environment"
+    type = "S"
+  }
 
   attribute {
     name = "instanceId"
@@ -31,7 +37,7 @@ resource "aws_dynamodb_table" "warm_pool_leases" {
   }
 
   ttl {
-    attribute_name = "expiresAt"
+    attribute_name = "ttl"
     enabled        = true
   }
 
@@ -44,12 +50,6 @@ resource "aws_dynamodb_table" "warm_pool_leases" {
 
 data "aws_iam_policy_document" "scale_up_warm_pool" {
   count = var.warm_pool.enabled ? 1 : 0
-
-  statement {
-    sid       = "WarmPoolDescribe"
-    actions   = ["ec2:DescribeInstances", "ec2:DescribeSpotInstanceRequests"]
-    resources = ["*"]
-  }
 
   statement {
     sid = "WarmPoolActivate"
@@ -69,15 +69,9 @@ data "aws_iam_policy_document" "scale_up_warm_pool" {
   }
 
   statement {
-    sid       = "WarmPoolLease"
-    actions   = ["dynamodb:DeleteItem", "dynamodb:PutItem"]
-    resources = [aws_dynamodb_table.warm_pool_leases[0].arn]
-  }
-
-  statement {
-    sid       = "WarmPoolRollbackRunnerConfig"
-    actions   = ["ssm:DeleteParameter"]
-    resources = ["arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${local.token_path}/*"]
+    sid       = "WarmPoolIndex"
+    actions   = ["dynamodb:Query", "dynamodb:UpdateItem"]
+    resources = [aws_dynamodb_table.warm_pool_index[0].arn]
   }
 
   # Launching or starting instances with the caller's credentials needs the EBS encryption key (e.g. a customer-managed default key).

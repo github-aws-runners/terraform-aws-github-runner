@@ -144,15 +144,11 @@ run "warm_pool_wires_pool_and_scale_up" {
       module.orchestration_webhook[0].pool.lambda.environment[0].variables["WARM_POOL_ENABLED"] == "true"
       && module.orchestration_webhook[0].pool.lambda.environment[0].variables["WARM_POOL_MAX_AGE_HOURS"] == "24"
       && module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["WARM_POOL_ENABLED"] == "true"
-      && contains(keys(module.orchestration_webhook[0].scale_up.lambda.environment[0].variables), "WARM_POOL_LEASE_TABLE_NAME")
+      && contains(keys(module.orchestration_webhook[0].scale_up.lambda.environment[0].variables), "WARM_POOL_INDEX_TABLE_NAME")
+      && contains(keys(module.orchestration_webhook[0].pool.lambda.environment[0].variables), "WARM_POOL_INDEX_TABLE_NAME")
       && contains(keys(module.orchestration_webhook[0].scale_up.lambda.environment[0].variables), "ENABLE_METRIC_WARM_POOL")
     )
     error_message = "Warm pool settings must reach the pool and scale-up lambdas for repository-level runners."
-  }
-
-  assert {
-    condition     = length(data.aws_iam_policy_document.warm_pool_scale_up_storage) == 1
-    error_message = "Scale-up must be allowed to delete runner configs it rolls back."
   }
 }
 
@@ -173,7 +169,6 @@ run "warm_pool_disabled_leaves_lambdas_unchanged" {
     condition = (
       !contains(keys(module.orchestration_webhook[0].pool.lambda.environment[0].variables), "WARM_POOL_ENABLED")
       && !contains(keys(module.orchestration_webhook[0].scale_up.lambda.environment[0].variables), "WARM_POOL_ENABLED")
-      && length(data.aws_iam_policy_document.warm_pool_scale_up_storage) == 0
     )
     error_message = "Disabled warm pool must not change the pool or scale-up lambdas."
   }

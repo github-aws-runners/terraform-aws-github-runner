@@ -1,18 +1,21 @@
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 
-import type { StandbyReconcileRequest, StandbyReconcileResult } from '../../../../core';
+import type { StandbyReconcileError, StandbyReconcileRequest, StandbyReconcileResult } from '../../../../core';
 import type { Ec2PoolStandbyOperations, StandbyImage, StandbyInstance } from '../standby-types';
 
 const logger = createChildLogger('warm-pool');
 
 const MINUTE_IN_MS = 60 * 1000;
 const HOUR_IN_MS = 60 * MINUTE_IN_MS;
+// A stopped instance starts only with its own type and AZ, so repeated capacity failures are unlikely to clear soon.
+export const WARM_START_FAILURE_LIMIT = 3;
 
 export type WarmPoolEvictionReason =
   | 'max-age'
   | 'drift'
   | 'over-target'
   | 'stuck-priming'
+  | 'start-failed'
   | 'garbage'
   | 'orphaned-spot-request';
 
@@ -36,7 +39,7 @@ export async function reconcileWarmPool(
   // Warm instances are owner-agnostic until activation; scale-up lists them by environment too.
   const input = { environment, runnerOwner: environment, runnerType: 'Org' as const };
 
-  const instances = await standby.list(input);
+  const { instances, orphanedSpotRequests, spotLookupError } = await standby.list(input);
   const current = await standby.currentImage();
   const evictions = selectEvictions(instances, {
     poolSize: desiredSize,
@@ -67,11 +70,8 @@ export async function reconcileWarmPool(
     }
   }
 
-  const orphanedSpotRequests = await standby.listOrphanedSpotRequests(input);
   if (orphanedSpotRequests.length > 0) {
-    const result = await standby.cancelSpotRequests(
-      orphanedSpotRequests.map((request) => request.spotInstanceRequestId),
-    );
+    const result = await standby.cancelSpotRequests(orphanedSpotRequests);
     if (result.succeeded.length > 0) evictionCounts.set('orphaned-spot-request', result.succeeded.length);
   }
 
@@ -96,7 +96,10 @@ export async function reconcileWarmPool(
     logger.info(`Warm pool will not be refilled. Found ${warm} warm and ${priming} priming instance(s).`);
   }
 
-  return { ready: warm, preparing: priming, launched, evictions: Object.fromEntries(evictionCounts), errors: [] };
+  const errors: StandbyReconcileError[] = spotLookupError
+    ? [{ operation: 'describe-spot-requests', code: spotLookupError }]
+    : [];
+  return { ready: warm, preparing: priming, launched, evictions: Object.fromEntries(evictionCounts), errors };
 }
 
 function selectEvictions(instances: StandbyInstance[], policy: EvictionPolicy): Eviction[] {
@@ -123,6 +126,7 @@ function evictionReason(instance: StandbyInstance, policy: EvictionPolicy): Warm
     case 'PRIMING':
       return age !== undefined && age > policy.bootTimeInMinutes * MINUTE_IN_MS ? 'stuck-priming' : undefined;
     case 'WARM':
+      if ((instance.startFailures ?? 0) >= WARM_START_FAILURE_LIMIT) return 'start-failed';
       if (age !== undefined && age > policy.maxAgeHours * HOUR_IN_MS) return 'max-age';
       return isDrifted(instance, policy.current) ? 'drift' : undefined;
     default:

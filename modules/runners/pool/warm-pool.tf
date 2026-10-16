@@ -24,6 +24,12 @@ data "aws_iam_policy_document" "pool_warm_pool" {
   }
 
   statement {
+    sid       = "WarmPoolIndex"
+    actions   = ["dynamodb:DeleteItem", "dynamodb:Query", "dynamodb:UpdateItem"]
+    resources = [var.config.warm_pool_index_table.arn]
+  }
+
+  statement {
     sid       = "WarmPoolReadAmiParameter"
     actions   = ["ssm:GetParameter"]
     resources = [var.config.ami_id_ssm_parameter_arn]
