@@ -99,6 +99,16 @@ resource "terraform_data" "validate_config" {
     }
 
     precondition {
+      condition     = !local.warm_pool.enabled || try(local.provider_contract.capabilities.standby, false)
+      error_message = "orchestration_provider.webhook.lambda.pool.warm requires a compute provider with standby support (AWS EC2)."
+    }
+
+    precondition {
+      condition     = !local.warm_pool.enabled || length(try(var.orchestration_provider.webhook.lambda.pool.config, [])) > 0
+      error_message = "orchestration_provider.webhook.lambda.pool.warm requires at least one pool config entry."
+    }
+
+    precondition {
       condition = var.orchestration_provider.webhook == null ? true : (
         var.orchestration_provider.webhook.lambda.scale.up.event_source_mapping.batch_size >= 1 &&
         var.orchestration_provider.webhook.lambda.scale.up.event_source_mapping.batch_size <= 1000 &&

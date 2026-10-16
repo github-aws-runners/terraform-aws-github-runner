@@ -402,3 +402,18 @@ variable "observability" {
   default  = {}
   nullable = false
 }
+
+variable "warm_pool" {
+  description = <<-EOT
+    Warm pool standby selected by the webhook pool. When enabled, the provider creates the lease table and grants the pool and scale-up permissions needed to prime, park, and start stopped instances.
+
+    - `enabled`: Enables warm pool standby.
+    - `max_age_hours`: Maximum age of a warm instance before the pool replaces it.
+  EOT
+  type = object({
+    enabled       = optional(bool, false)
+    max_age_hours = optional(number, 168)
+  })
+  default  = {}
+  nullable = false
+}

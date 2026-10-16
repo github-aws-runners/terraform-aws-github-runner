@@ -1,6 +1,6 @@
 locals {
   provider_environment_variables = {
-    scale_up   = local.scale_up_environment_variables
+    scale_up   = merge(local.scale_up_environment_variables, local.warm_pool_scale_up_environment_variables)
     scale_down = local.scale_down_environment_variables
     pool       = local.pool_environment_variables
   }
