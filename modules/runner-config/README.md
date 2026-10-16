@@ -4,7 +4,7 @@
 
 This internal module implements the experimental provider-neutral runner configuration selected by `experimental.multi_runner_config`. It is composed by `multi-runner` and is not intended as a standalone public entry point. Its direct contract may change while v2 remains experimental.
 
-The module selects the [`webhook` orchestration provider](../orchestration-providers/webhook), which owns its [`scale-runners`](../orchestration-providers/webhook/scale-runners), [`pool`](../orchestration-providers/webhook/pool), and [`job-retry`](../orchestration-providers/webhook/job-retry) leaves. The configuration module retains the common [`ssm-housekeeper`](./runner-config-housekeeper), creates or selects the runner IAM role, manages shared runner configuration in SSM, and dispatches the selected compute provider.
+The module selects the [`webhook` orchestration provider](../orchestration-providers/webhook), which owns its [`scale-runners`](../orchestration-providers/webhook/scale-runners), [`pool`](../orchestration-providers/webhook/pool), and [`job-retry`](../orchestration-providers/webhook/job-retry) leaves. The configuration module retains the common [`runner-config-housekeeper`](./runner-config-housekeeper), creates or selects the runner IAM role, manages shared runner configuration in SSM, and dispatches the selected compute provider.
 
 Runner demand orchestration is selected independently through `orchestration_provider`. `orchestration_provider.webhook` is the currently supported provider and owns the build queue reference; runner lifecycle, boot time, and capacity under `orchestration_provider.webhook.runner`; runner registration scope; scaling controls; scheduled pool; and job retry. Common `runner` contains no webhook lifecycle or capacity settings. The provider resolves its lifecycle contract before runner-config serializes the existing bootstrap parameters. The provider wrapper is nullable so a future sibling provider can be added without moving this webhook contract again, while validation requires exactly one provider to be selected.
 
@@ -87,7 +87,7 @@ yarn run dist
 | <a name="module_compute_aws_ec2"></a> [compute\_aws\_ec2](#module\_compute\_aws\_ec2) | ../compute-providers/aws/ec2 | n/a |
 | <a name="module_compute_aws_ec2_trust_policy"></a> [compute\_aws\_ec2\_trust\_policy](#module\_compute\_aws\_ec2\_trust\_policy) | ../compute-providers/aws/ec2/trust-policy | n/a |
 | <a name="module_orchestration_webhook"></a> [orchestration\_webhook](#module\_orchestration\_webhook) | ../orchestration-providers/webhook | n/a |
-| <a name="module_ssm_housekeeper"></a> [ssm\_housekeeper](#module\_ssm\_housekeeper) | ./runner-config-housekeeper | n/a |
+| <a name="module_runner_config_housekeeper"></a> [runner\_config\_housekeeper](#module\_runner\_config\_housekeeper) | ./runner-config-housekeeper | n/a |
 
 ## Resources
 

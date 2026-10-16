@@ -46,7 +46,7 @@ mock_provider "aws" {
 # The runner archive is injected during packaging, so model the common
 # housekeeper output while testing parent-level tag composition from source.
 override_module {
-  target = module.ssm_housekeeper
+  target = module.runner_config_housekeeper
 }
 
 variables {

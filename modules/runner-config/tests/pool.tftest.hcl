@@ -46,7 +46,7 @@ mock_provider "aws" {
 # The runner archive is injected during packaging, so isolate the common
 # housekeeper child in source-checkout tests where that build artifact is absent.
 override_module {
-  target = module.ssm_housekeeper
+  target = module.runner_config_housekeeper
 }
 
 variables {
