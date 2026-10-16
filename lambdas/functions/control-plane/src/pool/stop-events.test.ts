@@ -2,71 +2,46 @@ import type { SQSRecord } from 'aws-lambda';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { controlPlaneProviderRegistry } from '../control-plane-providers';
-import type { PoolStandbyOperations } from './pool-provider';
-import { markPrimedFromStopEvents } from './stop-events';
+import type { PoolStandbyCapability } from './pool-provider';
+import { processStandbyEvents } from './stop-events';
 
-const markPrimed = vi.fn<NonNullable<PoolStandbyOperations['markPrimed']>>();
+const processEvents = vi.fn<NonNullable<PoolStandbyCapability['processEvents']>>();
 const mockedCapability = vi.spyOn(controlPlaneProviderRegistry, 'capability');
 
-function record(messageId: string, detail: object | string): SQSRecord {
-  const body = typeof detail === 'string' ? detail : JSON.stringify({ source: 'aws.ec2', detail });
-  return { messageId, body } as SQSRecord;
-}
+const record = (messageId: string, body: string) => ({ messageId, body }) as SQSRecord;
 
-const stopped = (instanceId: string) => ({ 'instance-id': instanceId, state: 'stopped' });
-
-describe('markPrimedFromStopEvents', () => {
+describe('processStandbyEvents', () => {
   beforeEach(() => {
-    markPrimed.mockReset().mockResolvedValue([]);
-    mockedCapability.mockReturnValue(() => ({ standby: { markPrimed } }) as never);
+    processEvents.mockReset().mockResolvedValue([]);
+    mockedCapability.mockClear().mockReturnValue(() => ({ standby: { processEvents } }) as never);
   });
 
-  it('marks every stopped instance of the batch in one call', async () => {
-    await expect(
-      markPrimedFromStopEvents([
-        record('m1', stopped('i-1')),
-        record('m2', stopped('i-2')),
-        record('m3', stopped('i-1')),
-      ]),
-    ).resolves.toEqual([]);
+  it('passes the batch to the compute provider as events', async () => {
+    await expect(processStandbyEvents([record('m1', 'body-1'), record('m2', 'body-2')])).resolves.toEqual([]);
 
-    expect(markPrimed).toHaveBeenCalledTimes(1);
-    expect(markPrimed).toHaveBeenCalledWith(['i-1', 'i-2']);
+    expect(processEvents).toHaveBeenCalledWith([
+      { id: 'm1', body: 'body-1' },
+      { id: 'm2', body: 'body-2' },
+    ]);
   });
 
-  it('retries only the messages of instances whose index write failed', async () => {
-    markPrimed.mockResolvedValue(['i-1']);
+  it('reports the events the provider failed as batch item failures', async () => {
+    processEvents.mockResolvedValue(['m2']);
 
-    await expect(
-      markPrimedFromStopEvents([
-        record('m1', stopped('i-1')),
-        record('m2', stopped('i-2')),
-        record('m3', stopped('i-1')),
-      ]),
-    ).resolves.toEqual([{ itemIdentifier: 'm1' }, { itemIdentifier: 'm3' }]);
+    await expect(processStandbyEvents([record('m1', 'body-1'), record('m2', 'body-2')])).resolves.toEqual([
+      { itemIdentifier: 'm2' },
+    ]);
   });
 
-  it('retries the whole batch when the instances cannot be read', async () => {
-    markPrimed.mockRejectedValue(new Error('RequestLimitExceeded'));
+  it('does not resolve the provider for an empty batch', async () => {
+    await expect(processStandbyEvents([])).resolves.toEqual([]);
 
-    await expect(
-      markPrimedFromStopEvents([record('m1', stopped('i-1')), record('m2', stopped('i-2'))]),
-    ).resolves.toEqual([{ itemIdentifier: 'm1' }, { itemIdentifier: 'm2' }]);
+    expect(mockedCapability).not.toHaveBeenCalled();
   });
 
-  it('ignores other states and malformed messages without calling the provider', async () => {
-    await expect(
-      markPrimedFromStopEvents([record('m1', { 'instance-id': 'i-1', state: 'running' }), record('m2', 'not json')]),
-    ).resolves.toEqual([]);
+  it('fails when the compute provider cannot process standby events', async () => {
+    mockedCapability.mockReturnValue(() => ({ standby: { reconcile: vi.fn() } }) as never);
 
-    expect(markPrimed).not.toHaveBeenCalled();
-  });
-
-  it('fails when the compute provider cannot mark primed instances', async () => {
-    mockedCapability.mockReturnValue(() => ({ standby: {} }) as never);
-
-    await expect(markPrimedFromStopEvents([record('m1', stopped('i-1'))])).rejects.toThrow(
-      'cannot mark primed warm instances',
-    );
+    await expect(processStandbyEvents([record('m1', 'body-1')])).rejects.toThrow('cannot process standby events');
   });
 });

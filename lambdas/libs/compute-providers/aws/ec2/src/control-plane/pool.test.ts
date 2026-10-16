@@ -232,10 +232,10 @@ describe('createEc2PoolCapability.standby', () => {
     expect(capability.standby).toBeUndefined();
   });
 
-  it('exposes only reconcile to the control plane', () => {
+  it('exposes only reconcile and event processing to the control plane', () => {
     expect(
       createEc2PoolCapability(ec2Operations, createStartRunnerConfig, { standbyOperations, createIndexStore }).standby,
-    ).toEqual({ reconcile: expect.any(Function) });
+    ).toEqual({ reconcile: expect.any(Function), processEvents: expect.any(Function) });
   });
 
   it('fails the listing when the index table is not configured', async () => {
@@ -452,7 +452,7 @@ describe('createEc2PoolCapability.standby', () => {
         primed('i-b', 'env-b'),
       ]);
 
-      await expect(standby.markPrimed!(['i-a', 'i-b', 'i-a'])).resolves.toEqual([]);
+      await expect(standby.markPrimed(['i-a', 'i-b', 'i-a'])).resolves.toEqual([]);
 
       expect(standbyOperations.readWarmPoolInstances).toHaveBeenCalledWith(['i-a', 'i-b']);
       expect(createIndexStore).toHaveBeenCalledWith('table-a', 'env-a');
@@ -477,7 +477,7 @@ describe('createEc2PoolCapability.standby', () => {
     ])('leaves %s alone', async (_, instance) => {
       standbyOperations.readWarmPoolInstances.mockResolvedValue([instance]);
 
-      await expect(standby.markPrimed!(['i-x'])).resolves.toEqual([]);
+      await expect(standby.markPrimed(['i-x'])).resolves.toEqual([]);
 
       expect(index.markWarm).not.toHaveBeenCalled();
     });
@@ -486,14 +486,14 @@ describe('createEc2PoolCapability.standby', () => {
       standbyOperations.readWarmPoolInstances.mockResolvedValue([primed('i-a', 'env-a'), primed('i-b', 'env-a')]);
       index.markWarm.mockRejectedValueOnce(new Error('throttled'));
 
-      await expect(standby.markPrimed!(['i-a', 'i-b'])).resolves.toEqual(['i-a']);
+      await expect(standby.markPrimed(['i-a', 'i-b'])).resolves.toEqual(['i-a']);
       expect(index.markWarm).toHaveBeenCalledTimes(2);
     });
 
     it('fails when no index tables are configured', async () => {
       delete process.env.WARM_POOL_INDEX_TABLES;
 
-      await expect(standby.markPrimed!(['i-a'])).rejects.toThrow('WARM_POOL_INDEX_TABLES is not set.');
+      await expect(standby.markPrimed(['i-a'])).rejects.toThrow('WARM_POOL_INDEX_TABLES is not set.');
     });
   });
 

@@ -47,7 +47,8 @@ keeps `pool_config[].size` stopped instances instead of running idle runners.
 
 The pool lambda reaches the warm tier only through the compute provider's
 standby capability: `reconcile` takes the target size, maximum age and boot
-time, and returns counts, evictions by reason and bounded errors. The
+time, and returns counts, evictions by reason and bounded errors;
+`processEvents` handles provider lifecycle events such as instance stops. The
 compute-provider core contract carries no instance, image, launch template or
 spot types. Classification, eviction, spot request handling, the index and
 activation are implemented by the EC2 provider.

@@ -5,7 +5,7 @@ import { createRunnerConfigHousekeeper } from '@aws-github-runner/storage-provid
 import { Context, type SQSBatchItemFailure, type SQSBatchResponse, SQSEvent } from 'aws-lambda';
 
 import { PoolEvent, adjust } from './pool/pool';
-import { markPrimedFromStopEvents } from './pool/stop-events';
+import { processStandbyEvents } from './pool/stop-events';
 import { scaleDown } from './scale-runners/scale-down';
 import { scaleUp } from './scale-runners/scale-up';
 import type { ActionRequestMessage, ActionRequestMessageSQS } from './scale-runners/types';
@@ -111,7 +111,7 @@ export async function warmPoolStopEvents(event: SQSEvent, context: Context): Pro
   setContext(context, 'lambda.ts');
   logger.logEventIfEnabled(event);
 
-  return { batchItemFailures: await markPrimedFromStopEvents(event.Records) };
+  return { batchItemFailures: await processStandbyEvents(event.Records) };
 }
 
 export const addMiddleware = () => {

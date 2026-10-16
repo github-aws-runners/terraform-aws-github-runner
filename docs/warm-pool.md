@@ -118,7 +118,7 @@ The boot hook is installed by the default start script. If you use a custom `use
 
 ## Observability
 
-With metrics enabled, the pool publishes `WarmPoolWarmInstances`, `WarmPoolPrimingInstances`, `WarmPoolEvictions` (by `Reason`), and `WarmPoolSpotLookupFailures`, and scale-up publishes `WarmPoolActivations` and `WarmPoolActivationFallbacks` (by `Reason`: `no-warm-instance`, `claim-lost`, `index-unavailable`, or `start-failed`). Activated instances log `warm-pool-activation-latency-seconds=<n>`, the time from activation until the runner starts.
+With metrics enabled, the pool publishes `WarmPoolWarmInstances`, `WarmPoolPrimingInstances`, `WarmPoolEvictions` (by `Reason`), and `WarmPoolReconcileErrors` (by `Operation`), and scale-up publishes `WarmPoolActivations` and `WarmPoolActivationFallbacks` (by `Reason`: `no-warm-instance`, `claim-lost`, `index-unavailable`, or `start-failed`). Activated instances log `warm-pool-activation-latency-seconds=<n>`, the time from activation until the runner starts.
 
 ## Costs and limits
 
@@ -126,7 +126,7 @@ With metrics enabled, the pool publishes `WarmPoolWarmInstances`, `WarmPoolPrimi
 - Warm instances do not count toward `runners_maximum_count`. Activating one does, like launching a new instance.
 - The pool reads its instances from EC2 by ID, and lists them by tag only about once an hour. Scale-up does not list instances to activate a warm one. If the warm pool index cannot be read, scale-up launches new instances and reports `index-unavailable`.
 - EC2 stop events cannot be filtered by tag, so the stop-event queue receives every instance stop in the account and region. Each batch costs one `DescribeInstances` by ID; instances outside the warm pools need no further calls.
-- Spot API request limits are shared by everything in the account and region. A spot warm pool reads spot requests only by ID, at most once per run, and only for its own instances; scale-up and on-demand warm pools do not read spot requests at all. If the Spot API throttles that read, the run continues without it: stopped spot instances are classified from EC2 data, spot request cleanup waits for a later run, and `WarmPoolSpotLookupFailures` is published.
+- Spot API request limits are shared by everything in the account and region. A spot warm pool reads spot requests only by ID, at most once per run, and only for its own instances; scale-up and on-demand warm pools do not read spot requests at all. If the Spot API throttles that read, the run continues without it: stopped spot instances are classified from EC2 data, spot request cleanup waits for a later run, and `WarmPoolReconcileErrors` is published with `Operation` `describe-spot-requests`.
 
 ## Disabling
 
