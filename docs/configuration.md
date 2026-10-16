@@ -112,6 +112,14 @@ pool_config = [{
 
 The pool is NOT enabled by default and can be enabled by setting at least one object of the pool config list. The [ephemeral example](examples/ephemeral.md) contains configuration options (commented out).
 
+### Warm pool boot hook
+
+Warm pool instances (Linux only) prime on their first boot and stop themselves, and are started again when a job is assigned. Cloud-init runs user data only on the first boot, so the start script installs a systemd unit (`ghr-start-runner.service`, running `/usr/local/sbin/ghr-start-runner.sh`) that reruns the start logic on later boots. On every start the script selects a mode: run when a registration config exists in SSM for the instance, prime (prepare, then `shutdown -h now`) for an instance tagged `ghr:warm-pool=true` without `ghr:warm-activated`, otherwise wait for the config as a cold instance does.
+
+With a custom `userdata_template`, keep `${start_runner}` unmodified, including its `# ghr:start-runner:begin` and `# ghr:start-runner:end` marker lines, and execute it from a file, for example inline in the user data script as the default template does. Piping it into a shell is not supported because the hook is extracted from the executing script file. `userdata_content` replaces the start script and does not provide the hook.
+
+Without the hook, warm instances never stop themselves: the pool evicts them after `runner_boot_time_in_minutes`, the warm tier stays empty, and jobs fall back to cold launches.
+
 ## Idle runners
 
 The module will scale down to zero runners by default. By specifying a `idle_config` config, idle runners can be kept active. The scale down lambda checks if any of the cron expressions matches the current time with a margin of 5 seconds. When there is a match, the number of runners specified in the idle config will be kept active. In case multiple cron expressions match, the first one will be used. Below is an idle configuration for keeping runners active from 9:00am to 5:59pm on working days. The [cron expression generator by Cronhub](https://crontab.cronhub.io/) is a great resource to set up your idle config.
