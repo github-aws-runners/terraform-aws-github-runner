@@ -29,7 +29,7 @@ export function createEc2ControlPlanePlugin(
     capabilities: {
       pool: () => createEc2PoolCapability(ec2Operations, createStartRunnerConfig, standbyOperations),
       scaleUp: () => createEc2ScaleUpCapability(ec2Operations, createStartRunnerConfig, warmOperations),
-      scaleDown: () => createEc2ScaleDownCapability(ec2Operations),
+      scaleDown: () => createEc2ScaleDownCapability(ec2Operations, standbyOperations),
     },
   };
 }

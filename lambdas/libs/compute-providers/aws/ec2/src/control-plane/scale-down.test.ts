@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { RunnerInfo, RunnerType } from '../../../../core';
-import { IDLE_DETECTED_TAG, createEc2ScaleDownCapability } from './scale-down';
+import { type Ec2ScaleDownStandbyOperations, IDLE_DETECTED_TAG, createEc2ScaleDownCapability } from './scale-down';
 import type { Ec2RunnerResourceOperations } from '../runners';
 
 const mockListRunners = vi.fn<Ec2RunnerResourceOperations['list']>();
@@ -89,5 +89,76 @@ describe('Scale down runners', () => {
         expect(mockTerminateRunner).toHaveBeenCalledWith(runner.id);
       });
     });
+  });
+});
+
+describe('Standby sweep', () => {
+  const mockListStoppedWarmInstances = vi.fn<Ec2ScaleDownStandbyOperations['listStoppedWarmInstances']>();
+  const mockDestroyInstance = vi.fn<Ec2ScaleDownStandbyOperations['destroyInstance']>();
+  const sweepCapability = createEc2ScaleDownCapability(ec2Operations, {
+    listStoppedWarmInstances: mockListStoppedWarmInstances,
+    destroyInstance: mockDestroyInstance,
+  });
+  const PAST = '2026-09-29T12:00:00.000Z';
+  const FUTURE = '2026-10-01T12:00:00.000Z';
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers({ now: new Date('2026-09-30T12:00:00.000Z') });
+    mockDestroyInstance.mockResolvedValue();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('is not offered without standby operations', () => {
+    expect(capability.sweepStandby).toBeUndefined();
+  });
+
+  it('destroys expired and settled activated stopped warm instances and keeps the rest', async () => {
+    mockListStoppedWarmInstances.mockResolvedValue([
+      { instanceId: 'i-expired', spotInstanceRequestId: 'sir-expired', expiresAt: PAST, activated: false },
+      { instanceId: 'i-activated', expiresAt: FUTURE, activated: true, activatedAt: '2026-09-30T11:45:00.000Z' },
+      { instanceId: 'i-activating', expiresAt: FUTURE, activated: true, activatedAt: '2026-09-30T11:59:59.000Z' },
+      { instanceId: 'i-warm', spotInstanceRequestId: 'sir-warm', expiresAt: FUTURE, activated: false },
+      { instanceId: 'i-no-expiry', activated: false },
+      { instanceId: 'i-bad-expiry', expiresAt: 'not-a-date', activated: false },
+    ]);
+
+    await sweepCapability.sweepStandby!('unit-test-environment');
+
+    expect(mockListStoppedWarmInstances).toHaveBeenCalledWith('unit-test-environment');
+    expect(mockDestroyInstance).toHaveBeenCalledTimes(2);
+    expect(mockDestroyInstance).toHaveBeenCalledWith({ instanceId: 'i-expired', spotInstanceRequestId: 'sir-expired' });
+    expect(mockDestroyInstance).toHaveBeenCalledWith({ instanceId: 'i-activated', spotInstanceRequestId: undefined });
+    expect(mockTerminateRunner).not.toHaveBeenCalled();
+  });
+
+  it('decides activated instances by activation age only', async () => {
+    mockListStoppedWarmInstances.mockResolvedValue([
+      { instanceId: 'i-expired-activating', expiresAt: PAST, activated: true, activatedAt: '2026-09-30T11:59:59.000Z' },
+      { instanceId: 'i-boundary', expiresAt: FUTURE, activated: true, activatedAt: '2026-09-30T11:50:00.000Z' },
+      { instanceId: 'i-missing-time', expiresAt: FUTURE, activated: true },
+      { instanceId: 'i-bad-time', expiresAt: FUTURE, activated: true, activatedAt: 'not-a-date' },
+    ]);
+
+    await sweepCapability.sweepStandby!('unit-test-environment');
+
+    const destroyed = mockDestroyInstance.mock.calls.map(([input]) => input.instanceId);
+    expect(destroyed.sort()).toEqual(['i-bad-time', 'i-boundary', 'i-missing-time']);
+  });
+
+  it('keeps destroying the remaining instances when one destroy fails', async () => {
+    mockListStoppedWarmInstances.mockResolvedValue([
+      { instanceId: 'i-fail', expiresAt: PAST, activated: false },
+      { instanceId: 'i-ok', expiresAt: PAST, activated: false },
+    ]);
+    mockDestroyInstance.mockRejectedValueOnce(new Error('UnauthorizedOperation'));
+
+    await expect(sweepCapability.sweepStandby!('unit-test-environment')).resolves.toBeUndefined();
+
+    expect(mockDestroyInstance).toHaveBeenCalledWith({ instanceId: 'i-fail', spotInstanceRequestId: undefined });
+    expect(mockDestroyInstance).toHaveBeenCalledWith({ instanceId: 'i-ok', spotInstanceRequestId: undefined });
   });
 });

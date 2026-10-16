@@ -533,8 +533,15 @@ describe('listStoppedWarmInstances', () => {
         spotInstanceRequestId: 'sir-expired',
         expiresAt: '2026-09-29T12:00:00.000Z',
         activated: false,
+        activatedAt: undefined,
       },
-      { instanceId: 'i-activated', spotInstanceRequestId: undefined, expiresAt: undefined, activated: true },
+      {
+        instanceId: 'i-activated',
+        spotInstanceRequestId: undefined,
+        expiresAt: undefined,
+        activated: true,
+        activatedAt: '2026-09-30T11:00:00.000Z',
+      },
     ]);
   });
 
