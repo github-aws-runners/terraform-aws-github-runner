@@ -5,7 +5,7 @@ data "aws_iam_policy_document" "housekeeper" {
     content {
       effect = "Allow"
       actions = [
-        "ssm:DeleteParameter",
+        "ssm:DeleteParameters",
         "ssm:GetParametersByPath",
       ]
       resources = [var.storage_provider.aws.ssm.cleanup.parameter_path_arn]
