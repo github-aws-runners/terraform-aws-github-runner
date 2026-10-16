@@ -6,7 +6,7 @@ import * as ghAuth from '../github/auth';
 import { controlPlaneProviderRegistry } from '../control-plane-providers';
 import * as githubRunner from '../scale-runners/github-runner';
 import { adjust } from './pool';
-import type { PoolComputeProvider } from './pool-provider';
+import type { PoolComputeProvider, PoolStandbyCapability } from './pool-provider';
 
 const githubClient = {
   paginate: vi.fn(),
@@ -360,6 +360,39 @@ describe('pool adjustment', () => {
           githubRunnerConfig: expect.objectContaining({ appIndex: 2 }),
         }),
       );
+    });
+  });
+
+  describe('With the warm pool enabled', () => {
+    const standby = {
+      reconcile: vi.fn<PoolStandbyCapability['reconcile']>(),
+    } satisfies PoolStandbyCapability;
+
+    beforeEach(() => {
+      process.env.WARM_POOL_ENABLED = 'true';
+      standby.reconcile.mockResolvedValue({ ready: 0, preparing: 1, launched: 1, evictions: {}, errors: [] });
+      mockedResolveCapability.mockReturnValue(() => ({ ...poolProvider, standby }));
+    });
+
+    it('maintains the warm pool without GitHub authentication or runner listing', async () => {
+      await adjust({ poolSize: 1 });
+
+      expect(mockedResolveCapability).toHaveBeenCalledWith(defaultComputeProvider, 'pool');
+      expect(standby.reconcile).toHaveBeenCalledWith(expect.objectContaining({ desiredSize: 1 }));
+      expect(mockedAppAuth).not.toHaveBeenCalled();
+      expect(mockedInstallationAuth).not.toHaveBeenCalled();
+      expect(mockedCreateClient).not.toHaveBeenCalled();
+      expect(githubClient.paginate).not.toHaveBeenCalled();
+      expect(poolProvider.listRunners).not.toHaveBeenCalled();
+      expect(poolProvider.createRunners).not.toHaveBeenCalled();
+    });
+
+    it('rejects a provider without standby support', async () => {
+      mockedResolveCapability.mockReturnValue(() => poolProvider);
+
+      await expect(adjust({ poolSize: 1 })).rejects.toThrow('does not support a warm pool');
+
+      expect(mockedAppAuth).not.toHaveBeenCalled();
     });
   });
 });
