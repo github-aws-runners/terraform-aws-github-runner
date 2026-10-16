@@ -120,12 +120,26 @@ run "warm_pool_enabled" {
   }
 }
 
-run "warm_pool_requires_linux" {
+run "warm_pool_windows" {
   command = plan
 
   variables {
     warm_pool = { enabled = true }
     runner    = merge(var.runner, { os = "windows" })
+  }
+
+  assert {
+    condition     = length(aws_dynamodb_table.warm_pool_leases) == 1
+    error_message = "Warm pool should plan for windows runners"
+  }
+}
+
+run "warm_pool_rejects_osx" {
+  command = plan
+
+  variables {
+    warm_pool = { enabled = true }
+    runner    = merge(var.runner, { os = "osx" })
   }
 
   expect_failures = [terraform_data.validate_runner]

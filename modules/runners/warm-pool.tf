@@ -7,8 +7,8 @@ resource "terraform_data" "warm_pool_validation" {
       error_message = "warm_pool.enabled requires at least one pool_config entry."
     }
     precondition {
-      condition     = var.runner_os == "linux"
-      error_message = "warm_pool supports only linux runners."
+      condition     = contains(["linux", "windows"], var.runner_os)
+      error_message = "warm_pool supports only linux and windows runners."
     }
     precondition {
       condition     = try(var.metadata_options.instance_metadata_tags, "enabled") != "disabled"

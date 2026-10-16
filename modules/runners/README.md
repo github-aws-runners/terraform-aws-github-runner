@@ -250,7 +250,7 @@ yarn run dist
 | <a name="input_userdata_pre_install"></a> [userdata\_pre\_install](#input\_userdata\_pre\_install) | User-data script snippet to insert before GitHub action runner install | `string` | `""` | no |
 | <a name="input_userdata_template"></a> [userdata\_template](#input\_userdata\_template) | Alternative user-data template file path, replacing the default template. By providing your own user\_data you have to take care of installing all required software, including the action runner. Variables userdata\_pre/post\_install are ignored. | `string` | `null` | no |
 | <a name="input_vpc_id"></a> [vpc\_id](#input\_vpc\_id) | The VPC for the security groups. | `string` | n/a | yes |
-| <a name="input_warm_pool"></a> [warm\_pool](#input\_warm\_pool) | Warm pool standby. When enabled, the pool keeps the `pool_config` size of stopped, pre-booted instances instead of idle runners, and scale-up starts them for jobs. Requires `pool_config`, linux runners, and instance metadata tags. `max_age_hours` is the age after which a warm instance is replaced. | <pre>object({<br/>    enabled       = optional(bool, false)<br/>    max_age_hours = optional(number, 168)<br/>  })</pre> | `{}` | no |
+| <a name="input_warm_pool"></a> [warm\_pool](#input\_warm\_pool) | Warm pool standby. When enabled, the pool keeps the `pool_config` size of stopped, pre-booted instances instead of idle runners, and scale-up starts them for jobs. Requires `pool_config`, linux or windows runners, and instance metadata tags. `max_age_hours` is the age after which a warm instance is replaced. | <pre>object({<br/>    enabled       = optional(bool, false)<br/>    max_age_hours = optional(number, 168)<br/>  })</pre> | `{}` | no |
 
 ## Outputs
 

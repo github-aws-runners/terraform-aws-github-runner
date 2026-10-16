@@ -51,8 +51,8 @@ resource "terraform_data" "validate_runner" {
     }
 
     precondition {
-      condition     = !var.warm_pool.enabled || var.runner.os == "linux"
-      error_message = "Warm pool standby supports only linux runners."
+      condition     = !var.warm_pool.enabled || contains(["linux", "windows"], var.runner.os)
+      error_message = "Warm pool standby supports only linux and windows runners."
     }
 
     precondition {
