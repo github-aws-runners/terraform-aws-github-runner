@@ -88,14 +88,74 @@ resource "terraform_data" "validate_v2" {
 
     precondition {
       condition = alltrue([
-        for config in local.resolved_config.multi_runner_config : (
-          try(config.compute_provider.aws.ec2 != null, false) &&
-          try(length(config.compute_provider.aws.ec2.instance_types) > 0, false) &&
-          try(config.compute_provider.aws.ec2.vpc_id != null, false) &&
-          try(length(config.compute_provider.aws.ec2.subnet_ids) > 0, false)
+        for config in local.resolved_config.multi_runner_config : length([
+          for provider_config in [
+            try(config.compute_provider.aws.ec2, null),
+            try(config.compute_provider.aws.microvm, null),
+          ] : provider_config if provider_config != null
+        ]) == 1
+      ])
+      error_message = "Each experimental v2 runner lane requires exactly one compute provider. Supported providers: aws.ec2, aws.microvm."
+    }
+
+    precondition {
+      condition = alltrue([
+        for config in local.effective_config.multi_runner_config : length([
+          for provider_config in [
+            try(config.compute_provider.aws.ec2, null),
+            try(config.compute_provider.aws.microvm, null),
+          ] : provider_config if provider_config != null
+        ]) == 1
+      ])
+      error_message = "Each experimental v2 runner lane requires exactly one compute provider. Supported providers: aws.ec2, aws.microvm."
+    }
+
+    precondition {
+      condition = alltrue([
+        for config in local.effective_config.multi_runner_config : (
+          !try(config.compute_provider.aws.ec2 != null, false) || (
+            try(length(config.compute_provider.aws.ec2.instance_types) > 0, false) &&
+            try(config.compute_provider.aws.ec2.vpc_id != null, false) &&
+            try(length(config.compute_provider.aws.ec2.subnet_ids) > 0, false)
+          )
         )
       ])
-      error_message = "Each experimental v2 runner lane requires the supported aws.ec2 compute provider with instance_types, vpc_id, and at least one subnet."
+      error_message = "Each experimental v2 EC2 runner lane requires instance_types, vpc_id, and at least one subnet."
+    }
+
+    precondition {
+      condition = alltrue([
+        for config in local.resolved_config.multi_runner_config : (
+          !try(config.compute_provider.aws.ec2 != null, false) || (
+            try(length(config.compute_provider.aws.ec2.instance_types) > 0, false) &&
+            try(config.compute_provider.aws.ec2.vpc_id != null, false) &&
+            try(length(config.compute_provider.aws.ec2.subnet_ids) > 0, false)
+          )
+        )
+      ])
+      error_message = "Each experimental v2 EC2 runner lane requires instance_types, vpc_id, and at least one subnet."
+    }
+
+    precondition {
+      condition = alltrue([
+        for config in local.resolved_config.multi_runner_config : (
+          !try(config.compute_provider.aws.ec2 != null, false) || (
+            try(config.runner.os != null, false) &&
+            try(config.runner.architecture != null, false)
+          )
+        )
+      ])
+      error_message = "Each experimental v2 EC2 runner lane requires runner.os and runner.architecture."
+    }
+
+    precondition {
+      condition = alltrue([
+        for config in local.resolved_config.multi_runner_config : (
+          !try(config.compute_provider.aws.microvm != null, false) ||
+          try(config.compute_provider.aws.microvm.image_arn != null, false)
+        )
+      ])
+      error_message = "Each experimental v2 MicroVM runner lane requires image_arn."
     }
 
     precondition {
