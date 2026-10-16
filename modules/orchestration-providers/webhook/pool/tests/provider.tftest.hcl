@@ -292,6 +292,23 @@ run "provider_supplies_only_compute_specific_pool_configuration" {
     condition = (
       one([
         for statement in data.aws_iam_policy_document.ssm_pool_common[0].statement : statement
+        if statement.sid == "WebhookPoolReadRunnerConfigParameters"
+      ]).actions == toset(["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"])
+      && one([
+        for statement in data.aws_iam_policy_document.ssm_pool_common[0].statement : statement
+        if statement.sid == "WebhookPoolReadRunnerConfigParameters"
+        ]).resources == toset([
+        "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config",
+        "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config/*",
+      ])
+    )
+    error_message = "The pool must read runner configuration only through the configured SSM parameter path."
+  }
+
+  assert {
+    condition = (
+      one([
+        for statement in data.aws_iam_policy_document.ssm_pool_common[0].statement : statement
         if statement.sid == "WebhookPoolWriteRuntimeParameters"
         ]).resources == toset([
         "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/tokens",

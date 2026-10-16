@@ -528,6 +528,28 @@ run "assembles_provider_neutral_scaling_control_plane" {
 
   assert {
     condition = (
+      one([
+        for statement in data.aws_iam_policy_document.ssm_scale_up_common[0].statement : statement
+        if statement.sid == "WebhookScaleUpReadGitHubAppAndRunnerConfigParameters"
+      ]).actions == toset(["ssm:GetParameter", "ssm:GetParameters"])
+      && contains(one([
+        for statement in data.aws_iam_policy_document.ssm_scale_up_common[0].statement : statement
+        if statement.sid == "WebhookScaleUpReadGitHubAppAndRunnerConfigParameters"
+      ]).resources, "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/config")
+      && contains(one([
+        for statement in data.aws_iam_policy_document.ssm_scale_up_common[0].statement : statement
+        if statement.sid == "WebhookScaleUpReadGitHubAppAndRunnerConfigParameters"
+      ]).resources, "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/config/*")
+      && !contains(one([
+        for statement in data.aws_iam_policy_document.ssm_scale_up_common[0].statement : statement
+        if statement.sid == "WebhookScaleUpReadGitHubAppAndRunnerConfigParameters"
+      ]).resources, "*")
+    )
+    error_message = "Scale-up must read runner configuration using read-only SSM actions scoped to the configured path."
+  }
+
+  assert {
+    condition = (
       data.aws_iam_policy_document.lambda_xray[0].statement[0].sid == "AllowXRay"
       && data.aws_iam_policy_document.lambda_xray[0].statement[0].resources == toset(["*"])
       && toset(data.aws_iam_policy_document.lambda_xray[0].statement[0].actions) == toset([

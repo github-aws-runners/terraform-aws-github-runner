@@ -200,6 +200,14 @@ run "preserves_nested_job_retry_configuration" {
       && output.lambda.function.environment[0].variables["PARAMETER_GITHUB_APP_ID_NAME"] == "/github-runner/app-id"
       && output.lambda.function.environment[0].variables["PARAMETER_GITHUB_APP_KEY_BASE64_NAME"] == "/github-runner/key-base64"
       && output.lambda.function.environment[0].variables["PARAMETER_GITHUB_APPS_MANIFEST_NAME"] == "/github-runner/additional-apps-manifest"
+      && one([
+        for statement in data.aws_iam_policy_document.ssm_job_retry[0].statement : statement
+        if statement.sid == "WebhookJobRetryReadGitHubAppParameters"
+      ]).actions == toset(["ssm:GetParameter", "ssm:GetParameters"])
+      && !contains(one([
+        for statement in data.aws_iam_policy_document.ssm_job_retry[0].statement : statement
+        if statement.sid == "WebhookJobRetryReadGitHubAppParameters"
+      ]).resources, "*")
       && contains(one([
         for statement in data.aws_iam_policy_document.ssm_job_retry[0].statement : statement.resources
         if statement.sid == "WebhookJobRetryReadGitHubAppParameters"
