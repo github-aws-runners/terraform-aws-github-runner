@@ -138,6 +138,14 @@ variables {
   }
 }
 
+run "base_inputs" {
+  command = apply
+
+  module {
+    source = "./tests/fixtures/base-inputs"
+  }
+}
+
 run "preserves_nested_job_retry_configuration" {
   command = plan
 
@@ -193,19 +201,19 @@ run "preserves_nested_job_retry_configuration" {
       && output.lambda.function.environment[0].variables["PARAMETER_GITHUB_APP_KEY_BASE64_NAME"] == "/github-runner/key-base64"
       && output.lambda.function.environment[0].variables["PARAMETER_GITHUB_APPS_MANIFEST_NAME"] == "/github-runner/additional-apps-manifest"
       && contains(one([
-        for statement in data.aws_iam_policy_document.ssm_job_retry.statement : statement.resources
+        for statement in data.aws_iam_policy_document.ssm_job_retry[0].statement : statement.resources
         if statement.sid == "WebhookJobRetryReadGitHubAppParameters"
       ]), "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id-2")
       && contains(one([
-        for statement in data.aws_iam_policy_document.ssm_job_retry.statement : statement.resources
+        for statement in data.aws_iam_policy_document.ssm_job_retry[0].statement : statement.resources
         if statement.sid == "WebhookJobRetryReadGitHubAppParameters"
       ]), "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64-2")
       && contains(one([
-        for statement in data.aws_iam_policy_document.ssm_job_retry.statement : statement.resources
+        for statement in data.aws_iam_policy_document.ssm_job_retry[0].statement : statement.resources
         if statement.sid == "WebhookJobRetryReadGitHubAppParameters"
       ]), "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/installation-id-2")
       && contains(one([
-        for statement in data.aws_iam_policy_document.ssm_job_retry.statement : statement.resources
+        for statement in data.aws_iam_policy_document.ssm_job_retry[0].statement : statement.resources
         if statement.sid == "WebhookJobRetryReadGitHubAppParameters"
       ]), "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/additional-apps-manifest")
     )
@@ -237,11 +245,11 @@ run "preserves_nested_job_retry_configuration" {
     condition = (
       output.lambda.log_group.log_group_class == "INFREQUENT_ACCESS"
       && one([
-        for statement in data.aws_iam_policy_document.ssm_job_retry.statement : statement
+        for statement in data.aws_iam_policy_document.ssm_job_retry[0].statement : statement
         if statement.sid == "WebhookJobRetryDecryptParameterStore"
       ]).resources == toset(["arn:aws:kms:eu-west-1:123456789012:key/job-retry-test"])
       && one([
-        for statement in data.aws_iam_policy_document.ssm_job_retry.statement : statement
+        for statement in data.aws_iam_policy_document.ssm_job_retry[0].statement : statement
         if statement.sid == "WebhookJobRetryDecryptParameterStore"
       ]).actions == toset(["kms:Decrypt"])
       && one([
@@ -330,7 +338,7 @@ run "merges_ssm_job_retry_policy" {
   assert {
     condition = (
       length(data.aws_iam_policy_document.job_retry.source_policy_documents) == 1
-      && data.aws_iam_policy_document.job_retry.source_policy_documents[0] == data.aws_iam_policy_document.ssm_job_retry.json
+      && data.aws_iam_policy_document.job_retry.source_policy_documents[0] == data.aws_iam_policy_document.ssm_job_retry[0].json
       && contains([
         for statement in jsondecode(data.aws_iam_policy_document.job_retry.source_policy_documents[0]).Statement : statement.Sid
       ], "WebhookJobRetryReadGitHubAppParameters")
@@ -470,10 +478,7 @@ run "does_not_grant_ssm_permissions_when_storage_provider_is_null" {
 
   assert {
     condition = (
-      length([
-        for statement in data.aws_iam_policy_document.ssm_job_retry.statement : statement
-        if anytrue([for action in statement.actions : startswith(action, "ssm:")])
-      ]) == 0
+      length(data.aws_iam_policy_document.ssm_job_retry) == 0
       && !contains(keys(output.lambda.function.environment[0].variables), "PARAMETER_GITHUB_APP_ID_NAME")
       && !contains(keys(output.lambda.function.environment[0].variables), "PARAMETER_GITHUB_APP_KEY_BASE64_NAME")
       && !contains(keys(output.lambda.function.environment[0].variables), "PARAMETER_GITHUB_APPS_MANIFEST_NAME")
@@ -481,12 +486,7 @@ run "does_not_grant_ssm_permissions_when_storage_provider_is_null" {
         for statement in data.aws_iam_policy_document.job_retry.statement : statement
         if anytrue([for action in statement.actions : startswith(action, "ssm:")])
       ]) == 0
-      && !contains([
-        for statement in jsondecode(data.aws_iam_policy_document.job_retry.source_policy_documents[0]).Statement : statement.Sid
-      ], "WebhookJobRetryReadGitHubAppParameters")
-      && !contains([
-        for statement in jsondecode(data.aws_iam_policy_document.job_retry.source_policy_documents[0]).Statement : statement.Sid
-      ], "WebhookJobRetryDecryptParameterStore")
+      && length(data.aws_iam_policy_document.job_retry.source_policy_documents) == 0
     )
     error_message = "A null SSM storage provider must not expose SSM environment variables or permissions."
   }

@@ -1,6 +1,8 @@
 # IAM policies attached to the pool Lambda role.
 data "aws_iam_policy_document" "pool_common" {
-  source_policy_documents = [data.aws_iam_policy_document.ssm_pool_common.json]
+  source_policy_documents = compact([
+    try(data.aws_iam_policy_document.ssm_pool_common[0].json, "")
+  ])
 }
 
 data "aws_iam_policy_document" "pool_logging" {

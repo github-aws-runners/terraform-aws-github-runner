@@ -1,6 +1,8 @@
 data "aws_iam_policy_document" "scale_up_common" {
 
-  source_policy_documents = [data.aws_iam_policy_document.ssm_scale_up_common.json]
+  source_policy_documents = compact([
+    try(data.aws_iam_policy_document.ssm_scale_up_common[0].json, "")
+  ])
 
   statement {
     sid    = "WebhookScaleUpConsumeBuildQueue"

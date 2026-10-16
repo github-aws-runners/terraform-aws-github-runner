@@ -53,7 +53,9 @@ data "aws_iam_policy_document" "lambda_xray" {
 
 data "aws_iam_policy_document" "job_retry" {
 
-  source_policy_documents = [data.aws_iam_policy_document.ssm_job_retry.json]
+  source_policy_documents = compact([
+    try(data.aws_iam_policy_document.ssm_job_retry[0].json, "")
+  ])
 
   statement {
     sid    = "WebhookJobRetryConsumeRetryQueue"

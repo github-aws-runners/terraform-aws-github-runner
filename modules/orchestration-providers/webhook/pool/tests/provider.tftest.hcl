@@ -223,19 +223,19 @@ run "provider_supplies_only_compute_specific_pool_configuration" {
       && aws_lambda_function.pool.environment[0].variables["PARAMETER_GITHUB_APP_KEY_BASE64_NAME"] == "/github-runner/key-base64"
       && aws_lambda_function.pool.environment[0].variables["PARAMETER_GITHUB_APPS_MANIFEST_NAME"] == "/github-runner/additional-apps-manifest"
       && contains(one([
-        for statement in data.aws_iam_policy_document.ssm_pool_common.statement : statement.resources
+        for statement in data.aws_iam_policy_document.ssm_pool_common[0].statement : statement.resources
         if statement.sid == "WebhookPoolReadGitHubAppParameters"
       ]), "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id-2")
       && contains(one([
-        for statement in data.aws_iam_policy_document.ssm_pool_common.statement : statement.resources
+        for statement in data.aws_iam_policy_document.ssm_pool_common[0].statement : statement.resources
         if statement.sid == "WebhookPoolReadGitHubAppParameters"
       ]), "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64-2")
       && contains(one([
-        for statement in data.aws_iam_policy_document.ssm_pool_common.statement : statement.resources
+        for statement in data.aws_iam_policy_document.ssm_pool_common[0].statement : statement.resources
         if statement.sid == "WebhookPoolReadGitHubAppParameters"
       ]), "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/installation-id-2")
       && contains(one([
-        for statement in data.aws_iam_policy_document.ssm_pool_common.statement : statement.resources
+        for statement in data.aws_iam_policy_document.ssm_pool_common[0].statement : statement.resources
         if statement.sid == "WebhookPoolReadGitHubAppParameters"
       ]), "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/additional-apps-manifest")
     )
@@ -265,7 +265,7 @@ run "provider_supplies_only_compute_specific_pool_configuration" {
   assert {
     condition = (
       length(data.aws_iam_policy_document.pool_common.source_policy_documents) == 1
-      && data.aws_iam_policy_document.pool_common.source_policy_documents[0] == data.aws_iam_policy_document.ssm_pool_common.json
+      && data.aws_iam_policy_document.pool_common.source_policy_documents[0] == data.aws_iam_policy_document.ssm_pool_common[0].json
       && data.aws_iam_policy_document.pool.source_policy_documents[0] == data.aws_iam_policy_document.pool_common.json
       && contains([
         for statement in jsondecode(data.aws_iam_policy_document.pool_common.source_policy_documents[0]).Statement : statement.Sid
@@ -279,9 +279,9 @@ run "provider_supplies_only_compute_specific_pool_configuration" {
 
   assert {
     condition = (
-      length(data.aws_iam_policy_document.ssm_pool_common.statement) == 4
+      length(data.aws_iam_policy_document.ssm_pool_common[0].statement) == 4
       && one([
-        for statement in data.aws_iam_policy_document.ssm_pool_common.statement : statement
+        for statement in data.aws_iam_policy_document.ssm_pool_common[0].statement : statement
         if statement.sid == "WebhookPoolDecryptParameterStore"
       ]).resources == toset(["arn:aws:kms:eu-west-1:123456789012:key/pool-test"])
     )
@@ -291,7 +291,7 @@ run "provider_supplies_only_compute_specific_pool_configuration" {
   assert {
     condition = (
       one([
-        for statement in data.aws_iam_policy_document.ssm_pool_common.statement : statement
+        for statement in data.aws_iam_policy_document.ssm_pool_common[0].statement : statement
         if statement.sid == "WebhookPoolWriteRuntimeParameters"
         ]).resources == toset([
         "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/tokens",
@@ -300,7 +300,7 @@ run "provider_supplies_only_compute_specific_pool_configuration" {
         "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config/*",
       ])
       && !contains(one([
-        for statement in data.aws_iam_policy_document.ssm_pool_common.statement : statement
+        for statement in data.aws_iam_policy_document.ssm_pool_common[0].statement : statement
         if statement.sid == "WebhookPoolWriteRuntimeParameters"
       ]).resources, "*")
     )
@@ -394,9 +394,9 @@ run "omits_optional_kms_statement" {
 
   assert {
     condition = (
-      length(data.aws_iam_policy_document.ssm_pool_common.statement) == 3
+      length(data.aws_iam_policy_document.ssm_pool_common[0].statement) == 3
       && length([
-        for statement in data.aws_iam_policy_document.ssm_pool_common.statement : statement
+        for statement in data.aws_iam_policy_document.ssm_pool_common[0].statement : statement
         if anytrue([for action in statement.actions : startswith(action, "kms:")])
       ]) == 0
     )
@@ -417,10 +417,7 @@ run "does_not_grant_ssm_permissions_when_storage_provider_is_null" {
 
   assert {
     condition = (
-      length([
-        for statement in data.aws_iam_policy_document.ssm_pool_common.statement : statement
-        if anytrue([for action in statement.actions : startswith(action, "ssm:")])
-      ]) == 0
+      length(data.aws_iam_policy_document.ssm_pool_common) == 0
       && !contains(keys(aws_lambda_function.pool.environment[0].variables), "PARAMETER_GITHUB_APP_ID_NAME")
       && !contains(keys(aws_lambda_function.pool.environment[0].variables), "PARAMETER_GITHUB_APP_KEY_BASE64_NAME")
       && !contains(keys(aws_lambda_function.pool.environment[0].variables), "PARAMETER_GITHUB_APPS_MANIFEST_NAME")
@@ -431,7 +428,7 @@ run "does_not_grant_ssm_permissions_when_storage_provider_is_null" {
         for statement in data.aws_iam_policy_document.pool.statement : statement
         if anytrue([for action in statement.actions : startswith(action, "ssm:")])
       ]) == 0
-      && length(regexall("ssm:", data.aws_iam_policy_document.pool_common.source_policy_documents[0])) == 0
+      && length(data.aws_iam_policy_document.pool_common.source_policy_documents) == 0
     )
     error_message = "A null SSM storage provider must not expose SSM environment variables or permissions."
   }
