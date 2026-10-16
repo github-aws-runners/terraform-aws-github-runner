@@ -21,7 +21,7 @@ resource "aws_lambda_function" "ssm_housekeeper" {
   source_code_hash  = var.lambda_s3_bucket == null ? filebase64sha256(local.lambda_zip) : null
   function_name     = local.ssm_housekeeper_lambda_name
   role              = aws_iam_role.ssm_housekeeper.arn
-  handler           = "index.ssmHousekeeper"
+  handler           = "index.runnerConfigHousekeeper"
   runtime           = var.lambda_runtime
   timeout           = local.ssm_housekeeper.lambda_timeout
   tags              = merge(local.tags, var.lambda_tags)
