@@ -190,3 +190,7 @@ describe('Test getOctokit stale installation fallback', () => {
     expect(createGithubInstallationAuth).toHaveBeenCalledTimes(1);
   });
 });
+
+vi.mock('./app-failover', () => ({
+  withAppFailover: async (index: number, create: (index: number) => Promise<unknown>) => create(index),
+}));
