@@ -3,7 +3,8 @@ import type { RunnerConfigStorage, RunnerConfigStore } from '@aws-github-runner/
 import type { Octokit } from '@octokit/rest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { CreateGitHubRunnerConfig, CreateStartRunnerConfig, StandbyInstance } from '../../../../core';
+import type { CreateGitHubRunnerConfig, CreateStartRunnerConfig } from '../../../../core';
+import type { StandbyInstance } from '../standby-types';
 import type { Ec2RunnerProvisioningOperations } from '../runners';
 import type { WarmLeaseStore } from '../warm-lease';
 import { createEc2ScaleUpCapability } from './scale-up';

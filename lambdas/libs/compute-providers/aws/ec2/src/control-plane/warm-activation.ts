@@ -5,14 +5,10 @@ import type { Tag } from '@aws-sdk/client-ec2';
 import type { Octokit } from '@octokit/rest';
 import yn from 'yn';
 
-import type {
-  CreateGitHubRunnerConfig,
-  CreateStartRunnerConfig,
-  ListStandbyInput,
-  StandbyInstance,
-} from '../../../../core';
+import type { CreateGitHubRunnerConfig, CreateStartRunnerConfig } from '../../../../core';
 import { type Ec2RunnerResourceOperations, failureDetails } from '../runners';
 import { type Ec2StandbyOperations, WARM_ACTIVATED_TAG } from '../standby';
+import type { ListStandbyInput, StandbyInstance } from '../standby-types';
 import type { WarmLeaseStore } from '../warm-lease';
 import { createEc2StartRunnerConfigOptions } from './runner-creation';
 
