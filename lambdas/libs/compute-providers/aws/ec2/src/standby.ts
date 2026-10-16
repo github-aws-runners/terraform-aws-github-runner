@@ -18,14 +18,6 @@ import {
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
 
-import type {
-  DestroyStandbyInput,
-  ListStandbyInput,
-  StandbyImage,
-  StandbyInstance,
-  StandbyInstanceState,
-  StandbySpotRequest,
-} from '../../../core';
 import type { Ec2RunnerCreateResult, Ec2RunnerFailureCode } from './runner-create-result';
 import {
   createRunnerTags,
@@ -37,6 +29,14 @@ import {
   throwIfAborted,
 } from './runners';
 import type { RunnerInputParameters } from './runners.d';
+import type {
+  DestroyStandbyInput,
+  ListStandbyInput,
+  StandbyImage,
+  StandbyInstance,
+  StandbyInstanceState,
+  StandbySpotRequest,
+} from './standby-types';
 
 const logger = createChildLogger('standby');
 
