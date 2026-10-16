@@ -107,6 +107,13 @@ resource "aws_lambda_event_source_mapping" "scale_up" {
   batch_size                         = var.lambda_event_source_mapping_batch_size
   maximum_batching_window_in_seconds = var.lambda_event_source_mapping_maximum_batching_window_in_seconds
   tags                               = var.tags
+
+  dynamic "scaling_config" {
+    for_each = var.lambda_event_source_mapping_maximum_concurrency == null ? [] : [var.lambda_event_source_mapping_maximum_concurrency]
+    content {
+      maximum_concurrency = scaling_config.value
+    }
+  }
 }
 
 resource "aws_lambda_permission" "scale_runners_lambda" {
