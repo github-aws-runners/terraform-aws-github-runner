@@ -2,7 +2,7 @@ import type { Octokit } from '@octokit/rest';
 import type { CreateGitHubRunnerConfig, CreateStartRunnerConfig, RunnerInfo } from '../../../../core';
 import { bootTimeExceeded, type Ec2RunnerResourceOperations } from '../runners';
 import type { Ec2StandbyOperations } from '../standby';
-import { createEc2PoolCapability } from './pool';
+import { createEc2PoolCapability, createEc2PoolStandbyOperations } from './pool';
 import { createRunners, type Ec2ProviderConfig, loadEc2ProviderConfig } from './runner-creation';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -171,7 +171,7 @@ describe('createEc2PoolCapability.standby', () => {
     cancelSpotRequest: vi.fn<Ec2StandbyOperations['cancelSpotRequest']>(),
     currentImage: vi.fn<Ec2StandbyOperations['currentImage']>(),
   } satisfies Ec2StandbyOperations;
-  const standby = createEc2PoolCapability(ec2Operations, createStartRunnerConfig, standbyOperations).standby!;
+  const standby = createEc2PoolStandbyOperations(standbyOperations);
   const poolInput = { environment: 'test-environment', runnerOwner: 'owner', runnerType: 'Org' as const };
   const providerConfig: Ec2ProviderConfig = {
     environment: 'config-environment',
@@ -197,12 +197,18 @@ describe('createEc2PoolCapability.standby', () => {
     expect(capability.standby).toBeUndefined();
   });
 
+  it('exposes only reconcile to the control plane', () => {
+    expect(createEc2PoolCapability(ec2Operations, createStartRunnerConfig, standbyOperations).standby).toEqual({
+      reconcile: expect.any(Function),
+    });
+  });
+
   it('lists standby instances and orphaned spot requests for the pool', async () => {
     standbyOperations.listStandby.mockResolvedValue([{ instanceId: 'i-warm', state: 'WARM' }]);
     standbyOperations.listOrphanedSpotRequests.mockResolvedValue([{ spotInstanceRequestId: 'sir-1', state: 'open' }]);
 
     await expect(standby.list(poolInput)).resolves.toEqual([{ instanceId: 'i-warm', state: 'WARM' }]);
-    await expect(standby.listOrphanedSpotRequests!(poolInput)).resolves.toEqual([
+    await expect(standby.listOrphanedSpotRequests(poolInput)).resolves.toEqual([
       { spotInstanceRequestId: 'sir-1', state: 'open' },
     ]);
     expect(standbyOperations.listStandby).toHaveBeenCalledWith(poolInput);
@@ -250,7 +256,7 @@ describe('createEc2PoolCapability.standby', () => {
   it('cancels every spot request and reports failures without stopping', async () => {
     standbyOperations.cancelSpotRequest.mockResolvedValueOnce().mockRejectedValueOnce(new Error('boom'));
 
-    await expect(standby.cancelSpotRequests!(['sir-1', 'sir-2'])).resolves.toEqual({
+    await expect(standby.cancelSpotRequests(['sir-1', 'sir-2'])).resolves.toEqual({
       succeeded: ['sir-1'],
       failed: ['sir-2'],
     });
@@ -259,7 +265,7 @@ describe('createEc2PoolCapability.standby', () => {
   it('resolves the current image from the provider config', async () => {
     standbyOperations.currentImage.mockResolvedValue({ imageId: 'ami-1', launchTemplateVersion: '3' });
 
-    await expect(standby.currentImage!()).resolves.toEqual({ imageId: 'ami-1', launchTemplateVersion: '3' });
+    await expect(standby.currentImage()).resolves.toEqual({ imageId: 'ami-1', launchTemplateVersion: '3' });
     expect(standbyOperations.currentImage).toHaveBeenCalledWith({
       launchTemplateName: 'runner-template',
       amiIdSsmParameterName: '/ami',

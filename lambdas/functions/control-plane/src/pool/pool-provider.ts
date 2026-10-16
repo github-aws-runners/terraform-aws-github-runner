@@ -2,8 +2,7 @@ export type {
   CreatePoolRunnersInput,
   ListPoolRunnersInput,
   PoolComputeProvider,
-  PoolStandbyOperations,
+  PoolStandbyCapability,
   RunnerStatus,
-  StandbyImage,
-  StandbyInstance,
+  StandbyReconcileResult,
 } from '@aws-github-runner/compute-providers/core';

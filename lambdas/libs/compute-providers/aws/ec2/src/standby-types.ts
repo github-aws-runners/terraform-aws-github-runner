@@ -1,4 +1,4 @@
-import type { ListPoolRunnersInput } from '../../../core';
+import type { CreateRunnerResult, ListPoolRunnersInput } from '../../../core';
 
 export type StandbyInstanceState = 'PRIMING' | 'WARM' | 'ACTIVE' | 'GARBAGE';
 
@@ -37,4 +37,13 @@ export interface StandbyBatchResult {
 export interface StandbyImage {
   imageId?: string;
   launchTemplateVersion?: string;
+}
+
+export interface Ec2PoolStandbyOperations {
+  list(input: ListStandbyInput): Promise<StandbyInstance[]>;
+  launch(input: LaunchStandbyInput): Promise<CreateRunnerResult>;
+  destroy(instances: DestroyStandbyInput[]): Promise<StandbyBatchResult>;
+  listOrphanedSpotRequests(input: ListStandbyInput): Promise<StandbySpotRequest[]>;
+  cancelSpotRequests(spotInstanceRequestIds: string[]): Promise<StandbyBatchResult>;
+  currentImage(): Promise<StandbyImage>;
 }

@@ -2,15 +2,16 @@ import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import type {
   CreateStartRunnerConfig,
   PoolComputeProvider,
-  PoolStandbyOperations,
+  PoolStandbyCapability,
   RunnerInfo,
   RunnerStatus,
-  StandbyBatchResult,
 } from '../../../../core';
 import { bootTimeExceeded, type Ec2RunnerResourceOperations } from '../runners';
 import type { Ec2StandbyOperations } from '../standby';
+import type { Ec2PoolStandbyOperations, StandbyBatchResult } from '../standby-types';
 import { toControlPlaneCreateRunnerResult } from './create-result';
 import { createRunners, loadEc2ProviderConfig } from './runner-creation';
+import { reconcileWarmPool } from './warm-pool';
 
 const logger = createChildLogger('pool');
 
@@ -60,7 +61,7 @@ async function forEachSettled<TItem>(
   return result;
 }
 
-function createEc2StandbyCapability(standbyOperations: Ec2StandbyOperations): PoolStandbyOperations {
+export function createEc2PoolStandbyOperations(standbyOperations: Ec2StandbyOperations): Ec2PoolStandbyOperations {
   return {
     list: (input) => standbyOperations.listStandby(input),
     launch: async ({ environment, runnerOwner, runnerType, numberOfInstances, maxAgeHours }) => {
@@ -102,13 +103,21 @@ function createEc2StandbyCapability(standbyOperations: Ec2StandbyOperations): Po
   };
 }
 
+function createEc2StandbyCapability(operations: Ec2PoolStandbyOperations): PoolStandbyCapability {
+  return {
+    reconcile: (request) => reconcileWarmPool(operations, request),
+  };
+}
+
 export function createEc2PoolCapability(
   ec2Operations: Ec2RunnerResourceOperations,
   createStartRunnerConfig: CreateStartRunnerConfig,
   standbyOperations?: Ec2StandbyOperations,
 ): Omit<PoolComputeProvider<RunnerInfo>, 'type'> {
   return {
-    ...(standbyOperations ? { standby: createEc2StandbyCapability(standbyOperations) } : {}),
+    ...(standbyOperations
+      ? { standby: createEc2StandbyCapability(createEc2PoolStandbyOperations(standbyOperations)) }
+      : {}),
     listRunners: ({ environment, runnerOwner, runnerType }) =>
       ec2Operations.list({
         environment,
