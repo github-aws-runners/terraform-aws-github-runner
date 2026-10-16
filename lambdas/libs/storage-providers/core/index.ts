@@ -14,6 +14,8 @@ export interface RunnerConfigRecord {
 export interface RunnerConfigStore {
   readonly maxWritesPerSecond?: number;
   create(record: RunnerConfigRecord, options?: { metadata?: RunnerConfigMetadata[] }): Promise<void>;
+  /** Removes the stored configuration; succeeds when none exists. */
+  delete(runnerId: string): Promise<void>;
 }
 
 export interface RunnerConfigHousekeeper {

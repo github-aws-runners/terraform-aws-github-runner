@@ -579,6 +579,31 @@ describe('listOrphanedSpotRequests', () => {
     ]);
   });
 
+  it('returns live requests still attached to an instance activated before the grace period', async () => {
+    vi.useFakeTimers({ now: new Date('2026-09-30T12:00:00.000Z'), toFake: ['Date'] });
+    mockEC2Client.on(DescribeSpotInstanceRequestsCommand).resolves({
+      SpotInstanceRequests: [
+        { SpotInstanceRequestId: 'sir-settled', State: 'active', InstanceId: 'i-settled' },
+        { SpotInstanceRequestId: 'sir-activating', State: 'active', InstanceId: 'i-activating' },
+        { SpotInstanceRequestId: 'sir-warm', State: 'disabled', InstanceId: 'i-warm' },
+      ],
+    });
+    mockEC2Client
+      .on(DescribeInstancesCommand)
+      .resolves(
+        describeResult([
+          { InstanceId: 'i-settled', Tags: [{ Key: 'ghr:warm-activated', Value: '2026-09-30T11:50:00.000Z' }] },
+          { InstanceId: 'i-activating', Tags: [{ Key: 'ghr:warm-activated', Value: '2026-09-30T11:55:00.000Z' }] },
+          { InstanceId: 'i-warm' },
+        ]),
+      );
+
+    const result = await standby.listOrphanedSpotRequests(FILTERS);
+
+    vi.useRealTimers();
+    expect(result).toEqual([{ spotInstanceRequestId: 'sir-settled', state: 'active', instanceId: 'i-settled' }]);
+  });
+
   it('does not describe instances when no request references one', async () => {
     mockEC2Client
       .on(DescribeSpotInstanceRequestsCommand)
