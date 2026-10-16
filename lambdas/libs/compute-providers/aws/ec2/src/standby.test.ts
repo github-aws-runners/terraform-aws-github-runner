@@ -468,6 +468,76 @@ describe('listStandby', () => {
   });
 });
 
+describe('readWarmPoolInstances', () => {
+  const warmPoolTags = (environment: string) => [
+    { Key: 'ghr:warm-pool', Value: 'true' },
+    { Key: 'ghr:environment', Value: environment },
+  ];
+
+  it('reads the instances by ID and keeps warm-pool members with their environment', async () => {
+    mockEC2Client.on(DescribeInstancesCommand).resolves(
+      describeResult([
+        {
+          InstanceId: 'i-primed',
+          State: { Name: 'stopped' },
+          StateReason: { Code: 'Client.InstanceInitiatedShutdown' },
+          SpotInstanceRequestId: 'sir-1',
+          InstanceType: 'm7g.large',
+          Placement: { AvailabilityZone: 'eu-west-1a' },
+          Tags: warmPoolTags('env-a'),
+        },
+        {
+          InstanceId: 'i-interrupted',
+          State: { Name: 'stopped' },
+          StateReason: { Code: 'Server.SpotInstanceShutdown' },
+          Tags: warmPoolTags('env-b'),
+        },
+        { InstanceId: 'i-other', State: { Name: 'stopped' }, Tags: [{ Key: 'ghr:environment', Value: 'env-a' }] },
+        { InstanceId: 'i-untagged', State: { Name: 'stopped' } },
+      ]),
+    );
+
+    await expect(
+      standby.readWarmPoolInstances(['i-primed', 'i-interrupted', 'i-other', 'i-untagged']),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        instanceId: 'i-primed',
+        environment: 'env-a',
+        state: 'WARM',
+        spotInstanceRequestId: 'sir-1',
+        instanceType: 'm7g.large',
+        availabilityZone: 'eu-west-1a',
+      }),
+      expect.objectContaining({ instanceId: 'i-interrupted', environment: 'env-b', state: 'GARBAGE' }),
+    ]);
+    expect(mockEC2Client).toHaveReceivedCommandTimes(DescribeInstancesCommand, 1);
+    expect(mockEC2Client).toHaveReceivedCommandWith(DescribeInstancesCommand, {
+      InstanceIds: ['i-primed', 'i-interrupted', 'i-other', 'i-untagged'],
+    });
+    expect(mockEC2Client).not.toHaveReceivedCommand(DescribeSpotInstanceRequestsCommand);
+  });
+
+  it('drops instances EC2 no longer knows', async () => {
+    mockEC2Client
+      .on(DescribeInstancesCommand)
+      .rejectsOnce(await ec2SdkError('InvalidInstanceID.NotFound', "The instance ID 'i-gone' does not exist"))
+      .resolves(
+        describeResult([
+          {
+            InstanceId: 'i-primed',
+            State: { Name: 'stopped' },
+            StateReason: { Code: 'Client.InstanceInitiatedShutdown' },
+            Tags: warmPoolTags('env-a'),
+          },
+        ]),
+      );
+
+    await expect(standby.readWarmPoolInstances(['i-gone', 'i-primed'])).resolves.toEqual([
+      expect.objectContaining({ instanceId: 'i-primed', state: 'WARM' }),
+    ]);
+  });
+});
+
 describe('readStandby', () => {
   const activated = (time: string) => [{ Key: 'ghr:warm-activated', Value: time }];
 

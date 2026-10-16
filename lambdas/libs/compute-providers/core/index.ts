@@ -165,9 +165,16 @@ export interface StandbyReconcileResult {
   errors: readonly StandbyReconcileError[];
 }
 
+export interface StandbyEvent {
+  id: string;
+  body: string;
+}
+
 export interface PoolStandbyCapability {
   /** Evicts and refills the environment's standby instances towards `desiredSize`. */
   reconcile(request: StandbyReconcileRequest): Promise<StandbyReconcileResult>;
+  /** Handles provider lifecycle events; resolves the IDs of events to retry. */
+  processEvents?(events: StandbyEvent[]): Promise<string[]>;
 }
 
 export interface PoolComputeProvider<TRunner = unknown> extends ComputeProvider {

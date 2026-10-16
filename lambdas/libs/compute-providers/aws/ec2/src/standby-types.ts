@@ -60,4 +60,6 @@ export interface Ec2PoolStandbyOperations {
   /** Cancels each request and terminates its replacement instance, if any. */
   cancelSpotRequests(requests: StandbySpotRequest[]): Promise<StandbyBatchResult>;
   currentImage(): Promise<StandbyImage>;
+  /** Marks warm-pool instances that stopped themselves after priming as warm; resolves the IDs that failed. */
+  markPrimed(instanceIds: string[]): Promise<string[]>;
 }

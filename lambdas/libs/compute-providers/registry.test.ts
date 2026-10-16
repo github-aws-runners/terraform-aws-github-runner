@@ -46,6 +46,7 @@ it('exposes every configured provider through both capability registries', () =>
 
   expect(controlPlaneRegistry.capability('ec2', 'pool')().standby).toEqual({
     reconcile: expect.any(Function),
+    processEvents: expect.any(Function),
   });
   expect(controlPlaneRegistry.capability('ec2', 'scaleDown')().sweepStandby).toEqual(expect.any(Function));
 });

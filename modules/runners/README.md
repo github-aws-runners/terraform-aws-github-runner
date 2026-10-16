@@ -269,4 +269,5 @@ yarn run dist
 | <a name="output_role_scale_down"></a> [role\_scale\_down](#output\_role\_scale\_down) | n/a |
 | <a name="output_role_scale_up"></a> [role\_scale\_up](#output\_role\_scale\_up) | n/a |
 | <a name="output_runners_log_groups"></a> [runners\_log\_groups](#output\_runners\_log\_groups) | List of log groups from different log files of runner machine. |
+| <a name="output_warm_pool_index_table"></a> [warm\_pool\_index\_table](#output\_warm\_pool\_index\_table) | Warm pool index table, null when warm\_pool is disabled. |
 <!-- END_TF_DOCS -->

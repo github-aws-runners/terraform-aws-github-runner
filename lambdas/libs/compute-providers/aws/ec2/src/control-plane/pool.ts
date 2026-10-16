@@ -12,6 +12,7 @@ import type { Ec2PoolStandbyOperations, ListStandbyInput, StandbyBatchResult, St
 import type { WarmIndexItem, WarmIndexState, WarmIndexStore, WarmIndexUpdate } from '../warm-index';
 import { toControlPlaneCreateRunnerResult } from './create-result';
 import { createRunners, loadEc2ProviderConfig } from './runner-creation';
+import { processStopEvents } from './stop-events';
 import { reconcileWarmPool } from './warm-pool';
 
 const logger = createChildLogger('pool');
@@ -228,13 +229,41 @@ export function createEc2PoolStandbyOperations(
       const { launchTemplateName, amiIdSsmParameterName } = loadEc2ProviderConfig();
       return standbyOperations.currentImage({ launchTemplateName, amiIdSsmParameterName });
     },
+    // Spot request state is not read: a self-initiated stop is enough to classify a primed instance (D14).
+    markPrimed: async (instanceIds) => {
+      const tables = warmPoolIndexTables();
+      const indexes = new Map<string, WarmIndexStore>();
+      const failed: string[] = [];
+      for (const instance of await standbyOperations.readWarmPoolInstances([...new Set(instanceIds)])) {
+        const tableName = tables[instance.environment];
+        if (!tableName || instance.state !== 'WARM') continue;
+        if (!indexes.has(tableName)) indexes.set(tableName, createIndexStore(tableName, instance.environment));
+        try {
+          // The condition only matches PRIMING items, so instances the index does not track are skipped.
+          if (await indexes.get(tableName)!.markWarm(indexUpdate(instance))) {
+            logger.info(`Warm instance '${instance.instanceId}' finished priming and is available.`);
+          }
+        } catch (error) {
+          logger.warn(`Failed to mark primed instance '${instance.instanceId}' warm.`, failureDetails(error));
+          failed.push(instance.instanceId);
+        }
+      }
+      return failed;
+    },
   };
 }
 
 function createEc2StandbyCapability(operations: Ec2PoolStandbyOperations): PoolStandbyCapability {
   return {
     reconcile: (request) => reconcileWarmPool(operations, request),
+    processEvents: (events) => processStopEvents(operations, events),
   };
+}
+
+function warmPoolIndexTables(): Record<string, string> {
+  const tables = process.env.WARM_POOL_INDEX_TABLES;
+  if (!tables) throw new Error('WARM_POOL_INDEX_TABLES is not set.');
+  return JSON.parse(tables) as Record<string, string>;
 }
 
 export function createEc2PoolCapability(
