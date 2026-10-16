@@ -536,7 +536,6 @@ describe('readStandby', () => {
         expect.objectContaining({ instanceId: 'i-priming-spot', state: 'PRIMING' }),
       ],
       orphanedSpotRequests: [],
-      spotStateKnown: true,
       releasedInstanceIds: [],
     });
   });
@@ -562,7 +561,6 @@ describe('readStandby', () => {
     await expect(standby.readStandby([])).resolves.toEqual({
       instances: [],
       orphanedSpotRequests: [],
-      spotStateKnown: true,
       releasedInstanceIds: [],
     });
     expect(mockEC2Client).not.toHaveReceivedAnyCommand();
@@ -686,7 +684,7 @@ describe('readStandby', () => {
 
     const result = await standby.readStandby([{ instanceId: 'i-gone' }]);
 
-    expect(result.spotStateKnown).toBe(true);
+    expect(result.spotLookupError).toBeUndefined();
     expect(result.releasedInstanceIds).toEqual(['i-gone']);
   });
 
@@ -711,7 +709,7 @@ describe('readStandby', () => {
     expect(result).toEqual({
       instances: [expect.objectContaining({ instanceId: 'i-warm-spot', state: 'WARM' })],
       orphanedSpotRequests: [],
-      spotStateKnown: false,
+      spotLookupError: 'RequestResourceCountExceeded',
       releasedInstanceIds: [],
     });
   });

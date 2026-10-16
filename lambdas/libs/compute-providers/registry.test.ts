@@ -22,11 +22,7 @@ it('exposes every configured provider through both capability registries', () =>
       countAvailableRunners: expect.any(Function),
       createRunners: expect.any(Function),
       ...(pool.standby && {
-        standby: expect.objectContaining({
-          list: expect.any(Function),
-          launch: expect.any(Function),
-          destroy: expect.any(Function),
-        }),
+        standby: expect.objectContaining({ reconcile: expect.any(Function) }),
       }),
     });
     expect(controlPlaneRegistry.capability(type, 'scaleUp')()).toEqual({
@@ -49,11 +45,7 @@ it('exposes every configured provider through both capability registries', () =>
   }
 
   expect(controlPlaneRegistry.capability('ec2', 'pool')().standby).toEqual({
-    list: expect.any(Function),
-    launch: expect.any(Function),
-    destroy: expect.any(Function),
-    cancelSpotRequests: expect.any(Function),
-    currentImage: expect.any(Function),
+    reconcile: expect.any(Function),
   });
   expect(controlPlaneRegistry.capability('ec2', 'scaleDown')().sweepStandby).toEqual(expect.any(Function));
 });

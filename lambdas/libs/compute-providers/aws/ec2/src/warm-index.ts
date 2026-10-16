@@ -7,7 +7,7 @@ import {
 } from '@aws-sdk/client-dynamodb';
 import { randomUUID } from 'node:crypto';
 
-import type { StandbyInstanceState } from '../../../core';
+import type { StandbyInstanceState } from './standby-types';
 import { awsErrorCode } from './runners';
 
 export const WARM_CLAIM_TTL_SECONDS = 10 * 60;

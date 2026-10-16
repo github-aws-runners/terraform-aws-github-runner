@@ -49,8 +49,8 @@ The pool lambda reaches the warm tier only through the compute provider's
 standby capability: `reconcile` takes the target size, maximum age and boot
 time, and returns counts, evictions by reason and bounded errors. The
 compute-provider core contract carries no instance, image, launch template or
-spot types. Classification, eviction, spot request handling and activation
-are implemented by the EC2 provider.
+spot types. Classification, eviction, spot request handling, the index and
+activation are implemented by the EC2 provider.
 
 A warm instance is activated at most once. Runners that ran a job are never parked again; a non-ephemeral runner keeps its normal lifecycle after activation.
 

@@ -6,7 +6,7 @@ import * as ghAuth from '../github/auth';
 import { controlPlaneProviderRegistry } from '../control-plane-providers';
 import * as githubRunner from '../scale-runners/github-runner';
 import { adjust } from './pool';
-import type { PoolComputeProvider, PoolStandbyOperations } from './pool-provider';
+import type { PoolComputeProvider, PoolStandbyCapability } from './pool-provider';
 
 const githubClient = {
   paginate: vi.fn(),
@@ -365,15 +365,12 @@ describe('pool adjustment', () => {
 
   describe('With the warm pool enabled', () => {
     const standby = {
-      list: vi.fn<PoolStandbyOperations['list']>(),
-      launch: vi.fn<PoolStandbyOperations['launch']>(),
-      destroy: vi.fn<PoolStandbyOperations['destroy']>(),
-    } satisfies PoolStandbyOperations;
+      reconcile: vi.fn<PoolStandbyCapability['reconcile']>(),
+    } satisfies PoolStandbyCapability;
 
     beforeEach(() => {
       process.env.WARM_POOL_ENABLED = 'true';
-      standby.list.mockResolvedValue({ instances: [], orphanedSpotRequests: [], spotStateKnown: true });
-      standby.launch.mockResolvedValue({ instances: ['i-1'], retryableErrorCount: 0, nonRetryableErrorCount: 0 });
+      standby.reconcile.mockResolvedValue({ ready: 0, preparing: 1, launched: 1, evictions: {}, errors: [] });
       mockedResolveCapability.mockReturnValue(() => ({ ...poolProvider, standby }));
     });
 
@@ -381,7 +378,7 @@ describe('pool adjustment', () => {
       await adjust({ poolSize: 1 });
 
       expect(mockedResolveCapability).toHaveBeenCalledWith(defaultComputeProvider, 'pool');
-      expect(standby.launch).toHaveBeenCalledWith(expect.objectContaining({ numberOfInstances: 1 }));
+      expect(standby.reconcile).toHaveBeenCalledWith(expect.objectContaining({ desiredSize: 1 }));
       expect(mockedAppAuth).not.toHaveBeenCalled();
       expect(mockedInstallationAuth).not.toHaveBeenCalled();
       expect(mockedCreateClient).not.toHaveBeenCalled();

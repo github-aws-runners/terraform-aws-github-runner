@@ -17,16 +17,7 @@ import {
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
 
-import type {
-  DestroyStandbyInput,
-  ListStandbyInput,
-  RunnerInfo,
-  StandbyImage,
-  StandbyInstance,
-  StandbyInstanceState,
-  StandbyListing,
-  StandbySpotRequest,
-} from '../../../core';
+import type { RunnerInfo } from '../../../core';
 import type { Ec2RunnerCreateResult, Ec2RunnerFailureCode } from './runner-create-result';
 import {
   awsErrorCode,
@@ -40,6 +31,15 @@ import {
   throwIfAborted,
 } from './runners';
 import type { RunnerInputParameters } from './runners.d';
+import type {
+  DestroyStandbyInput,
+  ListStandbyInput,
+  StandbyImage,
+  StandbyInstance,
+  StandbyInstanceState,
+  StandbyListing,
+  StandbySpotRequest,
+} from './standby-types';
 
 const logger = createChildLogger('standby');
 
@@ -575,7 +575,7 @@ async function readStandbyInstances(
     ),
   ];
   let spotRequestById = new Map<string, SpotInstanceRequest>();
-  let spotStateKnown = true;
+  let spotLookupError: string | undefined;
   if (spotInstanceRequestIds.length > 0) {
     try {
       const requests = await describeSpotRequestsById(ec2Client, spotInstanceRequestIds, signal);
@@ -590,7 +590,7 @@ async function readStandbyInstances(
         'Unable to read spot request state, classifying stopped spot instances from EC2 data and skipping spot request cleanup.',
         failureDetails(error),
       );
-      spotStateKnown = false;
+      spotLookupError = awsErrorCode(error) ?? 'UnknownError';
     }
   }
   const spotRequest = (id: string | undefined) => (id === undefined ? undefined : spotRequestById.get(id));
@@ -602,7 +602,7 @@ async function readStandbyInstances(
       releasedInstanceIds.push(entry.instanceId);
       continue;
     }
-    if (!spotStateKnown) continue;
+    if (spotLookupError) continue;
     const request = spotRequest(entry.spotInstanceRequestId);
     if (!request || !LIVE_SPOT_REQUEST_STATES.includes(request.State ?? '')) {
       releasedInstanceIds.push(entry.instanceId);
@@ -623,7 +623,7 @@ async function readStandbyInstances(
       toStandbyInstance(entry.instance as Instance, spotRequest(entry.spotInstanceRequestId)),
     ),
     orphanedSpotRequests,
-    spotStateKnown,
+    ...(spotLookupError ? { spotLookupError } : {}),
     releasedInstanceIds,
   };
 }
