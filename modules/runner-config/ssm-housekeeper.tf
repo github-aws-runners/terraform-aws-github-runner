@@ -6,7 +6,7 @@ locals {
 }
 
 module "ssm_housekeeper" {
-  source = "./ssm-housekeeper"
+  source = "./runner-config-housekeeper"
 
   config = {
     prefix        = var.prefix
