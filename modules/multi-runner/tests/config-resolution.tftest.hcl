@@ -951,6 +951,10 @@ run "scale_set_lane_requires_owner_for_non_enterprise_registration" {
             name = "scale-missing-owner"
           }
         }
+        runner = {
+          os           = "linux"
+          architecture = "x64"
+        }
         compute_provider = {
           aws = {
             ec2 = {

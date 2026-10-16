@@ -31,6 +31,23 @@ run "returns_default_ec2_trust_policy" {
   }
 }
 
+run "omits_null_additional_trust_policy" {
+  command = plan
+
+  variables {
+    additional_trust_policy_json = null
+  }
+
+  assert {
+    condition = (
+      length(data.aws_iam_policy_document.assume_role.source_policy_documents) == 1
+      && data.aws_iam_policy_document.assume_role.source_policy_documents[0] == data.aws_iam_policy_document.default.json
+      && output.assume_role_policy == data.aws_iam_policy_document.default.json
+    )
+    error_message = "A null additional trust policy must leave only the default EC2 trust policy."
+  }
+}
+
 run "merges_additional_trust_policy" {
   command = plan
 

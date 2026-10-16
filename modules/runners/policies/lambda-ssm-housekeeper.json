@@ -4,7 +4,7 @@
     {
         "Effect": "Allow",
         "Action": [
-            "ssm:DeleteParameter",
+            "ssm:DeleteParameters",
             "ssm:GetParametersByPath"
         ],
         "Resource": "${ssm_token_path}*"

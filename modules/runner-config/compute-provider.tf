@@ -4,11 +4,10 @@ locals {
     aws_microvm = var.compute_provider.aws.microvm
   }
 
-  discovered_provider_key = one([
+  provider_key = one([
     for provider_key, provider_config in local.compute_providers : provider_key
     if provider_config != null
   ])
-  provider_key = var.compute_provider_key != null ? var.compute_provider_key : local.discovered_provider_key
 
   provider_types = {
     aws_ec2     = "ec2"

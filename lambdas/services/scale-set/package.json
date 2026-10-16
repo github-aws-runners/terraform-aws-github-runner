@@ -28,7 +28,7 @@
     "@aws-sdk/credential-providers": "^3.1009.0",
     "@octokit/auth-app": "8.2.0",
     "@octokit/request": "^9.2.2",
-    "undici": "^6.19.2"
+    "undici": "^6.28.1"
   },
   "nx": {
     "includedScripts": [

@@ -17,7 +17,7 @@ export interface RunnerConfigStore {
 }
 
 export interface RunnerConfigHousekeeper {
-  houseKeeper(): Promise<void>;
+  houseKeeper(remainingTime?: () => number): Promise<void>;
 }
 
 export interface GitHubAppCredential {
