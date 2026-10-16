@@ -345,6 +345,27 @@ describe('Test job retry handler (batch processing)', () => {
     expect(publishMessage).toHaveBeenCalledTimes(1);
   });
 
+  it.each([400, 401, 403, 404, 410, 422])('acknowledges permanent GitHub status %s', async (status) => {
+    vi.mocked(getOctokit).mockRejectedValueOnce({ status, message: 'Denied' });
+    mockOctokit.actions.getJobForWorkflowRun.mockRejectedValueOnce({ status, message: 'Denied' });
+    await expect(
+      jobRetryCheck({ Records: [createSQSRecord('auth'), createSQSRecord('status')] }, context),
+    ).resolves.toEqual({ batchItemFailures: [] });
+    expect(publishMessage).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { status: 429 },
+    { status: 403, message: 'secondary rate limit' },
+    { status: 403, response: { headers: { 'x-ratelimit-remaining': '0' } } },
+    { status: 403, response: { headers: { 'retry-after': '60' } } },
+  ])('retains rate-limited records for redelivery', async (error) => {
+    mockOctokit.actions.getJobForWorkflowRun.mockRejectedValueOnce(error);
+    await expect(jobRetryCheck({ Records: [createSQSRecord('limited')] }, context)).resolves.toEqual({
+      batchItemFailures: [{ itemIdentifier: 'limited' }],
+    });
+  });
+
   it('should handle multiple records in a single batch', async () => {
     mockOctokit.actions.getJobForWorkflowRun.mockImplementation(() => ({
       data: {

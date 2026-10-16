@@ -130,11 +130,6 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
 
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
 
-  // Seed installation clients with the best observed app; each client can fail over per request.
-  const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl, undefined, storage.githubAppCredentials);
-  const appIdx = ghAuth.appIndex;
-  const githubAppClient = await createOctokitClient(ghAuth.token, ghesApiUrl, appIdx);
-
   // A map of either owner or owner/repo name to Octokit client, so we use a
   // single client per installation (set of messages), depending on how the app
   // is installed. This is for a couple of reasons:
@@ -146,6 +141,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
     messages: ActionRequestMessageSQS[];
     githubInstallationClient: Octokit;
     runnerOwner: string;
+    appIdx: number;
   };
 
   const validMessages = new Map<string, MessagesWithClient>();
@@ -190,6 +186,15 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
     // If we've not seen this owner/repo before, we'll need to create a GitHub
     // client for it.
     if (entry === undefined) {
+      const ghAuth = await createGithubAppAuth(
+        undefined,
+        ghesApiUrl,
+        undefined,
+        storage.githubAppCredentials,
+        installationScope(ghesApiUrl, runnerOwner),
+      );
+      const appIdx = ghAuth.appIndex;
+      const githubAppClient = await createOctokitClient(ghAuth.token, ghesApiUrl, appIdx);
       const githubInstallationClient = await createGithubInstallationClient(
         githubAppClient,
         enableOrgLevel,
@@ -203,6 +208,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
         messages: [],
         githubInstallationClient,
         runnerOwner: runnerOwner,
+        appIdx,
       };
 
       validMessages.set(key, entry);
@@ -224,7 +230,7 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
 
   logger.info(`Received events`);
 
-  for (const [group, { githubInstallationClient, messages, runnerOwner }] of validMessages.entries()) {
+  for (const [group, { githubInstallationClient, messages, runnerOwner, appIdx }] of validMessages.entries()) {
     // Work out how much we want to scale up by.
     let scaleUp = 0;
     const queuedMessages: ActionRequestMessageSQS[] = [];

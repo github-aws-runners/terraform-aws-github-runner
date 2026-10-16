@@ -1,3 +1,4 @@
+import { isPermanentGitHubError } from '../github/app-failover';
 import { addPersistentContextToChildLogger, createSingleMetric, logger } from '@aws-github-runner/aws-powertools-util';
 import { publishMessage } from '../aws/sqs';
 import { getGitHubEnterpriseApiUrl, isJobQueued } from './github-runner';
@@ -68,10 +69,17 @@ export async function checkAndRetryJob(payload: ActionRequestMessageRetry): Prom
   logger.info(`Received event`);
 
   const { ghesApiUrl } = getGitHubEnterpriseApiUrl();
-  const ghClient = await getOctokit(ghesApiUrl, enableOrgLevel, payload);
+  let queued: boolean;
+  try {
+    const ghClient = await getOctokit(ghesApiUrl, enableOrgLevel, payload);
+    queued = await isJobQueued(ghClient, payload);
+  } catch (error) {
+    if (!isPermanentGitHubError(error)) throw error;
+    logger.warn('Permanent GitHub error, acknowledging job retry record', { error });
+    return;
+  }
 
-  // check job is still queued
-  if (await isJobQueued(ghClient, payload)) {
+  if (queued) {
     await publishMessage(JSON.stringify(payload), jobQueueUrl);
     createMetric(enableMetrics, environment, payload);
     logger.info(`Job is still queued, message published to build queue and will be handled by scale-up.`, { payload });

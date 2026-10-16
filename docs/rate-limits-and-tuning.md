@@ -41,7 +41,9 @@ Control-plane GitHub requests try another eligible App when a rate limit is reac
 
 This changes single-App behavior too: the throttling plugin no longer waits inside the Lambda for quota to reset. When no App is eligible, the operation fails promptly. Scale-up and job-retry queue consumers report failed records for SQS redelivery; scheduled pool and scale-down invocations can try again on their next run.
 
-The job-retry event source enables `ReportBatchItemFailures`. Failed authentication, job-status checks (including 5xx and timeouts), and queue publications return only their failed message IDs. Successfully processed records are acknowledged. A failed status check is retried before deciding whether to publish a scale-up request; it is not treated as evidence that the job is still queued. SQS remains an at-least-once service, so partial batch responses do not guarantee exactly-once processing.
+In job-retry, permanent GitHub authentication or job-status errors (400, 401, non-rate-limit 403, 404, 410, and 422) are logged and acknowledged instead of repeatedly redelivered until queue retention expires. Rate limits, network failures, server errors, and queue publication failures remain retryable.
+
+The job-retry event source enables `ReportBatchItemFailures`. Retryable authentication failures, job-status checks (including 5xx and timeouts), and queue publications return only their failed message IDs. Successfully processed records are acknowledged. A failed status check is retried before deciding whether to publish a scale-up request; it is not treated as evidence that the job is still queued. SQS remains an at-least-once service, so partial batch responses do not guarantee exactly-once processing.
 
 ### Maximum runner creation rate per App
 

@@ -97,7 +97,7 @@ export function reportAppSecondaryRateLimit(
   cooldownUntil = Date.now() + SECONDARY_RATE_LIMIT_COOLDOWN_MS,
 ): void {
   appCooldowns.set(appIndex, Math.max(appCooldowns.get(appIndex) ?? 0, cooldownUntil));
-  logger.warn(`GitHub App index ${appIndex} put in rate limit cooldown`);
+  logger.warn(`GitHub App index ${appIndex} put in secondary rate limit cooldown`);
 }
 
 // Select the app with the most primary rate limit budget remaining, skipping

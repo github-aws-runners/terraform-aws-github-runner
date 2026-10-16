@@ -12,7 +12,7 @@ import {
   selectAppIndex,
 } from './auth';
 import { installationScope } from './installation-scope';
-import { withAppFailover } from './app-failover';
+import { isPermanentGitHubError, withAppFailover } from './app-failover';
 import { metricGitHubAppRateLimit } from './rate-limit';
 
 vi.mock('@aws-github-runner/storage-providers', () => ({ createCommonStorage: vi.fn() }));
@@ -130,6 +130,7 @@ describe('request-level app failover with real Octokit retry/throttling hooks', 
     expect(error).not.toBeInstanceOf(RequestError);
     expect(error.status).toBeUndefined();
     expect(error.cause).toBe(initializationFailure);
+    expect(isPermanentGitHubError(error)).toBe(true);
   });
 
   it('keeps core requests available after every App exhausts registration quota', async () => {

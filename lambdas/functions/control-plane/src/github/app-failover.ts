@@ -57,6 +57,13 @@ function rateLimit(error: unknown): { headers: ResponseHeaders; until: number; p
 
 class ClientInitializationError extends Error {}
 
+export function isPermanentGitHubError(error: unknown): boolean {
+  const failure = error instanceof ClientInitializationError ? error.cause : error;
+  if (!failure || typeof failure !== 'object' || rateLimit(failure)) return false;
+  const status = (failure as GitHubError).status ?? (failure as GitHubError).response?.status;
+  return status !== undefined && [400, 401, 403, 404, 410, 422].includes(status);
+}
+
 function observe(appIndex: number, headers: ResponseHeaders, scope: string, resource: string): void {
   const remaining = Number(headers['x-ratelimit-remaining']);
   const resetAt = Number(headers['x-ratelimit-reset']) * 1000;
