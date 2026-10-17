@@ -138,6 +138,36 @@ export interface CreatePoolRunnersInput {
   storage?: import('@aws-github-runner/storage-providers').RunnerConfigStorage;
 }
 
+export interface StandbyReconcileRequest {
+  environment: string;
+  /** Target number of standby instances, from the pool schedule. */
+  desiredSize: number;
+  maxAgeHours: number;
+  bootTimeoutMinutes: number;
+}
+
+/** Bounded error metadata; never contains a raw upstream error message. */
+export interface StandbyReconcileError {
+  operation: string;
+  code: string;
+}
+
+export interface StandbyReconcileResult {
+  /** Standby instances that can be started for a job. */
+  ready: number;
+  /** Standby instances still being prepared, including those launched in this run. */
+  preparing: number;
+  launched: number;
+  /** Destroyed standby instances by provider-defined reason. */
+  evictions: Record<string, number>;
+  errors: readonly StandbyReconcileError[];
+}
+
+export interface PoolStandbyCapability {
+  /** Evicts and refills the environment's standby instances towards `desiredSize`. */
+  reconcile(request: StandbyReconcileRequest): Promise<StandbyReconcileResult>;
+}
+
 export interface PoolComputeProvider<TRunner = unknown> extends ComputeProvider {
   listRunners(input: ListPoolRunnersInput): Promise<TRunner[]>;
   countAvailableRunners(
@@ -146,6 +176,8 @@ export interface PoolComputeProvider<TRunner = unknown> extends ComputeProvider 
     includeBusyRunners: boolean,
   ): number;
   createRunners(input: CreatePoolRunnersInput): Promise<string[]>;
+  /** Undefined when the provider cannot keep stopped standby (warm) instances. */
+  standby?: PoolStandbyCapability;
 }
 
 export interface ComputeProviderPlugin<TCapabilities, TType extends string = string> {
