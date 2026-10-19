@@ -56,15 +56,13 @@ variables {
         exactMatch    = false
       }
     }
-    # Deliberately wider than the historical 0-999 range: it must still sort after
-    # 999 by magnitude, not ahead of it by leading digit.
-    loose_wide = {
-      arn = "arn:aws:sqs:eu-west-1:123456789012:loose-wide"
-      id  = "loose-wide"
+    loose_zero = {
+      arn = "arn:aws:sqs:eu-west-1:123456789012:loose-zero"
+      id  = "loose-zero"
       matcherConfig = {
         labelMatchers = [["self-hosted"]]
         exactMatch    = false
-        priority      = 1000
+        priority      = 0
       }
     }
     exact_high = {
@@ -96,21 +94,53 @@ run "strict_matchers_are_ordered_ahead_of_loose_ones" {
     condition = [for c in local.runner_matcher_config_sorted : c.id] == [
       "bidirectional-low",
       "exact-high",
+      "loose-zero",
       "loose-low",
       "loose-default",
-      "loose-wide",
     ]
     error_message = "Matchers must be ordered strict first, then by ascending priority. Got: ${jsonencode([for c in local.runner_matcher_config_sorted : c.id])}"
   }
 }
 
-run "priority_beyond_three_digits_sorts_by_magnitude" {
+# The %03d pad only matches numeric order for priorities inside 0-999. Outside it,
+# 1000 would sort ahead of 999 by its leading digit and -1 would sort ahead of
+# everything, so the range has to be enforced rather than assumed.
+run "priority_above_the_range_is_rejected" {
   command = plan
 
-  # Guards the zero-padding width: too narrow a pad sorts 1000 ahead of 999
-  # because '1' < '9' lexicographically.
-  assert {
-    condition     = index([for c in local.runner_matcher_config_sorted : c.id], "loose-wide") > index([for c in local.runner_matcher_config_sorted : c.id], "loose-default")
-    error_message = "priority 1000 must sort after the 999 default, not ahead of it."
+  variables {
+    runner_matcher_config = {
+      wide = {
+        arn = "arn:aws:sqs:eu-west-1:123456789012:wide"
+        id  = "wide"
+        matcherConfig = {
+          labelMatchers = [["self-hosted"]]
+          exactMatch    = false
+          priority      = 1000
+        }
+      }
+    }
   }
+
+  expect_failures = [var.runner_matcher_config]
+}
+
+run "priority_below_the_range_is_rejected" {
+  command = plan
+
+  variables {
+    runner_matcher_config = {
+      negative = {
+        arn = "arn:aws:sqs:eu-west-1:123456789012:negative"
+        id  = "negative"
+        matcherConfig = {
+          labelMatchers = [["self-hosted"]]
+          exactMatch    = false
+          priority      = -1
+        }
+      }
+    }
+  }
+
+  expect_failures = [var.runner_matcher_config]
 }

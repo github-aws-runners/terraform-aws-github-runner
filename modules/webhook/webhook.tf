@@ -4,11 +4,11 @@ locals {
   # config key as a stable tiebreaker. The dispatcher consumes this order as-is
   # and does no sorting of its own.
   #
-  # Priority is zero padded so string sorting matches numeric sorting. The width
-  # is generous on purpose: a value wider than the padding sorts by its leading
-  # digit instead of its magnitude, which would put 1000 ahead of 999.
+  # Priority is zero padded so string sorting matches numeric sorting. The pad
+  # width relies on the 0-999 range validation on var.runner_matcher_config: a
+  # wider value would sort by its leading digit, putting 1000 ahead of 999.
   runner_matcher_config = {
-    for k, v in var.runner_matcher_config : format("%d-%010d-%s",
+    for k, v in var.runner_matcher_config : format("%d-%03d-%s",
       (v.matcherConfig.bidirectionalLabelMatch || v.matcherConfig.exactMatch) ? 0 : 1,
       v.matcherConfig.priority, k) => merge(v, {
         key             = k
