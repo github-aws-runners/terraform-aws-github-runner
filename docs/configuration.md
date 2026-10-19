@@ -17,7 +17,15 @@ To be able to support a number of use-cases, the module has quite a lot of confi
 
 ## AWS SSM Parameters
 
-The module uses the AWS System Manager Parameter Store to store configuration for the runners, as well as registration tokens and secrets for the Lambdas. Paths for the parameters can be configured via the variable `ssm_paths`. The location of the configuration parameters is retrieved by the runners via the instance tag `ghr:ssm_config_path`. The following default paths will be used. Tokens or JIT config stored in the token path will be deleted after retrieval by instance, data not deleted after a day will be deleted by a SSM housekeeper lambda.
+The module uses the AWS System Manager Parameter Store to store configuration for the runners, as well as registration tokens and secrets for the Lambdas. Paths for the parameters can be configured via the variable `ssm_paths`. The location of the configuration parameters is retrieved by the runners via the instance tag `ghr:ssm_config_path`. The following default paths will be used. Tokens or JIT config stored in the token path will be deleted after retrieval by instance, data not deleted after a day will be deleted by a SSM housekeeper lambda. Alternatively you can set `ssm_ttl_seconds.tokens` to attach a native SSM expiration policy to the token / JIT config parameters so SSM deletes leftovers itself after the TTL passes. Be aware that parameter policies require the Advanced parameter tier for every token parameter, which incurs additional costs, and that expiration is enforced asynchronously by SSM. The housekeeper lambda remains active as a backstop.
+
+For the experimental multi-runner configuration, set `multi_runner_config.<lane>.storage_provider.aws.ssm.ttl_seconds.tokens` to configure the token TTL. Stable configurations use `ssm_ttl_seconds.tokens` (under `runner_config` for multi-runner lanes); it is translated to the same nested setting. An omitted TTL leaves native expiration disabled.
+
+The SSM housekeeper collects eligible names across listing pages and sends a `DeleteParameters` request whenever it has 10 names, waiting 350 ms before each batch. Any partial batch is flushed when listing finishes or fails, provided enough runtime remains. It stops listing new pages with less than twenty seconds remaining, reserving time to flush a partial batch, and stops sending delete requests with less than ten seconds remaining, including a time check after the delay. This reduces API calls while pacing each invocation below the default three delete requests per second. The quota is shared across the AWS account and Region, so concurrent housekeepers and other clients can still cause throttling. The AWS SDK retries retryable failures; if a batch still fails, the housekeeper logs it and continues with later batches. Parameters left behind remain eligible for a later scheduled run. Names returned in `InvalidParameters` are logged separately. The configured minimum age still applies, and dry-run mode sends no delete requests.
+
+Each batch logs `Successfully deleted expired runner configuration batch` only for names acknowledged in AWS's `DeletedParameters` response, with `deletedCount`. Sum `deletedCount` to measure confirmed deletions; counting these log entries measures successful batches. The `Runner configuration cleanup summary` log reports parameter counts: `attempted` (submitted names, excluding SDK retries), `deleted` (AWS-confirmed names), `failed` (invalid names or names in failed requests), `skipped` (ineligible entries), and `pending` (buffered names not submitted). It includes `dryRun` and a `status` of `completed`, `runtime-limit`, or `listing-failed`; completed means the scan finished, not that every deletion succeeded. Dry runs report no deletion attempts or successes. Summaries are emitted on normal completion, guarded runtime exits, and listing failures, but cannot be guaranteed after a hard Lambda timeout.
+
+When upgrading the housekeeper Lambda, also apply the Terraform IAM changes granting `ssm:DeleteParameters`; the singular `ssm:DeleteParameter` permission does not authorize batch deletion. Custom IAM policies must grant the batch action for the runner token path as well.
 
 Furthermore, to accommodate larger JIT configurations or other stored values, the module implements automatic tier selection for SSM parameters:
 
@@ -67,7 +75,7 @@ github_app = {
 
 Manually creating the SSM parameters that hold the configuration of your GitHub App avoids leaking critical plain text values in your terraform state and version control system. This is a recommended security practice for handling sensitive credentials.
 
-You can read more [over here](../examples/external-managed-ssm-secrets/README.md).
+You can read more [over here](examples/external-managed-ssm-secrets.md).
 
 ## Encryption
 
@@ -145,6 +153,18 @@ Cron expressions are parsed by [cron-parser](https://github.com/harrisiirak/cron
 ```
 
 For time zones please check [TZ database name column](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) for the supported values.
+
+### Idle confirmation window <!-- omit in toc -->
+
+Before terminating a runner, the scale-down lambda asks GitHub whether the runner is busy. That busy flag can be stale: it can read `false` for a runner that was assigned a job a few seconds earlier, and in rare cases for a runner that has been executing a job for several minutes. When that happens the lambda terminates an instance mid-job and the job fails with "The runner has received a shutdown signal".
+
+Set `scale_down_idle_confirmation_seconds` to require not-busy readings that span at least the given window before a runner is terminated. On the first not-busy reading the lambda tags the instance with `ghr:idle_detected_at` and defers termination. It terminates only when a later evaluation still reads not-busy and the window has elapsed. Any busy reading in between removes the tag and restarts the window. Use at least one scale-down schedule interval, for example `300` for the default five minute schedule, so that two consecutive evaluations must agree. The trade-off is that a genuinely idle runner lives one extra interval before it is removed.
+
+```hcl
+scale_down_idle_confirmation_seconds = 300
+```
+
+The default of `0` keeps the previous single-reading behaviour. The `multi_runner_config` equivalent is `runner_config.scale_down_idle_confirmation_seconds`.
 
 ## Ephemeral runners
 
@@ -282,6 +302,81 @@ In case the setup does not work as intended, trace the events through this seque
 
 ## Experimental features
 
+### GitHub Actions runner scale-set orchestration
+
+Scale-set orchestration is an experimental multi-runner v2 provider for
+workloads that should use GitHub's runner scale-set message protocol instead of
+webhook-driven Lambda scaling. Select it inside the lane's
+`multi_runner_config.<name>.orchestration_provider` block and pair it with a
+compute provider that implements the scale-set capability contract. The
+controller runs as one ECS Fargate task per resolved controller group and
+reconciles the configured scale sets continuously.
+
+Use scale-set orchestration when the GitHub scale-set API and a long-lived
+controller are the desired ownership model. Continue using webhook
+orchestration when the existing `workflow_job` event, SQS, and Lambda lifecycle
+are the better fit. The two modes must not manage the same runner lane.
+
+The scale-set module resolves GitHub scale sets by their configured name. When
+a named scale set is absent, the controller registers it in the resolved
+runner group and reconciles its system labels at runtime. The TypeScript
+controller is the component that configures GitHub; Terraform never calls the
+GitHub scale-set API. Terraform destroy removes the AWS controller and stops
+reconciliation, but does not issue a GitHub delete. The module requires an
+explicit controller image, preferably an immutable digest. The task reads GitHub App credentials
+and optional discovery-cache values from SSM but does not write discovered IDs
+back to SSM. See the [scale-set provider reference](https://github.com/github-aws-runners/terraform-aws-github-runner/blob/main/modules/orchestration-providers/scale-set/README.md)
+for the complete input schema.
+
+#### Scale-set options and defaults
+
+Set these values under
+`global_config_orchestration_provider.scale_set`. Per-lane scale-set values
+under `multi_runner_config.<lane>.orchestration_provider.scale_set` override
+the corresponding lane settings. The controller image is represented as
+optional in the Terraform type for normalization, but validation requires a
+non-empty value; use an immutable digest.
+
+| Option | Default | Purpose |
+| --- | --- | --- |
+| `grouping.strategy` | `compute_provider` | Pack reconcilers by compute-provider type; use `runner_config` or `custom` to create narrower task/IAM boundaries. |
+| `container.image` | none; required | Controller image reference. Prefer a release digest. |
+| `container.user` | `10001:10001` | Numeric non-root UID/GID used by the application container. |
+| `container.health_port` | `8080` | ECS health-check port. |
+| `container.health_path` | `/healthz` | ECS liveness endpoint; `/readyz` is an application readiness signal. |
+| `container.health_check_command` | `null` | Use the image health check unless an explicit ECS command is required. |
+| `container.health_check_interval` / `timeout` / `retries` | `30` / `5` / `3` | ECS container health-check timing. |
+| `container.health_check_start_period` | `30` | Startup grace period for the ECS health check. |
+| `container.health_stale_after_seconds` | `180` | Controller health staleness threshold. |
+| `container.shutdown_timeout_seconds` | `110` | Controller shutdown grace period. |
+| `container.session_close_timeout_seconds` | `10` | Message-session close timeout. |
+| `container.reconnect_initial_backoff_seconds` / `max` | `1` / `30` | Bounds for reconnect backoff. |
+| `container.stop_timeout_seconds` | `120` | ECS container stop timeout. |
+| `config_store.path_prefix` / `tier` | derived / `Standard` | SSM path prefix and parameter tier for non-secret reconciler configuration. |
+| `ecs.cluster.mode` | `managed` | Create a cluster or use an external cluster. |
+| `ecs.cluster.container_insights` | `true` | Enable ECS container insights on a managed cluster. |
+| `ecs.task.cpu` / `memory` | `512` / `1024` | Fargate task CPU units and memory MiB. |
+| `ecs.task.cpu_architecture` | `X86_64` | Fargate task architecture. |
+| `ecs.task.ephemeral_storage` | `null` | Use the Fargate platform default unless a size is supplied. |
+| `ecs.service.platform_version` | `LATEST` | ECS Fargate platform version. |
+| `ecs.iam.path` / `permissions_boundary` | `/` / `null` | IAM role path and optional permissions boundary. |
+| `network.vpc_id` / `subnet_ids` | required | Private subnets in which the controller service runs. |
+| `network.https_egress.ipv4_cidrs` | `0.0.0.0/0` | Default HTTPS reachability; restrict through GitHub Meta API ranges, NAT, firewall, or proxy as required. |
+| `network.https_egress.ipv6_cidrs` | `[]` | IPv6 HTTPS egress destinations. |
+| `logging.retention_in_days` / `kms_key_id` | `180` / `null` | CloudWatch log retention and optional customer-managed KMS key ID, alias, or ARN. |
+| `logging.log_group_class` | `STANDARD` | CloudWatch log-group class. |
+| `tags` | `{}` | Tags applied to scale-set resources. |
+
+The scale-set lane itself defaults to `runner.group_name = "Default"`,
+`runner.min_runners = 0`, `runner.max_runners = 10`, and
+`runner.boot_time_in_minutes = 10`. Configure the GitHub scope, scale-set
+name, runner owner, and GitHub App SSM references in the lane; credential values
+are not placed in the controller manifest.
+
+The [multi-runner scale-set example](multi-runner-scale-set.md) shows how these
+provider-specific settings coexist with webhook lanes in the same v2
+`multi_runner_config` map.
+
 ### macOS Runners
 
 This feature is in early stage and should be considered experimental. The module supports macOS-based GitHub Actions self-hosted runners on AWS EC2 Mac instances (`mac1.metal`, `mac2.metal`, `mac2-m2.metal`). macOS runners require dedicated hosts due to Apple's licensing requirements and have longer boot times (6–20 minutes). Set `runner_os = "osx"` and `use_dedicated_host = true` to enable. See the full [macOS Runners documentation](mac-runners.md) for details.
@@ -346,6 +441,8 @@ users define in their workflow files. Any user with permission to create or modi
 **Only enable this feature in repositories where you trust all workflow contributors.** Consider combining it with [GitHub branch protection
 rules](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-a-branch-rule/about-branch-rules) and required reviews for workflow file changes.
 
+`blocked_keys` and `restricted_keys` work like a blocklist: any key not on the list is allowed. If GitHub adds a new key later, or a key is simply left off the list, it stays allowed until someone notices and blocks it. `allowed_keys` (below) works the other way: only the listed keys are allowed, everything else is blocked. `allowed_keys` fits best when only a small, known set of keys is needed.
+
 This feature is in early stage and therefore disabled by default. To enable dynamic labels, set `enable_dynamic_labels = true`.
 
 Dynamic labels allow workflow authors to pass arbitrary metadata and EC2 instance overrides directly from the `runs-on` labels in their GitHub Actions workflows. All labels prefixed with `ghr-` are treated as dynamic labels. A deterministic hash of all `ghr-` prefixed labels is computed and used for runner matching, ensuring that each unique combination of dynamic labels routes to the correct runner configuration.
@@ -366,6 +463,8 @@ This change renames `ec2_dynamic_labels_policy` to `aws_dynamic_labels_policy`. 
 root module input and rename `matcherConfig.ec2DynamicLabelsPolicy` to `matcherConfig.awsDynamicLabelsPolicy`
 in `runner_matcher_config` or `multi_runner_config`. Terraform object validation rejects the legacy attribute
 names.
+
+Deny-list, using `blocked_keys`/`restricted_keys` (unlisted keys are allowed):
 
 ```hcl
 module "runners" {
@@ -391,13 +490,40 @@ module "runners" {
 }
 ```
 
+Allow-list, using `allowed_keys` (unlisted keys are rejected):
+
+```hcl
+module "runners" {
+  source = "github-aws-runners/github-runners/aws"
+
+  ...
+  enable_dynamic_labels = true
+  aws_dynamic_labels_policy = {
+    allowed_keys = ["instance-type", "ebs-volume-size"]
+
+    restricted_keys = {
+      "instance-type" = {
+        allowed = ["m5.*", "c5.*"]
+      }
+      "ebs-volume-size" = {
+        max = 200
+      }
+    }
+  }
+  ...
+}
+```
+
 The root module variable is named `aws_dynamic_labels_policy`. The webhook matcher config receives the same policy under `matcherConfig.awsDynamicLabelsPolicy`. If you configure `runner_matcher_config` or `multi_runner_config.matcherConfig` directly, use `awsDynamicLabelsPolicy` for this policy.
 
 The policy is evaluated by dynamic label key:
 
-1. Keys in `blocked_keys` are always rejected.
-2. Keys in `restricted_keys` are allowed only when their value passes the rule.
-3. Keys not listed in `blocked_keys` or `restricted_keys` are allowed.
+1. If `allowed_keys` is set (non-empty), any key not listed there is rejected.
+2. Keys in `blocked_keys` are always rejected.
+3. Keys in `restricted_keys` are allowed only when their value passes the rule.
+4. A key not listed anywhere above is allowed.
+
+Use only one of `allowed_keys` or `blocked_keys` in the same policy, not both. Setting both is an error: `terraform plan`/`apply` will fail. If a policy with both somehow still reaches the dispatcher (for example, someone edited the SSM parameter by hand), it rejects every dynamic label instead of guessing which list to use.
 
 Policy keys use the dynamic label suffix, not the full label. For example, use `instance-type` for `ghr-ec2-instance-type`.
 
@@ -440,6 +566,7 @@ When `use_dedicated_host = true`, runner instances are launched with `RunInstanc
 | Label                                | Description                | Example value    | EC2 Fleet | Dedicated host |
 | ------------------------------------ | -------------------------- | ---------------- | --------- | -------------- |
 | `ghr-ec2-instance-type:<type>`       | Set specific instance type | `c5.xlarge`      | Yes       | Yes            |
+| `ghr-ec2-capacity-type:<type>`       | Set the capacity type      | `on-demand`      | Yes       | No             |
 | `ghr-ec2-max-price:<price>`          | Set maximum spot price     | `0.10`           | Yes       | No             |
 | `ghr-ec2-subnet-id:<id>`             | Set subnet ID              | `subnet-abc123`  | Yes       | Yes            |
 | `ghr-ec2-availability-zone:<zone>`   | Set availability zone      | `us-east-1a`     | Yes       | Yes            |
@@ -447,6 +574,27 @@ When `use_dedicated_host = true`, runner instances are launched with `RunInstanc
 | `ghr-ec2-weighted-capacity:<number>` | Set weighted capacity      | `2`              | Yes       | No             |
 | `ghr-ec2-priority:<number>`          | Set launch priority        | `1`              | Yes       | No             |
 | `ghr-ec2-image-id:<ami-id>`          | Override AMI ID            | `ami-0abcdef123` | Yes       | Yes            |
+
+##### Capacity type
+
+`ghr-ec2-capacity-type` selects spot or on-demand for the runner created for a job. It overrides `instance_target_capacity_type` of the runner configuration. Only `spot` and `on-demand` are accepted. Any other value is rejected and the job is not retried.
+
+- With `use_dedicated_host = true` the label is ignored, because `RunInstances` does not support spot. A `spot` value writes a warning to the log.
+- `ghr-ec2-max-price` only applies to spot. It is not passed to the fleet request when the capacity type is `on-demand`.
+- On-demand failover (`enable_on_demand_failover_for_errors`) follows the capacity type of the request. It applies to jobs that use spot and never to jobs that use on-demand.
+- Tags for spot requests are defined in the launch template, and only when the default capacity type is spot without on-demand failover. A spot request created for a job that overrides the capacity type in another configuration does not get these tags.
+
+To allow only spot, restrict the key in the dynamic labels policy:
+
+```hcl
+aws_dynamic_labels_policy = {
+  restricted_keys = {
+    "capacity-type" = {
+      allowed = ["spot"]
+    }
+  }
+}
+```
 
 ##### Instance Requirements — vCPU & Memory
 

@@ -1,11 +1,19 @@
+import { installationScope } from '../github/installation-scope';
 import { Octokit } from '@octokit/rest';
+import { withAppFailover } from '../github/app-failover';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
-import { resolveRunnerProviderType } from '@aws-github-runner/runner-provider';
+import { resolveComputeProviderType } from '@aws-github-runner/compute-providers/provider-types';
+import { createStorageProviders, type StorageProviders } from '@aws-github-runner/storage-providers';
 import yn from 'yn';
 
-import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
-import { createPoolRunnerProvider } from '../runner-provider-registry';
-import { getGitHubEnterpriseApiUrl, validateSsmParameterStoreTags } from '../scale-runners/github-runner';
+import {
+  createGithubAppAuth,
+  createGithubInstallationAuth,
+  createOctokitClient,
+  getStoredInstallationId,
+} from '../github/auth';
+import { controlPlaneProviderRegistry } from '../control-plane-providers';
+import { getGitHubEnterpriseApiUrl } from '../scale-runners/github-runner';
 import type { RunnerStatus } from './pool-provider';
 
 const logger = createChildLogger('pool');
@@ -16,23 +24,21 @@ export interface PoolEvent {
 }
 
 export async function adjust(event: PoolEvent): Promise<void> {
-  const runnerProviderType = resolveRunnerProviderType(event.type);
-  const runnerProvider = createPoolRunnerProvider(runnerProviderType);
-  logger.info(`Checking current ${runnerProvider.type} pool size against pool of size: ${event.poolSize}`);
+  const storage = createStorageProviders();
+  const computeProviderType = resolveComputeProviderType(event.type);
+  const computeProvider = {
+    ...controlPlaneProviderRegistry.capability(computeProviderType, 'pool')(),
+    type: computeProviderType,
+  };
+  logger.info(`Checking current ${computeProvider.type} pool size against pool of size: ${event.poolSize}`);
   const runnerLabels = process.env.RUNNER_LABELS || '';
   const runnerGroup = process.env.RUNNER_GROUP_NAME || '';
   const runnerNamePrefix = process.env.RUNNER_NAME_PREFIX || '';
   const environment = process.env.ENVIRONMENT;
-  const ssmTokenPath = process.env.SSM_TOKEN_PATH;
-  const ssmConfigPath = process.env.SSM_CONFIG_PATH || '';
   const ephemeral = yn(process.env.ENABLE_EPHEMERAL_RUNNERS, { default: false });
   const enableJitConfig = yn(process.env.ENABLE_JIT_CONFIG, { default: ephemeral });
   const disableAutoUpdate = yn(process.env.DISABLE_RUNNER_AUTOUPDATE, { default: false });
   const runnerOwner = process.env.RUNNER_OWNER;
-  const ssmParameterStoreTags: { Key: string; Value: string }[] =
-    process.env.SSM_PARAMETER_STORE_TAGS && process.env.SSM_PARAMETER_STORE_TAGS.trim() !== ''
-      ? validateSsmParameterStoreTags(process.env.SSM_PARAMETER_STORE_TAGS)
-      : [];
   // -1 disables the maximum check, matching the scale-up lambda's semantics. Defaults to unlimited
   // when unset so the pool keeps its previous behavior on stacks that do not provide the variable.
   const maximumRunners = parseInt(process.env.RUNNERS_MAXIMUM_COUNT || '-1');
@@ -40,9 +46,30 @@ export async function adjust(event: PoolEvent): Promise<void> {
 
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
 
-  const installationId = await getInstallationId(ghesApiUrl, runnerOwner);
-  const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
-  const githubInstallationClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
+  // Seed the shared client; it can select another app before each request.
+  const scope = installationScope(ghesApiUrl, runnerOwner);
+  const ghAppAuth = await createGithubAppAuth(undefined, ghesApiUrl, undefined, storage.githubAppCredentials, scope);
+  const appIdx = ghAppAuth.appIndex;
+
+  const githubInstallationClient = await withAppFailover(
+    appIdx,
+    async (selectedIndex) => {
+      const appAuth =
+        selectedIndex === appIdx
+          ? ghAppAuth
+          : await createGithubAppAuth(undefined, ghesApiUrl, selectedIndex, storage.githubAppCredentials);
+      const installationId = await getInstallationId(appAuth.token, ghesApiUrl, runnerOwner, selectedIndex, storage);
+      const ghAuth = await createGithubInstallationAuth(
+        installationId,
+        ghesApiUrl,
+        selectedIndex,
+        storage.githubAppCredentials,
+      );
+      return createOctokitClient(ghAuth.token, ghesApiUrl, selectedIndex);
+    },
+    storage.githubAppCredentials,
+    scope,
+  );
 
   // Get statuses of runners registered in GitHub
   const runnerStatusses = await getGitHubRegisteredRunnnerStatusses(
@@ -52,13 +79,13 @@ export async function adjust(event: PoolEvent): Promise<void> {
   );
 
   // Look up the managed provider runners, but running does not mean idle.
-  const poolRunners = await runnerProvider.listRunners({
+  const poolRunners = await computeProvider.listRunners({
     environment,
     runnerOwner,
     runnerType: 'Org',
   });
 
-  const numberOfRunnersInPool = runnerProvider.countAvailableRunners(poolRunners, runnerStatusses, includeBusyRunners);
+  const numberOfRunnersInPool = computeProvider.countAvailableRunners(poolRunners, runnerStatusses, includeBusyRunners);
   let topUp = event.poolSize - numberOfRunnersInPool;
 
   // The pool must never push the total number of runners (busy + idle) past the configured maximum.
@@ -78,8 +105,9 @@ export async function adjust(event: PoolEvent): Promise<void> {
 
   if (topUp > 0) {
     logger.info(`The pool will be topped up with ${topUp} runners.`);
-    await runnerProvider.createRunners({
+    await computeProvider.createRunners({
       githubRunnerConfig: {
+        appIndex: appIdx,
         ephemeral,
         enableJitConfig,
         ghesBaseUrl,
@@ -89,21 +117,28 @@ export async function adjust(event: PoolEvent): Promise<void> {
         runnerNamePrefix,
         runnerType: 'Org',
         disableAutoUpdate: disableAutoUpdate,
-        ssmTokenPath,
-        ssmConfigPath,
-        ssmParameterStoreTags,
       },
       numberOfRunners: topUp,
       githubInstallationClient,
+      storage,
     });
   } else {
     logger.info(`Pool will not be topped up. Found ${numberOfRunnersInPool} managed idle runners.`);
   }
 }
 
-async function getInstallationId(ghesApiUrl: string, org: string): Promise<number> {
-  const ghAuth = await createGithubAppAuth(undefined, ghesApiUrl);
-  const githubClient = await createOctokitClient(ghAuth.token, ghesApiUrl);
+async function getInstallationId(
+  appToken: string,
+  ghesApiUrl: string,
+  org: string,
+  appIndex: number,
+  storage?: StorageProviders,
+): Promise<number> {
+  // Use the pre-configured installation ID when available (avoids an API call).
+  const storedId = await getStoredInstallationId(appIndex, storage?.githubAppCredentials);
+  if (storedId !== undefined) return storedId;
+
+  const githubClient = await createOctokitClient(appToken, ghesApiUrl, appIndex);
 
   return (
     await githubClient.apps.getOrgInstallation({

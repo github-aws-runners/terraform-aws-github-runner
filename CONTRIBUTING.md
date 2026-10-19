@@ -79,15 +79,15 @@ Before you submit your pull request consider the following guidelines:
 * Install [node](https://nodejs.org/en/) and [yarn](https://yarnpkg.com/). We use yarn to lint, test and build the lambdas.
 * Build your changes locally to ensure all the tests pass:
 
-        ```shell
-        cd lambdas
-        yarn install
-        yarn format
-        yarn lint
-        yarn test
-        yarn build
-        cd ..
-        ```
+    ```shell
+    cd lambdas
+    yarn install
+    yarn format
+    yarn lint
+    yarn test
+    yarn build
+    cd ..
+    ```
 
 * Push your branch to GitHub:
 

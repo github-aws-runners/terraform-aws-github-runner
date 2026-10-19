@@ -1,13 +1,13 @@
 import middy from '@middy/core';
 import { logger, setContext } from '@aws-github-runner/aws-powertools-util';
 import { captureLambdaHandler, tracer } from '@aws-github-runner/aws-powertools-util';
+import { createRunnerConfigHousekeeper } from '@aws-github-runner/storage-providers';
 import { Context, type SQSBatchItemFailure, type SQSBatchResponse, SQSEvent } from 'aws-lambda';
 
 import { PoolEvent, adjust } from './pool/pool';
 import { scaleDown } from './scale-runners/scale-down';
 import { scaleUp } from './scale-runners/scale-up';
 import type { ActionRequestMessage, ActionRequestMessageSQS } from './scale-runners/types';
-import { SSMCleanupOptions, cleanSSMTokens } from './scale-runners/ssm-housekeeper';
 import { checkAndRetryJob } from './scale-runners/job-retry';
 
 export async function scaleUpHandler(event: SQSEvent, context: Context): Promise<SQSBatchResponse> {
@@ -114,31 +114,38 @@ export const addMiddleware = () => {
   middy(scaleUpHandler).use(handler);
   middy(scaleDownHandler).use(handler);
   middy(adjustPool).use(handler);
-  middy(ssmHousekeeper).use(handler);
+  middy(runnerConfigHousekeeper).use(handler);
 };
 addMiddleware();
 
-export async function ssmHousekeeper(event: unknown, context: Context): Promise<void> {
+export async function runnerConfigHousekeeper(event: unknown, context: Context): Promise<void> {
   setContext(context, 'lambda.ts');
   logger.logEventIfEnabled(event);
-  const config = JSON.parse(process.env.SSM_CLEANUP_CONFIG) as SSMCleanupOptions;
+  const housekeeper = createRunnerConfigHousekeeper();
 
   try {
-    await cleanSSMTokens(config);
+    await housekeeper.houseKeeper(() => context.getRemainingTimeInMillis());
   } catch (e) {
     logger.error(`${(e as Error).message}`, { error: e as Error });
   }
 }
 
-export async function jobRetryCheck(event: SQSEvent, context: Context): Promise<void> {
+/** @deprecated Use runnerConfigHousekeeper. Kept for existing Terraform handler configuration. */
+export const ssmHousekeeper = runnerConfigHousekeeper;
+
+export async function jobRetryCheck(event: SQSEvent, context: Context): Promise<SQSBatchResponse> {
   setContext(context, 'lambda.ts');
   logger.logEventIfEnabled(event);
 
+  const batchItemFailures: SQSBatchItemFailure[] = [];
   for (const record of event.Records) {
-    const payload = JSON.parse(record.body);
-    await checkAndRetryJob(payload).catch((e) => {
-      logger.warn(`Error processing job retry: ${e.message}`, { error: e });
-    });
+    try {
+      const payload = JSON.parse(record.body);
+      await checkAndRetryJob(payload);
+    } catch (error) {
+      logger.warn('Error processing job retry', { error, messageId: record.messageId });
+      batchItemFailures.push({ itemIdentifier: record.messageId });
+    }
   }
-  return Promise.resolve();
+  return { batchItemFailures };
 }

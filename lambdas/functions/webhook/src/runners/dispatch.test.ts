@@ -1,4 +1,5 @@
-import { getParameter } from '@aws-github-runner/aws-ssm-util';
+import { selectDynamicLabelQueue } from '@aws-github-runner/compute-providers/webhook';
+import { getRunnerMatcherConfigStore, type RunnerMatcherConfigStore } from '@aws-github-runner/storage-providers';
 
 import nock from 'nock';
 import { WorkflowJobEvent } from '@octokit/webhooks-types';
@@ -13,9 +14,14 @@ import { logger } from '@aws-github-runner/aws-powertools-util';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 vi.mock('../sqs');
-vi.mock('@aws-github-runner/aws-ssm-util');
+vi.mock('@aws-github-runner/storage-providers');
+vi.mock('@aws-github-runner/compute-providers/webhook', () => ({
+  selectDynamicLabelQueue: vi.fn(),
+}));
 
-const GITHUB_APP_WEBHOOK_SECRET = 'TEST_SECRET';
+const runnerMatcherConfigStore = {
+  get: vi.fn(),
+} satisfies RunnerMatcherConfigStore;
 
 const cleanEnv = process.env;
 
@@ -33,7 +39,6 @@ describe('Dispatcher', () => {
     vi.clearAllMocks();
     vi.resetAllMocks();
 
-    mockSSMResponse();
     config = await createConfig(undefined, runnerConfig);
   });
 
@@ -238,7 +243,7 @@ describe('Dispatcher', () => {
     it('rejects an invalid strategy at config load', async () => {
       process.env.QUEUE_SELECTION_STRATEGY = 'bogus';
       ConfigDispatcher.reset();
-      mockSSMResponse(twoExactMatches);
+      mockMatcherConfigResponse(twoExactMatches);
       await expect(ConfigDispatcher.load()).rejects.toThrow(/queue selection strategy/i);
     });
   });
@@ -246,7 +251,14 @@ describe('Dispatcher', () => {
   describe('per-matcher dynamic labels handling', () => {
     const baseRunner = runnerConfig[0];
 
-    it('strips invalid ghr- labels (too long, bad chars) before policy and dispatch', async () => {
+    beforeEach(() => {
+      vi.mocked(selectDynamicLabelQueue).mockImplementation((matches, nonGhrLabels, sanitizedGhrLabels) => ({
+        queue: matches[0],
+        labels: [...nonGhrLabels, ...sanitizedGhrLabels],
+      }));
+    });
+
+    it('strips invalid ghr- labels before provider selection and dispatch', async () => {
       const longLabel = 'ghr-' + 'a'.repeat(125); // 129 chars
       config = await createConfig(undefined, [
         {
@@ -276,19 +288,25 @@ describe('Dispatcher', () => {
       } as unknown as WorkflowJobEvent;
       const resp = await dispatch(event, 'workflow_job', config);
       expect(resp.statusCode).toBe(201);
+      expect(selectDynamicLabelQueue).toHaveBeenCalledWith(
+        [expect.objectContaining({ id: baseRunner.id })],
+        ['self-hosted', 'linux'],
+        ['ghr-valid:value', 'ghr-list:value;another'],
+      );
       expect(sendActionRequest).toHaveBeenCalledWith(
         expect.objectContaining({ labels: ['self-hosted', 'linux', 'ghr-valid:value', 'ghr-list:value;another'] }),
       );
     });
 
-    it('rejects the job (202) when the only matching runner has enableDynamicLabels=false', async () => {
+    it('rejects the job when no provider accepts the dynamic labels', async () => {
+      vi.mocked(selectDynamicLabelQueue).mockReturnValue(undefined);
       config = await createConfig(undefined, [
         {
           ...baseRunner,
           matcherConfig: {
             labelMatchers: [['self-hosted', 'linux']],
             exactMatch: true,
-            enableDynamicLabels: false,
+            enableDynamicLabels: true,
           },
         },
       ]);
@@ -296,7 +314,7 @@ describe('Dispatcher', () => {
         ...workFlowJobEvent,
         workflow_job: {
           ...workFlowJobEvent.workflow_job,
-          labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
+          labels: ['self-hosted', 'linux', 'ghr-provider-setting:value'],
         },
       } as unknown as WorkflowJobEvent;
       const resp = await dispatch(event, 'workflow_job', config);
@@ -304,75 +322,7 @@ describe('Dispatcher', () => {
       expect(sendActionRequest).not.toHaveBeenCalled();
     });
 
-    it('keeps dynamic labels when the matched runner enables them and has no policy', async () => {
-      config = await createConfig(undefined, [
-        {
-          ...baseRunner,
-          matcherConfig: {
-            labelMatchers: [['self-hosted', 'linux']],
-            exactMatch: true,
-            enableDynamicLabels: true,
-          },
-        },
-      ]);
-      const event = {
-        ...workFlowJobEvent,
-        workflow_job: {
-          ...workFlowJobEvent.workflow_job,
-          labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
-        },
-      } as unknown as WorkflowJobEvent;
-      const resp = await dispatch(event, 'workflow_job', config);
-      expect(resp.statusCode).toBe(201);
-      expect(sendActionRequest).toHaveBeenCalledWith(
-        expect.objectContaining({ labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'] }),
-      );
-    });
-
-    it('skips a matching runner whose policy rejects the dynamic labels and uses the next compliant one', async () => {
-      config = await createConfig(undefined, [
-        {
-          ...baseRunner,
-          id: 'strict',
-          matcherConfig: {
-            labelMatchers: [['self-hosted', 'linux']],
-            exactMatch: true,
-            enableDynamicLabels: true,
-            awsDynamicLabelsPolicy: {
-              restricted_keys: {
-                'instance-type': { allowed: ['m5.*'] },
-              },
-            },
-          },
-        },
-        {
-          ...baseRunner,
-          id: 'permissive',
-          matcherConfig: {
-            labelMatchers: [['self-hosted', 'linux']],
-            exactMatch: true,
-            enableDynamicLabels: true,
-          },
-        },
-      ]);
-      const event = {
-        ...workFlowJobEvent,
-        workflow_job: {
-          ...workFlowJobEvent.workflow_job,
-          labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
-        },
-      } as unknown as WorkflowJobEvent;
-      const resp = await dispatch(event, 'workflow_job', config);
-      expect(resp.statusCode).toBe(201);
-      expect(sendActionRequest).toHaveBeenCalledWith(
-        expect.objectContaining({
-          queueId: 'permissive',
-          labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
-        }),
-      );
-    });
-
-    it('rejects the job (202) when no runner accepts the policy', async () => {
+    it('dispatches to the queue and labels returned by the provider selector', async () => {
       config = await createConfig(undefined, [
         {
           ...baseRunner,
@@ -381,33 +331,39 @@ describe('Dispatcher', () => {
             labelMatchers: [['self-hosted', 'linux']],
             exactMatch: true,
             enableDynamicLabels: true,
-            awsDynamicLabelsPolicy: {
-              restricted_keys: {
-                'instance-type': { allowed: ['m5.*'] },
-              },
-            },
           },
         },
         {
           ...baseRunner,
-          id: 'second',
+          id: 'selected',
           matcherConfig: {
             labelMatchers: [['self-hosted', 'linux']],
             exactMatch: true,
-            enableDynamicLabels: false,
+            enableDynamicLabels: true,
           },
         },
       ]);
+
+      vi.mocked(selectDynamicLabelQueue).mockImplementation((matches) => ({
+        queue: matches[1],
+        labels: ['self-hosted', 'linux', 'ghr-provider-setting:normalized'],
+      }));
+
       const event = {
         ...workFlowJobEvent,
         workflow_job: {
           ...workFlowJobEvent.workflow_job,
-          labels: ['self-hosted', 'linux', 'ghr-ec2-instance-type:t3.large'],
+          labels: ['self-hosted', 'linux', 'ghr-provider-setting:requested'],
         },
       } as unknown as WorkflowJobEvent;
       const resp = await dispatch(event, 'workflow_job', config);
-      expect(resp.statusCode).toBe(202);
-      expect(sendActionRequest).not.toHaveBeenCalled();
+      expect(resp.statusCode).toBe(201);
+      expect(sendActionRequest).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queueId: 'selected',
+          labels: ['self-hosted', 'linux', 'ghr-provider-setting:normalized'],
+        }),
+      );
     });
 
     it('forwards non-dynamic jobs as-is to the first match', async () => {
@@ -419,7 +375,6 @@ describe('Dispatcher', () => {
             labelMatchers: [['self-hosted', 'linux']],
             exactMatch: true,
             enableDynamicLabels: true,
-            awsDynamicLabelsPolicy: {},
           },
         },
       ]);
@@ -435,20 +390,14 @@ describe('Dispatcher', () => {
       expect(sendActionRequest).toHaveBeenCalledWith(
         expect.objectContaining({ queueId: 'first', labels: ['self-hosted', 'linux'] }),
       );
+      expect(selectDynamicLabelQueue).not.toHaveBeenCalled();
     });
   });
 });
 
-function mockSSMResponse(runnerConfigInput?: RunnerConfig) {
-  process.env.PARAMETER_RUNNER_MATCHER_CONFIG_PATH = '/github-runner/runner-matcher-config';
-  const mockedGet = vi.mocked(getParameter);
-  mockedGet.mockImplementation((parameter_name) => {
-    const value =
-      parameter_name == '/github-runner/runner-matcher-config'
-        ? JSON.stringify(runnerConfigInput ?? runnerConfig)
-        : GITHUB_APP_WEBHOOK_SECRET;
-    return Promise.resolve(value);
-  });
+function mockMatcherConfigResponse(runnerConfigInput?: RunnerConfig) {
+  vi.mocked(getRunnerMatcherConfigStore).mockReturnValue(runnerMatcherConfigStore);
+  runnerMatcherConfigStore.get.mockResolvedValue(JSON.stringify(runnerConfigInput ?? runnerConfig));
 }
 
 async function createConfig(repositoryAllowList?: string[], runnerConfig?: RunnerConfig): Promise<ConfigDispatcher> {
@@ -456,6 +405,6 @@ async function createConfig(repositoryAllowList?: string[], runnerConfig?: Runne
     process.env.REPOSITORY_ALLOW_LIST = JSON.stringify(repositoryAllowList);
   }
   ConfigDispatcher.reset();
-  mockSSMResponse(runnerConfig);
+  mockMatcherConfigResponse(runnerConfig);
   return await ConfigDispatcher.load();
 }
