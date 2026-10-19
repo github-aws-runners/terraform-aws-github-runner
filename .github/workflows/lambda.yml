@@ -88,5 +88,18 @@ jobs:
           cache-from: type=gha,scope=scale-set-service
           cache-to: type=gha,mode=max,scope=scale-set-service
 
+      - name: Build scale-set service image (arm64)
+        # The ECS module supports arm64 runners, so keep dedicated arm64 build
+        # coverage — arch-specific Dockerfile failures must not pass CI silently.
+        # The amd64 image above is reused for the smoke test; this is build-only.
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: ./lambdas/services/scale-set/Dockerfile
+          platforms: linux/arm64
+          push: false
+          cache-from: type=gha,scope=scale-set-service
+          cache-to: type=gha,mode=max,scope=scale-set-service
+
       - name: Run scale-set service image smoke test
         run: ./tests/scale-set-container-smoke-test.sh
