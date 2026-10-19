@@ -429,7 +429,7 @@ locals {
             tags             = {}
             lambda = {
               memory_size                    = v.runner_config.job_retry.lambda_memory_size
-              reserved_concurrent_executions = 1
+              reserved_concurrent_executions = null
               timeout                        = v.runner_config.job_retry.lambda_timeout
             }
           }
