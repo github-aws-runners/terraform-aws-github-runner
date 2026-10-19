@@ -255,6 +255,27 @@ describe('list instances', () => {
   });
 });
 
+describe('describe runner', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('reads one instance by id and maps it', async () => {
+    mockEC2Client.on(DescribeInstancesCommand).resolves(mockRunningInstances);
+
+    const runner = await ec2Operations.describe('i-1234');
+
+    expect(mockEC2Client).toHaveReceivedCommandWith(DescribeInstancesCommand, { InstanceIds: ['i-1234'] });
+    expect(runner?.id).toBe('i-1234');
+  });
+
+  it('returns undefined when the instance is gone', async () => {
+    mockEC2Client.on(DescribeInstancesCommand).resolves({ Reservations: [] });
+
+    await expect(ec2Operations.describe('i-gone')).resolves.toBeUndefined();
+  });
+});
+
 describe('terminate runner', () => {
   beforeEach(() => {
     vi.clearAllMocks();

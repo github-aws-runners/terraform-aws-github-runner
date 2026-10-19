@@ -20,6 +20,7 @@ const mockLoadProviderConfig = vi.mocked(loadEc2ProviderConfig);
 
 const ec2Operations = {
   list: vi.fn<Ec2RunnerResourceOperations['list']>(),
+  describe: vi.fn<Ec2RunnerResourceOperations['describe']>(),
   create: vi.fn<Ec2RunnerResourceOperations['create']>(),
   terminate: vi.fn<Ec2RunnerResourceOperations['terminate']>(),
   tag: vi.fn<Ec2RunnerResourceOperations['tag']>(),

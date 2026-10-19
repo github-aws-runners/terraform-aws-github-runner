@@ -5,12 +5,14 @@ import { IDLE_DETECTED_TAG, createEc2ScaleDownCapability } from './scale-down';
 import type { Ec2RunnerResourceOperations } from '../runners';
 
 const mockListRunners = vi.fn<Ec2RunnerResourceOperations['list']>();
+const mockDescribeRunner = vi.fn<Ec2RunnerResourceOperations['describe']>();
 const mockCreateRunner = vi.fn<Ec2RunnerResourceOperations['create']>();
 const mockTagRunner = vi.fn<Ec2RunnerResourceOperations['tag']>();
 const mockTerminateRunner = vi.fn<Ec2RunnerResourceOperations['terminate']>();
 const mockUntagRunner = vi.fn<Ec2RunnerResourceOperations['untag']>();
 const ec2Operations: Ec2RunnerResourceOperations = {
   list: mockListRunners,
+  describe: mockDescribeRunner,
   create: mockCreateRunner,
   terminate: mockTerminateRunner,
   tag: mockTagRunner,
@@ -71,6 +73,17 @@ describe('Scale down runners', () => {
 
         expect(mockTagRunner).toHaveBeenCalledWith(runner.id, [{ Key: IDLE_DETECTED_TAG, Value: detectedAt }]);
         expect(mockUntagRunner).toHaveBeenCalledWith(runner.id, [{ Key: IDLE_DETECTED_TAG }]);
+        expect(mockTerminateRunner).not.toHaveBeenCalled();
+      });
+
+      it('Should re-read a single runner by id.', async () => {
+        mockDescribeRunner.mockResolvedValueOnce(runner).mockResolvedValueOnce(undefined);
+
+        await expect(capability.describe(runner.id)).resolves.toEqual(runner);
+        await expect(capability.describe('i-gone')).resolves.toBeUndefined();
+
+        expect(mockDescribeRunner).toHaveBeenNthCalledWith(1, runner.id);
+        expect(mockDescribeRunner).toHaveBeenNthCalledWith(2, 'i-gone');
         expect(mockTerminateRunner).not.toHaveBeenCalled();
       });
 

@@ -118,6 +118,8 @@ export interface ScaleDownComputeProvider extends ComputeProvider {
   markIdle(id: string, at: string): Promise<void>;
   /** Clear the idle marker — the runner was seen busy again, so the window restarts. */
   unmarkIdle(id: string): Promise<void>;
+  /** Current state of one runner, or undefined when it no longer exists. */
+  describe(id: string): Promise<RunnerInfo | undefined>;
 }
 
 export interface RunnerStatus {

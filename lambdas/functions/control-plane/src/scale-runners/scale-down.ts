@@ -254,7 +254,17 @@ async function removeRunner(
     );
 
     if (states.every((busy) => busy === false)) {
-      if (!(await idleConfirmed(runner, computeProvider))) {
+      // Re-read the runner, the list snapshot may be stale by now.
+      const current = await computeProvider.describe(runner.id);
+      if (current === undefined) {
+        logger.info(`Runner '${runner.id}' no longer exists, skipping removal.`);
+        return;
+      }
+      if (current.bypassRemoval) {
+        logger.info(`Runner '${runner.id}' was tagged bypass-removal after the cycle started, skipping removal.`);
+        return;
+      }
+      if (!(await idleConfirmed(current, computeProvider))) {
         return;
       }
       const results = await Promise.all(
