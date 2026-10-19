@@ -113,8 +113,8 @@ module "webhook" {
 
   storage_provider = {
     aws = {
-      kms_key_id = var.kms_key_arn
       ssm = {
+        kms_key_id = var.kms_key_arn
         paths = {
           root    = local.ssm_root_path
           webhook = var.ssm_paths.webhook
