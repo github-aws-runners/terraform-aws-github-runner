@@ -25,7 +25,7 @@ describe('Test isJobQueued rate-limit metric on error', () => {
     repoOwnerType: 'Organization',
   };
 
-  it('records the rate-limit metric on success (regression guard)', async () => {
+  it('leaves success metrics to the shared client', async () => {
     const client = {
       actions: {
         getJobForWorkflowRun: vi.fn().mockResolvedValue({
@@ -35,11 +35,11 @@ describe('Test isJobQueued rate-limit metric on error', () => {
       },
     } as unknown as Octokit;
 
-    await expect(isJobQueued(client, payload, 0)).resolves.toBe(true);
-    expect(mockedMetricGitHubAppRateLimit).toHaveBeenCalledWith({ 'x-ratelimit-remaining': '10' }, 0);
+    await expect(isJobQueued(client, payload)).resolves.toBe(true);
+    expect(mockedMetricGitHubAppRateLimit).not.toHaveBeenCalled();
   });
 
-  it('records the rate-limit metric using the error response headers when the call is rate-limited', async () => {
+  it('propagates exhausted failover errors without attributing them to a stale app index', async () => {
     const rateLimitError = Object.assign(new Error('rate limit exceeded'), {
       status: 403,
       response: { headers: { 'x-ratelimit-remaining': '0' } },
@@ -50,8 +50,8 @@ describe('Test isJobQueued rate-limit metric on error', () => {
       },
     } as unknown as Octokit;
 
-    await expect(isJobQueued(client, payload, 1)).rejects.toBe(rateLimitError);
-    expect(mockedMetricGitHubAppRateLimit).toHaveBeenCalledWith({ 'x-ratelimit-remaining': '0' }, 1);
+    await expect(isJobQueued(client, payload)).rejects.toBe(rateLimitError);
+    expect(mockedMetricGitHubAppRateLimit).not.toHaveBeenCalled();
   });
 
   it('does not call the metric when the error carries no response headers', async () => {
@@ -62,7 +62,7 @@ describe('Test isJobQueued rate-limit metric on error', () => {
       },
     } as unknown as Octokit;
 
-    await expect(isJobQueued(client, payload, 0)).rejects.toBe(networkError);
+    await expect(isJobQueued(client, payload)).rejects.toBe(networkError);
     expect(mockedMetricGitHubAppRateLimit).not.toHaveBeenCalled();
   });
 });
@@ -82,7 +82,7 @@ describe('Test createJitConfig rate-limit metric on error', () => {
 
   const runnerConfigStore = { create: vi.fn() } as unknown as RunnerConfigStore;
 
-  it('records the rate-limit metric using the error response headers when JIT config generation is rate-limited', async () => {
+  it('returns failed runner IDs without attributing errors to a stale app index', async () => {
     const rateLimitError = Object.assign(new Error('rate limit exceeded'), {
       status: 403,
       response: { headers: { 'x-ratelimit-remaining': '0' } },
@@ -98,6 +98,6 @@ describe('Test createJitConfig rate-limit metric on error', () => {
     });
 
     expect(failedRunnerIds).toEqual(['i-1']);
-    expect(mockedMetricGitHubAppRateLimit).toHaveBeenCalledWith({ 'x-ratelimit-remaining': '0' }, 2);
+    expect(mockedMetricGitHubAppRateLimit).not.toHaveBeenCalled();
   });
 });
