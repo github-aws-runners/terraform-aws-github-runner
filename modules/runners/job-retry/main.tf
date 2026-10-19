@@ -45,6 +45,7 @@ module "job_retry" {
 }
 
 resource "aws_lambda_event_source_mapping" "job_retry" {
+  function_response_types            = ["ReportBatchItemFailures"]
   event_source_arn                   = aws_sqs_queue.job_retry_check_queue.arn
   function_name                      = module.job_retry.lambda.function.arn
   batch_size                         = var.config.lambda_event_source_mapping_batch_size

@@ -143,6 +143,11 @@ run "preserves_nested_job_retry_configuration" {
   command = plan
 
   assert {
+    condition     = aws_lambda_event_source_mapping.job_retry.function_response_types == toset(["ReportBatchItemFailures"])
+    error_message = "Job retry must acknowledge successful records independently from failed records."
+  }
+
+  assert {
     condition     = output.lambda.function.environment[0].variables["CUSTOM_ENV"] == "preserved"
     error_message = "Caller-provided job-retry environment variables must be preserved."
   }

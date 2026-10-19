@@ -78,3 +78,7 @@ export function definePoolContractTests<TType extends string>({
     },
   );
 }
+
+vi.mock('../../github/app-failover', () => ({
+  withAppFailover: async (index: number, create: (index: number) => Promise<unknown>) => create(index),
+}));
