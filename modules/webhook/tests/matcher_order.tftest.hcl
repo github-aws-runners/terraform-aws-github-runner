@@ -10,23 +10,21 @@ mock_provider "aws" {
 }
 
 variables {
-  prefix     = "test"
-  aws_region = "eu-west-1"
+  prefix = "test"
 
   # Reference the zip via S3 so the plan does not need a local file on disk.
   lambda_s3_bucket      = "test-bucket"
   webhook_lambda_s3_key = "webhook.zip"
 
-  sqs_workflow_job_queue = {
-    arn  = "arn:aws:sqs:eu-west-1:123456789012:workflow-job"
-    id   = "https://sqs.eu-west-1.amazonaws.com/123456789012/workflow-job"
-    url  = "https://sqs.eu-west-1.amazonaws.com/123456789012/workflow-job"
-    name = "workflow-job"
-  }
-
-  ssm_paths = {
-    root    = "/test"
-    webhook = "webhook"
+  storage_provider = {
+    aws = {
+      ssm = {
+        paths = {
+          root    = "/test"
+          webhook = "webhook"
+        }
+      }
+    }
   }
 
   eventbridge = {

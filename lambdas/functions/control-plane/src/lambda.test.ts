@@ -1,12 +1,20 @@
+import { NoEligibleGitHubAppError } from './github/auth';
 import { captureLambdaHandler, logger } from '@aws-github-runner/aws-powertools-util';
+import { createRunnerConfigHousekeeper } from '@aws-github-runner/storage-providers';
 import { Context, SQSEvent, SQSRecord } from 'aws-lambda';
 
-import { addMiddleware, adjustPool, scaleDownHandler, scaleUpHandler, ssmHousekeeper, jobRetryCheck } from './lambda';
+import {
+  addMiddleware,
+  adjustPool,
+  scaleDownHandler,
+  scaleUpHandler,
+  runnerConfigHousekeeper,
+  jobRetryCheck,
+} from './lambda';
 import { adjust } from './pool/pool';
-import ScaleError from './scale-runners/ScaleError';
 import { scaleDown } from './scale-runners/scale-down';
-import { ActionRequestMessage, scaleUp } from './scale-runners/scale-up';
-import { cleanSSMTokens } from './scale-runners/ssm-housekeeper';
+import { scaleUp } from './scale-runners/scale-up';
+import type { ActionRequestMessage } from './scale-runners/types';
 import { checkAndRetryJob } from './scale-runners/job-retry';
 import { describe, it, expect, vi, MockedFunction, beforeEach } from 'vitest';
 
@@ -64,10 +72,13 @@ const context: Context = {
 vi.mock('./pool/pool');
 vi.mock('./scale-runners/scale-down');
 vi.mock('./scale-runners/scale-up');
-vi.mock('./scale-runners/ssm-housekeeper');
 vi.mock('./scale-runners/job-retry');
 vi.mock('@aws-github-runner/aws-powertools-util');
-vi.mock('@aws-github-runner/aws-ssm-util');
+vi.mock('@aws-github-runner/storage-providers', () => ({
+  createRunnerConfigHousekeeper: vi.fn(),
+}));
+
+const mockedCreateRunnerConfigHousekeeper = vi.mocked(createRunnerConfigHousekeeper);
 
 describe('Test scale up lambda wrapper.', () => {
   it('Do not handle empty record sets.', async () => {
@@ -103,17 +114,52 @@ describe('Test scale up lambda wrapper.', () => {
     await expect(scaleUpHandler(sqsEvent, context)).resolves.not.toThrow();
   });
 
-  it('Scale should create a batch failure message', async () => {
-    const error = new ScaleError();
-    vi.mocked(scaleUp).mockRejectedValue(error);
-    await expect(scaleUpHandler(sqsEvent, context)).resolves.toEqual({
-      batchItemFailures: [{ itemIdentifier: sqsRecord.messageId }],
-    });
-  });
-
   describe('Batch processing', () => {
     beforeEach(() => {
       vi.clearAllMocks();
+    });
+
+    const malformedRecord = (messageId: string): SQSRecord =>
+      ({ ...sqsRecord, eventSource: 'aws:sqs', messageId, body: 'not-json{' }) as SQSRecord;
+
+    it('Should not let one malformed message fail the whole invocation', async () => {
+      // Previously JSON.parse ran outside the try/catch, so an unparseable body threw
+      // straight out of the handler, failing the invocation and making SQS redeliver
+      // every message in the batch.
+      const records = [...createMultipleRecords(2), malformedRecord('message-bad')];
+      vi.mocked(scaleUp).mockResolvedValue([]);
+
+      await expect(scaleUpHandler({ Records: records }, context)).resolves.not.toThrow();
+    });
+
+    it('Should acknowledge a malformed message without retrying it', async () => {
+      const records = [...createMultipleRecords(2), malformedRecord('message-bad')];
+      vi.mocked(scaleUp).mockResolvedValue([]);
+
+      await expect(scaleUpHandler({ Records: records }, context)).resolves.toEqual({
+        batchItemFailures: [],
+      });
+    });
+
+    it('Should still process the valid messages alongside a malformed one', async () => {
+      const records = [...createMultipleRecords(2), malformedRecord('message-bad')];
+      vi.mocked(scaleUp).mockResolvedValue([]);
+
+      await scaleUpHandler({ Records: records }, context);
+
+      expect(scaleUp).toHaveBeenCalledWith([
+        expect.objectContaining({ messageId: 'message-0' }),
+        expect.objectContaining({ messageId: 'message-1' }),
+      ]);
+    });
+
+    it('Should report rejected messages but acknowledge malformed messages', async () => {
+      const records = [...createMultipleRecords(2), malformedRecord('message-bad')];
+      vi.mocked(scaleUp).mockResolvedValue(['message-1']);
+
+      await expect(scaleUpHandler({ Records: records }, context)).resolves.toEqual({
+        batchItemFailures: [{ itemIdentifier: 'message-1' }],
+      });
     });
 
     const createMultipleRecords = (count: number, eventSource = 'aws:sqs'): SQSRecord[] => {
@@ -153,6 +199,9 @@ describe('Test scale up lambda wrapper.', () => {
       const result = await scaleUpHandler(multiRecordEvent, context);
       expect(result).toEqual({
         batchItemFailures: [{ itemIdentifier: 'message-1' }, { itemIdentifier: 'message-2' }],
+      });
+      expect(logger.warn).toHaveBeenCalledWith('SQS messages will be retried.', {
+        messageIds: ['message-1', 'message-2'],
       });
     });
 
@@ -208,24 +257,14 @@ describe('Test scale up lambda wrapper.', () => {
       await scaleUpHandler(multiRecordEvent, context);
     });
 
-    it('Should return all failed messages when scaleUp throws non-ScaleError', async () => {
+    it('Should retry the entire batch when scaleUp throws an unexpected error', async () => {
       const records = createMultipleRecords(2);
       const multiRecordEvent: SQSEvent = { Records: records };
 
       vi.mocked(scaleUp).mockRejectedValue(new Error('Generic error'));
 
       const result = await scaleUpHandler(multiRecordEvent, context);
-      expect(result).toEqual({ batchItemFailures: [] });
-    });
-
-    it('Should throw when scaleUp throws ScaleError', async () => {
-      const records = createMultipleRecords(2);
-      const multiRecordEvent: SQSEvent = { Records: records };
-
-      const error = new ScaleError(2);
-      vi.mocked(scaleUp).mockRejectedValue(error);
-
-      await expect(scaleUpHandler(multiRecordEvent, context)).resolves.toEqual({
+      expect(result).toEqual({
         batchItemFailures: [{ itemIdentifier: 'message-0' }, { itemIdentifier: 'message-1' }],
       });
     });
@@ -268,37 +307,53 @@ describe('Test middleware', () => {
   });
 });
 
-describe('Test ssm housekeeper lambda wrapper.', () => {
+describe('Test runnerConfigHousekeeper lambda wrapper.', () => {
   it('Invoke without errors.', async () => {
-    vi.mocked(cleanSSMTokens).mockResolvedValue();
+    const houseKeeper = vi.fn().mockResolvedValue();
+    mockedCreateRunnerConfigHousekeeper.mockReturnValue({ houseKeeper });
 
-    process.env.SSM_CLEANUP_CONFIG = JSON.stringify({
-      dryRun: false,
-      minimumDaysOld: 1,
-      tokenPath: '/path/to/tokens/',
-    });
-
-    await expect(ssmHousekeeper({}, context)).resolves.not.toThrow();
+    await expect(runnerConfigHousekeeper({}, context)).resolves.not.toThrow();
+    expect(houseKeeper).toHaveBeenCalledOnce();
   });
 
   it('Errors not throws.', async () => {
-    vi.mocked(cleanSSMTokens).mockRejectedValue(new Error());
-    await expect(ssmHousekeeper({}, context)).resolves.not.toThrow();
+    mockedCreateRunnerConfigHousekeeper.mockReturnValue({ houseKeeper: vi.fn().mockRejectedValue(new Error()) });
+    await expect(runnerConfigHousekeeper({}, context)).resolves.not.toThrow();
   });
 });
 
 describe('Test job retry check wrapper', () => {
-  it('Handle without error should resolve.', async () => {
-    vi.mocked(checkAndRetryJob).mockResolvedValue();
-    await expect(jobRetryCheck(sqsEvent, context)).resolves.not.toThrow();
+  beforeEach(() => vi.mocked(checkAndRetryJob).mockReset());
+  it.each([
+    { status: 429, message: 'Too many requests' },
+    { status: 403, message: 'API rate limit exceeded', response: { headers: { 'x-ratelimit-remaining': '0' } } },
+    new NoEligibleGitHubAppError('No eligible GitHub App'),
+    { status: 502, message: 'Bad gateway' },
+    new Error('Request timed out'),
+    new Error('SQS publication failed'),
+  ])('retries only the failed record and continues processing the batch', async (error) => {
+    vi.mocked(checkAndRetryJob).mockResolvedValueOnce().mockRejectedValueOnce(error).mockResolvedValueOnce();
+    const records = ['first', 'failed', 'last'].map((messageId) => ({ ...sqsEvent.Records[0], messageId }));
+    await expect(jobRetryCheck({ Records: records }, context)).resolves.toEqual({
+      batchItemFailures: [{ itemIdentifier: 'failed' }],
+    });
+    expect(checkAndRetryJob).toHaveBeenCalledTimes(3);
   });
 
-  it('Handle with error should resolve and log only a warning.', async () => {
-    const error = new Error('Error handling retry check.');
-    vi.mocked(checkAndRetryJob).mockRejectedValue(error);
+  it('acknowledges successful records', async () => {
+    vi.mocked(checkAndRetryJob).mockResolvedValue();
+    await expect(jobRetryCheck(sqsEvent, context)).resolves.toEqual({ batchItemFailures: [] });
+  });
 
-    const logSpyWarn = vi.spyOn(logger, 'warn');
-    await expect(jobRetryCheck(sqsEvent, context)).resolves.not.toThrow();
-    expect(logSpyWarn).toHaveBeenCalledWith(`Error processing job retry: ${error.message}`, { error });
+  it('isolates malformed JSON without replaying successful records', async () => {
+    vi.mocked(checkAndRetryJob).mockResolvedValue();
+    const records = [
+      { ...sqsEvent.Records[0], messageId: 'invalid', body: '{' },
+      { ...sqsEvent.Records[0], messageId: 'valid' },
+    ];
+    await expect(jobRetryCheck({ Records: records }, context)).resolves.toEqual({
+      batchItemFailures: [{ itemIdentifier: 'invalid' }],
+    });
+    expect(checkAndRetryJob).toHaveBeenCalledTimes(1);
   });
 });

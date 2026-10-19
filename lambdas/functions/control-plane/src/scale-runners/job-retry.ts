@@ -1,6 +1,8 @@
+import { isPermanentGitHubError } from '../github/app-failover';
 import { addPersistentContextToChildLogger, createSingleMetric, logger } from '@aws-github-runner/aws-powertools-util';
 import { publishMessage } from '../aws/sqs';
-import { ActionRequestMessage, ActionRequestMessageRetry, isJobQueued, getGitHubEnterpriseApiUrl } from './scale-up';
+import { getGitHubEnterpriseApiUrl, isJobQueued } from './github-runner';
+import type { ActionRequestMessage, ActionRequestMessageRetry } from './types';
 import { getOctokit } from '../github/octokit';
 import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import yn from 'yn';
@@ -37,6 +39,13 @@ export async function publishRetryMessage(payload: ActionRequestMessage): Promis
 }
 
 export async function checkAndRetryJob(payload: ActionRequestMessageRetry): Promise<void> {
+  // Only workflow jobs have a queued-status API. Retrying other event types
+  // cannot make that check succeed and would waste authentication requests.
+  if (payload.eventType !== 'workflow_job') {
+    logger.debug('Unsupported event type, skipping job retry', { eventType: payload.eventType });
+    return;
+  }
+
   const enableOrgLevel = yn(process.env.ENABLE_ORGANIZATION_RUNNERS, { default: true });
   const runnerType = enableOrgLevel ? 'Org' : 'Repo';
   const runnerOwner = enableOrgLevel ? payload.repositoryOwner : `${payload.repositoryOwner}/${payload.repositoryName}`;
@@ -60,10 +69,17 @@ export async function checkAndRetryJob(payload: ActionRequestMessageRetry): Prom
   logger.info(`Received event`);
 
   const { ghesApiUrl } = getGitHubEnterpriseApiUrl();
-  const ghClient = await getOctokit(ghesApiUrl, enableOrgLevel, payload);
+  let queued: boolean;
+  try {
+    const ghClient = await getOctokit(ghesApiUrl, enableOrgLevel, payload);
+    queued = await isJobQueued(ghClient, payload);
+  } catch (error) {
+    if (!isPermanentGitHubError(error)) throw error;
+    logger.warn('Permanent GitHub error, acknowledging job retry record', { error });
+    return;
+  }
 
-  // check job is still queued
-  if (await isJobQueued(ghClient, payload)) {
+  if (queued) {
     await publishMessage(JSON.stringify(payload), jobQueueUrl);
     createMetric(enableMetrics, environment, payload);
     logger.info(`Job is still queued, message published to build queue and will be handled by scale-up.`, { payload });

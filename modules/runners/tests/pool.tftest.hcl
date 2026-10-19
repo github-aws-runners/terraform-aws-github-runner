@@ -4,6 +4,24 @@ mock_provider "aws" {
       json = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"lambda.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"
     }
   }
+
+  mock_resource "aws_iam_role" {
+    defaults = {
+      arn = "arn:aws:iam::123456789012:role/test-role"
+    }
+  }
+
+  mock_resource "aws_lambda_function" {
+    defaults = {
+      arn = "arn:aws:lambda:eu-west-1:123456789012:function:test"
+    }
+  }
+
+  mock_resource "aws_cloudwatch_event_rule" {
+    defaults = {
+      arn = "arn:aws:events:eu-west-1:123456789012:rule/test"
+    }
+  }
 }
 
 variables {
@@ -29,7 +47,7 @@ variables {
   runner_labels               = ["self-hosted", "linux", "x64"]
 
   # Use S3 bucket to avoid filebase64sha256 needing local zip files
-  lambda_s3_bucket     = "my-lambda-bucket"
+  lambda_s3_bucket      = "my-lambda-bucket"
   runners_lambda_s3_key = "runners.zip"
 
   github_app_parameters = {
@@ -57,4 +75,33 @@ run "plan_with_pool_enabled" {
     condition     = length(module.pool) == 1
     error_message = "Pool module should be enabled when pool_config is non-empty"
   }
+}
+
+run "token_ttl_defaults_to_disabled" {
+  command = plan
+  assert {
+    condition = (!contains(keys(aws_lambda_function.scale_up.environment[0].variables), "SSM_TOKEN_TTL_SECONDS")
+    && !contains(keys(module.pool[0].lambda.environment[0].variables), "SSM_TOKEN_TTL_SECONDS"))
+    error_message = "Omitted token TTL must leave expiration disabled."
+  }
+}
+
+run "nested_token_ttl_reaches_scale_up" {
+  command = plan
+  variables {
+    ssm_ttl_seconds = { tokens = 3600 }
+  }
+  assert {
+    condition = (aws_lambda_function.scale_up.environment[0].variables["SSM_TOKEN_TTL_SECONDS"] == "3600"
+    && module.pool[0].lambda.environment[0].variables["SSM_TOKEN_TTL_SECONDS"] == "3600")
+    error_message = "The nested token TTL must reach both scale-up and pool Lambdas."
+  }
+}
+
+run "reject_non_positive_token_ttl" {
+  command = plan
+  variables {
+    ssm_ttl_seconds = { tokens = 0 }
+  }
+  expect_failures = [var.ssm_ttl_seconds]
 }

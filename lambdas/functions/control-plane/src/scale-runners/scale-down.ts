@@ -1,16 +1,23 @@
+import { installationScope } from '../github/installation-scope';
 import { Octokit } from '@octokit/rest';
+import { withAppFailover } from '../github/app-failover';
 import { Endpoints } from '@octokit/types';
 import { RequestError } from '@octokit/request-error';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
+import { resolveComputeProviderType } from '@aws-github-runner/compute-providers/provider-types';
 import moment from 'moment';
 
-import { createGithubAppAuth, createGithubInstallationAuth, createOctokitClient } from '../github/auth';
-import { bootTimeExceeded, listEC2Runners, tag, untag, terminateRunner } from './../aws/runners';
-import { RunnerInfo, RunnerList } from './../aws/runners.d';
+import {
+  createGithubAppAuth,
+  createGithubInstallationAuth,
+  createOctokitClient,
+  getStoredInstallationId,
+} from '../github/auth';
+import { controlPlaneProviderRegistry } from '../control-plane-providers';
 import { GhRunners, githubCache } from './cache';
-import { ScalingDownConfig, getEvictionStrategy, getIdleRunnerCount } from './scale-down-config';
-import { metricGitHubAppRateLimit } from '../github/rate-limit';
-import { getGitHubEnterpriseApiUrl } from './scale-up';
+import { ScalingDownConfigList, getEvictionStrategy, getIdleRunnerCount } from './scale-down-config';
+import { getGitHubEnterpriseApiUrl } from './github-runner';
+import type { RunnerInfo, ScaleDownComputeProvider } from './types';
 
 const logger = createChildLogger('scale-down');
 
@@ -29,24 +36,39 @@ async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
 
   logger.debug(`[createGitHubClientForRunner] Cache miss for ${key}`);
   const { ghesApiUrl } = getGitHubEnterpriseApiUrl();
-  const ghAuthPre = await createGithubAppAuth(undefined, ghesApiUrl);
-  const githubClientPre = await createOctokitClient(ghAuthPre.token, ghesApiUrl);
-
-  const installationId =
-    runner.type === 'Org'
-      ? (
-          await githubClientPre.apps.getOrgInstallation({
-            org: runner.owner,
-          })
-        ).data.id
-      : (
-          await githubClientPre.apps.getRepoInstallation({
-            owner: runner.owner.split('/')[0],
-            repo: runner.owner.split('/')[1],
-          })
-        ).data.id;
-  const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl);
-  const octokit = await createOctokitClient(ghAuth.token, ghesApiUrl);
+  const scope = installationScope(ghesApiUrl, runner.owner);
+  const ghAuthPre = await createGithubAppAuth(undefined, ghesApiUrl, undefined, undefined, scope);
+  const octokit = await withAppFailover(
+    ghAuthPre.appIndex,
+    async (appIdx) => {
+      // Use the pre-configured installation ID when available (avoids an API call).
+      let installationId = await getStoredInstallationId(appIdx);
+      if (installationId === undefined) {
+        const githubClientPre = await createOctokitClient(
+          (appIdx === ghAuthPre.appIndex ? ghAuthPre : await createGithubAppAuth(undefined, ghesApiUrl, appIdx)).token,
+          ghesApiUrl,
+          appIdx,
+        );
+        installationId =
+          runner.type === 'Org'
+            ? (
+                await githubClientPre.apps.getOrgInstallation({
+                  org: runner.owner,
+                })
+              ).data.id
+            : (
+                await githubClientPre.apps.getRepoInstallation({
+                  owner: runner.owner.split('/')[0],
+                  repo: runner.owner.split('/')[1],
+                })
+              ).data.id;
+      }
+      const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl, appIdx);
+      return await createOctokitClient(ghAuth.token, ghesApiUrl, appIdx);
+    },
+    undefined,
+    scope,
+  );
   githubCache.clients.set(key, octokit);
 
   return octokit;
@@ -54,47 +76,44 @@ async function getOrCreateOctokit(runner: RunnerInfo): Promise<Octokit> {
 
 async function getGitHubSelfHostedRunnerState(
   client: Octokit,
-  ec2runner: RunnerInfo,
+  runner: RunnerInfo,
   runnerId: number,
 ): Promise<RunnerState | null> {
   try {
     const state =
-      ec2runner.type === 'Org'
+      runner.type === 'Org'
         ? await client.actions.getSelfHostedRunnerForOrg({
             runner_id: runnerId,
-            org: ec2runner.owner,
+            org: runner.owner,
           })
         : await client.actions.getSelfHostedRunnerForRepo({
             runner_id: runnerId,
-            owner: ec2runner.owner.split('/')[0],
-            repo: ec2runner.owner.split('/')[1],
+            owner: runner.owner.split('/')[0],
+            repo: runner.owner.split('/')[1],
           });
-    metricGitHubAppRateLimit(state.headers);
 
     return state.data;
   } catch (error) {
     if (error instanceof RequestError && error.status === 404) {
-      logger.info(`Runner '${ec2runner.instanceId}' with GitHub Runner ID '${runnerId}' not found on GitHub (404)`);
+      logger.info(`Runner '${runner.id}' with GitHub Runner ID '${runnerId}' not found on GitHub (404)`);
       return null;
     }
     throw error;
   }
 }
 
-async function getGitHubRunnerBusyState(client: Octokit, ec2runner: RunnerInfo, runnerId: number): Promise<boolean> {
-  const state = await getGitHubSelfHostedRunnerState(client, ec2runner, runnerId);
+async function getGitHubRunnerBusyState(client: Octokit, runner: RunnerInfo, runnerId: number): Promise<boolean> {
+  const state = await getGitHubSelfHostedRunnerState(client, runner, runnerId);
   if (state === null) {
-    logger.info(
-      `Runner '${ec2runner.instanceId}' - GitHub Runner ID '${runnerId}' - Not found on GitHub, treating as not busy`,
-    );
+    logger.info(`Runner '${runner.id}' - GitHub Runner ID '${runnerId}' - Not found on GitHub, treating as not busy`);
     return false;
   }
-  logger.info(`Runner '${ec2runner.instanceId}' - GitHub Runner ID '${runnerId}' - Busy: ${state.busy}`);
+  logger.info(`Runner '${runner.id}' - GitHub Runner ID '${runnerId}' - Busy: ${state.busy}`);
   return state.busy;
 }
 
 async function listGitHubRunners(runner: RunnerInfo): Promise<GhRunners> {
-  const key = runner.owner as string;
+  const key = runner.owner;
   const cachedRunners = githubCache.runners.get(key);
   if (cachedRunners) {
     logger.debug(`[listGithubRunners] Cache hit for ${key}`);
@@ -132,18 +151,18 @@ function runnerMinimumTimeExceeded(runner: RunnerInfo): boolean {
 
 async function deleteGitHubRunner(
   githubInstallationClient: Octokit,
-  ec2runner: RunnerInfo,
+  runner: RunnerInfo,
   ghRunnerId: number,
 ): Promise<{ ghRunnerId: number; status: number; success: boolean }> {
   try {
     let response;
-    if (ec2runner.type === 'Org') {
+    if (runner.type === 'Org') {
       response = await githubInstallationClient.actions.deleteSelfHostedRunnerFromOrg({
         runner_id: ghRunnerId,
-        org: ec2runner.owner,
+        org: runner.owner,
       });
     } else {
-      const [owner, repo] = ec2runner.owner.split('/');
+      const [owner, repo] = runner.owner.split('/');
       response = await githubInstallationClient.actions.deleteSelfHostedRunnerFromRepo({
         runner_id: ghRunnerId,
         owner,
@@ -153,7 +172,7 @@ async function deleteGitHubRunner(
     return { ghRunnerId, status: response.status, success: response.status === 204 };
   } catch (error) {
     logger.error(
-      `Failed to de-register GitHub runner ${ghRunnerId} for instance '${ec2runner.instanceId}'. ` +
+      `Failed to de-register GitHub runner ${ghRunnerId} for runner '${runner.id}'. ` +
         `Error: ${error instanceof Error ? error.message : String(error)}`,
       { error },
     );
@@ -161,13 +180,68 @@ async function deleteGitHubRunner(
   }
 }
 
-async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promise<void> {
-  const githubInstallationClient = await getOrCreateOctokit(ec2runner);
+function idleConfirmationSeconds(): number {
+  const raw = process.env.SCALE_DOWN_IDLE_CONFIRMATION_SECONDS;
+  const parsed = raw === undefined || raw === '' ? 0 : Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
+// GitHub's busy flag can be stale: it reads false for runners that are actively executing
+// a job, both shortly after job assignment (observed 25-60s lag) and deep into a running
+// job (observed 12+ minutes). See #5085. A single busy=false reading is therefore not
+// sufficient evidence that a runner is idle. When SCALE_DOWN_IDLE_CONFIRMATION_SECONDS > 0,
+// require busy=false readings spanning at least that window before terminating; any
+// busy=true reading in between resets the window (see clearIdleDetection).
+async function idleConfirmed(runner: RunnerInfo, computeProvider: ScaleDownComputeProvider): Promise<boolean> {
+  const confirmationSeconds = idleConfirmationSeconds();
+  if (confirmationSeconds === 0) {
+    return true;
+  }
+  const idleDetectedAt = runner.idleDetectedAt;
+  const idleForSeconds = idleDetectedAt ? (Date.now() - Date.parse(idleDetectedAt)) / 1000 : NaN;
+  if (Number.isNaN(idleForSeconds)) {
+    // No marker yet, or an unparsable one: (re)start the confirmation window.
+    await computeProvider.markIdle(runner.id, new Date().toISOString());
+    logger.info(
+      `Runner '${runner.id}' reads idle; deferring termination for at least ` +
+        `${confirmationSeconds}s to confirm the busy state is not stale.`,
+    );
+    return false;
+  }
+  if (idleForSeconds < confirmationSeconds) {
+    logger.info(
+      `Runner '${runner.id}' reads idle since '${idleDetectedAt}' ` +
+        `(${Math.round(idleForSeconds)}s < ${confirmationSeconds}s); deferring termination.`,
+    );
+    return false;
+  }
+  logger.info(
+    `Runner '${runner.id}' confirmed idle since '${idleDetectedAt}' ` +
+      `(${Math.round(idleForSeconds)}s >= ${confirmationSeconds}s).`,
+  );
+  return true;
+}
+
+async function clearIdleDetection(runner: RunnerInfo, computeProvider: ScaleDownComputeProvider): Promise<void> {
+  if (idleConfirmationSeconds() === 0) {
+    return;
+  }
+  if (runner.idleDetectedAt) {
+    await computeProvider.unmarkIdle(runner.id);
+    logger.info(`Runner '${runner.id}' is busy again; idle-detection window reset.`);
+  }
+}
+
+async function removeRunner(
+  runner: RunnerInfo,
+  ghRunnerIds: number[],
+  computeProvider: ScaleDownComputeProvider,
+): Promise<void> {
+  const githubInstallationClient = await getOrCreateOctokit(runner);
   try {
-    const runnerList = ec2runner as unknown as RunnerList;
-    if (runnerList.bypassRemoval) {
+    if (runner.bypassRemoval) {
       logger.info(
-        `Runner '${ec2runner.instanceId}' has bypass-removal tag set, skipping removal. Remove the tag to allow scale-down.`,
+        `Runner '${runner.id}' has bypass-removal tag set, skipping removal. Remove the tag to allow scale-down.`,
       );
       return;
     }
@@ -175,153 +249,154 @@ async function removeRunner(ec2runner: RunnerInfo, ghRunnerIds: number[]): Promi
     const states = await Promise.all(
       ghRunnerIds.map(async (ghRunnerId) => {
         // Get busy state instead of using the output of listGitHubRunners(...) to minimize to race condition.
-        return await getGitHubRunnerBusyState(githubInstallationClient, ec2runner, ghRunnerId);
+        return await getGitHubRunnerBusyState(githubInstallationClient, runner, ghRunnerId);
       }),
     );
 
     if (states.every((busy) => busy === false)) {
+      if (!(await idleConfirmed(runner, computeProvider))) {
+        return;
+      }
       const results = await Promise.all(
-        ghRunnerIds.map((ghRunnerId) => deleteGitHubRunner(githubInstallationClient, ec2runner, ghRunnerId)),
+        ghRunnerIds.map((ghRunnerId) => deleteGitHubRunner(githubInstallationClient, runner, ghRunnerId)),
       );
 
       const allSucceeded = results.every((r) => r.success);
       const failedRunners = results.filter((r) => !r.success);
 
       if (allSucceeded) {
-        await terminateRunner(ec2runner.instanceId);
-        logger.info(`AWS runner instance '${ec2runner.instanceId}' is terminated and GitHub runner is de-registered.`);
+        await computeProvider.terminate(runner.id);
+        logger.info(
+          `${computeProvider.type.toUpperCase()} runner '${runner.id}' is terminated and GitHub runner is de-registered.`,
+        );
       } else {
-        // Only terminate EC2 if we successfully de-registered from GitHub
-        // Otherwise, leave the instance running so the next scale-down cycle can retry
+        // Only terminate the provider runner if it was successfully de-registered from GitHub.
         logger.error(
-          `Failed to de-register ${failedRunners.length} GitHub runner(s) for instance '${ec2runner.instanceId}'. ` +
-            `Instance will NOT be terminated to allow retry on next scale-down cycle. ` +
+          `Failed to de-register ${failedRunners.length} GitHub runner(s) for runner '${runner.id}'. ` +
+            `Runner will NOT be terminated to allow retry on next scale-down cycle. ` +
             `Failed runner IDs: ${failedRunners.map((r) => r.ghRunnerId).join(', ')}`,
         );
       }
     } else {
-      logger.info(`Runner '${ec2runner.instanceId}' cannot be de-registered, because it is still busy.`);
+      await clearIdleDetection(runner, computeProvider);
+      logger.info(`Runner '${runner.id}' cannot be de-registered, because it is still busy.`);
     }
   } catch (e) {
     logger.error(
-      `Runner '${ec2runner.instanceId}' cannot be de-registered. Error: ${e instanceof Error ? e.message : String(e)}`,
+      `Runner '${runner.id}' cannot be de-registered. Error: ${e instanceof Error ? e.message : String(e)}`,
       { error: e },
     );
   }
 }
 
 async function evaluateAndRemoveRunners(
-  ec2Runners: RunnerInfo[],
-  scaleDownConfigs: ScalingDownConfig[],
+  runners: RunnerInfo[],
+  scaleDownConfigs: ScalingDownConfigList,
+  computeProvider: ScaleDownComputeProvider,
 ): Promise<void> {
   let idleCounter = getIdleRunnerCount(scaleDownConfigs);
   const evictionStrategy = getEvictionStrategy(scaleDownConfigs);
-  const ownerTags = new Set(ec2Runners.map((runner) => runner.owner));
+  const ownerTags = new Set(runners.map((runner) => runner.owner));
 
   for (const ownerTag of ownerTags) {
-    const ec2RunnersFiltered = ec2Runners
+    const ownerRunners = runners
       .filter((runner) => runner.owner === ownerTag)
       .sort(evictionStrategy === 'oldest_first' ? oldestFirstStrategy : newestFirstStrategy);
-    logger.debug(`Found: '${ec2RunnersFiltered.length}' active GitHub runners with owner tag: '${ownerTag}'`);
-    logger.debug(`Active GitHub runners with owner tag: '${ownerTag}': ${JSON.stringify(ec2RunnersFiltered)}`);
-    for (const ec2Runner of ec2RunnersFiltered) {
-      if ((ec2Runner as unknown as RunnerList).bypassRemoval) {
-        logger.debug(`Runner '${ec2Runner.instanceId}' has bypass-removal tag set, skipping evaluation.`);
+    logger.debug(`Found: '${ownerRunners.length}' active GitHub runners with owner tag: '${ownerTag}'`);
+    logger.debug(`Active GitHub runners with owner tag: '${ownerTag}': ${JSON.stringify(ownerRunners)}`);
+    for (const runner of ownerRunners) {
+      if (runner.bypassRemoval) {
+        logger.debug(`Runner '${runner.id}' has bypass-removal tag set, skipping evaluation.`);
         continue;
       }
-      const ghRunners = await listGitHubRunners(ec2Runner);
-      const ghRunnersFiltered = ghRunners.filter((runner: { name: string }) =>
-        runner.name.endsWith(ec2Runner.instanceId),
-      );
-      logger.debug(
-        `Found: '${ghRunnersFiltered.length}' GitHub runners for AWS runner instance: '${ec2Runner.instanceId}'`,
-      );
-      logger.debug(
-        `GitHub runners for AWS runner instance: '${ec2Runner.instanceId}': ${JSON.stringify(ghRunnersFiltered)}`,
-      );
+      const ghRunners = await listGitHubRunners(runner);
+      const ghRunnersFiltered = ghRunners.filter((ghRunner: { name: string }) => ghRunner.name.endsWith(runner.id));
+      logger.debug(`Found: '${ghRunnersFiltered.length}' GitHub runners for runner: '${runner.id}'`);
+      logger.debug(`GitHub runners for runner: '${runner.id}': ${JSON.stringify(ghRunnersFiltered)}`);
       if (ghRunnersFiltered.length) {
-        if (runnerMinimumTimeExceeded(ec2Runner)) {
+        if (runnerMinimumTimeExceeded(runner)) {
           if (idleCounter > 0) {
             idleCounter--;
-            logger.info(`Runner '${ec2Runner.instanceId}' will be kept idle.`);
+            // A runner kept idle is not evaluated for removal, so its idle marker cannot be
+            // refreshed by busy readings. Clear it so a later evaluation starts a fresh window.
+            await clearIdleDetection(runner, computeProvider);
+            logger.info(`Runner '${runner.id}' will be kept idle.`);
           } else {
             logger.info(`Terminating all non busy runners.`);
             await removeRunner(
-              ec2Runner,
+              runner,
               ghRunnersFiltered.map((runner: { id: number }) => runner.id),
+              computeProvider,
             );
           }
         }
-      } else if (bootTimeExceeded(ec2Runner)) {
-        await markOrphan(ec2Runner.instanceId);
+      } else if (computeProvider.bootTimeExceeded(runner)) {
+        await markOrphan(runner.id, computeProvider);
       } else {
-        logger.debug(`Runner ${ec2Runner.instanceId} has not yet booted.`);
+        logger.debug(`Runner ${runner.id} has not yet booted.`);
       }
     }
   }
 }
 
-async function markOrphan(instanceId: string): Promise<void> {
+async function markOrphan(id: string, computeProvider: ScaleDownComputeProvider): Promise<void> {
   try {
-    await tag(instanceId, [{ Key: 'ghr:orphan', Value: 'true' }]);
-    logger.info(`Runner '${instanceId}' tagged as orphan.`);
+    await computeProvider.markOrphan(id);
+    logger.info(`Runner '${id}' tagged as orphan.`);
   } catch (e) {
-    logger.error(`Failed to tag runner '${instanceId}' as orphan.`, { error: e });
+    logger.error(`Failed to tag runner '${id}' as orphan.`, { error: e });
   }
 }
 
-async function unMarkOrphan(instanceId: string): Promise<void> {
+async function unMarkOrphan(id: string, computeProvider: ScaleDownComputeProvider): Promise<void> {
   try {
-    await untag(instanceId, [{ Key: 'ghr:orphan', Value: 'true' }]);
-    logger.info(`Runner '${instanceId}' untagged as orphan.`);
+    await computeProvider.unmarkOrphan(id);
+    logger.info(`Runner '${id}' untagged as orphan.`);
   } catch (e) {
-    logger.error(`Failed to un-tag runner '${instanceId}' as orphan.`, { error: e });
+    logger.error(`Failed to un-tag runner '${id}' as orphan.`, { error: e });
   }
 }
 
-async function lastChanceCheckOrphanRunner(runner: RunnerList): Promise<boolean> {
-  const client = await getOrCreateOctokit(runner as RunnerInfo);
-  const runnerId = parseInt(runner.runnerId || '0');
-  const ec2Instance = runner as RunnerInfo;
-  const state = await getGitHubSelfHostedRunnerState(client, ec2Instance, runnerId);
+async function lastChanceCheckOrphanRunner(runner: RunnerInfo): Promise<boolean> {
+  const client = await getOrCreateOctokit(runner);
+  const runnerId = parseInt(runner.githubRunnerId || '0');
+  const state = await getGitHubSelfHostedRunnerState(client, runner, runnerId);
   let isOrphan = false;
 
   if (state === null) {
-    logger.debug(`Runner '${runner.instanceId}' not found on GitHub, treating as orphaned.`);
+    logger.debug(`Runner '${runner.id}' not found on GitHub, treating as orphaned.`);
     isOrphan = true;
   } else {
-    logger.debug(
-      `Runner '${runner.instanceId}' is '${state.status}' and is currently '${state.busy ? 'busy' : 'idle'}'.`,
-    );
+    logger.debug(`Runner '${runner.id}' is '${state.status}' and is currently '${state.busy ? 'busy' : 'idle'}'.`);
     const isOfflineAndBusy = state.status === 'offline' && state.busy;
     if (isOfflineAndBusy) {
       isOrphan = true;
     }
   }
-  logger.info(`Runner '${runner.instanceId}' is judged to ${isOrphan ? 'be' : 'not be'} orphaned.`);
+  logger.info(`Runner '${runner.id}' is judged to ${isOrphan ? 'be' : 'not be'} orphaned.`);
   return isOrphan;
 }
 
-async function terminateOrphan(environment: string): Promise<void> {
+async function terminateOrphan(environment: string, computeProvider: ScaleDownComputeProvider): Promise<void> {
   try {
-    const orphanRunners = await listEC2Runners({ environment, orphan: true });
+    const orphanRunners = await computeProvider.list(environment, true);
 
     for (const runner of orphanRunners) {
       if (runner.bypassRemoval) {
-        logger.info(`Orphan runner '${runner.instanceId}' has bypass-removal tag set, skipping termination.`);
+        logger.info(`Orphan runner '${runner.id}' has bypass-removal tag set, skipping termination.`);
         continue;
       }
-      if (runner.runnerId) {
+      if (runner.githubRunnerId) {
         const isOrphan = await lastChanceCheckOrphanRunner(runner);
         if (isOrphan) {
-          await terminateRunner(runner.instanceId);
+          await computeProvider.terminate(runner.id);
         } else {
-          await unMarkOrphan(runner.instanceId);
+          await unMarkOrphan(runner.id, computeProvider);
         }
       } else {
-        logger.info(`Terminating orphan runner '${runner.instanceId}'`);
-        await terminateRunner(runner.instanceId).catch((e) => {
-          logger.error(`Failed to terminate orphan runner '${runner.instanceId}'`, { error: e });
+        logger.info(`Terminating orphan runner '${runner.id}'`);
+        await computeProvider.terminate(runner.id).catch((e) => {
+          logger.error(`Failed to terminate orphan runner '${runner.id}'`, { error: e });
         });
       }
     }
@@ -342,38 +417,47 @@ export function newestFirstStrategy(a: RunnerInfo, b: RunnerInfo): number {
   return oldestFirstStrategy(a, b) * -1;
 }
 
-async function listRunners(environment: string) {
-  return await listEC2Runners({
-    environment,
-  });
+async function listRunners(environment: string, computeProvider: ScaleDownComputeProvider) {
+  return await computeProvider.list(environment);
 }
 
-function filterRunners(ec2runners: RunnerList[]): RunnerInfo[] {
-  return ec2runners.filter((ec2Runner) => ec2Runner.type && !ec2Runner.orphan) as RunnerInfo[];
+function filterRunners(runners: RunnerInfo[]): RunnerInfo[] {
+  // Managed runners are launched with owner and type tags together. Exclude incomplete records because both
+  // values are required to select the GitHub owner and runner API used during scale-down.
+  return runners.filter((runner) => runner.owner && runner.type && !runner.orphan);
 }
 
 export async function scaleDown(): Promise<void> {
   githubCache.reset();
   const environment = process.env.ENVIRONMENT;
-  const scaleDownConfigs = JSON.parse(process.env.SCALE_DOWN_CONFIG) as [ScalingDownConfig];
+  const scaleDownConfigs = JSON.parse(process.env.SCALE_DOWN_CONFIG) as ScalingDownConfigList;
+  const computeProviderType = resolveComputeProviderType(process.env.COMPUTE_PROVIDER_TYPE);
+  const computeProvider = {
+    ...controlPlaneProviderRegistry.capability(computeProviderType, 'scaleDown')(),
+    type: computeProviderType,
+  };
 
   // first runners marked to be orphan.
-  await terminateOrphan(environment);
+  await terminateOrphan(environment, computeProvider);
 
   // next scale down idle runners with respect to config and mark potential orphans
-  const ec2Runners = await listRunners(environment);
-  const activeEc2RunnersCount = ec2Runners.length;
-  logger.info(`Found: '${activeEc2RunnersCount}' active GitHub EC2 runner instances before clean-up.`);
-  logger.debug(`Active GitHub EC2 runner instances: ${JSON.stringify(ec2Runners)}`);
+  const providerRunners = await listRunners(environment, computeProvider);
+  const activeProviderRunnersCount = providerRunners.length;
+  logger.info(
+    `Found: '${activeProviderRunnersCount}' active ${computeProvider.type.toUpperCase()} runners before clean-up.`,
+  );
+  logger.debug(`Active ${computeProvider.type.toUpperCase()} runners: ${JSON.stringify(providerRunners)}`);
 
-  if (activeEc2RunnersCount === 0) {
+  if (activeProviderRunnersCount === 0) {
     logger.debug(`No active runners found for environment: '${environment}'`);
     return;
   }
 
-  const runners = filterRunners(ec2Runners);
-  await evaluateAndRemoveRunners(runners, scaleDownConfigs);
+  const runners = filterRunners(providerRunners);
+  await evaluateAndRemoveRunners(runners, scaleDownConfigs, computeProvider);
 
-  const activeEc2RunnersCountAfter = (await listRunners(environment)).length;
-  logger.info(`Found: '${activeEc2RunnersCountAfter}' active GitHub EC2 runners instances after clean-up.`);
+  const activeProviderRunnersCountAfter = (await listRunners(environment, computeProvider)).length;
+  logger.info(
+    `Found: '${activeProviderRunnersCountAfter}' active ${computeProvider.type.toUpperCase()} runners after clean-up.`,
+  );
 }

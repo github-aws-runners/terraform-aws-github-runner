@@ -1,0 +1,18 @@
+terraform {
+  backend "local" {
+    path = "../migration.tfstate"
+  }
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = ">= 6.33"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
+    }
+  }
+
+  required_version = ">= 1.5.6"
+}

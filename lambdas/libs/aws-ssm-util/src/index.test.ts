@@ -10,7 +10,7 @@ import 'aws-sdk-client-mock-jest/vitest';
 import { mockClient } from 'aws-sdk-client-mock';
 import nock from 'nock';
 
-import { getParameter, getParameters, putParameter, SSM_ADVANCED_TIER_THRESHOLD } from '.';
+import { getParameter, getParameters, putParameter, resetSSMClient, ssmClient, SSM_ADVANCED_TIER_THRESHOLD } from '.';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 const mockSSMClient = mockClient(SSMClient);
@@ -20,6 +20,7 @@ beforeEach(() => {
   vi.resetModules();
   vi.clearAllMocks();
   process.env = { ...cleanEnv };
+  resetSSMClient();
   nock.disableNetConnect();
 });
 
@@ -166,6 +167,52 @@ describe('Test getParameter and putParameter', () => {
       Tier: expectedTier,
     });
   });
+
+  it('Puts parameters without an expiration policy when no TTL is given', async () => {
+    // Arrange
+    mockSSMClient.on(PutParameterCommand).resolves({ $metadata: { httpStatusCode: 200 } });
+
+    // Act
+    await putParameter('testParam', 'test', false);
+
+    // Assert
+    expect(mockSSMClient).toHaveReceivedCommandWith(PutParameterCommand, {
+      Name: 'testParam',
+      Value: 'test',
+      Type: 'String',
+      Tier: 'Standard',
+      Policies: undefined,
+    });
+  });
+
+  it('Puts parameters with an expiration policy and forces Advanced tier when a TTL is given', async () => {
+    // Arrange
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+    mockSSMClient.on(PutParameterCommand).resolves({ $metadata: { httpStatusCode: 200 } });
+
+    try {
+      // Act
+      await putParameter('testParam', 'test', true, { ttlSeconds: 3600 });
+
+      // Assert
+      expect(mockSSMClient).toHaveReceivedCommandWith(PutParameterCommand, {
+        Name: 'testParam',
+        Value: 'test',
+        Type: 'SecureString',
+        Tier: 'Advanced',
+        Policies: JSON.stringify([
+          {
+            Type: 'Expiration',
+            Version: '1.0',
+            Attributes: { Timestamp: '2026-01-01T01:00:00.000Z' },
+          },
+        ]),
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe('Test getParameters (batch)', () => {
@@ -252,5 +299,32 @@ describe('Test getParameters (batch)', () => {
     const result = await getParameters(['/app/missing']);
 
     expect(result).toEqual(new Map());
+  });
+});
+
+describe('SSM client configuration', () => {
+  it('configures adaptive retry with a raised attempt cap', async () => {
+    const config = ssmClient().config;
+
+    expect(await config.maxAttempts()).toBe(10);
+    expect(config.retryMode).toBe('adaptive');
+  });
+
+  it('reuses one client so adaptive rate-sensing state survives across calls', async () => {
+    // Adaptive retry keeps its token bucket on the client instance; a fresh client
+    // per call would silently downgrade `adaptive` to plain retries.
+    mockSSMClient.on(GetParametersCommand).resolves({ Parameters: [] });
+
+    await getParameters(['/app/one']);
+    await getParameters(['/app/two']);
+
+    expect(ssmClient()).toBe(ssmClient());
+  });
+
+  it('picks up the region from the environment on first use', async () => {
+    process.env.AWS_REGION = 'eu-north-1';
+    resetSSMClient();
+
+    expect(await ssmClient().config.region()).toBe('eu-north-1');
   });
 });

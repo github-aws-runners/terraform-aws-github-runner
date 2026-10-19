@@ -2,7 +2,7 @@ import { SQS, SendMessageCommandInput } from '@aws-sdk/client-sqs';
 import { WorkflowJobEvent } from '@octokit/webhooks-types';
 import { createChildLogger, getTracedAWSV3Client } from '@aws-github-runner/aws-powertools-util';
 
-import { Ec2DynamicLabelsPolicy } from '../runners/dynamic-labels-policy';
+export type { MatcherConfig, RunnerConfig, RunnerMatcherConfig } from '@aws-github-runner/compute-providers';
 
 const logger = createChildLogger('sqs');
 
@@ -17,29 +17,6 @@ export interface ActionRequestMessage {
   queueId: string;
   repoOwnerType: string;
   labels?: string[];
-}
-
-export interface MatcherConfig {
-  labelMatchers: string[][];
-  exactMatch: boolean;
-  /**
-   * Evaluation order, lower is preferred. Applied in Terraform, which emits the
-   * matcher list already ordered by it (see modules/webhook/webhook.tf); the
-   * dispatcher does not sort on it. Declared here for fidelity with the config
-   * the lambda actually receives.
-   */
-  priority?: number;
-  bidirectionalLabelMatch?: boolean;
-  enableDynamicLabels?: boolean;
-  ec2DynamicLabelsPolicy?: Ec2DynamicLabelsPolicy | null;
-}
-
-export type RunnerConfig = RunnerMatcherConfig[];
-
-export interface RunnerMatcherConfig {
-  matcherConfig: MatcherConfig;
-  id: string;
-  arn: string;
 }
 
 export interface GithubWorkflowEvent {

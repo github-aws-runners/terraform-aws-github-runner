@@ -44,10 +44,14 @@ output "webhook" {
 }
 
 output "ssm_parameters" {
-  value = { for k, v in local.github_app_parameters : k => {
-    name = v.name
-    arn  = v.arn
-    }
+  value = {
+    id             = { name = local.github_app_parameters.id.name, arn = local.github_app_parameters.id.arn }
+    key_base64     = { name = local.github_app_parameters.key_base64.name, arn = local.github_app_parameters.key_base64.arn }
+    webhook_secret = { name = local.github_app_parameters.webhook_secret.name, arn = local.github_app_parameters.webhook_secret.arn }
+    additional_apps_manifest = local.github_app_parameters.additional_apps_manifest != null ? {
+      name = local.github_app_parameters.additional_apps_manifest.name
+      arn  = local.github_app_parameters.additional_apps_manifest.arn
+    } : null
   }
 }
 

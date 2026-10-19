@@ -1,13 +1,13 @@
 import middy from '@middy/core';
 import { logger, setContext } from '@aws-github-runner/aws-powertools-util';
 import { captureLambdaHandler, tracer } from '@aws-github-runner/aws-powertools-util';
+import { createRunnerConfigHousekeeper } from '@aws-github-runner/storage-providers';
 import { Context, type SQSBatchItemFailure, type SQSBatchResponse, SQSEvent } from 'aws-lambda';
 
 import { PoolEvent, adjust } from './pool/pool';
-import ScaleError from './scale-runners/ScaleError';
 import { scaleDown } from './scale-runners/scale-down';
-import { type ActionRequestMessage, type ActionRequestMessageSQS, scaleUp } from './scale-runners/scale-up';
-import { SSMCleanupOptions, cleanSSMTokens } from './scale-runners/ssm-housekeeper';
+import { scaleUp } from './scale-runners/scale-up';
+import type { ActionRequestMessage, ActionRequestMessageSQS } from './scale-runners/types';
 import { checkAndRetryJob } from './scale-runners/job-retry';
 
 export async function scaleUpHandler(event: SQSEvent, context: Context): Promise<SQSBatchResponse> {
@@ -27,7 +27,17 @@ export async function scaleUpHandler(event: SQSEvent, context: Context): Promise
       continue;
     }
 
-    const payload = JSON.parse(body) as ActionRequestMessage;
+    let payload: ActionRequestMessage;
+    try {
+      payload = JSON.parse(body) as ActionRequestMessage;
+    } catch (e) {
+      // A malformed body is a permanent, non-retryable failure. Keep it out of
+      // batchItemFailures so the event source mapping acknowledges and deletes it,
+      // while valid records in the same batch continue to scale up normally.
+      logger.error(`Ignoring message ${messageId}, body is not valid JSON`, { error: e, messageId });
+
+      continue;
+    }
     sqsMessages.push({ ...payload, messageId });
   }
 
@@ -38,12 +48,22 @@ export async function scaleUpHandler(event: SQSEvent, context: Context): Promise
     return (l.retryCounter ?? 0) - (r.retryCounter ?? 0);
   });
 
+  // The SQS event source mapping owns message acknowledgement and deletion. Because
+  // ReportBatchItemFailures is enabled, a successful handler response makes Lambda
+  // delete every record not listed here; listed records remain in SQS and become
+  // available for retry after their visibility timeout expires.
   const batchItemFailures: SQSBatchItemFailure[] = [];
 
   try {
-    const rejectedMessageIds = await scaleUp(sqsMessages);
+    const retryMessageIds = await scaleUp(sqsMessages);
 
-    for (const messageId of rejectedMessageIds) {
+    if (retryMessageIds.length > 0) {
+      logger.warn('SQS messages will be retried.', {
+        messageIds: retryMessageIds,
+      });
+    }
+
+    for (const messageId of retryMessageIds) {
       batchItemFailures.push({
         itemIdentifier: messageId,
       });
@@ -51,16 +71,15 @@ export async function scaleUpHandler(event: SQSEvent, context: Context): Promise
 
     return { batchItemFailures };
   } catch (e) {
-    if (e instanceof ScaleError) {
-      batchItemFailures.push(...e.toBatchItemFailures(sqsMessages));
-      logger.warn(`${e.detailedMessage} A retry will be attempted via SQS.`, { error: e });
-    } else {
-      logger.error(`Error processing batch (size: ${sqsMessages.length}): ${(e as Error).message}, ignoring batch`, {
-        error: e,
-      });
-    }
+    logger.error(`Error processing batch (size: ${sqsMessages.length}): ${(e as Error).message}, retrying batch`, {
+      error: e,
+    });
 
-    return { batchItemFailures };
+    return {
+      batchItemFailures: sqsMessages.map(({ messageId }) => ({
+        itemIdentifier: messageId,
+      })),
+    };
   }
 }
 
@@ -95,31 +114,38 @@ export const addMiddleware = () => {
   middy(scaleUpHandler).use(handler);
   middy(scaleDownHandler).use(handler);
   middy(adjustPool).use(handler);
-  middy(ssmHousekeeper).use(handler);
+  middy(runnerConfigHousekeeper).use(handler);
 };
 addMiddleware();
 
-export async function ssmHousekeeper(event: unknown, context: Context): Promise<void> {
+export async function runnerConfigHousekeeper(event: unknown, context: Context): Promise<void> {
   setContext(context, 'lambda.ts');
   logger.logEventIfEnabled(event);
-  const config = JSON.parse(process.env.SSM_CLEANUP_CONFIG) as SSMCleanupOptions;
+  const housekeeper = createRunnerConfigHousekeeper();
 
   try {
-    await cleanSSMTokens(config);
+    await housekeeper.houseKeeper(() => context.getRemainingTimeInMillis());
   } catch (e) {
     logger.error(`${(e as Error).message}`, { error: e as Error });
   }
 }
 
-export async function jobRetryCheck(event: SQSEvent, context: Context): Promise<void> {
+/** @deprecated Use runnerConfigHousekeeper. Kept for existing Terraform handler configuration. */
+export const ssmHousekeeper = runnerConfigHousekeeper;
+
+export async function jobRetryCheck(event: SQSEvent, context: Context): Promise<SQSBatchResponse> {
   setContext(context, 'lambda.ts');
   logger.logEventIfEnabled(event);
 
+  const batchItemFailures: SQSBatchItemFailure[] = [];
   for (const record of event.Records) {
-    const payload = JSON.parse(record.body);
-    await checkAndRetryJob(payload).catch((e) => {
-      logger.warn(`Error processing job retry: ${e.message}`, { error: e });
-    });
+    try {
+      const payload = JSON.parse(record.body);
+      await checkAndRetryJob(payload);
+    } catch (error) {
+      logger.warn('Error processing job retry', { error, messageId: record.messageId });
+      batchItemFailures.push({ itemIdentifier: record.messageId });
+    }
   }
-  return Promise.resolve();
+  return { batchItemFailures };
 }

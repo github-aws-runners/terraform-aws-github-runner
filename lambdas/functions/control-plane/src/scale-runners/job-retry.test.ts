@@ -1,6 +1,6 @@
 import { publishMessage } from '../aws/sqs';
 import { publishRetryMessage, checkAndRetryJob } from './job-retry';
-import { ActionRequestMessage, ActionRequestMessageRetry } from './scale-up';
+import type { ActionRequestMessage, ActionRequestMessageRetry } from './types';
 import { getOctokit } from '../github/octokit';
 import { jobRetryCheck } from '../lambda';
 import { Octokit } from '@octokit/rest';
@@ -323,6 +323,49 @@ describe('Test job retry handler (batch processing)', () => {
     process.env.JOB_QUEUE_SCALE_UP_URL = 'https://sqs.example.com/queue';
   });
 
+  it('acknowledges unsupported events without authentication or publication', async () => {
+    const record = createSQSRecord('unsupported');
+    record.body = JSON.stringify({ ...JSON.parse(record.body), eventType: 'check_run' });
+    await expect(jobRetryCheck({ Records: [record] }, context)).resolves.toEqual({ batchItemFailures: [] });
+    expect(getOctokit).not.toHaveBeenCalled();
+    expect(mockOctokit.actions.getJobForWorkflowRun).not.toHaveBeenCalled();
+    expect(publishMessage).not.toHaveBeenCalled();
+  });
+
+  it('acknowledges unsupported events while retrying only transient failures in a mixed batch', async () => {
+    const unsupported = createSQSRecord('unsupported');
+    unsupported.body = JSON.stringify({ ...JSON.parse(unsupported.body), eventType: 'check_run' });
+    mockOctokit.actions.getJobForWorkflowRun
+      .mockRejectedValueOnce({ status: 502, message: 'Bad gateway' })
+      .mockResolvedValueOnce({ data: { status: 'queued' }, headers: {} });
+    await expect(
+      jobRetryCheck({ Records: [unsupported, createSQSRecord('failed'), createSQSRecord('queued')] }, context),
+    ).resolves.toEqual({ batchItemFailures: [{ itemIdentifier: 'failed' }] });
+    expect(getOctokit).toHaveBeenCalledTimes(2);
+    expect(publishMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([400, 401, 403, 404, 410, 422])('acknowledges permanent GitHub status %s', async (status) => {
+    vi.mocked(getOctokit).mockRejectedValueOnce({ status, message: 'Denied' });
+    mockOctokit.actions.getJobForWorkflowRun.mockRejectedValueOnce({ status, message: 'Denied' });
+    await expect(
+      jobRetryCheck({ Records: [createSQSRecord('auth'), createSQSRecord('status')] }, context),
+    ).resolves.toEqual({ batchItemFailures: [] });
+    expect(publishMessage).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { status: 429 },
+    { status: 403, message: 'secondary rate limit' },
+    { status: 403, response: { headers: { 'x-ratelimit-remaining': '0' } } },
+    { status: 403, response: { headers: { 'retry-after': '60' } } },
+  ])('retains rate-limited records for redelivery', async (error) => {
+    mockOctokit.actions.getJobForWorkflowRun.mockRejectedValueOnce(error);
+    await expect(jobRetryCheck({ Records: [createSQSRecord('limited')] }, context)).resolves.toEqual({
+      batchItemFailures: [{ itemIdentifier: 'limited' }],
+    });
+  });
+
   it('should handle multiple records in a single batch', async () => {
     mockOctokit.actions.getJobForWorkflowRun.mockImplementation(() => ({
       data: {
@@ -338,6 +381,23 @@ describe('Test job retry handler (batch processing)', () => {
     await expect(jobRetryCheck(event, context)).resolves.not.toThrow();
     expect(publishMessage).toHaveBeenCalledTimes(3);
   });
+
+  it.each([new Error('Request timed out'), { status: 502, message: 'Bad gateway' }])(
+    'retains a failed queued-job check for redelivery without republishing successful records',
+    async (error) => {
+      mockOctokit.actions.getJobForWorkflowRun
+        .mockResolvedValueOnce({ data: { status: 'queued' }, headers: {} })
+        .mockRejectedValueOnce(error)
+        .mockResolvedValue({ data: { status: 'queued' }, headers: {} });
+      const records = [createSQSRecord('msg-1'), createSQSRecord('msg-2'), createSQSRecord('msg-3')];
+      await expect(jobRetryCheck({ Records: records }, context)).resolves.toEqual({
+        batchItemFailures: [{ itemIdentifier: 'msg-2' }],
+      });
+      expect(publishMessage).toHaveBeenCalledTimes(2);
+      await expect(jobRetryCheck({ Records: [records[1]] }, context)).resolves.toEqual({ batchItemFailures: [] });
+      expect(publishMessage).toHaveBeenCalledTimes(3);
+    },
+  );
 
   it('should continue processing other records when one fails', async () => {
     mockCreateOctokitClient
@@ -356,7 +416,7 @@ describe('Test job retry handler (batch processing)', () => {
       Records: [createSQSRecord('msg-1'), createSQSRecord('msg-2'), createSQSRecord('msg-3')],
     };
 
-    await expect(jobRetryCheck(event, context)).resolves.not.toThrow();
+    await expect(jobRetryCheck(event, context)).resolves.toEqual({ batchItemFailures: [{ itemIdentifier: 'msg-2' }] });
     // There were two successful calls to publishMessage
     expect(publishMessage).toHaveBeenCalledTimes(2);
   });

@@ -1,0 +1,35 @@
+{
+  "name": "@aws-github-runner/github-actions-scale-set",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts",
+    "./config": "./src/config.ts",
+    "./errors": "./src/errors.ts",
+    "./types": "./src/types.ts"
+  },
+  "scripts": {
+    "test": "NODE_ENV=test nx test",
+    "test:watch": "NODE_ENV=test nx test --watch",
+    "lint": "eslint src",
+    "format": "prettier --write \"**/*.ts\"",
+    "format-check": "prettier --check \"**/*.ts\"",
+    "typecheck": "tsc --noEmit",
+    "all": "yarn format && yarn lint && yarn typecheck && yarn test"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.3",
+    "typescript": "^5.9.3"
+  },
+  "nx": {
+    "includedScripts": [
+      "format",
+      "format-check",
+      "lint",
+      "typecheck",
+      "all"
+    ]
+  }
+}
