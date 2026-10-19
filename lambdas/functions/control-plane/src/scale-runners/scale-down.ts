@@ -119,19 +119,25 @@ async function getGitHubSelfHostedRunnerState(
     return state.data;
   } catch (error) {
     if (error instanceof RequestError && error.status === 404) {
-      // GitHub also hides inaccessible private resources behind 404. Confirm access
-      // with the same installation client before treating this registration as absent.
-      requireTime(remainingTime);
-      const access =
-        runner.type === 'Org'
-          ? await client.actions.listSelfHostedRunnersForOrg({ org: runner.owner, per_page: 1 })
-          : await client.actions.listSelfHostedRunnersForRepo({
-              owner: runner.owner.split('/')[0],
-              repo: runner.owner.split('/')[1],
-              per_page: 1,
-            });
-      requireTime(remainingTime);
-      metricGitHubAppRateLimit(access.headers);
+      // Failover may select a different App for each request. Confirm absence
+      // through a complete accessible listing, rather than just proving that
+      // another App can access the owner after the first App returned 404.
+      for (let page = 1; ; page++) {
+        requireTime(remainingTime);
+        const access =
+          runner.type === 'Org'
+            ? await client.actions.listSelfHostedRunnersForOrg({ org: runner.owner, per_page: 100, page })
+            : await client.actions.listSelfHostedRunnersForRepo({
+                owner: runner.owner.split('/')[0],
+                repo: runner.owner.split('/')[1],
+                per_page: 100,
+                page,
+              });
+        requireTime(remainingTime);
+        const registered = access.data.runners.find((candidate) => candidate.id === runnerId);
+        if (registered) return registered;
+        if (access.data.runners.length < 100) break;
+      }
       logger.info(`Runner '${runner.id}' with GitHub Runner ID '${runnerId}' not found on GitHub (404)`);
       return null;
     }

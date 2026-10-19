@@ -45,3 +45,7 @@ defineScaleDownContractTests<ComputeProviderType>({
   resolveCapability: mockedResolveCapability,
   scaleDown,
 });
+
+vi.mock('../github/app-failover', () => ({
+  withAppFailover: async (index: number, create: (index: number) => Promise<unknown>) => create(index),
+}));

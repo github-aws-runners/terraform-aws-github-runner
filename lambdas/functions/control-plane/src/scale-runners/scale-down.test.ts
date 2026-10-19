@@ -997,9 +997,50 @@ describe('Scale down runners', () => {
         get.mockRejectedValue(missing);
         list.mockRejectedValue(missing);
         await scaleDown();
-        expect(list).toHaveBeenCalledWith(expect.objectContaining({ per_page: 1 }));
+        expect(list).toHaveBeenCalledWith(expect.objectContaining({ per_page: 100 }));
         expect(mockTerminateRunners).not.toHaveBeenCalled();
         expect(mockMarkOrphan).not.toHaveBeenCalled();
+      });
+
+      it('retains an orphan found on a later collection page after an App returns 404', async () => {
+        const runner = createRunnerTestData(
+          'failover-access',
+          type,
+          MINIMUM_BOOT_TIME + 1,
+          false,
+          true,
+          true,
+          undefined,
+          1234567890,
+        );
+        mockGitHubRunners([]);
+        mockProviderRunners([runner]);
+        const get =
+          type === 'Repo'
+            ? mockOctokit.actions.getSelfHostedRunnerForRepo
+            : mockOctokit.actions.getSelfHostedRunnerForOrg;
+        const list =
+          type === 'Repo'
+            ? mockOctokit.actions.listSelfHostedRunnersForRepo
+            : mockOctokit.actions.listSelfHostedRunnersForOrg;
+        get.mockRejectedValueOnce(
+          new RequestError('Not found', 404, {
+            request: { method: 'GET', url: 'https://api.github.com/test', headers: {} },
+          }),
+        );
+        list.mockResolvedValueOnce({
+          data: { runners: Array.from({ length: 100 }, (_, id) => ({ id })) },
+          headers: {},
+        });
+        list.mockResolvedValueOnce({
+          data: { runners: [{ id: 1234567890, busy: true, name: runner.id }] },
+          headers: {},
+        });
+        await scaleDown();
+        expect(list).toHaveBeenCalledWith(expect.objectContaining({ per_page: 100, page: 2 }));
+        expect(mockTerminateRunners).not.toHaveBeenCalled();
+        expect(mockOctokit.actions.deleteSelfHostedRunnerFromOrg).not.toHaveBeenCalled();
+        expect(mockOctokit.actions.deleteSelfHostedRunnerFromRepo).not.toHaveBeenCalled();
       });
 
       it('retains an orphan when the deadline expires before collection access verification', async () => {
