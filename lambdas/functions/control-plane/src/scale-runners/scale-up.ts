@@ -127,7 +127,6 @@ export async function scaleUp(payloads: ActionRequestMessageSQS[]): Promise<stri
     ...controlPlaneProviderRegistry.capability(computeProviderType, 'scaleUp')(),
     type: computeProviderType,
   };
-
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
 
   // A map of either owner or owner/repo name to Octokit client, so we use a
