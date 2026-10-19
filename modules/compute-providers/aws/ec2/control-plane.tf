@@ -143,6 +143,18 @@ data "aws_iam_policy_document" "pool" {
 
   statement {
     effect    = "Allow"
+    actions   = ["ec2:TerminateInstances"]
+    resources = ["*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "ec2:ResourceTag/ghr:Application"
+      values   = ["github-action-runner"]
+    }
+  }
+
+  statement {
+    effect    = "Allow"
     actions   = ["iam:PassRole"]
     resources = [var.runner.iam.role.arn]
   }
