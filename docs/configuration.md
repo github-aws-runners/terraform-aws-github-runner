@@ -21,6 +21,12 @@ The module uses the AWS System Manager Parameter Store to store configuration fo
 
 For the experimental multi-runner configuration, set `multi_runner_config.<lane>.storage_provider.aws.ssm.ttl_seconds.tokens` to configure the token TTL. Stable configurations use `ssm_ttl_seconds.tokens` (under `runner_config` for multi-runner lanes); it is translated to the same nested setting. An omitted TTL leaves native expiration disabled.
 
+The SSM housekeeper collects eligible names across listing pages and sends a `DeleteParameters` request whenever it has 10 names, waiting 350 ms before each batch. Any partial batch is flushed when listing finishes or fails, provided enough runtime remains. It stops listing new pages with less than twenty seconds remaining, reserving time to flush a partial batch, and stops sending delete requests with less than ten seconds remaining, including a time check after the delay. This reduces API calls while pacing each invocation below the default three delete requests per second. The quota is shared across the AWS account and Region, so concurrent housekeepers and other clients can still cause throttling. The AWS SDK retries retryable failures; if a batch still fails, the housekeeper logs it and continues with later batches. Parameters left behind remain eligible for a later scheduled run. Names returned in `InvalidParameters` are logged separately. The configured minimum age still applies, and dry-run mode sends no delete requests.
+
+Each batch logs `Successfully deleted expired runner configuration batch` only for names acknowledged in AWS's `DeletedParameters` response, with `deletedCount`. Sum `deletedCount` to measure confirmed deletions; counting these log entries measures successful batches. The `Runner configuration cleanup summary` log reports parameter counts: `attempted` (submitted names, excluding SDK retries), `deleted` (AWS-confirmed names), `failed` (invalid names or names in failed requests), `skipped` (ineligible entries), and `pending` (buffered names not submitted). It includes `dryRun` and a `status` of `completed`, `runtime-limit`, or `listing-failed`; completed means the scan finished, not that every deletion succeeded. Dry runs report no deletion attempts or successes. Summaries are emitted on normal completion, guarded runtime exits, and listing failures, but cannot be guaranteed after a hard Lambda timeout.
+
+When upgrading the housekeeper Lambda, also apply the Terraform IAM changes granting `ssm:DeleteParameters`; the singular `ssm:DeleteParameter` permission does not authorize batch deletion. Custom IAM policies must grant the batch action for the runner token path as well.
+
 Furthermore, to accommodate larger JIT configurations or other stored values, the module implements automatic tier selection for SSM parameters:
 
 - **Parameter Tiering**: If the size of a parameter's value exceeds 4KB (specifically, 4000 bytes), the module will automatically use the 'Advanced' tier for that SSM parameter. Values smaller than this threshold will use the 'Standard' tier.
@@ -560,6 +566,7 @@ When `use_dedicated_host = true`, runner instances are launched with `RunInstanc
 | Label                                | Description                | Example value    | EC2 Fleet | Dedicated host |
 | ------------------------------------ | -------------------------- | ---------------- | --------- | -------------- |
 | `ghr-ec2-instance-type:<type>`       | Set specific instance type | `c5.xlarge`      | Yes       | Yes            |
+| `ghr-ec2-capacity-type:<type>`       | Set the capacity type      | `on-demand`      | Yes       | No             |
 | `ghr-ec2-max-price:<price>`          | Set maximum spot price     | `0.10`           | Yes       | No             |
 | `ghr-ec2-subnet-id:<id>`             | Set subnet ID              | `subnet-abc123`  | Yes       | Yes            |
 | `ghr-ec2-availability-zone:<zone>`   | Set availability zone      | `us-east-1a`     | Yes       | Yes            |
@@ -567,6 +574,27 @@ When `use_dedicated_host = true`, runner instances are launched with `RunInstanc
 | `ghr-ec2-weighted-capacity:<number>` | Set weighted capacity      | `2`              | Yes       | No             |
 | `ghr-ec2-priority:<number>`          | Set launch priority        | `1`              | Yes       | No             |
 | `ghr-ec2-image-id:<ami-id>`          | Override AMI ID            | `ami-0abcdef123` | Yes       | Yes            |
+
+##### Capacity type
+
+`ghr-ec2-capacity-type` selects spot or on-demand for the runner created for a job. It overrides `instance_target_capacity_type` of the runner configuration. Only `spot` and `on-demand` are accepted. Any other value is rejected and the job is not retried.
+
+- With `use_dedicated_host = true` the label is ignored, because `RunInstances` does not support spot. A `spot` value writes a warning to the log.
+- `ghr-ec2-max-price` only applies to spot. It is not passed to the fleet request when the capacity type is `on-demand`.
+- On-demand failover (`enable_on_demand_failover_for_errors`) follows the capacity type of the request. It applies to jobs that use spot and never to jobs that use on-demand.
+- Tags for spot requests are defined in the launch template, and only when the default capacity type is spot without on-demand failover. A spot request created for a job that overrides the capacity type in another configuration does not get these tags.
+
+To allow only spot, restrict the key in the dynamic labels policy:
+
+```hcl
+aws_dynamic_labels_policy = {
+  restricted_keys = {
+    "capacity-type" = {
+      allowed = ["spot"]
+    }
+  }
+}
+```
 
 ##### Instance Requirements — vCPU & Memory
 

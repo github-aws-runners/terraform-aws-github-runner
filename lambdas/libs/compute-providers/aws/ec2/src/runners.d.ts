@@ -25,6 +25,7 @@ export interface Ec2OverrideConfig {
   InstanceRequirements?: InstanceRequirementsRequest;
   ImageId?: string;
   AvailabilityZoneId?: string;
+  TargetCapacityType?: 'spot' | 'on-demand';
 }
 
 export interface RunnerInputParameters {

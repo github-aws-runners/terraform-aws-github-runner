@@ -10,6 +10,19 @@ mock_provider "aws" {
       arn = "arn:aws:iam::123456789012:role/scale-runners-test"
     }
   }
+
+  mock_resource "aws_lambda_function" {
+    defaults = {
+      arn = "arn:aws-us-gov:lambda:us-gov-west-1:123456789012:function:mock-function"
+    }
+  }
+
+  mock_resource "aws_cloudwatch_event_rule" {
+    defaults = {
+      arn = "arn:aws-us-gov:events:us-gov-west-1:123456789012:rule/mock-event-rule"
+    }
+  }
+
 }
 
 variables {
@@ -409,18 +422,87 @@ run "omits_optional_kms_statements" {
   command = plan
 
   variables {
-    config = merge(var.config, {
-      queue = merge(var.config.queue, {
-        kms_key_id = null
-      })
-    })
-    storage_provider = merge(var.storage_provider, {
-      aws = merge(var.storage_provider.aws, {
-        ssm = merge(var.storage_provider.aws.ssm, {
-          kms_key_id = null
-        })
-      })
-    })
+    config = {
+      prefix = "scale-runners-test"
+      lambda = {
+        artifact     = { zip = "runners.zip", s3 = { bucket = "lambda-artifacts", key = "runners.zip" } }
+        runtime      = "nodejs24.x"
+        architecture = "arm64"
+        vpc          = { subnet_ids = [], security_group_ids = [] }
+        role         = { path = "/scale-runners-test/" }
+      }
+      runner = {
+        os                   = "linux"
+        auto_update_disabled = false
+        ephemeral            = true
+        labels               = ["self-hosted", "linux"]
+        group_name           = "default"
+        name_prefix          = "test-"
+        boot_time_in_minutes = 10
+        maximum_count        = 10
+      }
+      github = {
+        organization_runners = true
+        enterprise_server    = { url = null, ssl_verify = true }
+        app_parameters = {
+          key_base64 = {
+            name = "/github-runner/key-base64"
+            arn  = "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/key-base64"
+          }
+          id = {
+            name = "/github-runner/app-id"
+            arn  = "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/app-id"
+          }
+        }
+      }
+      queue = {
+        build                = { arn = "arn:aws-us-gov:sqs:us-gov-west-1:123456789012:build-queue" }
+        kms_key_id           = null
+        event_source_mapping = { batch_size = 10, maximum_batching_window_in_seconds = 0 }
+      }
+      observability = {
+        logs    = { level = "info", retention_in_days = 14, class = "STANDARD" }
+        tracing = { capture_http_requests = false, capture_error = false }
+        metrics = {
+          enabled   = false
+          namespace = "ScaleRunnersTest"
+          metric    = { github_app_rate_limit = { enabled = false } }
+        }
+      }
+      scale_up = {
+        memory_size                    = 512
+        timeout                        = 60
+        reserved_concurrent_executions = 1
+        job_queued_check_enabled       = false
+        tags                           = { resources = {}, lambda = {}, log_group = {}, event_source_mapping = {} }
+      }
+      scale_down = {
+        memory_size         = 512
+        timeout             = 60
+        schedule_expression = "rate(10 minutes)"
+        idle_config         = []
+        tags                = { resources = {}, lambda = {}, log_group = {} }
+      }
+      job_retry = {
+        enabled          = false
+        max_attempts     = 3
+        delay_in_seconds = 60
+        delay_backoff    = 1
+        queue            = null
+      }
+    }
+    storage_provider = {
+      aws = {
+        ssm = {
+          token_path           = "/github-runner/tokens"
+          token_path_arn       = "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/tokens"
+          config_path          = "/github-runner/config"
+          config_path_arn      = "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/config"
+          parameter_store_tags = "[]"
+          kms_key_id           = null
+        }
+      }
+    }
   }
 
   assert {
@@ -448,12 +530,75 @@ run "requires_job_retry_queue_when_enabled" {
   }
 
   variables {
-    config = merge(var.config, {
-      job_retry = merge(var.config.job_retry, {
-        enabled = true
-        queue   = null
-      })
-    })
+    config = {
+      prefix = "scale-runners-test"
+      lambda = {
+        artifact     = { zip = "runners.zip", s3 = { bucket = "lambda-artifacts", key = "runners.zip" } }
+        runtime      = "nodejs24.x"
+        architecture = "arm64"
+        vpc          = { subnet_ids = [], security_group_ids = [] }
+        role         = { path = "/scale-runners-test/" }
+      }
+      runner = {
+        os                   = "linux"
+        auto_update_disabled = false
+        ephemeral            = true
+        labels               = ["self-hosted", "linux"]
+        group_name           = "default"
+        name_prefix          = "test-"
+        boot_time_in_minutes = 10
+        maximum_count        = 10
+      }
+      github = {
+        organization_runners = true
+        enterprise_server    = { url = null, ssl_verify = true }
+        app_parameters = {
+          key_base64 = {
+            name = "/github-runner/key-base64"
+            arn  = "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/key-base64"
+          }
+          id = {
+            name = "/github-runner/app-id"
+            arn  = "arn:aws-us-gov:ssm:us-gov-west-1:123456789012:parameter/github-runner/app-id"
+          }
+        }
+      }
+      queue = {
+        build                = { arn = "arn:aws-us-gov:sqs:us-gov-west-1:123456789012:build-queue" }
+        kms_key_id           = null
+        event_source_mapping = { batch_size = 10, maximum_batching_window_in_seconds = 0 }
+      }
+      observability = {
+        logs    = { level = "info", retention_in_days = 14, class = "STANDARD" }
+        tracing = { capture_http_requests = false, capture_error = false }
+        metrics = {
+          enabled   = false
+          namespace = "ScaleRunnersTest"
+          metric    = { github_app_rate_limit = { enabled = false } }
+        }
+      }
+      scale_up = {
+        memory_size                    = 512
+        timeout                        = 60
+        reserved_concurrent_executions = 1
+        job_queued_check_enabled       = false
+        tags                           = { resources = {}, lambda = {}, log_group = {}, event_source_mapping = {} }
+      }
+      scale_down = {
+        memory_size         = 512
+        timeout             = 60
+        schedule_expression = "rate(10 minutes)"
+        idle_config         = []
+        tags                = { resources = {}, lambda = {}, log_group = {} }
+      }
+      job_retry = {
+        enabled          = true
+        max_attempts     = 3
+        delay_in_seconds = 60
+        delay_backoff    = 1
+        queue            = null
+      }
+    }
   }
 
   expect_failures = [terraform_data.validate_config]
