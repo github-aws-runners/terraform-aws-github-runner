@@ -71,6 +71,7 @@ export function createTemplateScaleDownCapability(): Omit<ScaleDownComputeProvid
     // window (SCALE_DOWN_IDLE_CONFIRMATION_SECONDS). Only called when the window is enabled.
     markIdle: async (id, at) => notImplemented(`scaleDown.markIdle(${id}, ${at})`),
     unmarkIdle: async (id) => notImplemented(`scaleDown.unmarkIdle(${id})`),
+    describe: async (id) => notImplemented(`scaleDown.describe(${id})`),
     terminate: async (id) => notImplemented(`scaleDown.terminate(${id})`),
   };
 }

@@ -59,6 +59,7 @@ const mockComputeProvider = {
   unmarkOrphan: vi.fn(),
   markIdle: vi.fn(),
   unmarkIdle: vi.fn(),
+  describe: vi.fn(),
   terminate: vi.fn(),
 } satisfies Omit<ScaleDownComputeProvider, 'type'>;
 
@@ -72,6 +73,7 @@ const mockMarkOrphan = vi.mocked(mockComputeProvider.markOrphan);
 const mockUnmarkOrphan = vi.mocked(mockComputeProvider.unmarkOrphan);
 const mockMarkIdle = vi.mocked(mockComputeProvider.markIdle);
 const mockUnmarkIdle = vi.mocked(mockComputeProvider.unmarkIdle);
+const mockDescribeRunner = vi.mocked(mockComputeProvider.describe);
 const mockTerminateRunners = vi.mocked(mockComputeProvider.terminate);
 
 const cleanEnv = process.env;
@@ -847,6 +849,34 @@ describe('Scale down runners', () => {
         checkNonTerminated(runners);
       });
 
+      it(`Should not terminate a runner tagged bypass-removal after the cycle listed it.`, async () => {
+        const runners = [
+          createRunnerTestData('tagged-after-list', type, MINIMUM_TIME_RUNNING_IN_MINUTES + 10, true, false, false),
+        ];
+        mockGitHubRunners(runners);
+        mockProviderRunners(runners);
+        mockDescribeRunner.mockResolvedValue({ ...runners[0], bypassRemoval: true });
+
+        await scaleDown();
+
+        expect(mockOctokit.actions.deleteSelfHostedRunnerFromOrg).not.toHaveBeenCalled();
+        expect(mockOctokit.actions.deleteSelfHostedRunnerFromRepo).not.toHaveBeenCalled();
+        expect(mockTerminateRunners).not.toHaveBeenCalled();
+      });
+
+      it(`Should not terminate a runner that disappeared during the cycle.`, async () => {
+        const runners = [createRunnerTestData('gone', type, MINIMUM_TIME_RUNNING_IN_MINUTES + 10, true, false, false)];
+        mockGitHubRunners(runners);
+        mockProviderRunners(runners);
+        mockDescribeRunner.mockResolvedValue(undefined);
+
+        await scaleDown();
+
+        expect(mockOctokit.actions.deleteSelfHostedRunnerFromOrg).not.toHaveBeenCalled();
+        expect(mockOctokit.actions.deleteSelfHostedRunnerFromRepo).not.toHaveBeenCalled();
+        expect(mockTerminateRunners).not.toHaveBeenCalled();
+      });
+
       it(`Should not terminate orphaned runner with bypass-removal tag set.`, async () => {
         const orphanRunner = createRunnerTestData('orphan-bypass', type, MINIMUM_BOOT_TIME + 1, false, false, false);
         orphanRunner.bypassRemoval = true;
@@ -1456,6 +1486,19 @@ describe('Scale down runners', () => {
       expect(mockTerminateRunners).not.toHaveBeenCalled();
     });
 
+    it('decides on the current marker, not the list snapshot', async () => {
+      const runners = [createRunnerTestData('idle-1', 'Org', MINIMUM_TIME_RUNNING_IN_MINUTES + 1, true, false, false)];
+      runners[0].idleDetectedAt = new Date(Date.now() - (CONFIRMATION_SECONDS + 60) * 1000).toISOString();
+      mockGitHubRunners(runners);
+      mockProviderRunners(runners);
+      mockDescribeRunner.mockResolvedValue({ ...runners[0], idleDetectedAt: undefined });
+
+      await scaleDown();
+
+      expect(mockMarkIdle).toHaveBeenCalledWith(runners[0].id, expect.any(String));
+      expect(mockTerminateRunners).not.toHaveBeenCalled();
+    });
+
     it('terminates on a single reading when the window is disabled (0)', async () => {
       process.env.SCALE_DOWN_IDLE_CONFIRMATION_SECONDS = '0';
       const runners = [createRunnerTestData('idle-1', 'Org', MINIMUM_TIME_RUNNING_IN_MINUTES + 1, true, false, true)];
@@ -1474,6 +1517,7 @@ function mockProviderRunners(runners: RunnerTestItem[]) {
   mockListRunners.mockImplementation(async (_environment, orphan) => {
     return runners.filter((runner) => !orphan || orphan === runner.orphan);
   });
+  mockDescribeRunner.mockImplementation(async (id) => runners.find((runner) => runner.id === id));
 }
 
 function checkNonTerminated(runners: RunnerTestItem[]) {

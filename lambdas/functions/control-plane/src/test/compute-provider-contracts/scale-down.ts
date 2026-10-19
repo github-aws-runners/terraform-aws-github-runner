@@ -36,6 +36,7 @@ export function defineScaleDownContractTests<TType extends string>({
         vi.mocked(provider.unmarkOrphan).mockResolvedValue();
         vi.mocked(provider.markIdle).mockResolvedValue();
         vi.mocked(provider.unmarkIdle).mockResolvedValue();
+        vi.mocked(provider.describe).mockImplementation(async (id) => ({ id, owner: 'owner', type: 'Org' }));
         vi.mocked(provider.terminate).mockResolvedValue();
       });
 
