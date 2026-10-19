@@ -1,0 +1,88 @@
+{
+  "ami_id_ssm_parameter_arn": "arn:aws:ssm:eu-west-1:123456789012:parameter/test/ami",
+  "ami_id_ssm_parameter_name": null,
+  "ami_id_ssm_parameter_read_policy_arn": null,
+  "ami_kms_key_arn": "",
+  "arn_ssm_parameters_path_config": "arn:aws:ssm:eu-west-1:123456789012:parameter/test/config",
+  "enable_multi_org_runners": true,
+  "ghes": {
+    "ssl_verify": "true",
+    "url": null
+  },
+  "github_app_parameters": {
+    "id": {
+      "arn": "arn:aws:ssm:eu-west-1:123456789012:parameter/test/app-id",
+      "name": "/test/app-id"
+    },
+    "key_base64": {
+      "arn": "arn:aws:ssm:eu-west-1:123456789012:parameter/test/app-key",
+      "name": "/test/app-key"
+    }
+  },
+  "include_busy_runners": false,
+  "instance_allocation_strategy": "lowest-price",
+  "instance_max_spot_price": null,
+  "instance_target_capacity_type": "spot",
+  "instance_types": [
+    "m5.large"
+  ],
+  "kms_key_arn": "",
+  "lambda": {
+    "architecture": "arm64",
+    "log_class": "STANDARD",
+    "log_level": "info",
+    "logging_kms_key_id": null,
+    "logging_retention_in_days": 14,
+    "memory_size": 256,
+    "parameter_store_tags": "{}",
+    "reserved_concurrent_executions": 1,
+    "runtime": "nodejs24.x",
+    "s3_bucket": "lambda-artifacts",
+    "s3_key": "runners.zip",
+    "s3_object_version": null,
+    "security_group_ids": [],
+    "subnet_ids": [],
+    "timeout": 60,
+    "zip": null
+  },
+  "lambda_tags": {},
+  "pool": [
+    {
+      "schedule_expression": "cron(0 8 * * ? *)",
+      "schedule_expression_timezone": "UTC",
+      "size": 1
+    }
+  ],
+  "prefix": "pool-login-test",
+  "role_path": "/",
+  "role_permissions_boundary": null,
+  "runner": {
+    "boot_time_in_minutes": 5,
+    "disable_runner_autoupdate": false,
+    "enable_jit_config": true,
+    "enable_on_demand_failover_for_errors": [],
+    "ephemeral": true,
+    "group_name": "Default",
+    "labels": [
+      "self-hosted"
+    ],
+    "launch_template": {
+      "name": "test"
+    },
+    "name_prefix": "test",
+    "pool_owner": "default-org",
+    "role": {
+      "arn": "arn:aws:iam::123456789012:role/runner"
+    },
+    "scale_errors": [],
+    "use_dedicated_host": false
+  },
+  "runners_maximum_count": 10,
+  "ssm_config_path": "/test/config",
+  "ssm_token_path": "/test/tokens",
+  "subnet_ids": [
+    "subnet-test"
+  ],
+  "tags": {},
+  "user_agent": "terraform-aws-github-runner"
+}
