@@ -15,6 +15,11 @@ locals {
 
   name_sg     = var.config.overrides.name_sg == "" ? local.provider_tags["Name"] : var.config.overrides.name_sg
   name_runner = var.config.overrides.name_runner == "" ? local.provider_tags["Name"] : var.config.overrides.name_runner
+
+  launch_template_variants = var.config.instance_capacity_type_override_enabled ? ["default", "on_demand_override"] : ["default"]
+
+  on_demand_override_launch_template_created = contains(local.launch_template_variants, "on_demand_override")
+
   runner_tags = merge(
     local.provider_tags,
     {
@@ -118,7 +123,9 @@ locals {
 }
 
 resource "aws_launch_template" "runner" {
-  name = "${var.prefix}-action-runner"
+  for_each = toset(local.launch_template_variants)
+
+  name = each.key == "default" ? "${var.prefix}-action-runner" : "${var.prefix}-action-runner-on-demand-override"
 
   dynamic "block_device_mappings" {
     for_each = var.config.block_device_mappings != null ? var.config.block_device_mappings : []
@@ -230,7 +237,7 @@ resource "aws_launch_template" "runner" {
   # Additionally, tagging spot requests via the CreateFleetCommand in the Lambda function does not work as expected,
   # so we rely on Terraform to manage these tags only when spot is exclusively used without on-demand failover.
   dynamic "tag_specifications" {
-    for_each = var.config.instance_target_capacity_type == "spot" && length(var.config.on_demand_failover_for_errors) == 0 ? [1] : [] # Include the block only if the value is "spot" and on_demand_failover_for_errors is not enabled
+    for_each = each.key == "default" && var.config.instance_target_capacity_type == "spot" && length(var.config.on_demand_failover_for_errors) == 0 ? [1] : [] # Include the block only if the value is "spot" and on_demand_failover_for_errors is not enabled
     content {
       resource_type = "spot-instances-request"
       tags          = local.runner_tags
@@ -295,6 +302,11 @@ resource "aws_launch_template" "runner" {
       }
     }
   }
+}
+
+moved {
+  from = aws_launch_template.runner
+  to   = aws_launch_template.runner["default"]
 }
 
 resource "aws_security_group" "runner_sg" {

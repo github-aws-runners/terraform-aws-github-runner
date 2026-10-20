@@ -225,6 +225,60 @@ run "v1_stable_inputs_translate_into_effective_base" {
   }
 }
 
+run "v1_runner_type_with_dynamic_labels_gets_on_demand_override_launch_template" {
+  command = plan
+
+  variables {
+    vpc_id     = "vpc-stable"
+    subnet_ids = ["subnet-stable"]
+
+    github_app = {
+      key_base64_ssm = {
+        arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/tests/github-app/key"
+        name = "/tests/github-app/key"
+      }
+      id_ssm = {
+        arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/tests/github-app/id"
+        name = "/tests/github-app/id"
+      }
+      webhook_secret_ssm = {
+        arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/tests/github-app/webhook-secret"
+        name = "/tests/github-app/webhook-secret"
+      }
+    }
+
+    lambda_s3_bucket      = "test-lambda-artifacts"
+    runners_lambda_zip    = "README.md"
+    runners_lambda_s3_key = "runners.zip"
+    webhook_lambda_s3_key = "webhook.zip"
+    syncer_lambda_s3_key  = "runner-binaries-syncer.zip"
+
+    multi_runner_config = {
+      stable = {
+        runner_config = {
+          runner_os             = "linux"
+          runner_architecture   = "x64"
+          instance_types        = ["m5.large"]
+          runners_maximum_count = 2
+          runner_group_name     = "v1-lane"
+        }
+        matcherConfig = {
+          labelMatchers       = [["self-hosted", "linux", "x64"]]
+          enableDynamicLabels = true
+        }
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      module.runners["stable"].lambda_scale_up.environment[0].variables["ON_DEMAND_OVERRIDE_LAUNCH_TEMPLATE_NAME"] != ""
+    )
+    error_message = "A stable (v1) runner type with dynamic labels enabled must get an on-demand-override launch template, the same as the experimental v2 path."
+  }
+}
+
+
 run "v2_inputs_resolve_lane_over_global" {
   command = plan
 
@@ -430,6 +484,62 @@ run "v2_inputs_resolve_lane_over_global" {
     )
     error_message = "Experimental v2 configurations must route through module.runner_configs and skip the legacy runners module."
   }
+
+  assert {
+    condition = (
+      module.runner_configs["lane"].scale_up.lambda.environment[0].variables["ON_DEMAND_OVERRIDE_LAUNCH_TEMPLATE_NAME"] != ""
+    )
+    error_message = "A runner config with dynamic labels enabled must get an on-demand-override launch template name, even when on_demand_failover_for_errors is also configured, since override-variant creation is driven solely by the plan-known override-enabled flag."
+  }
+}
+
+run "v2_runner_type_with_dynamic_labels_gets_on_demand_override_launch_template" {
+  command = plan
+
+  variables {
+    experimental_features = ["multi-runner-v2"]
+
+    global_config_compute_provider = {
+      aws = {
+        ec2 = {
+          vpc_id     = "vpc-v2"
+          subnet_ids = ["subnet-v2"]
+          runner_binaries = {
+            enabled = false
+          }
+        }
+      }
+    }
+    multi_runner_config = {
+      lane = {
+        orchestration_provider = {
+          webhook = {
+            matcherConfig = {
+              labelMatchers          = [["self-hosted", "linux", "x64"]]
+              dynamic_labels_enabled = true
+            }
+          }
+        }
+        compute_provider = {
+          aws = {
+            ec2 = {
+              instance_types = ["m5.large"]
+              binaries_syncer = {
+                enabled = false
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      module.runner_configs["lane"].scale_up.lambda.environment[0].variables["ON_DEMAND_OVERRIDE_LAUNCH_TEMPLATE_NAME"] != ""
+    )
+    error_message = "An experimental (v2) runner type with dynamic labels enabled and no on-demand failover must get an on-demand-override launch template."
+  }
 }
 
 run "v2_inputs_do_not_require_legacy_arguments" {
@@ -489,6 +599,13 @@ run "v2_inputs_do_not_require_legacy_arguments" {
       && local.resolved_config.multi_runner_config["lane"].orchestration_provider.webhook.job_retry.lambda.reserved_concurrent_executions == null
     )
     error_message = "The v2 interface must work without the stable v1 GitHub App, VPC, subnet, or runner configuration inputs."
+  }
+
+  assert {
+    condition = (
+      module.runner_configs["lane"].scale_up.lambda.environment[0].variables["ON_DEMAND_OVERRIDE_LAUNCH_TEMPLATE_NAME"] == ""
+    )
+    error_message = "A runner config without dynamic labels enabled must not surface an on-demand-override launch template name."
   }
 }
 

@@ -58,6 +58,7 @@ variable "config" {
     - `block_device_mappings[].volume_type`: EBS volume type.
     - `ebs_optimized`: Requests EBS-optimized instances.
     - `instance_target_capacity_type`: Primary capacity type, either `spot` or `on-demand`.
+    - `instance_capacity_type_override_enabled`: Allows a per-job label to override capacity type to `on-demand` at launch time. When true, an additional launch template variant without the Spot-request tag specification is created so an on-demand override never conflicts with it.
     - `instance_allocation_strategy`: EC2 Fleet allocation strategy.
     - `instance_type_priorities`: Optional numeric priorities keyed by instance type.
     - `instance_max_spot_price`: Optional maximum hourly Spot price.
@@ -166,12 +167,13 @@ variable "config" {
       volume_size                = number
       volume_type                = optional(string, "gp3")
     })), [{ volume_size = 30 }])
-    ebs_optimized                 = optional(bool, false)
-    instance_target_capacity_type = optional(string, "spot")
-    instance_allocation_strategy  = optional(string, "lowest-price")
-    instance_type_priorities      = optional(map(number), null)
-    instance_max_spot_price       = optional(string, null)
-    instance_types                = list(string)
+    ebs_optimized                           = optional(bool, false)
+    instance_target_capacity_type           = optional(string, "spot")
+    instance_capacity_type_override_enabled = optional(bool, false)
+    instance_allocation_strategy            = optional(string, "lowest-price")
+    instance_type_priorities                = optional(map(number), null)
+    instance_max_spot_price                 = optional(string, null)
+    instance_types                          = list(string)
     user_data = optional(object({
       enabled               = optional(bool, true)
       template              = optional(string, null)

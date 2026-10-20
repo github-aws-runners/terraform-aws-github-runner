@@ -17,7 +17,7 @@ IGNORED_RESOURCE_ADDRESS_SUFFIXES = {
     # The v1 and v2 queue policies intentionally use different statements.
     ".aws_sqs_queue_policy.job_retry_check_queue_policy",
     # The v2 launch template adds propagated tags and reports computed versions.
-    ".aws_launch_template.runner",
+    ".aws_launch_template.runner[\"default\"]",
 }
 IGNORED_TAG_KEYS = {"Name", "ghr:ssm_config_path"}
 IGNORED_LAMBDA_ENVIRONMENT_KEYS = {
@@ -28,6 +28,8 @@ IGNORED_LAMBDA_ENVIRONMENT_KEYS = {
     },
     ".aws_lambda_function.pool": {
         "SSM_PARAMETER_STORE_TAGS",
+        # The v2 pool lambda shares the scale-up environment, which always exposes this key.
+        "ON_DEMAND_OVERRIDE_LAUNCH_TEMPLATE_NAME",
     },
     ".aws_lambda_function.scale_up": {
         "SSM_PARAMETER_STORE_TAGS",
