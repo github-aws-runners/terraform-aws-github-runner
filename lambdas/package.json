@@ -21,12 +21,16 @@
   "resolutions": {
     "@octokit/types": "^13.0.0",
     "brace-expansion": "^2.1.7",
+    "fast-uri": "^3.1.8",
+    "fast-xml-parser": "^5.7.0",
     "@babel/helpers": "^7.26.10",
     "@babel/runtime": "^7.26.10",
     "js-yaml": "^3.15.2",
     "smol-toml": "^1.7.1",
     "proxy-addr": "2.0.8",
-    "axios": "^1.20.0"
+    "axios": "^1.20.0",
+    "nanoid": "^3.3.18",
+    "qs": "^6.16.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
