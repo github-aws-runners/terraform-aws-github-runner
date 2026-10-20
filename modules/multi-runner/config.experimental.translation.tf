@@ -309,6 +309,7 @@ locals {
           }
         }
       }
+      microvm = null
     }
   }
 
@@ -570,6 +571,7 @@ locals {
             log_files                     = v.runner_config.runner_log_files
             tags                          = v.runner_config.runner_ec2_tags
           }
+          microvm = null
         }
       }
     }

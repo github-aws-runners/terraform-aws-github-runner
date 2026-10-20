@@ -47,6 +47,7 @@ resource "aws_lambda_function" "scale_down" {
       POWERTOOLS_TRACER_CAPTURE_HTTPS_REQUESTS = var.tracing_config.capture_http_requests
       POWERTOOLS_TRACER_CAPTURE_ERROR          = var.tracing_config.capture_error
       COMPUTE_PROVIDER_TYPE                    = "ec2"
+      SSM_TOKEN_PATH                           = local.token_path
     }
   }
 

@@ -6,9 +6,12 @@ locals {
 
   runner_matcher_config = {
     for k, v in local.webhook_runner_config : k => {
-      id              = aws_sqs_queue.queued_builds[k].id
-      arn             = aws_sqs_queue.queued_builds[k].arn
-      computeProvider = "ec2"
+      id  = aws_sqs_queue.queued_builds[k].id
+      arn = aws_sqs_queue.queued_builds[k].arn
+      computeProvider = one([
+        for provider_type, provider_config in v.compute_provider.aws : provider_type
+        if provider_config != null
+      ])
       matcherConfig = {
         labelMatchers           = v.orchestration_provider.webhook.matcherConfig.labelMatchers
         exactMatch              = v.orchestration_provider.webhook.matcherConfig.exactMatch
