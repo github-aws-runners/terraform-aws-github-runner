@@ -25,7 +25,8 @@
     "@babel/runtime": "^7.26.10",
     "js-yaml": "^3.15.2",
     "smol-toml": "^1.7.1",
-    "proxy-addr": "2.0.8"
+    "proxy-addr": "2.0.8",
+    "axios": "^1.20.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
