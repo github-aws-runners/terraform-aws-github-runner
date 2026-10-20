@@ -254,18 +254,25 @@ async function removeRunner(
     );
 
     if (states.every((busy) => busy === false)) {
-      // Re-read the runner, the list snapshot may be stale by now.
-      const current = await computeProvider.describe(runner.id);
-      if (current === undefined) {
-        logger.info(`Runner '${runner.id}' no longer exists, skipping removal.`);
+      if (!(await idleConfirmed(runner, computeProvider))) {
         return;
       }
-      if (current.bypassRemoval) {
+      // The list snapshot may be stale by now; re-read the runner before acting on it. Only runners
+      // that would otherwise be terminated reach this call, so it costs one describe per termination.
+      const current = await computeProvider.describe(runner.id);
+      if (current?.bypassRemoval) {
         logger.info(`Runner '${runner.id}' was tagged bypass-removal after the cycle started, skipping removal.`);
         return;
       }
-      if (!(await idleConfirmed(current, computeProvider))) {
+      if (
+        current &&
+        current.idleDetectedAt !== runner.idleDetectedAt &&
+        !(await idleConfirmed(current, computeProvider))
+      ) {
         return;
+      }
+      if (current === undefined) {
+        logger.info(`Runner '${runner.id}' no longer exists; de-registering its GitHub runner(s) without terminating.`);
       }
       const results = await Promise.all(
         ghRunnerIds.map((ghRunnerId) => deleteGitHubRunner(githubInstallationClient, runner, ghRunnerId)),
@@ -274,7 +281,11 @@ async function removeRunner(
       const allSucceeded = results.every((r) => r.success);
       const failedRunners = results.filter((r) => !r.success);
 
-      if (allSucceeded) {
+      if (allSucceeded && current === undefined) {
+        logger.info(
+          `GitHub runner for vanished ${computeProvider.type.toUpperCase()} runner '${runner.id}' is de-registered.`,
+        );
+      } else if (allSucceeded) {
         await computeProvider.terminate(runner.id);
         logger.info(
           `${computeProvider.type.toUpperCase()} runner '${runner.id}' is terminated and GitHub runner is de-registered.`,

@@ -354,7 +354,9 @@ describe('Scale down runners', () => {
         expect(mockTerminateRunners).not.toHaveBeenCalled();
       });
 
-      it(`Should not terminate a runner that disappeared during the cycle.`, async () => {
+      it(`Should de-register but not terminate a runner that disappeared during the cycle.`, async () => {
+        // The compute resource is gone, so nothing can be running on it; the GitHub registration
+        // must not be left behind.
         const runners = [createRunnerTestData('gone', type, MINIMUM_TIME_RUNNING_IN_MINUTES + 10, true, false, false)];
         mockGitHubRunners(runners);
         mockProviderRunners(runners);
@@ -362,8 +364,11 @@ describe('Scale down runners', () => {
 
         await scaleDown();
 
-        expect(mockOctokit.actions.deleteSelfHostedRunnerFromOrg).not.toHaveBeenCalled();
-        expect(mockOctokit.actions.deleteSelfHostedRunnerFromRepo).not.toHaveBeenCalled();
+        const deleteRunner =
+          type === 'Org'
+            ? mockOctokit.actions.deleteSelfHostedRunnerFromOrg
+            : mockOctokit.actions.deleteSelfHostedRunnerFromRepo;
+        expect(deleteRunner).toHaveBeenCalledTimes(1);
         expect(mockTerminateRunners).not.toHaveBeenCalled();
       });
 
@@ -798,6 +803,23 @@ describe('Scale down runners', () => {
       await scaleDown();
 
       expect(mockUnmarkIdle).toHaveBeenCalledWith(runners[0].id);
+      expect(mockTerminateRunners).not.toHaveBeenCalled();
+    });
+
+    it('does not re-read the runner while the window is still open', async () => {
+      // The re-read exists to guard the termination; a runner that is not about to be
+      // terminated does not pay for it.
+      const runners = [
+        createRunnerTestData('fresh', 'Org', MINIMUM_TIME_RUNNING_IN_MINUTES + 1, true, false, false),
+        createRunnerTestData('young', 'Org', MINIMUM_TIME_RUNNING_IN_MINUTES + 1, true, false, false),
+      ];
+      runners[1].idleDetectedAt = new Date(Date.now() - (CONFIRMATION_SECONDS - 240) * 1000).toISOString();
+      mockGitHubRunners(runners);
+      mockProviderRunners(runners);
+
+      await scaleDown();
+
+      expect(mockDescribeRunner).not.toHaveBeenCalled();
       expect(mockTerminateRunners).not.toHaveBeenCalled();
     });
 

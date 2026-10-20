@@ -34,7 +34,6 @@ it('exposes every configured provider through both capability registries', () =>
       markIdle: expect.any(Function),
       unmarkIdle: expect.any(Function),
       describe: expect.any(Function),
-      describe: expect.any(Function),
       terminate: expect.any(Function),
     });
     expect(webhookProviderRegistry.capability(type, 'dynamicLabels').getViolations).toEqual(expect.any(Function));

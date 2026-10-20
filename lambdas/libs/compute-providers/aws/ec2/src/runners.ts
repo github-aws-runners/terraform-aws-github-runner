@@ -146,11 +146,21 @@ async function describeEc2Runner(
   instanceId: string,
   signal: AbortSignal | undefined,
 ): Promise<RunnerInfo | undefined> {
-  const instances: DescribeInstancesResult = await ec2Client.send(
-    new DescribeInstancesCommand({ InstanceIds: [instanceId] }),
-    { abortSignal: signal },
-  );
-  return getRunnerInfo(instances)[0];
+  try {
+    const instances: DescribeInstancesResult = await ec2Client.send(
+      new DescribeInstancesCommand({
+        InstanceIds: [instanceId],
+        Filters: [{ Name: 'instance-state-name', Values: ['running', 'pending'] }],
+      }),
+      { abortSignal: signal },
+    );
+    return getRunnerInfo(instances)[0];
+  } catch (error) {
+    // EC2 forgets terminated instances after about an hour and then rejects the id instead of
+    // returning an empty result. Either way the runner is gone.
+    if (error instanceof Error && error.name === 'InvalidInstanceID.NotFound') return undefined;
+    throw error;
+  }
 }
 
 function getRunnerInfo(runningInstances: DescribeInstancesResult) {
