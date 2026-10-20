@@ -68,9 +68,12 @@ data "aws_iam_policy_document" "ami_id_ssm_parameter_read" {
   count = local.ami_id_ssm_external ? 1 : 0
 
   statement {
-    effect    = "Allow"
-    sid       = "AllowSSMParameterRead"
-    actions   = ["ssm:GetParameter"]
+    effect = "Allow"
+    sid    = "AllowSSMParameterRead"
+    actions = [
+      "ssm:GetParameter",
+      "ssm:GetParameters"
+    ]
     resources = [local.ami_id_ssm_parameter_arn]
   }
 }
@@ -89,7 +92,8 @@ data "aws_iam_policy_document" "ami_id_ssm" {
     effect = "Allow"
     sid    = "AllowSSMParameterRead"
     actions = [
-      "ssm:GetParameters",
+      "ssm:GetParameter",
+      "ssm:GetParameters"
     ]
     resources = [local.ami_id_ssm_policy_parameter_arn]
   }
