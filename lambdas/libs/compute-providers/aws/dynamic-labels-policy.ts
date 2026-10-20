@@ -20,6 +20,9 @@ function evaluateLabel(label: string, policy: AwsDynamicLabelsPolicy, labelPrefi
   if (policy.blocked_keys?.includes(key)) {
     return `key '${key}' is in blocked_keys`;
   }
+  if (policy.allowed_keys && policy.allowed_keys.length > 0 && !policy.allowed_keys.includes(key)) {
+    return `key '${key}' is not in allowed_keys`;
+  }
 
   const rule = policy.restricted_keys?.[key];
   if (!rule || value === undefined) return null;
@@ -51,9 +54,13 @@ export function violationsAgainstAwsDynamicLabelsPolicy(
 ): { label: string; reason: string }[] {
   if (!policy) return [];
 
+  const relevantLabels = labels.filter((label) => label.startsWith(labelPrefix));
+  if ((policy.allowed_keys?.length ?? 0) > 0 && (policy.blocked_keys?.length ?? 0) > 0) {
+    return relevantLabels.map((label) => ({ label, reason: 'policy sets both allowed_keys and blocked_keys' }));
+  }
+
   const violations: { label: string; reason: string }[] = [];
-  for (const label of labels) {
-    if (!label.startsWith(labelPrefix)) continue;
+  for (const label of relevantLabels) {
     const reason = evaluateLabel(label, policy, labelPrefix);
     if (reason) violations.push({ label, reason });
   }

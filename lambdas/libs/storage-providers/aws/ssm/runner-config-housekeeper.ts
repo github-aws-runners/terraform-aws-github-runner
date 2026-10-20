@@ -1,15 +1,17 @@
-import {
-  DeleteParameterCommand,
-  GetParametersByPathCommand,
-  SSMClient,
-  type GetParametersByPathCommandOutput,
-} from '@aws-sdk/client-ssm';
+import { DeleteParametersCommand, GetParametersByPathCommand, SSMClient } from '@aws-sdk/client-ssm';
 import { getTracedAWSV3Client } from '@aws-github-runner/aws-powertools-util';
 
 import type { RunnerConfigHousekeeper } from '../../core';
 import { createAwsSsmStorageLogger, getErrorNames } from './logger';
 
 const logger = createAwsSsmStorageLogger('runner-config-housekeeper');
+const DELETE_BATCH_SIZE = 10;
+// Pacing is per invocation; other housekeepers share the account/Region quota.
+const DELETE_BATCH_DELAY_MS = 350;
+// No delete request starts with less than this remaining.
+const DELETE_RUNTIME_GUARD_MS = 10000;
+// Listing stops earlier, reserving time to flush a buffered partial batch.
+const LISTING_RUNTIME_GUARD_MS = 20000;
 
 export interface SSMCleanupOptions {
   dryRun: boolean;
@@ -21,7 +23,7 @@ export function createAwsSsmRunnerConfigHousekeeper(options?: SSMCleanupOptions)
   return new AwsSsmRunnerConfigHousekeeper(options ?? loadCleanupOptions());
 }
 
-export async function cleanSSMTokens(options: SSMCleanupOptions): Promise<void> {
+export async function cleanSSMTokens(options: SSMCleanupOptions, remainingTime = () => Infinity): Promise<void> {
   validateOptions(options);
   logger.info('Cleaning expired runner configurations', {
     minimumDaysOld: options.minimumDaysOld,
@@ -30,63 +32,84 @@ export async function cleanSSMTokens(options: SSMCleanupOptions): Promise<void> 
   });
 
   const client = getTracedAWSV3Client(new SSMClient({ region: process.env.AWS_REGION }));
-  let parameters: GetParametersByPathCommandOutput;
-  try {
-    parameters = await client.send(new GetParametersByPathCommand({ Path: options.tokenPath }));
-    while (parameters.NextToken) {
-      const nextParameters = await client.send(
-        new GetParametersByPathCommand({ Path: options.tokenPath, NextToken: parameters.NextToken }),
-      );
-      parameters.Parameters?.push(...(nextParameters.Parameters ?? []));
-      parameters.NextToken = nextParameters.NextToken;
-    }
-  } catch (error) {
-    logger.error('Failed to list runner configurations', {
-      tokenPath: options.tokenPath,
-      errorNames: getErrorNames(error),
-    });
-    throw error;
-  }
-  logger.info('Found runner configurations', {
-    tokenPath: options.tokenPath,
-    parameterCount: parameters.Parameters?.length ?? 0,
-  });
-
+  let nextToken: string | undefined;
   const minimumDate = new Date();
   minimumDate.setDate(minimumDate.getDate() - options.minimumDaysOld);
+  const pendingNames: string[] = [];
+  const summary = { attempted: 0, deleted: 0, failed: 0, skipped: 0 };
+  let status = 'runtime-limit';
 
-  for (const parameter of parameters.Parameters ?? []) {
-    if (parameter.LastModifiedDate && new Date(parameter.LastModifiedDate) < minimumDate) {
-      logger.info('Deleting expired runner configuration', {
-        parameterName: parameter.Name,
-        lastModifiedDate: parameter.LastModifiedDate,
-        dryRun: options.dryRun,
-      });
-      try {
-        if (!options.dryRun) {
-          await new Promise((resolve) => setTimeout(resolve, 50));
-          await client.send(new DeleteParameterCommand({ Name: parameter.Name }));
-        }
-      } catch (error) {
-        logger.warn('Failed to delete expired runner configuration', {
-          parameterName: parameter.Name,
-          errorNames: getErrorNames(error),
+  async function flushPendingNames(): Promise<boolean> {
+    if (!pendingNames.length) return true;
+    if (remainingTime() < DELETE_RUNTIME_GUARD_MS) return false;
+    await new Promise((resolve) => setTimeout(resolve, DELETE_BATCH_DELAY_MS));
+    if (remainingTime() < DELETE_RUNTIME_GUARD_MS) return false;
+    const names = pendingNames.splice(0, DELETE_BATCH_SIZE);
+    summary.attempted += names.length;
+    try {
+      // SDK retries handle retryable failures; exhausted batches remain for the next sweep.
+      const result = await client.send(new DeleteParametersCommand({ Names: names }));
+      if (result.DeletedParameters?.length) {
+        summary.deleted += result.DeletedParameters.length;
+        logger.info('Successfully deleted expired runner configuration batch', {
+          deletedCount: result.DeletedParameters.length,
         });
       }
-    } else {
-      logger.debug('Skipping runner configuration that is not expired', {
-        parameterName: parameter.Name,
-        lastModifiedDate: parameter.LastModifiedDate,
+      if (result.InvalidParameters?.length) {
+        summary.failed += result.InvalidParameters.length;
+        logger.warn('Runner configurations were not deleted', { parameterNames: result.InvalidParameters });
+      }
+    } catch (error) {
+      summary.failed += names.length;
+      logger.warn('Failed to delete expired runner configuration batch', {
+        parameterNames: names,
+        errorNames: getErrorNames(error),
       });
     }
+    return true;
+  }
+
+  try {
+    do {
+      if (remainingTime() < LISTING_RUNTIME_GUARD_MS) return;
+      const page = await client.send(new GetParametersByPathCommand({ Path: options.tokenPath, NextToken: nextToken }));
+      for (const parameter of page.Parameters ?? []) {
+        if (remainingTime() < DELETE_RUNTIME_GUARD_MS) return;
+        if (!parameter.Name || !parameter.LastModifiedDate || !(new Date(parameter.LastModifiedDate) < minimumDate)) {
+          summary.skipped++;
+          continue;
+        }
+        logger.info('Deleting expired runner configuration', { parameterName: parameter.Name, dryRun: options.dryRun });
+        if (!options.dryRun) {
+          pendingNames.push(parameter.Name);
+          if (pendingNames.length === DELETE_BATCH_SIZE && !(await flushPendingNames())) return;
+        }
+      }
+      nextToken = page.NextToken;
+    } while (nextToken);
+    status = 'completed';
+  } catch (error) {
+    status = 'listing-failed';
+    throw error;
+  } finally {
+    // Flush a partial batch at the end or on a listing error, if runtime permits.
+    // Otherwise the remaining parameters will be rediscovered by the next invocation.
+    if (!(await flushPendingNames()) && status === 'completed') status = 'runtime-limit';
+    logger.info('Runner configuration cleanup summary', {
+      ...summary,
+      pending: pendingNames.length,
+      dryRun: options.dryRun,
+      tokenPath: options.tokenPath,
+      status,
+    });
   }
 }
 
 class AwsSsmRunnerConfigHousekeeper implements RunnerConfigHousekeeper {
   constructor(private readonly options: SSMCleanupOptions) {}
 
-  houseKeeper(): Promise<void> {
-    return cleanSSMTokens(this.options);
+  houseKeeper(remainingTime?: () => number): Promise<void> {
+    return cleanSSMTokens(this.options, remainingTime);
   }
 }
 

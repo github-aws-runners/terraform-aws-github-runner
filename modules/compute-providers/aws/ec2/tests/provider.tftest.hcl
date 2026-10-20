@@ -78,11 +78,15 @@ variables {
     }
   }
 
-  ssm = {
-    paths = {
-      root   = "/github-runner/provider-test"
-      tokens = "tokens"
-      config = "config"
+  storage_provider = {
+    aws = {
+      ssm = {
+        paths = {
+          root   = "/github-runner/provider-test"
+          tokens = "tokens"
+          config = "config"
+        }
+      }
     }
   }
 }
@@ -91,7 +95,13 @@ run "separates_control_plane_contract_from_ec2_resources" {
   command = plan
 
   assert {
-    condition     = toset(keys(output.provider)) == toset(["environment_variables", "policies", "resources"])
+    condition = toset(keys(output.provider)) == toset([
+      "capabilities",
+      "environment_variables",
+      "policies",
+      "resources",
+      "type",
+    ])
     error_message = "The EC2 provider contract must expose only integration and resource data; its module identity must not be repeated in the output."
   }
 
@@ -136,6 +146,15 @@ run "separates_control_plane_contract_from_ec2_resources" {
   assert {
     condition     = output.provider.policies.pool.managed_policy_enabled
     error_message = "An external AMI SSM parameter must enable the pool managed policy attachment at plan time."
+  }
+
+  assert {
+    condition = (
+      contains(output.provider.capabilities.scale_set.iam_statements.read_ami_parameter.actions, "ssm:GetParameter")
+      && contains(output.provider.capabilities.scale_set.iam_statements.read_ami_parameter.actions, "ssm:GetParameters")
+      && contains(output.provider.capabilities.scale_set.iam_statements.read_ami_parameter.resources, "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/ami-id")
+    )
+    error_message = "The scale-set compute role must read an external AMI parameter with both single and batched SSM actions."
   }
 
   assert {
@@ -188,7 +207,7 @@ run "separates_control_plane_contract_from_ec2_resources" {
   }
 
   assert {
-    condition     = toset(keys(output.provider.resources)) == toset(["launch_template", "runners_log_groups", "logfiles"])
+    condition     = toset(keys(output.provider.resources)) == toset(["launch_template", "launch_template_name_on_demand_override", "runners_log_groups", "logfiles"])
     error_message = "EC2-specific artifacts must remain nested under provider resources."
   }
 
@@ -197,6 +216,30 @@ run "separates_control_plane_contract_from_ec2_resources" {
     error_message = "The EC2 instance profile must use the common runner role name."
   }
 
+}
+
+run "includes_managed_ami_read_in_scale_set_contract" {
+  command = plan
+
+  variables {
+    config = {
+      vpc_id         = "vpc-12345678"
+      subnet_ids     = ["subnet-12345678"]
+      instance_types = ["m5.large"]
+      binaries_syncer = {
+        enabled = false
+        s3      = null
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      contains(output.provider.capabilities.scale_set.iam_statements.read_ami_parameter.actions, "ssm:GetParameters")
+      && output.provider.capabilities.scale_set.iam_statements.read_ami_parameter.resources != toset([])
+    )
+    error_message = "The scale-set compute role must read the module-managed AMI parameter."
+  }
 }
 
 run "accepts_partial_typed_compute_options" {
@@ -239,10 +282,10 @@ run "accepts_partial_typed_compute_options" {
 
   assert {
     condition = (
-      aws_launch_template.runner.metadata_options[0].http_tokens == "optional"
-      && aws_launch_template.runner.metadata_options[0].http_endpoint == "enabled"
-      && aws_launch_template.runner.metadata_options[0].http_put_response_hop_limit == 1
-      && aws_launch_template.runner.metadata_options[0].instance_metadata_tags == "enabled"
+      aws_launch_template.runner["default"].metadata_options[0].http_tokens == "optional"
+      && aws_launch_template.runner["default"].metadata_options[0].http_endpoint == "enabled"
+      && aws_launch_template.runner["default"].metadata_options[0].http_put_response_hop_limit == 1
+      && aws_launch_template.runner["default"].metadata_options[0].instance_metadata_tags == "enabled"
     )
     error_message = "Partial metadata options must retain typed defaults for omitted attributes."
   }
@@ -302,20 +345,24 @@ run "separates_provider_runner_and_ssm_tags" {
         }
       }
     }
-    ssm = {
-      paths = {
-        root   = "/github-runner/provider-test"
-        tokens = "tokens"
-        config = "config"
-      }
-      parameters = {
-        tags = {
-          Name                       = "ssm-name"
-          Scope                      = "ssm"
-          SsmOnly                    = "ssm"
-          "ghr:ami_name"             = "ssm-override"
-          "ghr:ami_creation_date"    = "ssm-override"
-          "ghr:ami_deprecation_time" = "ssm-override"
+    storage_provider = {
+      aws = {
+        ssm = {
+          paths = {
+            root   = "/github-runner/provider-test"
+            tokens = "tokens"
+            config = "config"
+          }
+          parameters = {
+            tags = {
+              Name                       = "ssm-name"
+              Scope                      = "ssm"
+              SsmOnly                    = "ssm"
+              "ghr:ami_name"             = "ssm-override"
+              "ghr:ami_creation_date"    = "ssm-override"
+              "ghr:ami_deprecation_time" = "ssm-override"
+            }
+          }
         }
       }
     }
@@ -332,27 +379,27 @@ run "separates_provider_runner_and_ssm_tags" {
 
   assert {
     condition = (
-      aws_launch_template.runner.tags["Name"] == "provider-name"
-      && aws_launch_template.runner.tags["Scope"] == "provider"
-      && !contains(keys(aws_launch_template.runner.tags), "RunnerOnly")
-      && !contains(keys(aws_launch_template.runner.tags), "SsmOnly")
-      && !contains(keys(aws_launch_template.runner.tags), "ghr:environment")
-      && !contains(keys(aws_launch_template.runner.tags), "ghr:ssm_config_path")
-      && !contains(keys(aws_launch_template.runner.tags), "ghr:runner_name_prefix")
+      aws_launch_template.runner["default"].tags["Name"] == "provider-name"
+      && aws_launch_template.runner["default"].tags["Scope"] == "provider"
+      && !contains(keys(aws_launch_template.runner["default"].tags), "RunnerOnly")
+      && !contains(keys(aws_launch_template.runner["default"].tags), "SsmOnly")
+      && !contains(keys(aws_launch_template.runner["default"].tags), "ghr:environment")
+      && !contains(keys(aws_launch_template.runner["default"].tags), "ghr:ssm_config_path")
+      && !contains(keys(aws_launch_template.runner["default"].tags), "ghr:runner_name_prefix")
     )
     error_message = "Non-runner EC2 resources must use provider tags without runner or SSM component tags."
   }
 
   assert {
     condition = toset([
-      for tag_specification in aws_launch_template.runner.tag_specifications : tag_specification.resource_type
+      for tag_specification in aws_launch_template.runner["default"].tag_specifications : tag_specification.resource_type
     ]) == toset(["instance", "volume", "network-interface", "spot-instances-request"])
     error_message = "The launch template must define runner tags for every supported runner resource type."
   }
 
   assert {
     condition = alltrue([
-      for tag_specification in aws_launch_template.runner.tag_specifications : (
+      for tag_specification in aws_launch_template.runner["default"].tag_specifications : (
         tag_specification.tags["Name"] == "runner-name"
         && tag_specification.tags["Scope"] == "runner"
         && tag_specification.tags["RunnerOnly"] == "runner"
@@ -399,6 +446,141 @@ run "separates_provider_runner_and_ssm_tags" {
       && aws_ssm_parameter.runner_ami_id[0].tags["ghr:ami_deprecation_time"] == ""
     )
     error_message = "The managed AMI parameter must preserve authoritative AMI metadata over SSM component tags."
+  }
+}
+
+run "omits_on_demand_override_launch_template_by_default" {
+  command = plan
+
+  assert {
+    condition     = toset(keys(aws_launch_template.runner)) == toset(["default"])
+    error_message = "Only a single launch template must exist when instance_capacity_type_override_enabled is not set."
+  }
+
+  assert {
+    condition     = output.provider.resources.launch_template_name_on_demand_override == null
+    error_message = "The on-demand-override launch template name output must be null when the feature is disabled."
+  }
+}
+
+run "creates_on_demand_override_launch_template_when_capacity_type_override_enabled" {
+  command = plan
+
+  variables {
+    config = {
+      vpc_id         = "vpc-12345678"
+      subnet_ids     = ["subnet-12345678"]
+      instance_types = ["m5.large"]
+      ami = {
+        filter = { state = ["available"] }
+        owners = ["amazon"]
+        id_ssm_parameter = {
+          arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/ami-id"
+        }
+        kms_key = null
+      }
+      binaries_syncer = {
+        enabled = true
+        s3 = {
+          arn = "arn:aws:s3:::runner-distribution"
+          id  = "runner-distribution"
+          key = "runner.zip"
+        }
+      }
+      cloudwatch_agent = {
+        enabled = true
+      }
+      ssm_enabled                             = true
+      managed_security_group_enabled          = true
+      instance_target_capacity_type           = "spot"
+      instance_capacity_type_override_enabled = true
+    }
+  }
+
+  assert {
+    condition     = toset(keys(aws_launch_template.runner)) == toset(["default", "on_demand_override"])
+    error_message = "Enabling instance_capacity_type_override_enabled must create both launch template variants."
+  }
+
+  assert {
+    condition = toset([
+      for tag_specification in aws_launch_template.runner["default"].tag_specifications : tag_specification.resource_type
+    ]) == toset(["instance", "volume", "network-interface", "spot-instances-request"])
+    error_message = "The default variant must keep tagging the spot-instances-request resource when the default capacity type is spot."
+  }
+
+  assert {
+    condition = toset([
+      for tag_specification in aws_launch_template.runner["on_demand_override"].tag_specifications : tag_specification.resource_type
+    ]) == toset(["instance", "volume", "network-interface"])
+    error_message = "The on-demand-override variant must never tag the spot-instances-request resource."
+  }
+
+  assert {
+    condition     = output.provider.resources.launch_template_name_on_demand_override == aws_launch_template.runner["on_demand_override"].name
+    error_message = "The on-demand-override launch template name must be exposed via provider resources."
+  }
+}
+
+run "network_interfaces_default_matches_associate_public_ipv4_address" {
+  command = plan
+
+  variables {
+    config = {
+      vpc_id                         = "vpc-12345678"
+      subnet_ids                     = ["subnet-12345678"]
+      instance_types                 = ["m5.large"]
+      associate_public_ipv4_address  = true
+      managed_security_group_enabled = true
+      binaries_syncer = {
+        enabled = false
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      length(aws_launch_template.runner["default"].network_interfaces) == 1
+      && aws_launch_template.runner["default"].network_interfaces[0].associate_public_ip_address
+    )
+    error_message = "Leaving network_interfaces unset must keep deriving a single interface from associate_public_ipv4_address."
+  }
+}
+
+run "network_interfaces_accepts_explicit_configuration" {
+  command = plan
+
+  variables {
+    config = {
+      vpc_id         = "vpc-12345678"
+      subnet_ids     = ["subnet-12345678"]
+      instance_types = ["m5.large"]
+      binaries_syncer = {
+        enabled = false
+      }
+      network_interfaces = [
+        {
+          device_index       = 0
+          network_card_index = 0
+          interface_type     = "interface"
+          ipv4_prefix_count  = 1
+        },
+        {
+          device_index       = 1
+          network_card_index = 1
+          interface_type     = "interface"
+        },
+      ]
+    }
+  }
+
+  assert {
+    condition = (
+      length(aws_launch_template.runner["default"].network_interfaces) == 2
+      && aws_launch_template.runner["default"].network_interfaces[0].ipv4_prefix_count == 1
+      && aws_launch_template.runner["default"].network_interfaces[1].network_card_index == 1
+    )
+    error_message = "Setting network_interfaces must render every configured interface on the launch template."
   }
 }
 

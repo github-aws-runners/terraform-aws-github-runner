@@ -124,7 +124,7 @@ export async function runnerConfigHousekeeper(event: unknown, context: Context):
   const housekeeper = createRunnerConfigHousekeeper();
 
   try {
-    await housekeeper.houseKeeper();
+    await housekeeper.houseKeeper(() => context.getRemainingTimeInMillis());
   } catch (e) {
     logger.error(`${(e as Error).message}`, { error: e as Error });
   }
@@ -133,15 +133,19 @@ export async function runnerConfigHousekeeper(event: unknown, context: Context):
 /** @deprecated Use runnerConfigHousekeeper. Kept for existing Terraform handler configuration. */
 export const ssmHousekeeper = runnerConfigHousekeeper;
 
-export async function jobRetryCheck(event: SQSEvent, context: Context): Promise<void> {
+export async function jobRetryCheck(event: SQSEvent, context: Context): Promise<SQSBatchResponse> {
   setContext(context, 'lambda.ts');
   logger.logEventIfEnabled(event);
 
+  const batchItemFailures: SQSBatchItemFailure[] = [];
   for (const record of event.Records) {
-    const payload = JSON.parse(record.body);
-    await checkAndRetryJob(payload).catch((e) => {
-      logger.warn(`Error processing job retry: ${e.message}`, { error: e });
-    });
+    try {
+      const payload = JSON.parse(record.body);
+      await checkAndRetryJob(payload);
+    } catch (error) {
+      logger.warn('Error processing job retry', { error, messageId: record.messageId });
+      batchItemFailures.push({ itemIdentifier: record.messageId });
+    }
   }
-  return Promise.resolve();
+  return { batchItemFailures };
 }

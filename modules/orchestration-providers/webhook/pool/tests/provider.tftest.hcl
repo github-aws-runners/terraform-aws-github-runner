@@ -4,9 +4,35 @@ mock_provider "aws" {
       json = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":\"logs:CreateLogStream\",\"Resource\":\"*\"}]}"
     }
   }
+
+  mock_resource "aws_iam_role" {
+    defaults = {
+      arn = "arn:aws:iam::123456789012:role/pool-test"
+    }
+  }
+
+  mock_resource "aws_lambda_function" {
+    defaults = {
+      arn = "arn:aws:lambda:eu-west-1:123456789012:function:mock-function"
+    }
+  }
+
 }
 
 variables {
+  storage_provider = {
+    aws = {
+      ssm = {
+        token_path           = "/github-runner/tokens"
+        token_path_arn       = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/tokens"
+        config_path          = "/github-runner/config"
+        config_path_arn      = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config"
+        kms_key_id           = "arn:aws:kms:eu-west-1:123456789012:key/pool-test"
+        parameter_store_tags = "{}"
+      }
+    }
+  }
+
   config = {
     lambda = {
       log_level                      = "info"
@@ -24,7 +50,6 @@ variables {
       timeout                        = 60
       zip                            = "runners.zip"
       subnet_ids                     = []
-      parameter_store_tags           = "{}"
       principals = [{
         type        = "AWS"
         identifiers = ["arn:aws:iam::123456789012:role/local-testing"]
@@ -73,16 +98,11 @@ variables {
       schedule_expression_timezone = "UTC"
       size                         = 2
     }]
-    include_busy_runners           = false
-    role_permissions_boundary      = null
-    kms_key_id                     = "arn:aws:kms:eu-west-1:123456789012:key/pool-test"
-    role_path                      = "/"
-    ssm_token_path                 = "/github-runner/tokens"
-    ssm_token_path_arn             = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/tokens"
-    ssm_config_path                = "/github-runner/config"
-    arn_ssm_parameters_path_config = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config"
-    lambda_tags                    = {}
-    user_agent                     = "terraform-aws-github-runner"
+    include_busy_runners      = false
+    role_permissions_boundary = null
+    role_path                 = "/"
+    lambda_tags               = {}
+    user_agent                = "terraform-aws-github-runner"
   }
 
   runner_provider = {
@@ -221,9 +241,18 @@ run "omits_optional_kms_statement" {
   command = plan
 
   variables {
-    config = merge(var.config, {
-      kms_key_id = null
-    })
+    storage_provider = {
+      aws = {
+        ssm = {
+          token_path           = "/github-runner/tokens"
+          token_path_arn       = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/tokens"
+          config_path          = "/github-runner/config"
+          config_path_arn      = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config"
+          kms_key_id           = null
+          parameter_store_tags = "{}"
+        }
+      }
+    }
   }
 
   assert {
@@ -246,9 +275,13 @@ run "rejects_empty_compute_provider_type" {
   }
 
   variables {
-    runner_provider = merge(var.runner_provider, {
-      type = " "
-    })
+    runner_provider = {
+      type                   = " "
+      environment_variables  = { MICROVM_CLUSTER = "runner-cluster" }
+      iam_policy_json        = jsonencode({ Version = "2012-10-17", Statement = [] })
+      managed_policy_enabled = true
+      managed_policy_arn     = "arn:aws:iam::123456789012:policy/microvm-pool"
+    }
   }
 
   expect_failures = [terraform_data.validate_config]
@@ -262,9 +295,13 @@ run "rejects_invalid_compute_provider_policy" {
   }
 
   variables {
-    runner_provider = merge(var.runner_provider, {
-      iam_policy_json = "not-json"
-    })
+    runner_provider = {
+      type                   = "microvm"
+      environment_variables  = { MICROVM_CLUSTER = "runner-cluster" }
+      iam_policy_json        = "not-json"
+      managed_policy_enabled = true
+      managed_policy_arn     = "arn:aws:iam::123456789012:policy/microvm-pool"
+    }
   }
 
   expect_failures = [terraform_data.validate_config]
@@ -278,10 +315,13 @@ run "requires_enabled_compute_provider_managed_policy_arn" {
   }
 
   variables {
-    runner_provider = merge(var.runner_provider, {
+    runner_provider = {
+      type                   = "microvm"
+      environment_variables  = { MICROVM_CLUSTER = "runner-cluster" }
+      iam_policy_json        = jsonencode({ Version = "2012-10-17", Statement = [] })
       managed_policy_enabled = true
       managed_policy_arn     = null
-    })
+    }
   }
 
   expect_failures = [terraform_data.validate_config]

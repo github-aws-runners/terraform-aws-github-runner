@@ -22,13 +22,26 @@ output "pool" {
 
 output "orchestration_provider" {
   description = "Resources grouped under the selected runner orchestration provider."
+  value = merge(
+    {
+      webhook = local.orchestration_provider_enabled.webhook ? {
+        scale_up   = one(module.orchestration_webhook[*].scale_up)
+        scale_down = one(module.orchestration_webhook[*].scale_down)
+        pool       = one(module.orchestration_webhook[*].pool)
+        job_retry  = one(module.orchestration_webhook[*].job_retry)
+      } : null
+    },
+    local.orchestration_provider_enabled.scale_set ? {
+      scale_set = {}
+    } : {},
+  )
+}
+
+output "compute_provider_contract" {
+  description = "Provider-neutral compute-provider capabilities consumed by topology-level orchestration."
   value = {
-    webhook = local.orchestration_provider_enabled.webhook ? {
-      scale_up   = one(module.orchestration_webhook[*].scale_up)
-      scale_down = one(module.orchestration_webhook[*].scale_down)
-      pool       = one(module.orchestration_webhook[*].pool)
-      job_retry  = one(module.orchestration_webhook[*].job_retry)
-    } : null
+    type         = local.provider_contract.type
+    capabilities = local.provider_contract.capabilities
   }
 }
 

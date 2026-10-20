@@ -17,7 +17,7 @@ data "aws_iam_policy_document" "scale_down_common" {
   }
 
   dynamic "statement" {
-    for_each = var.config.ssm.kms_key_id == null ? [] : [var.config.ssm.kms_key_id]
+    for_each = var.storage_provider.aws.ssm.kms_key_id != null ? [var.storage_provider.aws.ssm.kms_key_id] : []
     iterator = kms_key
 
     content {
@@ -30,10 +30,11 @@ data "aws_iam_policy_document" "scale_down_common" {
 }
 
 data "aws_iam_policy_document" "scale_down" {
-  source_policy_documents = [
+  source_policy_documents = compact([
     data.aws_iam_policy_document.scale_down_common.json,
     var.runner_provider.scale_down.iam_policy_json,
-  ]
+    var.storage_provider.scale_down.iam_policy_json,
+  ])
 }
 
 data "aws_iam_policy_document" "scale_down_logging" {

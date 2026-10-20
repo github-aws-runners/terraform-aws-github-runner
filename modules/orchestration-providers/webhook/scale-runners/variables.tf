@@ -41,12 +41,12 @@ variable "config" {
     - `queue.kms_key_id`: Optional KMS key ARN used to encrypt the build queue. This is distinct from the Parameter Store key.
     - `queue.event_source_mapping.batch_size`: Maximum records delivered per scale-up invocation.
     - `queue.event_source_mapping.maximum_batching_window_in_seconds`: Maximum event batching window.
-    - `ssm.token_path`: Parameter Store path used for registration tokens.
-    - `ssm.token_path_arn`: ARN of the Parameter Store path used for registration tokens.
-    - `ssm.config_path`: Parameter Store path used for persistent runner configuration.
-    - `ssm.config_path_arn`: ARN of the persistent runner configuration path.
-    - `ssm.kms_key_id`: Optional KMS key ARN used to decrypt shared parameters. Its value may be unknown until apply.
-    - `ssm.parameter_store_tags`: JSON-encoded tags applied to parameters created at runtime.
+    - `storage_provider.aws.ssm.token_path`: Parameter Store path used for registration tokens.
+    - `storage_provider.aws.ssm.token_path_arn`: ARN of the Parameter Store path used for registration tokens.
+    - `storage_provider.aws.ssm.config_path`: Parameter Store path used for persistent runner configuration.
+    - `storage_provider.aws.ssm.config_path_arn`: ARN of the persistent runner configuration path.
+    - `storage_provider.aws.ssm.kms_key_id`: Optional KMS key ARN used to decrypt shared parameters. Its value may be unknown until apply.
+    - `storage_provider.aws.ssm.parameter_store_tags`: JSON-encoded tags applied to parameters created at runtime.
     - `observability.logs`: Shared logging level, retention, encryption, and log-class configuration.
     - `observability.tracing`: Lambda X-Ray and tracing-helper configuration.
     - `observability.metrics`: Metrics enablement, namespace, and GitHub rate-limit metric configuration.
@@ -130,14 +130,6 @@ variable "config" {
         batch_size                         = number
         maximum_batching_window_in_seconds = number
       })
-    })
-    ssm = object({
-      token_path           = string
-      token_path_arn       = string
-      config_path          = string
-      config_path_arn      = string
-      parameter_store_tags = string
-      kms_key_id           = optional(string, null)
     })
     observability = object({
       logs = object({
@@ -236,5 +228,36 @@ variable "runner_provider" {
     })
   })
 
+  nullable = false
+}
+
+variable "storage_provider" {
+  description = "Resolved storage-provider configuration and capabilities for scale-up and scale-down."
+  type = object({
+    aws = object({
+      ssm = object({
+        token_path           = string
+        token_path_arn       = string
+        config_path          = string
+        config_path_arn      = string
+        parameter_store_tags = string
+        kms_key_id           = optional(string, null)
+      })
+    })
+    scale_up = optional(object({
+      environment_variables = map(string)
+      iam_policy_json       = optional(string, null)
+      }), {
+      environment_variables = {}
+      iam_policy_json       = null
+    })
+    scale_down = optional(object({
+      environment_variables = map(string)
+      iam_policy_json       = optional(string, null)
+      }), {
+      environment_variables = {}
+      iam_policy_json       = null
+    })
+  })
   nullable = false
 }

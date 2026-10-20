@@ -16,6 +16,31 @@ mock_provider "aws" {
       arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/ami-id"
     }
   }
+
+  mock_resource "aws_iam_policy" {
+    defaults = {
+      arn = "arn:aws:iam::123456789012:policy/mock-policy"
+    }
+  }
+
+  mock_resource "aws_lambda_function" {
+    defaults = {
+      arn = "arn:aws:lambda:eu-west-1:123456789012:function:mock-function"
+    }
+  }
+
+  mock_resource "aws_sqs_queue" {
+    defaults = {
+      arn = "arn:aws:sqs:eu-west-1:123456789012:mock-queue"
+    }
+  }
+
+  mock_resource "aws_cloudwatch_event_rule" {
+    defaults = {
+      arn = "arn:aws:events:eu-west-1:123456789012:rule/mock-event-rule"
+    }
+  }
+
 }
 
 # The runner archive is injected during packaging, so isolate the common
@@ -33,6 +58,7 @@ variables {
         vpc_id         = "vpc-12345678"
         subnet_ids     = ["subnet-12345678"]
         instance_types = ["m5.large"]
+        ssm_enabled    = true
         ami = {
           filter = { state = ["available"] }
           owners = ["amazon"]
@@ -48,7 +74,6 @@ variables {
             key = "runners/linux/actions-runner.tar.gz"
           }
         }
-        ssm_enabled = true
       }
     }
   }
@@ -119,11 +144,15 @@ variables {
     }
   }
 
-  ssm = {
-    paths = {
-      root   = "/github-runner"
-      tokens = "tokens"
-      config = "config"
+  storage_provider = {
+    aws = {
+      ssm = {
+        paths = {
+          root   = "/github-runner"
+          tokens = "tokens"
+          config = "config"
+        }
+      }
     }
   }
 
@@ -284,18 +313,22 @@ run "housekeeper_uses_component_s3_artifact" {
   command = plan
 
   variables {
-    ssm = {
-      paths = {
-        root   = "/github-runner"
-        tokens = "tokens"
-        config = "config"
-      }
-      housekeeper = {
-        lambda = {
-          artifact = {
-            s3 = {
-              key            = "housekeeper/runner-config.zip"
-              object_version = "housekeeper-version"
+    storage_provider = {
+      aws = {
+        ssm = {
+          paths = {
+            root   = "/github-runner"
+            tokens = "tokens"
+            config = "config"
+          }
+          housekeeper = {
+            lambda = {
+              artifact = {
+                s3 = {
+                  key            = "housekeeper/runner-config.zip"
+                  object_version = "housekeeper-version"
+                }
+              }
             }
           }
         }
@@ -318,16 +351,20 @@ run "housekeeper_uses_component_local_zip" {
   command = plan
 
   variables {
-    ssm = {
-      paths = {
-        root   = "/github-runner"
-        tokens = "tokens"
-        config = "config"
-      }
-      housekeeper = {
-        lambda = {
-          artifact = {
-            zip = "README.md"
+    storage_provider = {
+      aws = {
+        ssm = {
+          paths = {
+            root   = "/github-runner"
+            tokens = "tokens"
+            config = "config"
+          }
+          housekeeper = {
+            lambda = {
+              artifact = {
+                zip = "README.md"
+              }
+            }
           }
         }
       }
@@ -349,18 +386,22 @@ run "rejects_conflicting_housekeeper_artifacts" {
   command = plan
 
   variables {
-    ssm = {
-      paths = {
-        root   = "/github-runner"
-        tokens = "tokens"
-        config = "config"
-      }
-      housekeeper = {
-        lambda = {
-          artifact = {
-            zip = "README.md"
-            s3 = {
-              key = "housekeeper/runner-config.zip"
+    storage_provider = {
+      aws = {
+        ssm = {
+          paths = {
+            root   = "/github-runner"
+            tokens = "tokens"
+            config = "config"
+          }
+          housekeeper = {
+            lambda = {
+              artifact = {
+                zip = "README.md"
+                s3 = {
+                  key = "housekeeper/runner-config.zip"
+                }
+              }
             }
           }
         }
@@ -386,17 +427,21 @@ run "rejects_housekeeper_s3_without_common_bucket" {
         }
       }
     }
-    ssm = {
-      paths = {
-        root   = "/github-runner"
-        tokens = "tokens"
-        config = "config"
-      }
-      housekeeper = {
-        lambda = {
-          artifact = {
-            s3 = {
-              key = "housekeeper/runner-config.zip"
+    storage_provider = {
+      aws = {
+        ssm = {
+          paths = {
+            root   = "/github-runner"
+            tokens = "tokens"
+            config = "config"
+          }
+          housekeeper = {
+            lambda = {
+              artifact = {
+                s3 = {
+                  key = "housekeeper/runner-config.zip"
+                }
+              }
             }
           }
         }
@@ -586,11 +631,7 @@ run "rejects_empty_compute_provider" {
     compute_provider = {}
   }
 
-  plan_options {
-    target = [terraform_data.validate_config]
-  }
-
-  expect_failures = [terraform_data.validate_config]
+  expect_failures = [var.compute_provider]
 }
 
 run "rejects_empty_aws_compute_provider_namespace" {
@@ -602,11 +643,7 @@ run "rejects_empty_aws_compute_provider_namespace" {
     }
   }
 
-  plan_options {
-    target = [terraform_data.validate_config]
-  }
-
-  expect_failures = [terraform_data.validate_config]
+  expect_failures = [var.compute_provider]
 }
 
 run "job_retry_uses_common_runner_configuration_identity" {

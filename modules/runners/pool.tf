@@ -50,7 +50,7 @@ module "pool" {
       scale_errors                         = var.scale_errors
       boot_time_in_minutes                 = var.runner_boot_time_in_minutes
       labels                               = var.runner_labels
-      launch_template                      = aws_launch_template.runner
+      launch_template                      = aws_launch_template.runner["default"]
       group_name                           = var.runner_group_name
       name_prefix                          = var.runner_name_prefix
       pool_owner                           = var.pool_runner_owner
@@ -59,6 +59,7 @@ module "pool" {
     }
     subnet_ids                           = var.subnet_ids
     ssm_token_path                       = "${var.ssm_paths.root}/${var.ssm_paths.tokens}"
+    ssm_ttl_seconds                      = var.ssm_ttl_seconds
     ssm_config_path                      = "${var.ssm_paths.root}/${var.ssm_paths.config}"
     ami_id_ssm_parameter_name            = local.ami_id_ssm_parameter_name
     ami_id_ssm_parameter_read_policy_arn = local.ami_id_ssm_parameter_name != null ? aws_iam_policy.ami_id_ssm_parameter_read[0].arn : null

@@ -767,11 +767,15 @@ variable "aws_dynamic_labels_policy" {
     override labels using the `ghr-ec2-*` prefix.
 
     Evaluation:
-      1. Keys in `blocked_keys` are always rejected.
-      2. Keys in `restricted_keys` are allowed only when their value passes the rule.
-      3. Keys not listed in `blocked_keys` or `restricted_keys` are allowed.
+      1. If `allowed_keys` is set (non-empty), any key not listed in it is rejected;
+         everything else in the policy still applies to the keys it does allow.
+      2. Keys in `blocked_keys` are always rejected. Cannot be used together with
+         `allowed_keys` — see `docs/configuration.md` for why.
+      3. Keys in `restricted_keys` are allowed only when their value passes the rule.
+      4. A key not listed anywhere above is allowed.
 
     Schema:
+      - `allowed_keys`: only these keys are accepted; every other key is rejected.
       - `blocked_keys`: keys to reject outright.
       - `restricted_keys`: map of key to value rule:
           `{ allowed = [globs], denied = [globs], max = number|string }`.
@@ -781,6 +785,17 @@ variable "aws_dynamic_labels_policy" {
   EOT
   type        = any
   default     = null
+
+  validation {
+    condition = (
+      var.aws_dynamic_labels_policy == null ||
+      !(
+        try(length(var.aws_dynamic_labels_policy.allowed_keys), 0) > 0 &&
+        try(length(var.aws_dynamic_labels_policy.blocked_keys), 0) > 0
+      )
+    )
+    error_message = "aws_dynamic_labels_policy: allowed_keys and blocked_keys cannot both be set."
+  }
 }
 
 variable "enable_job_queued_check" {
@@ -962,6 +977,20 @@ variable "ssm_paths" {
   default = {}
 }
 
+variable "ssm_ttl_seconds" {
+  description = "Set tokens to the optional TTL in seconds for the SSM parameters holding the runner registration token / JIT config. When set, the parameters are created with an SSM expiration policy so SSM deletes them itself after the TTL passes. Requires the Advanced parameter tier for every token parameter, which incurs additional costs. Expiration is enforced asynchronously by SSM; the SSM housekeeper lambda remains as a backstop. Must be a positive number, and should comfortably exceed the runner boot time so the config does not expire before the instance reads it."
+  type = object({
+    tokens = optional(number, null)
+  })
+  default  = {}
+  nullable = false
+
+  validation {
+    condition     = var.ssm_ttl_seconds.tokens == null ? true : var.ssm_ttl_seconds.tokens > 0
+    error_message = "`ssm_ttl_seconds.tokens` must be a positive number."
+  }
+}
+
 variable "runner_name_prefix" {
   description = "The prefix used for the GitHub runner name. The prefix will be used in the default start script to prefix the instance name when register the runner in GitHub. The value is available via an EC2 tag 'ghr:runner_name_prefix'."
   type        = string
@@ -1046,6 +1075,44 @@ variable "associate_public_ipv4_address" {
   description = "Associate public IPv4 with the runner. Only tested with IPv4"
   type        = bool
   default     = false
+}
+
+variable "runner_network_interfaces" {
+  description = "Advanced network interface configuration for the runner launch template. See https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#network-interfaces for details. Leave unset (default) to keep using associate_public_ipv4_address for a simple single-interface setup; set this to fully control one or more interfaces."
+  type = list(object({
+    associate_carrier_ip_address = optional(bool)
+    associate_public_ip_address  = optional(bool)
+    delete_on_termination        = optional(bool)
+    description                  = optional(string)
+    device_index                 = optional(number)
+    interface_type               = optional(string)
+    ipv4_address_count           = optional(number)
+    ipv4_addresses               = optional(list(string))
+    ipv4_prefix_count            = optional(number)
+    ipv4_prefixes                = optional(list(string))
+    ipv6_address_count           = optional(number)
+    ipv6_addresses               = optional(list(string))
+    ipv6_prefix_count            = optional(number)
+    ipv6_prefixes                = optional(list(string))
+    network_card_index           = optional(number)
+    network_interface_id         = optional(string)
+    primary_ipv6                 = optional(bool)
+    private_ip_address           = optional(string)
+    security_groups              = optional(list(string))
+    subnet_id                    = optional(string)
+    connection_tracking_specification = optional(object({
+      tcp_established_timeout = optional(number)
+      udp_stream_timeout      = optional(number)
+      udp_timeout             = optional(number)
+    }))
+    ena_srd_specification = optional(object({
+      ena_srd_enabled = optional(bool)
+      ena_srd_udp_specification = optional(object({
+        ena_srd_udp_enabled = optional(bool)
+      }))
+    }))
+  }))
+  default = []
 }
 
 variable "runners_ssm_housekeeper" {

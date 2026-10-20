@@ -29,7 +29,7 @@ resource "aws_lambda_function" "scale_up" {
   architectures                  = [var.lambda_architecture]
   depends_on                     = [aws_cloudwatch_log_group.scale_up]
   environment {
-    variables = {
+    variables = merge({
       AMI_ID_SSM_PARAMETER_NAME                = local.ami_id_ssm_parameter_name
       DISABLE_RUNNER_AUTOUPDATE                = var.disable_runner_autoupdate
       ENABLE_EPHEMERAL_RUNNERS                 = var.enable_ephemeral_runners
@@ -45,7 +45,8 @@ resource "aws_lambda_function" "scale_up" {
       INSTANCE_TARGET_CAPACITY_TYPE            = var.instance_target_capacity_type
       INSTANCE_TYPE_PRIORITIES                 = var.instance_type_priorities != null ? jsonencode(var.instance_type_priorities) : ""
       INSTANCE_TYPES                           = join(",", var.instance_types)
-      LAUNCH_TEMPLATE_NAME                     = aws_launch_template.runner.name
+      LAUNCH_TEMPLATE_NAME                     = aws_launch_template.runner["default"].name
+      ON_DEMAND_OVERRIDE_LAUNCH_TEMPLATE_NAME  = local.on_demand_override_launch_template_created ? aws_launch_template.runner["on_demand_override"].name : ""
       LOG_LEVEL                                = upper(var.log_level)
       MINIMUM_RUNNING_TIME_IN_MINUTES          = coalesce(var.minimum_running_time_in_minutes, local.min_runtime_defaults[var.runner_os])
       NODE_TLS_REJECT_UNAUTHORIZED             = var.ghes_url != null && !var.ghes_ssl_verify ? 0 : 1
@@ -71,7 +72,9 @@ resource "aws_lambda_function" "scale_up" {
       SCALE_ERRORS                             = jsonencode(var.scale_errors)
       JOB_RETRY_CONFIG                         = jsonencode(local.job_retry_config)
       USE_DEDICATED_HOST                       = var.use_dedicated_host
-    }
+      }, var.ssm_ttl_seconds.tokens != null ? {
+      SSM_TOKEN_TTL_SECONDS = tostring(var.ssm_ttl_seconds.tokens)
+    } : {})
   }
 
   dynamic "vpc_config" {

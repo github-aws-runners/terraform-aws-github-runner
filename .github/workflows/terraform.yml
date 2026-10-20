@@ -1,4 +1,5 @@
 name: "Terraform checks"
+
 on:
   push:
     branches:
@@ -15,49 +16,13 @@ permissions:
 
 env:
   AWS_REGION: eu-west-1
-  MODULES: |
-    .
-    modules/ami-housekeeper
-    modules/compute-providers/aws/ec2
-    modules/compute-providers/aws/ec2/trust-policy
-    modules/download-lambda
-    modules/lambda
-    modules/multi-runner
-    modules/orchestration-providers/webhook
-    modules/orchestration-providers/webhook/job-retry
-    modules/orchestration-providers/webhook/pool
-    modules/orchestration-providers/webhook/scale-runners
-    modules/runner-binaries-syncer
-    modules/runner-config
-    modules/runner-config/ssm-housekeeper
-    modules/runners
-    modules/runners/job-retry
-    modules/runners/pool
-    modules/setup-iam-permissions
-    modules/ssm
-    modules/termination-watcher
-    modules/termination-watcher/notification
-    modules/termination-watcher/termination
-    modules/webhook
-    modules/webhook/direct
-    modules/webhook/eventbridge
-    modules/webhook-github-app
-  EXAMPLES: |
-    default
-    prebuilt
-    ephemeral
-    termination-watcher
-    multi-runner
-    multi-runner-v2
-    external-managed-ssm-secrets
-  TEST_MODULES: |
-    modules/runners
-    modules/multi-runner
+
 jobs:
   verify_modules:
     name: Verify modules (${{ matrix.iac.name }} ${{ matrix.iac.version }})
     strategy:
-      fail-fast: false
+      fail-fast: true
+      max-parallel: 1
       matrix:
         iac:
           - name: terraform
@@ -72,10 +37,12 @@ jobs:
           - name: tofu-latest
             version: latest
             command: tofu
+
     runs-on: ubuntu-latest
+
     steps:
       - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
           egress-policy: audit
 
@@ -97,7 +64,7 @@ jobs:
           mkdir -p "$HOME/.terraform.d/plugin"
           echo "TF_PLUGIN_CACHE_DIR=$HOME/.terraform.d/plugin" >> "$GITHUB_ENV"
 
-      - name: "Fake zip files" # Validate will fail if it cannot find the zip files
+      - name: Fake zip files
         run: |
           touch lambdas/functions/webhook/webhook.zip
           touch lambdas/functions/control-plane/runners.zip
@@ -119,13 +86,42 @@ jobs:
           tofu_version: ${{ matrix.iac.version }}
           tofu_wrapper: false
 
+      - name: Discover Terraform modules
+        shell: bash
+        run: |
+          modules="$(
+            {
+              printf '.\n'
+              find modules \
+                \( -type d \( -name .git -o -name .terraform -o -name tests \) -prune \) -o \
+                \( -type f -name '*.tf' -print \) |
+              while IFS= read -r tf_file; do
+                dirname "${tf_file}"
+              done
+            } | sort -u
+          )"
+
+          if [ -z "${modules}" ]; then
+            echo "::error::No Terraform modules found"
+            exit 1
+          fi
+
+          {
+            printf 'MODULES<<EOF\n'
+            printf '%s\n' "${modules}"
+            printf 'EOF\n'
+          } >> "${GITHUB_ENV}"
+
       - name: ${{ matrix.iac.name }} init
         env:
           IAC_COMMAND: ${{ matrix.iac.command }}
         run: |
           printf '%s\n' "${MODULES}" | while IFS= read -r module; do
             [ -z "${module}" ] && continue
+
+            echo "::group::Running $IAC_COMMAND init for module: ${module}"
             $IAC_COMMAND -chdir="${module}" init -get -backend=false -input=false
+            echo "::endgroup::"
           done
 
       - name: Check ${{ matrix.iac.name }} formatting
@@ -134,7 +130,10 @@ jobs:
         run: |
           printf '%s\n' "${MODULES}" | while IFS= read -r module; do
             [ -z "${module}" ] && continue
+
+            echo "::group::Checking $IAC_COMMAND formatting for module: ${module}"
             $IAC_COMMAND -chdir="${module}" fmt -recursive -check=true -write=false
+            echo "::endgroup::"
           done
         continue-on-error: ${{ matrix.iac.version == 'latest' }}
 
@@ -144,7 +143,10 @@ jobs:
         run: |
           printf '%s\n' "${MODULES}" | while IFS= read -r module; do
             [ -z "${module}" ] && continue
+
+            echo "::group::Validating module: ${module}"
             $IAC_COMMAND -chdir="${module}" validate
+            echo "::endgroup::"
           done
 
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -154,22 +156,30 @@ jobs:
           key: tflint-${{ hashFiles('.tflint.hcl') }}
 
       - name: Setup TFLint
-        uses: terraform-linters/setup-tflint@1cf010d3c7aef302051ccdb68c14c5dc2efa34ef # v6.3.1
+        uses: terraform-linters/setup-tflint@6ffdbaa3be476b3431f7275c26966ef32ff60337 # v6.3.2
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run TFLint
         run: |
           tflint --init -c ${GITHUB_WORKSPACE}/.tflint.hcl
+
           printf '%s\n' "${MODULES}" | while IFS= read -r module; do
             [ -z "${module}" ] && continue
-            tflint -f compact -c ${GITHUB_WORKSPACE}/.tflint.hcl --var-file ${GITHUB_WORKSPACE}/.github/lint/tflint.tfvars --chdir "${module}"
+
+            echo "::group::Running TFLint for module: ${module}"
+            tflint -f compact \
+              -c ${GITHUB_WORKSPACE}/.tflint.hcl \
+              --var-file ${GITHUB_WORKSPACE}/.github/lint/tflint.tfvars \
+              --chdir "${module}"
+            echo "::endgroup::"
           done
 
   verify_examples:
     name: Verify examples (${{ matrix.iac.name }} ${{ matrix.iac.version }})
     strategy:
-      fail-fast: false
+      fail-fast: true
+      max-parallel: 1
       matrix:
         iac:
           - name: terraform
@@ -188,10 +198,12 @@ jobs:
             version: latest
             command: tofu
             lockfile: .terraform.lock.hcl.tofu
+
     runs-on: ubuntu-latest
+
     steps:
       - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
           egress-policy: audit
 
@@ -227,43 +239,83 @@ jobs:
           tofu_version: ${{ matrix.iac.version }}
           tofu_wrapper: false
 
+      - name: Discover examples
+        shell: bash
+        run: |
+          examples="$(
+            find examples \
+              \( -type d \( -name .git -o -name .terraform \) -prune \) -o \
+              \( -type f -name '*.tf' -print \) |
+            while IFS= read -r tf_file; do
+              dirname "${tf_file}"
+            done |
+            sed 's#^examples/##' |
+            sort -u
+          )"
+
+          if [ -z "${examples}" ]; then
+            echo "::error::No Terraform examples found"
+            exit 1
+          fi
+
+          {
+            printf 'EXAMPLES<<EOF\n'
+            printf '%s\n' "${examples}"
+            printf 'EOF\n'
+          } >> "${GITHUB_ENV}"
+
       - name: Select ${{ matrix.iac.name }} lockfile
         if: matrix.iac.command == 'tofu'
         env:
           IAC_LOCK_FILE: ${{ matrix.iac.lockfile }}
         run: |
-          printf '%s\n' "${EXAMPLES}" | while IFS= read -r example; do
+          while IFS= read -r example; do
             [ -z "${example}" ] && continue
-            cp "examples/${example}/${IAC_LOCK_FILE}" "examples/${example}/.terraform.lock.hcl"
-          done
+
+            echo "::group::Selecting lockfile for example: ${example}"
+            cp "examples/${example}/${IAC_LOCK_FILE}" \
+              "examples/${example}/.terraform.lock.hcl"
+            echo "::endgroup::"
+          done <<< "${EXAMPLES}"
 
       - name: ${{ matrix.iac.name }} init
         env:
           IAC_COMMAND: ${{ matrix.iac.command }}
         run: |
-          printf '%s\n' "${EXAMPLES}" | while IFS= read -r example; do
+          while IFS= read -r example; do
             [ -z "${example}" ] && continue
-            $IAC_COMMAND -chdir="examples/${example}" init -get -backend=false -input=false -lockfile=readonly
-          done
+
+            echo "::group::Running $IAC_COMMAND init for example: ${example}"
+            $IAC_COMMAND -chdir="examples/${example}" init \
+              -get -backend=false -input=false -lockfile=readonly
+            echo "::endgroup::"
+          done <<< "${EXAMPLES}"
 
       - name: Check ${{ matrix.iac.name }} formatting
         env:
           IAC_COMMAND: ${{ matrix.iac.command }}
         run: |
-          printf '%s\n' "${EXAMPLES}" | while IFS= read -r example; do
+          while IFS= read -r example; do
             [ -z "${example}" ] && continue
-            $IAC_COMMAND -chdir="examples/${example}" fmt -recursive -check=true -write=false
-          done
+
+            echo "::group::Checking $IAC_COMMAND formatting for example: ${example}"
+            $IAC_COMMAND -chdir="examples/${example}" fmt \
+              -recursive -check=true -write=false
+            echo "::endgroup::"
+          done <<< "${EXAMPLES}"
         continue-on-error: ${{ matrix.iac.version == 'latest' }}
 
       - name: Validate ${{ matrix.iac.name }}
         env:
           IAC_COMMAND: ${{ matrix.iac.command }}
         run: |
-          printf '%s\n' "${EXAMPLES}" | while IFS= read -r example; do
+          while IFS= read -r example; do
             [ -z "${example}" ] && continue
+
+            echo "::group::Validating example: ${example}"
             $IAC_COMMAND -chdir="examples/${example}" validate
-          done
+            echo "::endgroup::"
+          done <<< "${EXAMPLES}"
 
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         name: Cache TFLint plugin dir
@@ -272,22 +324,30 @@ jobs:
           key: tflint-${{ hashFiles('.tflint.hcl') }}
 
       - name: Setup TFLint
-        uses: terraform-linters/setup-tflint@1cf010d3c7aef302051ccdb68c14c5dc2efa34ef # v6.3.1
+        uses: terraform-linters/setup-tflint@6ffdbaa3be476b3431f7275c26966ef32ff60337 # v6.3.2
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run TFLint
         run: |
           tflint --init -c ${GITHUB_WORKSPACE}/.tflint.hcl
-          printf '%s\n' "${EXAMPLES}" | while IFS= read -r example; do
+
+          while IFS= read -r example; do
             [ -z "${example}" ] && continue
-            tflint -f compact -c ${GITHUB_WORKSPACE}/.tflint.hcl --var-file ${GITHUB_WORKSPACE}/.github/lint/tflint.tfvars --chdir "examples/${example}"
-          done
+
+            echo "::group::Running TFLint for example: ${example}"
+            tflint -f compact \
+              -c ${GITHUB_WORKSPACE}/.tflint.hcl \
+              --var-file ${GITHUB_WORKSPACE}/.github/lint/tflint.tfvars \
+              --chdir "examples/${example}"
+            echo "::endgroup::"
+          done <<< "${EXAMPLES}"
 
   terraform_test:
     name: ${{ matrix.iac.name }} test
     strategy:
-      fail-fast: false
+      fail-fast: true
+      max-parallel: 1
       matrix:
         iac:
           - name: terraform
@@ -296,10 +356,12 @@ jobs:
           - name: tofu
             version: latest
             command: tofu
+
     runs-on: ubuntu-latest
+
     steps:
       - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
           egress-policy: audit
 
@@ -335,20 +397,52 @@ jobs:
           tofu_version: ${{ matrix.iac.version }}
           tofu_wrapper: false
 
+      - name: Discover Terraform test modules
+        shell: bash
+        run: |
+          test_modules="$(
+            find . \
+              \( -type d \( -name .git -o -name .terraform \) -prune \) -o \
+              \( -type f -name '*.tftest.hcl' -print \) |
+            while IFS= read -r test_file; do
+              test_dir=$(dirname "${test_file}")
+              printf '%s\n' "${test_dir%/tests}"
+            done |
+            sort -u
+          )"
+
+          if [ -z "${test_modules}" ]; then
+            echo "::error::No Terraform test modules found"
+            exit 1
+          fi
+
+          {
+            printf 'TEST_MODULES<<EOF\n'
+            printf '%s\n' "${test_modules}"
+            printf 'EOF\n'
+          } >> "${GITHUB_ENV}"
+
       - name: ${{ matrix.iac.name }} init
         env:
           IAC_COMMAND: ${{ matrix.iac.command }}
         run: |
-          printf '%s\n' "${TEST_MODULES}" | while IFS= read -r module; do
+          while IFS= read -r module; do
             [ -z "${module}" ] && continue
-            $IAC_COMMAND -chdir="${module}" init -backend=false -input=false
-          done
+
+            echo "::group::Running $IAC_COMMAND init for test module: ${module}"
+            $IAC_COMMAND -chdir="${module}" init \
+              -backend=false -input=false
+            echo "::endgroup::"
+          done <<< "${TEST_MODULES}"
 
       - name: ${{ matrix.iac.name }} test
         env:
           IAC_COMMAND: ${{ matrix.iac.command }}
         run: |
-          printf '%s\n' "${TEST_MODULES}" | while IFS= read -r module; do
+          while IFS= read -r module; do
             [ -z "${module}" ] && continue
-            $IAC_COMMAND -chdir="${module}" test -test-directory=tests
-          done
+
+            echo "::group::Running $IAC_COMMAND test for module: ${module}"
+            $IAC_COMMAND -chdir="${module}" test -test-directory=tests -compact-warnings
+            echo "::endgroup::"
+          done <<< "${TEST_MODULES}"

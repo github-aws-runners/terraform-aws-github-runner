@@ -139,62 +139,66 @@ variable "lambda" {
 
 }
 
-variable "ssm" {
+variable "storage_provider" {
   description = <<-EOT
     Parameter Store paths, encryption, tag scopes, and housekeeper configuration.
 
-    - `paths.root`: Root Parameter Store path for this runner configuration.
-    - `paths.tokens`: Path segment under `paths.root` used for registration tokens and just-in-time configuration.
-    - `paths.config`: Path segment under `paths.root` used for persistent runner configuration.
-    - `kms_key_id`: Optional customer-managed KMS key ARN used by control-plane IAM policies to decrypt shared GitHub App parameters. The ARN may be unknown until apply; null omits the provider-owned KMS statements. It does not select encryption for runtime-created runner parameters.
-    - `tags`: Shared tags for SSM-related resources. These override module-level `tags` and are inherited by parameter and housekeeper resources.
-    - `parameters.tags`: Tags for Terraform-managed runner configuration parameters and temporary parameters created by the scale-up and pool Lambdas. These override module-level and `ssm.tags` values with the same key.
-    - `housekeeper.schedule_expression`: EventBridge schedule expression that invokes the SSM housekeeper.
-    - `housekeeper.state`: EventBridge rule state, such as `ENABLED` or `DISABLED`.
-    - `housekeeper.tags`: Tags for housekeeper resources, including the Lambda function, log group, EventBridge rule, and IAM role. These override module-level, `ssm.tags`, shared Lambda, and shared log tags when keys conflict.
-    - `housekeeper.lambda.artifact`: Component-owned SSM-housekeeper artifact selection. Set at most one of `zip` or `s3`; when neither is selected, the module uses its packaged runner control-plane archive. This selector does not inherit an orchestration-provider artifact.
-    - `housekeeper.lambda.artifact.zip`: Optional local path to the SSM-housekeeper Lambda archive.
-    - `housekeeper.lambda.artifact.s3`: Optional object key and version in the shared `lambda.artifact.s3.bucket`. Selecting S3 requires that common bucket.
-    - `housekeeper.lambda.artifact.s3.key`: Object key of the SSM-housekeeper Lambda archive.
-    - `housekeeper.lambda.artifact.s3.object_version`: Optional object version of the SSM-housekeeper Lambda archive.
-    - `housekeeper.lambda.memory_size`: Memory allocated to the SSM housekeeper Lambda in MB.
-    - `housekeeper.lambda.timeout`: SSM housekeeper Lambda timeout in seconds.
-    - `housekeeper.config.tokenPath`: Parameter Store token path cleaned by the housekeeper. When omitted, the configured runner token path is used.
-    - `housekeeper.config.minimumDaysOld`: Minimum parameter age in days before deletion is allowed.
-    - `housekeeper.config.dryRun`: Reports eligible parameters without deleting them when true.
+    - `storage_provider.aws.ssm.paths.root`: Root Parameter Store path for this runner configuration.
+    - `storage_provider.aws.ssm.paths.tokens`: Path segment under `paths.root` used for registration tokens and just-in-time configuration.
+    - `storage_provider.aws.ssm.paths.config`: Path segment under `paths.root` used for persistent runner configuration.
+    - `storage_provider.aws.ssm.kms_key_id`: Optional customer-managed KMS key ARN used by control-plane IAM policies to decrypt shared GitHub App parameters. The ARN may be unknown until apply; null omits the provider-owned KMS statements. It does not select encryption for runtime-created runner parameters.
+    - `storage_provider.aws.ssm.tags`: Shared tags for SSM-related resources. These override module-level `tags` and are inherited by parameter and housekeeper resources.
+    - `storage_provider.aws.ssm.parameters.tags`: Tags for Terraform-managed runner configuration parameters and temporary parameters created by the scale-up and pool Lambdas. These override module-level and `storage_provider.aws.ssm.tags` values with the same key.
+    - `storage_provider.aws.ssm.housekeeper.schedule_expression`: EventBridge schedule expression that invokes the SSM housekeeper.
+    - `storage_provider.aws.ssm.housekeeper.state`: EventBridge rule state, such as `ENABLED` or `DISABLED`.
+    - `storage_provider.aws.ssm.housekeeper.tags`: Tags for housekeeper resources, including the Lambda function, log group, EventBridge rule, and IAM role. These override module-level, `storage_provider.aws.ssm.tags`, shared Lambda, and shared log tags when keys conflict.
+    - `storage_provider.aws.ssm.housekeeper.lambda.artifact`: Component-owned SSM-housekeeper artifact selection. Set at most one of `zip` or `s3`; when neither is selected, the module uses its packaged runner control-plane archive. This selector does not inherit an orchestration-provider artifact.
+    - `storage_provider.aws.ssm.housekeeper.lambda.artifact.zip`: Optional local path to the SSM-housekeeper Lambda archive.
+    - `storage_provider.aws.ssm.housekeeper.lambda.artifact.s3`: Optional object key and version in the shared `lambda.artifact.s3.bucket`. Selecting S3 requires that common bucket.
+    - `storage_provider.aws.ssm.housekeeper.lambda.artifact.s3.key`: Object key of the SSM-housekeeper Lambda archive.
+    - `storage_provider.aws.ssm.housekeeper.lambda.artifact.s3.object_version`: Optional object version of the SSM-housekeeper Lambda archive.
+    - `storage_provider.aws.ssm.housekeeper.lambda.memory_size`: Memory allocated to the SSM housekeeper Lambda in MB.
+    - `storage_provider.aws.ssm.housekeeper.lambda.timeout`: SSM housekeeper Lambda timeout in seconds.
+    - `storage_provider.aws.ssm.housekeeper.config.tokenPath`: Parameter Store token path cleaned by the housekeeper. When omitted, the configured runner token path is used.
+    - `storage_provider.aws.ssm.housekeeper.config.minimumDaysOld`: Minimum parameter age in days before deletion is allowed.
+    - `storage_provider.aws.ssm.housekeeper.config.dryRun`: Reports eligible parameters without deleting them when true.
   EOT
   type = object({
-    paths = object({
-      root   = string
-      tokens = string
-      config = string
-    })
-    kms_key_id = optional(string, null)
-    tags       = optional(map(string), {})
-    parameters = optional(object({
-      tags = optional(map(string), {})
-    }), {})
-    housekeeper = optional(object({
-      schedule_expression = optional(string, "rate(1 day)")
-      state               = optional(string, "ENABLED")
-      tags                = optional(map(string), {})
-      lambda = optional(object({
-        artifact = optional(object({
-          zip = optional(string, null)
-          s3 = optional(object({
-            key            = string
-            object_version = optional(string, null)
-          }), null)
+    aws = object({
+      ssm = object({
+        paths = object({
+          root   = string
+          tokens = string
+          config = string
+        })
+        kms_key_id = optional(string, null)
+        tags       = optional(map(string), {})
+        parameters = optional(object({
+          tags = optional(map(string), {})
         }), {})
-        memory_size = optional(number, 512)
-        timeout     = optional(number, 60)
-      }), {})
-      config = optional(object({
-        tokenPath      = optional(string)
-        minimumDaysOld = optional(number, 1)
-        dryRun         = optional(bool, false)
-      }), {})
-    }), {})
+        housekeeper = optional(object({
+          schedule_expression = optional(string, "rate(1 day)")
+          state               = optional(string, "ENABLED")
+          tags                = optional(map(string), {})
+          lambda = optional(object({
+            artifact = optional(object({
+              zip = optional(string, null)
+              s3 = optional(object({
+                key            = string
+                object_version = optional(string, null)
+              }), null)
+            }), {})
+            memory_size = optional(number, 512)
+            timeout     = optional(number, 60)
+          }), {})
+          config = optional(object({
+            tokenPath      = optional(string)
+            minimumDaysOld = optional(number, 1)
+            dryRun         = optional(bool, false)
+          }), {})
+        }), {})
+      })
+    })
   })
 
 }

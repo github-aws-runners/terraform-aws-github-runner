@@ -26,6 +26,7 @@ export interface Ec2ProviderConfig {
   environment: string;
   subnets: string[];
   launchTemplateName: string;
+  onDemandOverrideLaunchTemplateName?: string;
   ec2instanceCriteria: RunnerInputParameters['ec2instanceCriteria'];
   amiIdSsmParameterName?: string;
   tracingEnabled?: boolean;
@@ -44,6 +45,7 @@ export function loadEc2ProviderConfig(): Ec2ProviderConfig {
     environment: process.env.ENVIRONMENT,
     subnets: process.env.SUBNET_IDS.split(','),
     launchTemplateName: process.env.LAUNCH_TEMPLATE_NAME,
+    onDemandOverrideLaunchTemplateName: process.env.ON_DEMAND_OVERRIDE_LAUNCH_TEMPLATE_NAME || undefined,
     ec2instanceCriteria: {
       instanceTypes: process.env.INSTANCE_TYPES.split(','),
       instanceTypePriorities: process.env.INSTANCE_TYPE_PRIORITIES
@@ -62,6 +64,41 @@ export function loadEc2ProviderConfig(): Ec2ProviderConfig {
   };
 }
 
+// Extension point: add a resolver here for each per-job override that needs more than a plain merge.
+type Ec2ConfigResolver = (config: CreateEC2RunnerConfig) => CreateEC2RunnerConfig;
+
+function resolveCapacityType(config: CreateEC2RunnerConfig): CreateEC2RunnerConfig {
+  const { TargetCapacityType, ...overrides } = config.ec2OverrideConfig ?? {};
+  let targetCapacityType = config.ec2instanceCriteria.targetCapacityType;
+
+  if (TargetCapacityType && config.useDedicatedHost) {
+    if (TargetCapacityType === 'spot') {
+      logger.warn('Dedicated hosts do not support spot, the capacity type label is ignored.');
+    }
+  } else if (TargetCapacityType) {
+    targetCapacityType = TargetCapacityType;
+    if (TargetCapacityType === 'on-demand') delete overrides.MaxPrice;
+  }
+
+  const launchTemplateName =
+    targetCapacityType === 'on-demand' && config.onDemandOverrideLaunchTemplateName
+      ? config.onDemandOverrideLaunchTemplateName
+      : config.launchTemplateName;
+
+  return {
+    ...config,
+    launchTemplateName,
+    ec2instanceCriteria: { ...config.ec2instanceCriteria, targetCapacityType },
+    ec2OverrideConfig: Object.keys(overrides).length > 0 ? overrides : undefined,
+  };
+}
+
+const ec2ConfigResolvers: Ec2ConfigResolver[] = [resolveCapacityType];
+
+function resolveEc2Config(config: CreateEC2RunnerConfig): CreateEC2RunnerConfig {
+  return ec2ConfigResolvers.reduce((resolvedConfig, resolve) => resolve(resolvedConfig), config);
+}
+
 export async function createRunners(
   ec2Operations: Ec2RunnerResourceOperations,
   githubRunnerConfig: CreateGitHubRunnerConfig,
@@ -74,7 +111,7 @@ export async function createRunners(
 ): Promise<CreateRunnerResult> {
   let result: CreateRunnerResult;
   try {
-    const { scaleErrors, ...ec2CreateConfig } = ec2RunnerConfig;
+    const { scaleErrors, ...ec2CreateConfig } = resolveEc2Config(ec2RunnerConfig);
     const ec2Result = await ec2Operations.create({
       ...ec2CreateConfig,
       runnerType: githubRunnerConfig.runnerType,

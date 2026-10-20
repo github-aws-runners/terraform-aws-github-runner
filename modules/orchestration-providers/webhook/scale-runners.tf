@@ -22,7 +22,6 @@ module "scale_runners" {
       kms_key_id           = local.resolved_config.queue.kms_key_id
       event_source_mapping = local.resolved_config.queue.event_source_mapping
     }
-    ssm = local.resolved_config.ssm
     observability = {
       logs    = local.resolved_config.observability.logs
       tracing = local.resolved_config.observability.tracing
@@ -52,6 +51,14 @@ module "scale_runners" {
       delay_backoff    = local.resolved_config.job_retry.delay_backoff
       queue            = one(module.job_retry[*].job_retry_check_queue)
     }
+  }
+
+  storage_provider = {
+    aws = {
+      ssm = local.resolved_config.storage_provider.aws.ssm
+    }
+    scale_up   = local.resolved_config.storage_provider.scale_up
+    scale_down = local.resolved_config.storage_provider.scale_down
   }
 
   runner_provider = {

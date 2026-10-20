@@ -89,6 +89,10 @@ locals {
     var.runner_os == "osx" ? base64encode(local.user_data) :
     null
   )
+
+  launch_template_variants = var.instance_capacity_type_override_enabled ? ["default", "on_demand_override"] : ["default"]
+
+  on_demand_override_launch_template_created = contains(local.launch_template_variants, "on_demand_override")
 }
 
 data "aws_ami" "runner" {
@@ -127,8 +131,48 @@ resource "aws_ssm_parameter" "runner_ami_id" {
   )
 }
 
+locals {
+  # All-null defaults so both branches below share one object type.
+  network_interfaces_zero = {
+    associate_carrier_ip_address      = null
+    associate_public_ip_address       = null
+    delete_on_termination             = null
+    description                       = null
+    device_index                      = null
+    interface_type                    = null
+    ipv4_address_count                = null
+    ipv4_addresses                    = null
+    ipv4_prefix_count                 = null
+    ipv4_prefixes                     = null
+    ipv6_address_count                = null
+    ipv6_addresses                    = null
+    ipv6_prefix_count                 = null
+    ipv6_prefixes                     = null
+    network_card_index                = null
+    network_interface_id              = null
+    primary_ipv6                      = null
+    private_ip_address                = null
+    security_groups                   = null
+    subnet_id                         = null
+    connection_tracking_specification = null
+    ena_srd_specification             = null
+  }
+
+  network_interfaces = length(var.network_interfaces) > 0 ? var.network_interfaces : (
+    var.associate_public_ipv4_address ? [merge(local.network_interfaces_zero, {
+      associate_public_ip_address = true
+      security_groups = compact(concat(
+        var.enable_managed_runner_security_group ? [aws_security_group.runner_sg[0].id] : [],
+        var.runner_additional_security_group_ids,
+      ))
+    })] : []
+  )
+}
+
 resource "aws_launch_template" "runner" {
-  name = "${var.prefix}-action-runner"
+  for_each = toset(local.launch_template_variants)
+
+  name = each.key == "default" ? "${var.prefix}-action-runner" : "${var.prefix}-action-runner-on-demand-override"
 
   dynamic "block_device_mappings" {
     for_each = var.block_device_mappings != null ? var.block_device_mappings : []
@@ -258,7 +302,7 @@ resource "aws_launch_template" "runner" {
   # Additionally, tagging spot requests via the CreateFleetCommand in the Lambda function does not work as expected,
   # so we rely on Terraform to manage these tags only when spot is exclusively used without on-demand failover.
   dynamic "tag_specifications" {
-    for_each = var.instance_target_capacity_type == "spot" && length(var.enable_on_demand_failover_for_errors) == 0 ? [1] : [] # Include the block only if the value is "spot" and on_demand_failover_for_errors is not enabled
+    for_each = each.key == "default" && var.instance_target_capacity_type == "spot" && length(var.enable_on_demand_failover_for_errors) == 0 ? [1] : [] # Include the block only if the value is "spot" and on_demand_failover_for_errors is not enabled
     content {
       resource_type = "spot-instances-request"
       tags = merge(
@@ -295,16 +339,57 @@ resource "aws_launch_template" "runner" {
   update_default_version = true
 
   dynamic "network_interfaces" {
-    for_each = var.associate_public_ipv4_address ? [var.associate_public_ipv4_address] : []
-    iterator = associate_public_ipv4_address
+    for_each = local.network_interfaces
     content {
-      associate_public_ip_address = associate_public_ipv4_address.value
-      security_groups = compact(concat(
-        var.enable_managed_runner_security_group ? [aws_security_group.runner_sg[0].id] : [],
-        var.runner_additional_security_group_ids,
-      ))
+      associate_carrier_ip_address = try(network_interfaces.value.associate_carrier_ip_address, null)
+      associate_public_ip_address  = try(network_interfaces.value.associate_public_ip_address, null)
+      delete_on_termination        = try(network_interfaces.value.delete_on_termination, null)
+      description                  = try(network_interfaces.value.description, null)
+      device_index                 = try(network_interfaces.value.device_index, null)
+      interface_type               = try(network_interfaces.value.interface_type, null)
+      ipv4_address_count           = try(network_interfaces.value.ipv4_address_count, null)
+      ipv4_addresses               = try(network_interfaces.value.ipv4_addresses, null)
+      ipv4_prefix_count            = try(network_interfaces.value.ipv4_prefix_count, null)
+      ipv4_prefixes                = try(network_interfaces.value.ipv4_prefixes, null)
+      ipv6_address_count           = try(network_interfaces.value.ipv6_address_count, null)
+      ipv6_addresses               = try(network_interfaces.value.ipv6_addresses, null)
+      ipv6_prefix_count            = try(network_interfaces.value.ipv6_prefix_count, null)
+      ipv6_prefixes                = try(network_interfaces.value.ipv6_prefixes, null)
+      network_card_index           = try(network_interfaces.value.network_card_index, null)
+      network_interface_id         = try(network_interfaces.value.network_interface_id, null)
+      primary_ipv6                 = try(network_interfaces.value.primary_ipv6, null)
+      private_ip_address           = try(network_interfaces.value.private_ip_address, null)
+      security_groups              = try(network_interfaces.value.security_groups, null)
+      subnet_id                    = try(network_interfaces.value.subnet_id, null)
+
+      dynamic "connection_tracking_specification" {
+        for_each = try(network_interfaces.value.connection_tracking_specification, null) != null ? [network_interfaces.value.connection_tracking_specification] : []
+        content {
+          tcp_established_timeout = try(connection_tracking_specification.value.tcp_established_timeout, null)
+          udp_stream_timeout      = try(connection_tracking_specification.value.udp_stream_timeout, null)
+          udp_timeout             = try(connection_tracking_specification.value.udp_timeout, null)
+        }
+      }
+
+      dynamic "ena_srd_specification" {
+        for_each = try(network_interfaces.value.ena_srd_specification, null) != null ? [network_interfaces.value.ena_srd_specification] : []
+        content {
+          ena_srd_enabled = try(ena_srd_specification.value.ena_srd_enabled, null)
+          dynamic "ena_srd_udp_specification" {
+            for_each = try(ena_srd_specification.value.ena_srd_udp_specification, null) != null ? [ena_srd_specification.value.ena_srd_udp_specification] : []
+            content {
+              ena_srd_udp_enabled = try(ena_srd_udp_specification.value.ena_srd_udp_enabled, null)
+            }
+          }
+        }
+      }
     }
   }
+}
+
+moved {
+  from = aws_launch_template.runner
+  to   = aws_launch_template.runner["default"]
 }
 
 resource "aws_security_group" "runner_sg" {

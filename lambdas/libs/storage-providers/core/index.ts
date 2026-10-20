@@ -1,3 +1,6 @@
+export interface GitHubWebhookSecretStore {
+  get(): Promise<string>;
+}
 export interface RunnerConfigMetadata {
   key: string;
   value: string;
@@ -14,7 +17,7 @@ export interface RunnerConfigStore {
 }
 
 export interface RunnerConfigHousekeeper {
-  houseKeeper(): Promise<void>;
+  houseKeeper(remainingTime?: () => number): Promise<void>;
 }
 
 export interface GitHubAppCredential {
@@ -57,4 +60,8 @@ export interface RunnerGroupCacheRecord {
 export interface RunnerGroupCacheStore {
   get(runnerGroupName: string): Promise<number | undefined>;
   create(record: RunnerGroupCacheRecord): Promise<void>;
+}
+
+export interface RunnerMatcherConfigStore {
+  get(): Promise<string>;
 }

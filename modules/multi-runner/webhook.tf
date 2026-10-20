@@ -19,25 +19,31 @@ locals {
       }
     }
   }
+
+  webhook_storage_kms_key_arn = local.effective_config.storage_provider.aws.ssm.kms_key_id
 }
 
 module "webhook" {
-  source      = "../webhook"
-  prefix      = var.prefix
-  tags        = local.tags
-  kms_key_arn = local.effective_config.ssm.kms_key_id
+  source = "../webhook"
+  prefix = var.prefix
+  tags   = local.tags
+  storage_provider = {
+    aws = {
+      kms_key_id = local.webhook_storage_kms_key_arn
+      ssm = {
+        paths = {
+          root    = local.ssm_root_path
+          webhook = local.effective_config.storage_provider.aws.ssm.paths.webhook
+        }
+      }
+    }
+  }
   eventbridge = {
     enable        = local.effective_config.orchestration_provider.webhook.eventbridge.enabled
     accept_events = local.effective_config.orchestration_provider.webhook.eventbridge.accept_events
   }
   runner_matcher_config               = local.runner_matcher_config
   matcher_config_parameter_store_tier = local.effective_config.orchestration_provider.webhook.matcher_config_parameter_store_tier
-
-  ssm_paths = {
-    root    = local.ssm_root_path
-    webhook = local.effective_config.ssm.paths.webhook
-  }
-
   github_app_parameters = {
     webhook_secret = local.github_app_parameters.webhook_secret
   }

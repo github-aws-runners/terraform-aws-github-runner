@@ -24,6 +24,7 @@ The v2 interface has two levels:
 The current providers are:
 
 - `orchestration_provider.webhook`
+- `orchestration_provider.scale_set` (experimental)
 - `compute_provider.aws.ec2`
 
 Global provider blocks supply defaults and shared settings. They do not select
@@ -130,6 +131,21 @@ lane only when that lane needs a different value.
 Each v2 lane is keyed by the same logical runner name used in v1, but its
 settings use canonical nested blocks:
 
+### Choosing scale-set orchestration
+
+Use the webhook provider when the lane should receive `workflow_job` events and
+scale EC2 runners through SQS and Lambda. Use the scale-set provider when the
+lane should be reconciled by a long-running ECS controller through GitHub's
+runner scale-set APIs. Scale-set lanes resolve GitHub scale sets by name and
+may register a missing set at runtime. The TypeScript controller owns those
+runtime API operations; Terraform only provisions AWS and never calls the
+GitHub scale-set API.
+
+The scale-set provider is experimental and requires an explicit immutable
+controller image plus a compute-provider scale-set capability. Its controller
+groups share task resources and IAM permissions, so choose `runner_config` or
+`custom` grouping when lanes need separate failure or permission boundaries.
+
 ```hcl
 multi_runner_config = {
   large = {
@@ -213,6 +229,8 @@ either a root module variable or an attribute under
 | `enable_ami_housekeeper` and related settings | `global_config_compute_provider.aws.ec2.ami.housekeeper` |
 | termination watcher settings | `global_config_compute_provider.aws.ec2.instance_termination_watcher` |
 | `log_level`, `log_class`, `logging_retention_in_days`, and tracing/metrics settings | `global_config_observability` |
+| webhook orchestration settings such as `enable_jit_config`, queues, and matcher rules | `multi_runner_config.<name>.orchestration_provider.webhook` |
+| scale-set orchestration and controller settings | `multi_runner_config.<name>.orchestration_provider.scale_set` and the internal scale-set module inputs |
 
 Settings that are specific to one lane should remain in that lane instead of
 being copied into a global block.

@@ -17,6 +17,7 @@ declare global {
         | 'capacity-optimized-prioritized'
         | 'prioritized';
       SCALE_ERRORS: string;
+      ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS: string;
     }
   }
 }

@@ -19,23 +19,28 @@ locals {
   }
 
   job_retry_environment_variables = {
-    ENABLE_ORGANIZATION_RUNNERS          = var.config.github.organization_runners
-    ENABLE_METRIC_JOB_RETRY              = var.config.observability.metrics.enabled && var.config.observability.metrics.metric.job_retry.enabled
-    ENABLE_METRIC_GITHUB_APP_RATE_LIMIT  = var.config.observability.metrics.enabled && var.config.observability.metrics.metric.github_app_rate_limit.enabled
-    GHES_URL                             = var.config.github.enterprise_server.url
-    NODE_TLS_REJECT_UNAUTHORIZED         = var.config.github.enterprise_server.url != null && !var.config.github.enterprise_server.ssl_verify ? 0 : 1
-    USER_AGENT                           = var.config.github.user_agent
-    JOB_QUEUE_SCALE_UP_URL               = var.config.queue.build.url
+    ENABLE_ORGANIZATION_RUNNERS         = var.config.github.organization_runners
+    ENABLE_METRIC_JOB_RETRY             = var.config.observability.metrics.enabled && var.config.observability.metrics.metric.job_retry.enabled
+    ENABLE_METRIC_GITHUB_APP_RATE_LIMIT = var.config.observability.metrics.enabled && var.config.observability.metrics.metric.github_app_rate_limit.enabled
+    GHES_URL                            = var.config.github.enterprise_server.url
+    NODE_TLS_REJECT_UNAUTHORIZED        = var.config.github.enterprise_server.url != null && !var.config.github.enterprise_server.ssl_verify ? 0 : 1
+    USER_AGENT                          = var.config.github.user_agent
+    JOB_QUEUE_SCALE_UP_URL              = var.config.queue.build.url
+    RUNNER_NAME_PREFIX                  = var.config.runner.name_prefix
+  }
+
+  ssm_environment_variables = {
     PARAMETER_GITHUB_APP_ID_NAME         = var.config.github.app_parameters.id.name
     PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.config.github.app_parameters.key_base64.name
     PARAMETER_GITHUB_APPS_MANIFEST_NAME  = var.config.github.app_parameters.additional_apps_manifest != null ? var.config.github.app_parameters.additional_apps_manifest.name : ""
-    RUNNER_NAME_PREFIX                   = var.config.runner.name_prefix
   }
 
   environment_variables = merge(
     local.lambda_environment_variables,
     var.config.lambda.environment_variables,
     local.job_retry_environment_variables,
+    local.ssm_environment_variables,
+    var.storage_provider.environment_variables,
   )
 }
 
@@ -130,6 +135,7 @@ resource "aws_iam_role_policy" "job_retry_xray" {
 }
 
 resource "aws_lambda_event_source_mapping" "job_retry" {
+  function_response_types            = ["ReportBatchItemFailures"]
   event_source_arn                   = aws_sqs_queue.job_retry_check_queue.arn
   function_name                      = aws_lambda_function.job_retry.arn
   batch_size                         = var.config.queue.event_source_mapping.batch_size

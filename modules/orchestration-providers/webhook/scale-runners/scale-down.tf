@@ -23,9 +23,6 @@ resource "aws_lambda_function" "scale_down" {
       MINIMUM_RUNNING_TIME_IN_MINUTES          = coalesce(var.config.scale_down.minimum_running_time_in_minutes, local.min_runtime_defaults[var.config.runner.os])
       SCALE_DOWN_IDLE_CONFIRMATION_SECONDS     = var.config.scale_down.idle_confirmation_seconds
       NODE_TLS_REJECT_UNAUTHORIZED             = var.config.github.enterprise_server.url != null && !var.config.github.enterprise_server.ssl_verify ? 0 : 1
-      PARAMETER_GITHUB_APP_ID_NAME             = var.config.github.app_parameters.id.name
-      PARAMETER_GITHUB_APP_KEY_BASE64_NAME     = var.config.github.app_parameters.key_base64.name
-      PARAMETER_GITHUB_APPS_MANIFEST_NAME      = var.config.github.app_parameters.additional_apps_manifest != null ? var.config.github.app_parameters.additional_apps_manifest.name : ""
       POWERTOOLS_LOGGER_LOG_EVENT              = var.config.observability.logs.level == "debug" ? "true" : "false"
       SCALE_DOWN_CONFIG                        = jsonencode(var.config.scale_down.idle_config)
       POWERTOOLS_SERVICE_NAME                  = "${var.config.prefix}-scale-down"
@@ -35,7 +32,11 @@ resource "aws_lambda_function" "scale_down" {
       POWERTOOLS_TRACER_CAPTURE_ERROR          = var.config.observability.tracing.capture_error
       COMPUTE_PROVIDER_TYPE                    = var.runner_provider.type
       RUNNER_BOOT_TIME_IN_MINUTES              = var.config.runner.boot_time_in_minutes
-    })
+      }, {
+      PARAMETER_GITHUB_APP_ID_NAME         = var.config.github.app_parameters.id.name
+      PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.config.github.app_parameters.key_base64.name
+      PARAMETER_GITHUB_APPS_MANIFEST_NAME  = var.config.github.app_parameters.additional_apps_manifest != null ? var.config.github.app_parameters.additional_apps_manifest.name : ""
+    }, var.storage_provider.scale_down.environment_variables)
   }
 
   dynamic "vpc_config" {

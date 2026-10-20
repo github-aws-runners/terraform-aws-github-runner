@@ -19,6 +19,11 @@ variable "github_app" {
       arn  = string
       name = string
     }))
+    installation_id = optional(string)
+    installation_id_ssm = optional(object({
+      arn  = string
+      name = string
+    }))
     webhook_secret = optional(string)
     webhook_secret_ssm = optional(object({
       arn  = string
@@ -177,6 +182,39 @@ variable "multi_runner_config" {
         amd_sev_snp           = optional(string)
         nested_virtualization = optional(string)
       }), null)
+      network_interfaces = optional(list(object({
+        associate_carrier_ip_address = optional(bool)
+        associate_public_ip_address  = optional(bool)
+        delete_on_termination        = optional(bool)
+        description                  = optional(string)
+        device_index                 = optional(number)
+        interface_type               = optional(string)
+        ipv4_address_count           = optional(number)
+        ipv4_addresses               = optional(list(string))
+        ipv4_prefix_count            = optional(number)
+        ipv4_prefixes                = optional(list(string))
+        ipv6_address_count           = optional(number)
+        ipv6_addresses               = optional(list(string))
+        ipv6_prefix_count            = optional(number)
+        ipv6_prefixes                = optional(list(string))
+        network_card_index           = optional(number)
+        network_interface_id         = optional(string)
+        primary_ipv6                 = optional(bool)
+        private_ip_address           = optional(string)
+        security_groups              = optional(list(string))
+        subnet_id                    = optional(string)
+        connection_tracking_specification = optional(object({
+          tcp_established_timeout = optional(number)
+          udp_stream_timeout      = optional(number)
+          udp_timeout             = optional(number)
+        }))
+        ena_srd_specification = optional(object({
+          ena_srd_enabled = optional(bool)
+          ena_srd_udp_specification = optional(object({
+            ena_srd_udp_enabled = optional(bool)
+          }))
+        }))
+      })), [])
       placement = optional(object({
         affinity                = optional(string)
         availability_zone       = optional(string)
@@ -218,6 +256,9 @@ variable "multi_runner_config" {
         schedule_expression_timezone = optional(string)
         size                         = number
       })), [])
+      ssm_ttl_seconds = optional(object({
+        tokens = optional(number, null)
+      }), {})
       job_retry = optional(object({
         enable             = optional(bool, false)
         delay_in_seconds   = optional(number, 300)
@@ -313,6 +354,7 @@ variable "multi_runner_config" {
           priority                = optional(number, 999)
           dynamic_labels_enabled  = optional(bool, false)
           awsDynamicLabelsPolicy = optional(object({
+            allowed_keys = optional(list(string), [])
             blocked_keys = optional(list(string), [])
             restricted_keys = optional(map(object({
               allowed = optional(list(string), [])
@@ -381,42 +423,57 @@ variable "multi_runner_config" {
           tags             = optional(map(string), {})
           lambda = optional(object({
             memory_size                    = optional(number, 256)
-            reserved_concurrent_executions = optional(number, 1)
+            reserved_concurrent_executions = optional(number, null)
             timeout                        = optional(number, 30)
           }), {})
         }), {})
       }), null)
+      scale_set = optional(object({
+        name = string
+        runner = optional(object({
+          min_runners          = optional(number, 0)
+          max_runners          = optional(number, 10)
+          boot_time_in_minutes = optional(number, 10)
+        }), {})
+      }), null)
     }), {})
 
-    ssm = optional(object({
-      paths = optional(object({
-        root   = optional(string, null)
-        tokens = optional(string, null)
-        config = optional(string, null)
-      }), {})
-      tags = optional(map(string), {})
-      parameters = optional(object({
-        tags = optional(map(string), {})
-      }), {})
-      housekeeper = optional(object({
-        schedule_expression = optional(string, null)
-        state               = optional(string, null)
-        tags                = optional(map(string), {})
-        lambda = optional(object({
-          artifact = optional(object({
-            zip = optional(string, null)
-            s3 = optional(object({
-              key            = string
-              object_version = optional(string, null)
-            }), null)
+    storage_provider = optional(object({
+      aws = optional(object({
+        ssm = optional(object({
+          ttl_seconds = optional(object({
+            tokens = optional(number, null)
           }), {})
-          memory_size = optional(number, null)
-          timeout     = optional(number, null)
-        }), {})
-        config = optional(object({
-          tokenPath      = optional(string, null)
-          minimumDaysOld = optional(number, null)
-          dryRun         = optional(bool, null)
+          paths = optional(object({
+            root   = optional(string, null)
+            tokens = optional(string, null)
+            config = optional(string, null)
+          }), {})
+          tags = optional(map(string), {})
+          parameters = optional(object({
+            tags = optional(map(string), {})
+          }), {})
+          housekeeper = optional(object({
+            schedule_expression = optional(string, null)
+            state               = optional(string, null)
+            tags                = optional(map(string), {})
+            lambda = optional(object({
+              artifact = optional(object({
+                zip = optional(string, null)
+                s3 = optional(object({
+                  key            = string
+                  object_version = optional(string, null)
+                }), null)
+              }), {})
+              memory_size = optional(number, null)
+              timeout     = optional(number, null)
+            }), {})
+            config = optional(object({
+              tokenPath      = optional(string, null)
+              minimumDaysOld = optional(number, null)
+              dryRun         = optional(bool, null)
+            }), {})
+          }), {})
         }), {})
       }), {})
     }), {})
@@ -546,6 +603,39 @@ variable "multi_runner_config" {
             amd_sev_snp           = optional(string)
             nested_virtualization = optional(string)
           }), null)
+          network_interfaces = optional(list(object({
+            associate_carrier_ip_address = optional(bool)
+            associate_public_ip_address  = optional(bool)
+            delete_on_termination        = optional(bool)
+            description                  = optional(string)
+            device_index                 = optional(number)
+            interface_type               = optional(string)
+            ipv4_address_count           = optional(number)
+            ipv4_addresses               = optional(list(string))
+            ipv4_prefix_count            = optional(number)
+            ipv4_prefixes                = optional(list(string))
+            ipv6_address_count           = optional(number)
+            ipv6_addresses               = optional(list(string))
+            ipv6_prefix_count            = optional(number)
+            ipv6_prefixes                = optional(list(string))
+            network_card_index           = optional(number)
+            network_interface_id         = optional(string)
+            primary_ipv6                 = optional(bool)
+            private_ip_address           = optional(string)
+            security_groups              = optional(list(string))
+            subnet_id                    = optional(string)
+            connection_tracking_specification = optional(object({
+              tcp_established_timeout = optional(number)
+              udp_stream_timeout      = optional(number)
+              udp_timeout             = optional(number)
+            }))
+            ena_srd_specification = optional(object({
+              ena_srd_enabled = optional(bool)
+              ena_srd_udp_specification = optional(object({
+                ena_srd_udp_enabled = optional(bool)
+              }))
+            }))
+          })), [])
           placement = optional(object({
             affinity                = optional(string)
             availability_zone       = optional(string)
@@ -638,6 +728,7 @@ variable "multi_runner_config" {
         block_device_mappings: "The EC2 instance block device configuration. Takes the following keys: `device_name`, `delete_on_termination`, `volume_type`, `volume_size`, `encrypted`, `iops`, `throughput`, `kms_key_id`, `snapshot_id`, `volume_initialization_rate`."
         job_retry: "Experimental! Can be removed / changed without trigger a major release. Configure job retries. The configuration enables job retries (for ephemeral runners). After creating the instances a message will be published to a job retry queue. The job retry check lambda is checking after a delay if the job is queued. If not the message will be published again on the scale-up (build queue). Using this feature can impact the rate limit of the GitHub app."
         pool_config: "The configuration for updating the pool. The `pool_size` to adjust to by the events triggered by the `schedule_expression`. For example you can configure a cron expression for week days to adjust the pool to 10 and another expression for the weekend to adjust the pool to 1. Use `schedule_expression_timezone` to override the schedule time zone (defaults to UTC)."
+        ssm_ttl_seconds.tokens: "Optional TTL in seconds for the SSM parameters holding the runner registration token / JIT config. When set, the parameters are created with an SSM expiration policy so SSM deletes them itself after the TTL passes. Requires the Advanced parameter tier for every token parameter, which incurs additional costs. Expiration is enforced asynchronously by SSM; the SSM housekeeper lambda remains as a backstop. Must be a positive number, and should comfortably exceed the runner boot time so the config does not expire before the instance reads it."
         iam_overrides: "Allows to (optionally) override the instance profile and runner role created by the module. Set `override_instance_profile` to true and provide the `instance_profile_name` to use an existing instance profile. Set `override_runner_role` to true and provide the `runner_role_arn` to use an existing role for the runner instances."
       }
       # V2 contract
@@ -666,7 +757,7 @@ variable "multi_runner_config" {
         bidirectionalLabelMatch: "If set to true, the runner labels and workflow job labels must be an exact two-way match (same set, any order, no extras or missing labels). This is stricter than `exactMatch` which only checks that workflow labels are a subset of runner labels. When false, if __any__ workflow label matches it will trigger the webhook."
         priority: "If set it defines the priority of the matcher, the matcher with the lowest priority will be evaluated first. Default is 999, allowed values 0-999."
         enableDynamicLabels: "Experimental! When true the dispatcher allows `ghr-*` dynamic labels for jobs routed to this runner. Default false."
-        awsDynamicLabelsPolicy: "Optional AWS dynamic label policy evaluated by the dispatcher. Only effective when `enableDynamicLabels = true`. Jobs whose provider dynamic labels violate every matching runner's policy are rejected with a 202 (a warning is logged). Evaluation: keys in `blocked_keys` are always rejected; keys in `restricted_keys` are allowed only when their value passes the rule; unlisted keys are allowed. Schema: `{ blocked_keys = [<key>], restricted_keys = { <key> = { allowed = [globs], denied = [globs], max = number|string } } }`. Keys use the dynamic label suffix, e.g. `instance-type` for `ghr-ec2-instance-type`."
+        awsDynamicLabelsPolicy: "Optional AWS dynamic label policy evaluated by the dispatcher. Only effective when `enableDynamicLabels = true`. Jobs whose provider dynamic labels violate every matching runner's policy are rejected with a 202 (a warning is logged). Evaluation: if `allowed_keys` is set, only those keys are accepted; keys in `blocked_keys` are always rejected (cannot be used together with `allowed_keys`); keys in `restricted_keys` are allowed only when their value passes the rule; a key not listed anywhere is allowed. Schema: `{ allowed_keys = [<key>], blocked_keys = [<key>], restricted_keys = { <key> = { allowed = [globs], denied = [globs], max = number|string } } }`. Keys use the dynamic label suffix, e.g. `instance-type` for `ghr-ec2-instance-type`."
       }
       redrive_build_queue: "Set options to attach (optional) a dead letter queue to the build queue, the queue between the webhook and the scale up lambda. You have the following options. 1. Disable by setting `enabled` to false. 2. Enable by setting `enabled` to `true`, `maxReceiveCount` to a number of max retries."
     }
@@ -679,6 +770,7 @@ variable "multi_runner_config" {
     )
     error_message = "Use one multi_runner_config shape per module invocation: provide either v1 entries with runner_config or v2 entries without runner_config, not both in the same map."
   }
+
 }
 
 variable "scale_up_lambda_memory_size" {

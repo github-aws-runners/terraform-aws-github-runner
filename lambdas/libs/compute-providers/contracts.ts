@@ -15,6 +15,7 @@ export interface AwsDynamicLabelsValueRule {
 
 export interface AwsDynamicLabelsPolicy {
   blocked_keys?: string[];
+  allowed_keys?: string[];
   restricted_keys?: Record<string, AwsDynamicLabelsValueRule>;
 }
 

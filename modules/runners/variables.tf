@@ -129,6 +129,12 @@ variable "instance_target_capacity_type" {
   }
 }
 
+variable "instance_capacity_type_override_enabled" {
+  description = "Allows a per-job label to override capacity type to `on-demand` at launch time. When true, an additional launch template variant without the Spot-request tag specification is created so an on-demand override never conflicts with it."
+  type        = bool
+  default     = false
+}
+
 variable "instance_allocation_strategy" {
   description = "The allocation strategy for creating instances. For spot, AWS recommends `price-capacity-optimized`; for on-demand, use `lowest-price` or `prioritized`. The AWS default is `lowest-price`."
   type        = string
@@ -682,6 +688,20 @@ variable "ssm_paths" {
   })
 }
 
+variable "ssm_ttl_seconds" {
+  description = "Set tokens to the optional TTL in seconds for the SSM parameters holding the runner registration token / JIT config. When set, the parameters are created with an SSM expiration policy so SSM deletes them itself after the TTL passes. Requires the Advanced parameter tier for every token parameter, which incurs additional costs. Expiration is enforced asynchronously by SSM; the SSM housekeeper lambda remains as a backstop. Must be a positive number, and should comfortably exceed the runner boot time so the config does not expire before the instance reads it."
+  type = object({
+    tokens = optional(number, null)
+  })
+  default  = {}
+  nullable = false
+
+  validation {
+    condition     = var.ssm_ttl_seconds.tokens == null ? true : var.ssm_ttl_seconds.tokens > 0
+    error_message = "`ssm_ttl_seconds.tokens` must be a positive number."
+  }
+}
+
 variable "runner_name_prefix" {
   description = "The prefix used for the GitHub runner name. The prefix will be used in the default start script to prefix the instance name when register the runner in GitHub. The value is available via an EC2 tag 'ghr:runner_name_prefix'."
   type        = string
@@ -767,6 +787,44 @@ variable "associate_public_ipv4_address" {
   description = "Associate public IPv4 with the runner. Only tested with IPv4"
   type        = bool
   default     = false
+}
+
+variable "network_interfaces" {
+  description = "Advanced network interface configuration for the runner launch template. See https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#network-interfaces for details. Leave unset (default) to keep using associate_public_ipv4_address for a simple single-interface setup; set this to fully control one or more interfaces."
+  type = list(object({
+    associate_carrier_ip_address = optional(bool)
+    associate_public_ip_address  = optional(bool)
+    delete_on_termination        = optional(bool)
+    description                  = optional(string)
+    device_index                 = optional(number)
+    interface_type               = optional(string)
+    ipv4_address_count           = optional(number)
+    ipv4_addresses               = optional(list(string))
+    ipv4_prefix_count            = optional(number)
+    ipv4_prefixes                = optional(list(string))
+    ipv6_address_count           = optional(number)
+    ipv6_addresses               = optional(list(string))
+    ipv6_prefix_count            = optional(number)
+    ipv6_prefixes                = optional(list(string))
+    network_card_index           = optional(number)
+    network_interface_id         = optional(string)
+    primary_ipv6                 = optional(bool)
+    private_ip_address           = optional(string)
+    security_groups              = optional(list(string))
+    subnet_id                    = optional(string)
+    connection_tracking_specification = optional(object({
+      tcp_established_timeout = optional(number)
+      udp_stream_timeout      = optional(number)
+      udp_timeout             = optional(number)
+    }))
+    ena_srd_specification = optional(object({
+      ena_srd_enabled = optional(bool)
+      ena_srd_udp_specification = optional(object({
+        ena_srd_udp_enabled = optional(bool)
+      }))
+    }))
+  }))
+  default = []
 }
 
 variable "ssm_housekeeper" {

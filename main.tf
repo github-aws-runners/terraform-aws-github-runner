@@ -100,7 +100,7 @@ resource "aws_sqs_queue" "queued_builds_dlq" {
 }
 
 module "ssm" {
-  source                 = "./modules/ssm"
+  source                 = "./modules/storage-providers/aws/ssm"
   kms_key_arn            = var.kms_key_arn
   path_prefix            = "${local.ssm_root_path}/${var.ssm_paths.app}"
   github_app             = var.github_app
@@ -111,13 +111,19 @@ module "ssm" {
 module "webhook" {
   source = "./modules/webhook"
 
-  ssm_paths = {
-    root    = local.ssm_root_path
-    webhook = var.ssm_paths.webhook
+  storage_provider = {
+    aws = {
+      kms_key_id = var.kms_key_arn
+      ssm = {
+        paths = {
+          root    = local.ssm_root_path
+          webhook = var.ssm_paths.webhook
+        }
+      }
+    }
   }
   prefix      = var.prefix
   tags        = local.tags
-  kms_key_arn = var.kms_key_arn
   eventbridge = var.eventbridge
 
   runner_matcher_config = {
@@ -182,6 +188,7 @@ module "runners" {
     tokens = "${var.ssm_paths.runners}/tokens"
     config = "${var.ssm_paths.runners}/config"
   }
+  ssm_ttl_seconds = var.ssm_ttl_seconds
 
   s3_runner_binaries = var.enable_runner_binaries_syncer ? {
     arn = module.runner_binaries[0].bucket.arn
@@ -189,13 +196,14 @@ module "runners" {
     key = module.runner_binaries[0].runner_distribution_object_key
   } : null
 
-  runner_os                     = var.runner_os
-  instance_types                = var.instance_types
-  instance_target_capacity_type = var.instance_target_capacity_type
-  instance_allocation_strategy  = var.instance_allocation_strategy
-  instance_type_priorities      = var.instance_type_priorities
-  instance_max_spot_price       = var.instance_max_spot_price
-  block_device_mappings         = var.block_device_mappings
+  runner_os                               = var.runner_os
+  instance_types                          = var.instance_types
+  instance_target_capacity_type           = var.instance_target_capacity_type
+  instance_capacity_type_override_enabled = var.enable_dynamic_labels
+  instance_allocation_strategy            = var.instance_allocation_strategy
+  instance_type_priorities                = var.instance_type_priorities
+  instance_max_spot_price                 = var.instance_max_spot_price
+  block_device_mappings                   = var.block_device_mappings
 
   runner_architecture = var.runner_architecture
   ami                 = var.ami
@@ -261,6 +269,7 @@ module "runners" {
   scale_up_reserved_concurrent_executions = var.scale_up_reserved_concurrent_executions
 
   associate_public_ipv4_address = var.associate_public_ipv4_address
+  network_interfaces            = var.runner_network_interfaces
 
   instance_profile_path     = var.instance_profile_path
   role_path                 = var.role_path

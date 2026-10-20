@@ -1,8 +1,16 @@
+import { NoEligibleGitHubAppError } from './github/auth';
 import { captureLambdaHandler, logger } from '@aws-github-runner/aws-powertools-util';
 import { createRunnerConfigHousekeeper } from '@aws-github-runner/storage-providers';
 import { Context, SQSEvent, SQSRecord } from 'aws-lambda';
 
-import { addMiddleware, adjustPool, scaleDownHandler, scaleUpHandler, ssmHousekeeper, jobRetryCheck } from './lambda';
+import {
+  addMiddleware,
+  adjustPool,
+  scaleDownHandler,
+  scaleUpHandler,
+  runnerConfigHousekeeper,
+  jobRetryCheck,
+} from './lambda';
 import { adjust } from './pool/pool';
 import { scaleDown } from './scale-runners/scale-down';
 import { scaleUp } from './scale-runners/scale-up';
@@ -66,7 +74,6 @@ vi.mock('./scale-runners/scale-down');
 vi.mock('./scale-runners/scale-up');
 vi.mock('./scale-runners/job-retry');
 vi.mock('@aws-github-runner/aws-powertools-util');
-vi.mock('@aws-github-runner/aws-ssm-util');
 vi.mock('@aws-github-runner/storage-providers', () => ({
   createRunnerConfigHousekeeper: vi.fn(),
 }));
@@ -300,33 +307,53 @@ describe('Test middleware', () => {
   });
 });
 
-describe('Test ssm housekeeper lambda wrapper.', () => {
+describe('Test runnerConfigHousekeeper lambda wrapper.', () => {
   it('Invoke without errors.', async () => {
     const houseKeeper = vi.fn().mockResolvedValue();
     mockedCreateRunnerConfigHousekeeper.mockReturnValue({ houseKeeper });
 
-    await expect(ssmHousekeeper({}, context)).resolves.not.toThrow();
+    await expect(runnerConfigHousekeeper({}, context)).resolves.not.toThrow();
     expect(houseKeeper).toHaveBeenCalledOnce();
   });
 
   it('Errors not throws.', async () => {
     mockedCreateRunnerConfigHousekeeper.mockReturnValue({ houseKeeper: vi.fn().mockRejectedValue(new Error()) });
-    await expect(ssmHousekeeper({}, context)).resolves.not.toThrow();
+    await expect(runnerConfigHousekeeper({}, context)).resolves.not.toThrow();
   });
 });
 
 describe('Test job retry check wrapper', () => {
-  it('Handle without error should resolve.', async () => {
-    vi.mocked(checkAndRetryJob).mockResolvedValue();
-    await expect(jobRetryCheck(sqsEvent, context)).resolves.not.toThrow();
+  beforeEach(() => vi.mocked(checkAndRetryJob).mockReset());
+  it.each([
+    { status: 429, message: 'Too many requests' },
+    { status: 403, message: 'API rate limit exceeded', response: { headers: { 'x-ratelimit-remaining': '0' } } },
+    new NoEligibleGitHubAppError('No eligible GitHub App'),
+    { status: 502, message: 'Bad gateway' },
+    new Error('Request timed out'),
+    new Error('SQS publication failed'),
+  ])('retries only the failed record and continues processing the batch', async (error) => {
+    vi.mocked(checkAndRetryJob).mockResolvedValueOnce().mockRejectedValueOnce(error).mockResolvedValueOnce();
+    const records = ['first', 'failed', 'last'].map((messageId) => ({ ...sqsEvent.Records[0], messageId }));
+    await expect(jobRetryCheck({ Records: records }, context)).resolves.toEqual({
+      batchItemFailures: [{ itemIdentifier: 'failed' }],
+    });
+    expect(checkAndRetryJob).toHaveBeenCalledTimes(3);
   });
 
-  it('Handle with error should resolve and log only a warning.', async () => {
-    const error = new Error('Error handling retry check.');
-    vi.mocked(checkAndRetryJob).mockRejectedValue(error);
+  it('acknowledges successful records', async () => {
+    vi.mocked(checkAndRetryJob).mockResolvedValue();
+    await expect(jobRetryCheck(sqsEvent, context)).resolves.toEqual({ batchItemFailures: [] });
+  });
 
-    const logSpyWarn = vi.spyOn(logger, 'warn');
-    await expect(jobRetryCheck(sqsEvent, context)).resolves.not.toThrow();
-    expect(logSpyWarn).toHaveBeenCalledWith(`Error processing job retry: ${error.message}`, { error });
+  it('isolates malformed JSON without replaying successful records', async () => {
+    vi.mocked(checkAndRetryJob).mockResolvedValue();
+    const records = [
+      { ...sqsEvent.Records[0], messageId: 'invalid', body: '{' },
+      { ...sqsEvent.Records[0], messageId: 'valid' },
+    ];
+    await expect(jobRetryCheck({ Records: records }, context)).resolves.toEqual({
+      batchItemFailures: [{ itemIdentifier: 'invalid' }],
+    });
+    expect(checkAndRetryJob).toHaveBeenCalledTimes(1);
   });
 });
