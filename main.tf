@@ -247,6 +247,7 @@ module "runners" {
   lambda_architecture                                            = var.lambda_architecture
   lambda_event_source_mapping_batch_size                         = var.lambda_event_source_mapping_batch_size
   lambda_event_source_mapping_maximum_batching_window_in_seconds = var.lambda_event_source_mapping_maximum_batching_window_in_seconds
+  lambda_event_source_mapping_maximum_concurrency                = var.lambda_event_source_mapping_maximum_concurrency
   lambda_zip                                                     = var.runners_lambda_zip
   lambda_scale_up_memory_size                                    = var.runners_scale_up_lambda_memory_size
   lambda_scale_down_memory_size                                  = var.runners_scale_down_lambda_memory_size
