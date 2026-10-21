@@ -42,7 +42,7 @@ jobs:
     name: Create release
     needs: validate
     runs-on: ubuntu-latest
-    # environment: release
+    environment: release
     permissions:
       contents: write # for release-please-action to create releases and update changelogs
       pull-requests: write # for release-please-action to create and update pull requests
