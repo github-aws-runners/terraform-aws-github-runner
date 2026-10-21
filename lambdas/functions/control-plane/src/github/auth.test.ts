@@ -8,6 +8,7 @@ import * as nock from 'nock';
 
 import {
   createGithubAppAuth,
+  createGithubInstallationAuth,
   createOctokitClient,
   getStoredInstallationId,
   onRateLimit,
@@ -16,6 +17,7 @@ import {
   reportAppSecondaryRateLimit,
   resetAppCredentialsCache,
 } from './auth';
+import { getCachedInstallationToken } from './token-cache';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 type MockProxy<T> = T & {
@@ -31,6 +33,9 @@ vi.mock('@aws-github-runner/storage-providers', () => ({
   createCommonStorage: vi.fn(),
 }));
 vi.mock('@octokit/auth-app');
+vi.mock('./token-cache', () => ({
+  getCachedInstallationToken: vi.fn(),
+}));
 
 const cleanEnv = process.env;
 const GITHUB_APP_ID = 1;
@@ -377,5 +382,43 @@ describe('Test rate-limit aware app selection', () => {
 
     const result = await createGithubAppAuth(undefined, '', 1);
     expect(result.appIndex).toBe(1);
+  });
+});
+
+describe('Test createGithubInstallationAuth with the installation token cache', () => {
+  const mockedGetCachedInstallationToken = vi.mocked(getCachedInstallationToken);
+  const expiresAt = '2026-01-01T01:00:00.000Z';
+
+  beforeEach(() => {
+    const mockedAuth = vi.fn().mockResolvedValue({ token: 'installation-token', expiresAt });
+    vi.mocked(createAppAuth).mockReturnValue(Object.assign(mockedAuth, { hook: vi.fn() }));
+    mockedGetCredentials.mockResolvedValue([
+      { appId: GITHUB_APP_ID, privateKey: 'private-key' },
+      { appId: 2, privateKey: 'additional-private-key' },
+    ]);
+    mockedGetCachedInstallationToken.mockImplementation(async (_installationId, mintToken) => {
+      const minted = await mintToken();
+      return { token: minted.token, expiresAt: new Date(minted.expiresAt) };
+    });
+  });
+
+  it('mints a cache miss with the credentials of the selected app', async () => {
+    process.env.INSTALLATION_TOKEN_TABLE_NAME = 'installation-tokens';
+
+    const result = await createGithubInstallationAuth(42, '', 1);
+
+    expect(mockedGetCachedInstallationToken).toHaveBeenCalledWith(42, expect.any(Function));
+    expect(createAppAuth).toHaveBeenCalledWith(expect.objectContaining({ appId: 2, installationId: 42 }));
+    expect(result).toEqual(expect.objectContaining({ token: 'installation-token', expiresAt, installationId: 42 }));
+  });
+
+  it('mints directly when no cache table is configured', async () => {
+    delete process.env.INSTALLATION_TOKEN_TABLE_NAME;
+
+    const result = await createGithubInstallationAuth(42, '', 1);
+
+    expect(mockedGetCachedInstallationToken).not.toHaveBeenCalled();
+    expect(createAppAuth).toHaveBeenCalledWith(expect.objectContaining({ appId: 2, installationId: 42 }));
+    expect(result.token).toBe('installation-token');
   });
 });

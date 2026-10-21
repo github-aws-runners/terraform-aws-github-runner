@@ -13,6 +13,7 @@ import {
   type GitHubAppCredentialsStore,
 } from '@aws-github-runner/storage-providers';
 import { EndpointDefaults } from '@octokit/types';
+import { getCachedInstallationToken } from './token-cache';
 
 type AppAuthOptions = { type: 'app' };
 type InstallationAuthOptions = { type: 'installation'; installationId?: number };
@@ -246,7 +247,32 @@ export async function createGithubInstallationAuth(
   credentialsStore?: GitHubAppCredentialsStore,
 ): Promise<InstallationAccessTokenAuthentication> {
   const idx = appIndex ?? (await selectAppIndex(credentialsStore));
-  const auth = await createAuth(installationId, ghesApiUrl, idx, credentialsStore);
+  if (installationId && process.env.INSTALLATION_TOKEN_TABLE_NAME) {
+    const cached = await getCachedInstallationToken(installationId, () =>
+      mintInstallationToken(installationId, ghesApiUrl, idx, credentialsStore).then((r) => ({
+        token: r.token,
+        expiresAt: r.expiresAt,
+      })),
+    );
+    return {
+      type: 'token',
+      tokenType: 'installation',
+      token: cached.token,
+      expiresAt: cached.expiresAt.toISOString(),
+      installationId,
+    } as InstallationAccessTokenAuthentication;
+  }
+
+  return mintInstallationToken(installationId, ghesApiUrl, idx, credentialsStore);
+}
+
+async function mintInstallationToken(
+  installationId: number | undefined,
+  ghesApiUrl: string,
+  appIndex: number,
+  credentialsStore?: GitHubAppCredentialsStore,
+): Promise<InstallationAccessTokenAuthentication> {
+  const auth = await createAuth(installationId, ghesApiUrl, appIndex, credentialsStore);
   return auth({ type: 'installation', installationId });
 }
 

@@ -166,6 +166,9 @@ module "runners" {
     max_attempts                          = each.value.orchestration_provider.webhook.job_retry.max_attempts
   }
 
+  installation_token_table_name = aws_dynamodb_table.installation_tokens.name
+  installation_token_table_arn  = aws_dynamodb_table.installation_tokens.arn
+
   metrics = {
     enable    = each.value.observability.metrics.enabled
     namespace = each.value.observability.metrics.namespace
