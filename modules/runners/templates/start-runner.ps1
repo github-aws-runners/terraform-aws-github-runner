@@ -65,6 +65,26 @@ Write-Host  "Retrieved REGION from AWS API ($Region)"
 $InstanceId = $metadata.instanceId
 Write-Host  "Retrieved InstanceId from AWS API ($InstanceId)"
 
+# Wait for instance profile credentials before the first AWS CLI call. On
+# prebuilt AMIs the first call can race credential availability and fail with
+# NoCredentials, leaving the instance unregistered but running (see #5517).
+Write-Host "Waiting for instance profile credentials to become available"
+$credentialWaitRetries = 0
+while ($true) {
+    aws sts get-caller-identity --region "$Region" 2>&1 | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        break
+    }
+    $credentialWaitRetries = $credentialWaitRetries + 1
+    if ($credentialWaitRetries -ge 12) {
+        Write-Host "WARNING: instance profile credentials still unavailable after 60 s; continuing anyway"
+        break
+    }
+    Write-Host "Instance profile credentials not available yet, retrying in 5 seconds ($credentialWaitRetries/12)"
+    Start-Sleep 5
+}
+Write-Host "Instance profile credentials available"
+
 $tags=aws ec2 describe-tags --region "$Region" --filters "Name=resource-id,Values=$InstanceId" | ConvertFrom-Json
 Write-Host  "Retrieved tags from AWS API"
 
@@ -118,7 +138,24 @@ do {
 } while (($null -eq $config) -and ($i -lt 30))
 
 Write-Host "Delete GH Runner token from AWS SSM"
-aws ssm delete-parameter --name "$token_path/$InstanceId" --region $Region
+# The token parameter may briefly refuse deletion with AccessDenied right after
+# the read (IAM propagation delay), so retry before giving up (see #5517).
+$deleteRetryCount = 0
+while ($true) {
+    $deleteOutput = aws ssm delete-parameter --name "$token_path/$InstanceId" --region $Region 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        break
+    }
+    if (($deleteOutput -match "AccessDenied") -and ($deleteRetryCount -lt 24)) {
+        $deleteRetryCount = $deleteRetryCount + 1
+        Write-Host "delete-parameter access denied, retrying in 5 seconds ($deleteRetryCount/24)"
+        Start-Sleep 5
+    } else {
+        Write-Host "ERROR: failed to delete SSM parameter $token_path/$InstanceId"
+        Write-Host "$deleteOutput"
+        exit 1
+    }
+}
 
 # Create or update user
 if (-not($run_as)) {
@@ -196,6 +233,13 @@ if ($agent_mode -eq "ephemeral") {
 
     Write-Host "Terminating instance"
     aws ec2 terminate-instances --instance-ids "$InstanceId" --region "$Region"
+    if ($LASTEXITCODE -ne 0) {
+        # terminate-instances fails when credentials are unavailable (see #5517);
+        # the launch template sets instance_initiated_shutdown_behavior to
+        # "terminate", so shutting down ends the instance without API calls.
+        Write-Host "WARNING: terminate-instances failed; falling back to shutdown"
+        Stop-Computer -Force
+    }
 } else {
     Write-Host  "Installing the runner as a service"
 
