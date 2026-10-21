@@ -70,20 +70,25 @@ Write-Host  "Retrieved InstanceId from AWS API ($InstanceId)"
 # NoCredentials, leaving the instance unregistered but running (see #5517).
 Write-Host "Waiting for instance profile credentials to become available"
 $credentialWaitRetries = 0
+$credentialsAvailable = $false
 while ($true) {
     aws sts get-caller-identity --region "$Region" 2>&1 | Out-Null
     if ($LASTEXITCODE -eq 0) {
+        $credentialsAvailable = $true
         break
-    }
+}
     $credentialWaitRetries = $credentialWaitRetries + 1
     if ($credentialWaitRetries -ge 12) {
-        Write-Host "WARNING: instance profile credentials still unavailable after 60 s; continuing anyway"
         break
-    }
+}
     Write-Host "Instance profile credentials not available yet, retrying in 5 seconds ($credentialWaitRetries/12)"
     Start-Sleep 5
 }
-Write-Host "Instance profile credentials available"
+if ($credentialsAvailable) {
+    Write-Host "Instance profile credentials available"
+} else {
+    Write-Host "WARNING: instance profile credentials still unavailable after 60 s; continuing anyway"
+}
 
 $tags=aws ec2 describe-tags --region "$Region" --filters "Name=resource-id,Values=$InstanceId" | ConvertFrom-Json
 Write-Host  "Retrieved tags from AWS API"
