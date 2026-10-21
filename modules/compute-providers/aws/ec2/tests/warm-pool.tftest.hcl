@@ -169,3 +169,33 @@ run "warm_pool_requires_metadata_tags" {
 
   expect_failures = [terraform_data.validate_runner]
 }
+
+run "warm_pool_spot_placement_permissions" {
+  command = plan
+
+  variables {
+    warm_pool = { enabled = true }
+  }
+
+  assert {
+    condition     = contains([for statement in data.aws_iam_policy_document.pool_warm[0].statement : statement.sid], "WarmPoolSpotPlacement")
+    error_message = "A spot warm pool needs the spot placement permissions."
+  }
+}
+
+run "warm_pool_on_demand_without_spot_placement" {
+  command = plan
+
+  variables {
+    warm_pool = { enabled = true }
+    config    = merge(var.config, { instance_target_capacity_type = "on-demand" })
+  }
+
+  assert {
+    condition = !contains(
+      [for statement in data.aws_iam_policy_document.pool_warm[0].statement : statement.sid],
+      "WarmPoolSpotPlacement",
+    )
+    error_message = "An on-demand warm pool must not get the spot placement permissions."
+  }
+}

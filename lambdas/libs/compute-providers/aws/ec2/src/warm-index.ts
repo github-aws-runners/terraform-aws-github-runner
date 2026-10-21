@@ -2,6 +2,7 @@ import {
   type AttributeValue,
   DeleteItemCommand,
   type DynamoDBClient,
+  GetItemCommand,
   QueryCommand,
   type QueryCommandOutput,
   UpdateItemCommand,
@@ -16,6 +17,18 @@ export const WARM_START_COOLDOWN_SECONDS = 10 * 60;
 const CONDITIONAL_CHECK_FAILED = 'ConditionalCheckFailedException';
 const RECONCILE_MARKER = '#reconcile';
 const DAY_IN_SECONDS = 24 * 60 * 60;
+
+/** AWS placement signals cached for warm refills, keyed to the configuration they were read for. */
+export interface WarmPlacementCache {
+  configHash: string;
+  /** Epoch seconds. */
+  fetchedAt: number;
+  /** Epoch seconds after which the signals are refreshed. */
+  expiresAt: number;
+  subnetAzIds: Record<string, string>;
+  azScores?: Record<string, number>;
+  prices?: Record<string, number>;
+}
 
 export type WarmIndexState = Exclude<StandbyInstanceState, 'ACTIVE'> | 'ACTIVATED';
 
@@ -58,6 +71,9 @@ export interface WarmIndexStore {
   markUnusable(instanceId: string): Promise<void>;
   /** Resolves true for at most one caller per interval. */
   claimReconcile(intervalSeconds: number): Promise<boolean>;
+  readPlacement(): Promise<WarmPlacementCache | undefined>;
+  /** Stored on the reconcile marker, which the index query already skips. */
+  writePlacement(cache: WarmPlacementCache): Promise<void>;
 }
 
 function isConditionalCheckFailed(error: unknown): boolean {
@@ -302,6 +318,35 @@ export function createWarmIndexStore(
             },
           }),
         ),
+      );
+    },
+
+    readPlacement: async () => {
+      const result = await dynamoClient.send(
+        new GetItemCommand({
+          TableName: tableName,
+          Key: key(RECONCILE_MARKER),
+          ProjectionExpression: 'placement',
+          ConsistentRead: true,
+        }),
+      );
+      const placement = result.Item?.placement?.S;
+      if (!placement) return undefined;
+      try {
+        return JSON.parse(placement) as WarmPlacementCache;
+      } catch {
+        return undefined;
+      }
+    },
+
+    writePlacement: async (cache) => {
+      await dynamoClient.send(
+        new UpdateItemCommand({
+          TableName: tableName,
+          Key: key(RECONCILE_MARKER),
+          UpdateExpression: 'SET placement = :placement',
+          ExpressionAttributeValues: { ':placement': { S: JSON.stringify(cache) } },
+        }),
       );
     },
   };

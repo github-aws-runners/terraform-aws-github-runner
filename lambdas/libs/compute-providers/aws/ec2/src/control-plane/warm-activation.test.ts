@@ -49,6 +49,8 @@ const index = {
   markUnusable: vi.fn<WarmIndexStore['markUnusable']>(),
   releaseWithCooldown: vi.fn<WarmIndexStore['releaseWithCooldown']>(),
   claimReconcile: vi.fn<WarmIndexStore['claimReconcile']>(),
+  readPlacement: vi.fn<WarmIndexStore['readPlacement']>(),
+  writePlacement: vi.fn<WarmIndexStore['writePlacement']>(),
 } satisfies WarmIndexStore;
 const createIndexStore = vi.fn<Ec2WarmActivationOperations['createIndexStore']>(() => index);
 

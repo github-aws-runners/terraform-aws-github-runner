@@ -40,6 +40,9 @@ export async function reconcileWarmPool(
   const input = { environment, runnerOwner: environment, runnerType: 'Org' as const };
 
   const { instances, orphanedSpotRequests, spotLookupError } = await standby.list(input);
+  const errors: StandbyReconcileError[] = spotLookupError
+    ? [{ operation: 'describe-spot-requests', code: spotLookupError }]
+    : [];
   const current = await standby.currentImage();
   const evictions = selectEvictions(instances, {
     poolSize: desiredSize,
@@ -83,7 +86,8 @@ export async function reconcileWarmPool(
   let launched = 0;
   if (deficit > 0) {
     logger.info(`The warm pool will be refilled with ${deficit} instance(s).`, { warm, priming });
-    const result = await standby.launch({ ...input, numberOfInstances: deficit, maxAgeHours });
+    const result = await standby.launch({ ...input, numberOfInstances: deficit, maxAgeHours, poolSize: desiredSize });
+    if (result.placementError) errors.push(result.placementError);
     launched = result.instances.length;
     priming += launched;
     if (launched < deficit) {
@@ -96,9 +100,6 @@ export async function reconcileWarmPool(
     logger.info(`Warm pool will not be refilled. Found ${warm} warm and ${priming} priming instance(s).`);
   }
 
-  const errors: StandbyReconcileError[] = spotLookupError
-    ? [{ operation: 'describe-spot-requests', code: spotLookupError }]
-    : [];
   return { ready: warm, preparing: priming, launched, evictions: Object.fromEntries(evictionCounts), errors };
 }
 

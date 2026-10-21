@@ -64,10 +64,25 @@ data "aws_iam_policy_document" "pool_warm" {
     effect = "Allow"
     actions = [
       "dynamodb:DeleteItem",
+      "dynamodb:GetItem",
       "dynamodb:Query",
       "dynamodb:UpdateItem",
     ]
     resources = [aws_dynamodb_table.warm_pool_index[0].arn]
+  }
+
+  dynamic "statement" {
+    for_each = var.config.instance_target_capacity_type == "spot" ? [1] : []
+    content {
+      sid    = "WarmPoolSpotPlacement"
+      effect = "Allow"
+      actions = [
+        "ec2:DescribeSpotPriceHistory",
+        "ec2:DescribeSubnets",
+        "ec2:GetSpotPlacementScores",
+      ]
+      resources = ["*"]
+    }
   }
 
   statement {

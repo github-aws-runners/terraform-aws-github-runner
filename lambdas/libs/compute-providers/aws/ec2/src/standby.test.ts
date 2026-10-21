@@ -29,6 +29,19 @@ vi.mock('@aws-github-runner/aws-ssm-util', () => ({ getParameter: vi.fn() }));
 
 process.env.AWS_REGION = 'eu-east-1';
 const mockEC2Client = mockClient(EC2Client);
+const childLoggers = vi.hoisted(() => new Map<string, { info: (...args: unknown[]) => void }>());
+
+vi.mock('@aws-github-runner/aws-powertools-util', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@aws-github-runner/aws-powertools-util')>();
+  return {
+    ...actual,
+    createChildLogger: (module: string) => {
+      const child = actual.createChildLogger(module);
+      childLoggers.set(module, child);
+      return child;
+    },
+  };
+});
 const standby = createEc2StandbyClient(new EC2Client({})).forRequest({ signal: undefined });
 
 const NOW = new Date('2026-09-30T12:00:00.000Z');
@@ -324,6 +337,164 @@ describe('launchWarm', () => {
       failureCodes: ['aws-name:UnauthorizedOperation'],
     });
     expect(runInstancesInputs()).toHaveLength(1);
+  });
+
+  it('tries on-demand instance types in priority order for prioritized', async () => {
+    await standby.launchWarm({
+      ...baseParameters,
+      ec2instanceCriteria: {
+        ...baseParameters.ec2instanceCriteria,
+        instanceAllocationStrategy: 'prioritized',
+        instanceTypePriorities: { 'm5.large': 2, 'c5.large': 1 },
+      },
+    });
+
+    expect(runInstancesInputs().map((input) => [input.InstanceType, input.SubnetId])).toEqual([
+      ['c5.large', 'subnet-a'],
+    ]);
+  });
+
+  describe('spot placement', () => {
+    const spotParameters: Ec2WarmLaunchParameters = {
+      ...baseParameters,
+      subnets: ['subnet-a', 'subnet-b', 'subnet-c'],
+      ec2instanceCriteria: {
+        instanceTypes: ['m5.large', 'c5.large'],
+        targetCapacityType: 'spot',
+        instanceAllocationStrategy: 'capacity-optimized',
+      },
+      placement: {
+        source: 'fresh',
+        subnetAzIds: { 'subnet-a': 'az1', 'subnet-b': 'az2', 'subnet-c': 'az3' },
+        signals: { azScores: { az1: 2, az2: 9, az3: 5 } },
+      },
+    };
+    const launchedPairs = () =>
+      runInstancesInputs().map((input) => `${input.InstanceType}@${input.SubnetId}:${input.MaxCount}`);
+    let launchedCount = 0;
+
+    beforeEach(() => {
+      launchedCount = 0;
+      mockEC2Client.on(RunInstancesCommand).callsFake((input: RunInstancesCommandInput) => ({
+        Instances: Array.from({ length: input.MaxCount ?? 1 }, () => ({ InstanceId: `i-${++launchedCount}` })),
+      }));
+    });
+
+    it('spreads a refill over every type and subnet pair in ranked order', async () => {
+      const result = await standby.launchWarm({ ...spotParameters, numberOfRunners: 6 });
+
+      expect(result.instances).toHaveLength(6);
+      expect(launchedPairs()).toEqual([
+        'm5.large@subnet-b:1',
+        'c5.large@subnet-b:1',
+        'm5.large@subnet-c:1',
+        'c5.large@subnet-c:1',
+        'm5.large@subnet-a:1',
+        'c5.large@subnet-a:1',
+      ]);
+    });
+
+    it('places a small refill on the highest-ranked pairs', async () => {
+      await standby.launchWarm({ ...spotParameters, numberOfRunners: 2 });
+
+      expect(launchedPairs()).toEqual(['m5.large@subnet-b:1', 'c5.large@subnet-b:1']);
+    });
+
+    it('deals more than one instance per pair round-robin', async () => {
+      await standby.launchWarm({ ...spotParameters, numberOfRunners: 8 });
+
+      expect(launchedPairs().slice(0, 2)).toEqual(['m5.large@subnet-b:2', 'c5.large@subnet-b:2']);
+    });
+
+    it('moves the share of a pair without capacity to the next pairs', async () => {
+      mockEC2Client
+        .on(RunInstancesCommand, { InstanceType: 'm5.large', SubnetId: 'subnet-b' })
+        .rejects(await ec2SdkError('InsufficientInstanceCapacity', 'No capacity.', 500));
+
+      const result = await standby.launchWarm({ ...spotParameters, numberOfRunners: 3 });
+
+      expect(result).toEqual({ instances: ['i-1', 'i-2', 'i-3'], failedInstanceCount: 0, failureCodes: [] });
+      expect(launchedPairs()).toEqual([
+        'm5.large@subnet-b:1',
+        'c5.large@subnet-b:1',
+        'm5.large@subnet-c:1',
+        'c5.large@subnet-b:1',
+      ]);
+    });
+
+    it('requests the missing instances of a partial launch from the remaining pairs', async () => {
+      mockEC2Client
+        .on(RunInstancesCommand, { InstanceType: 'm5.large', SubnetId: 'subnet-b' })
+        .resolves({ Instances: [{ InstanceId: 'i-partial' }] });
+
+      const result = await standby.launchWarm({ ...spotParameters, numberOfRunners: 8 });
+
+      expect(result.instances).toHaveLength(8);
+      expect(launchedPairs().slice(6)).toEqual(['c5.large@subnet-b:1']);
+    });
+
+    it('stops at a non-capacity error and keeps what launched', async () => {
+      mockEC2Client
+        .on(RunInstancesCommand, { InstanceType: 'c5.large', SubnetId: 'subnet-b' })
+        .rejects(awsError('UnauthorizedOperation'));
+
+      const result = await standby.launchWarm({ ...spotParameters, numberOfRunners: 4 });
+
+      expect(result).toEqual({
+        instances: ['i-1'],
+        failedInstanceCount: 3,
+        failureCodes: ['aws-name:UnauthorizedOperation'],
+      });
+      expect(launchedPairs()).toHaveLength(2);
+    });
+
+    it('spreads in AZ-interleaved configuration order without signals', async () => {
+      await standby.launchWarm({ ...spotParameters, placement: undefined, numberOfRunners: 3 });
+
+      expect(launchedPairs()).toEqual(['m5.large@subnet-a:1', 'm5.large@subnet-b:1', 'm5.large@subnet-c:1']);
+    });
+
+    it('logs the placement plan and each launch request', async () => {
+      const info = vi.spyOn(childLoggers.get('standby')!, 'info');
+
+      await standby.launchWarm({ ...spotParameters, numberOfRunners: 1 });
+
+      expect(info).toHaveBeenCalledWith(
+        'Warm placement plan.',
+        expect.objectContaining({
+          capacityType: 'spot',
+          configuredStrategy: 'capacity-optimized',
+          effectiveStrategy: 'capacity-optimized',
+          signalSource: 'fresh',
+          spread: true,
+          requested: 1,
+          pairs: expect.arrayContaining([
+            { instanceType: 'm5.large', subnetId: 'subnet-b', azId: 'az2', score: 9, price: undefined },
+          ]),
+        }),
+      );
+      expect(info).toHaveBeenCalledWith('Warm launch request.', {
+        instanceType: 'm5.large',
+        subnetId: 'subnet-b',
+        azId: 'az2',
+        score: 9,
+        price: undefined,
+        requested: 1,
+        launched: 1,
+      });
+    });
+
+    it('rejects when the request signal is aborted during a launch', async () => {
+      const abortController = new AbortController();
+      const operations = createEc2StandbyClient(new EC2Client({})).forRequest({ signal: abortController.signal });
+      mockEC2Client.on(RunInstancesCommand).callsFake(() => {
+        abortController.abort(new Error('service stopping'));
+        throw Object.assign(new Error('aborted'), { name: 'AbortError' });
+      });
+
+      await expect(operations.launchWarm({ ...spotParameters, numberOfRunners: 2 })).rejects.toThrow();
+      expect(runInstancesInputs()).toHaveLength(1);
+    });
   });
 
   it('fails without launching when the AMI parameter cannot be read', async () => {

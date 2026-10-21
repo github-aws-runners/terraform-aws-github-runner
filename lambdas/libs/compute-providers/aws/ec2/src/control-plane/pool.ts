@@ -11,6 +11,8 @@ import type { Ec2StandbyOperations, Ec2StandbyRead } from '../standby';
 import type { Ec2PoolStandbyOperations, ListStandbyInput, StandbyBatchResult, StandbyInstance } from '../standby-types';
 import type { WarmIndexItem, WarmIndexState, WarmIndexStore, WarmIndexUpdate } from '../warm-index';
 import { toControlPlaneCreateRunnerResult } from './create-result';
+import { resolveWarmPlacementSignals } from '../warm-placement-cache';
+import type { Ec2PlacementSignalOperations } from '../warm-placement-signals';
 import { createRunners, loadEc2ProviderConfig } from './runner-creation';
 import { processStopEvents } from './stop-events';
 import { reconcileWarmPool } from './warm-pool';
@@ -18,6 +20,8 @@ import { reconcileWarmPool } from './warm-pool';
 const logger = createChildLogger('pool');
 
 export const WARM_POOL_RECONCILE_INTERVAL_SECONDS = 60 * 60;
+// Prices only rank pools; the OS licence share hardly changes the order, so every OS uses Linux prices.
+const SPOT_PRICE_PRODUCT_DESCRIPTION = 'Linux/UNIX';
 
 export type CreateWarmIndexStore = (tableName: string, environment: string) => WarmIndexStore;
 
@@ -138,6 +142,7 @@ async function syncIndex(index: WarmIndexStore, items: WarmIndexItem[], read: Ec
 export function createEc2PoolStandbyOperations(
   standbyOperations: Ec2StandbyOperations,
   createIndexStore: CreateWarmIndexStore,
+  placementSignals?: Ec2PlacementSignalOperations,
 ): Ec2PoolStandbyOperations {
   let store: WarmIndexStore | undefined;
   const index = (): WarmIndexStore => {
@@ -173,8 +178,23 @@ export function createEc2PoolStandbyOperations(
         ...(read.spotLookupError ? { spotLookupError: read.spotLookupError } : {}),
       };
     },
-    launch: async ({ environment, runnerOwner, runnerType, numberOfInstances, maxAgeHours }) => {
+    launch: async ({ environment, runnerOwner, runnerType, numberOfInstances, maxAgeHours, poolSize }) => {
       const config = loadEc2ProviderConfig();
+      const placement = placementSignals
+        ? await resolveWarmPlacementSignals(
+            {
+              capacityType: config.ec2instanceCriteria.targetCapacityType,
+              strategy: config.ec2instanceCriteria.instanceAllocationStrategy,
+              instanceTypes: config.ec2instanceCriteria.instanceTypes,
+              subnets: config.subnets,
+              targetCapacity: poolSize,
+              region: process.env.AWS_REGION ?? '',
+              productDescription: SPOT_PRICE_PRODUCT_DESCRIPTION,
+            },
+            index(),
+            placementSignals,
+          )
+        : undefined;
       const result = await standbyOperations.launchWarm({
         environment,
         runnerOwner,
@@ -187,13 +207,17 @@ export function createEc2PoolStandbyOperations(
         numberOfRunners: numberOfInstances,
         source: 'pool-lambda',
         maxAgeHours,
+        ...(placement ? { placement } : {}),
       });
       for (const instanceId of result.instances) {
         await bestEffort(`index launched warm instance '${instanceId}'`, () =>
           index().update({ instanceId, state: 'PRIMING' }),
         );
       }
-      return toControlPlaneCreateRunnerResult(result, config.scaleErrors);
+      return {
+        ...toControlPlaneCreateRunnerResult(result, config.scaleErrors),
+        ...(placement?.error ? { placementError: placement.error } : {}),
+      };
     },
     destroy: (instances) =>
       forEachSettled(
@@ -269,13 +293,17 @@ function warmPoolIndexTables(): Record<string, string> {
 export function createEc2PoolCapability(
   ec2Operations: Ec2RunnerResourceOperations,
   createStartRunnerConfig: CreateStartRunnerConfig,
-  warm?: { standbyOperations: Ec2StandbyOperations; createIndexStore: CreateWarmIndexStore },
+  warm?: {
+    standbyOperations: Ec2StandbyOperations;
+    createIndexStore: CreateWarmIndexStore;
+    placementSignals?: Ec2PlacementSignalOperations;
+  },
 ): Omit<PoolComputeProvider<RunnerInfo>, 'type'> {
   return {
     ...(warm
       ? {
           standby: createEc2StandbyCapability(
-            createEc2PoolStandbyOperations(warm.standbyOperations, warm.createIndexStore),
+            createEc2PoolStandbyOperations(warm.standbyOperations, warm.createIndexStore, warm.placementSignals),
           ),
         }
       : {}),

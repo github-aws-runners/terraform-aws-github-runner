@@ -96,7 +96,31 @@ With `instance_target_capacity_type = "on-demand"`, warm instances are regular o
 
 With `instance_target_capacity_type = "spot"`, warm instances are launched with `RunInstances` from a persistent spot request, because spot instances from a one-time request or a fleet cannot be stopped. The request is tagged like the instance and expires after `max_age_hours` plus 24 hours. The module always cancels the spot request before terminating a warm instance, so AWS never launches a replacement. When a warm spot instance is activated, its request is cancelled right after the start; if that fails, the pool cancels it on a later run.
 
-A stopped instance can only start with its own instance type in its own Availability Zone, and a spot instance needs spot capacity at that moment. If the start fails, the job gets a new instance and the warm instance stays in the pool. After a start fails for lack of capacity, scale-up skips that instance for 10 minutes, and skips other warm instances of the same type and zone for the rest of that run. The pool replaces an instance whose start failed this way three times. Warm spot launches try the configured instance types and subnets in order; new instances for jobs still use EC2 Fleet.
+A stopped instance can only start with its own instance type in its own Availability Zone, and a spot instance needs spot capacity at that moment. If the start fails, the job gets a new instance and the warm instance stays in the pool. After a start fails for lack of capacity, scale-up skips that instance for 10 minutes, and skips other warm instances of the same type and zone for the rest of that run. The pool replaces an instance whose start failed this way three times.
+
+## Placement
+
+New instances for jobs and new warm instances are placed differently:
+
+- **Cold launch (scale-up):** one EC2 Fleet request with every configured instance type and subnet. EC2 places it according to `instance_allocation_strategy` and `instance_type_priorities`.
+- **Warm refill (pool):** a spot instance from a fleet cannot be stopped, so warm instances are launched with `RunInstances`, which targets one instance type in one Availability Zone per call. The pool therefore ranks every instance type and subnet pair itself and spreads the refill over the ranked pairs: one instance per pair in rank order, then around again. A pair that has no capacity, or launches fewer instances than asked, passes the rest to the next pairs.
+- **Warm activation (scale-up):** starts a stopped instance, which keeps the instance type and Availability Zone it was launched with (see above).
+
+How a spot refill ranks the pairs:
+
+| `instance_allocation_strategy` | Ranking |
+|---|---|
+| `capacity-optimized` | Availability Zones with a higher [Spot placement score](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-placement-score.html) first |
+| `capacity-optimized-prioritized` | Higher placement score first, then `instance_type_priorities` |
+| `price-capacity-optimized` | Higher placement score first, then lower current Spot price |
+| `lowest-price` | Lower current Spot price first |
+| `diversified` | No ranking: an even spread over Availability Zones and instance types |
+
+Spot prices are read for `Linux/UNIX` for every runner OS; they only rank the pools, and the licence share of other operating systems hardly changes that order. Pairs that tie keep the configured order, with subnets interleaved across Availability Zones. A strategy that is not valid for spot, such as `prioritized`, is treated as `lowest-price`, as for cold launches. Placement scores need at least three instance types; with fewer, every zone scores low and the ranking falls back to priority, price or configured order.
+
+The placement scores, Spot prices and subnet zones are read at most every 15 minutes per runner configuration, and only when a spot refill launches instances. They are cached in the warm pool index. If they cannot be read, the refill spreads like `diversified` (or uses the last values for up to another 15 minutes) and `WarmPoolReconcileErrors` is published with `Operation` `spot-placement`. Each refill logs `Warm placement plan.` with the effective strategy, the signal source and the ranked pairs, and `Warm launch request.` for every instance type and subnet it launches into.
+
+On-demand warm refills try the instance types and subnets in configured order (in priority order for `prioritized`) and ask each pair for all remaining instances.
 
 ## Eviction
 
@@ -126,6 +150,7 @@ With metrics enabled, the pool publishes `WarmPoolWarmInstances`, `WarmPoolPrimi
 - Warm instances do not count toward `runners_maximum_count`. Activating one does, like launching a new instance.
 - The pool reads its instances from EC2 by ID, and lists them by tag only about once an hour. Scale-up does not list instances to activate a warm one. If the warm pool index cannot be read, scale-up launches new instances and reports `index-unavailable`.
 - EC2 stop events cannot be filtered by tag, so the stop-event queue receives every instance stop in the account and region. Each batch costs one `DescribeInstances` by ID; instances outside the warm pools need no further calls.
+- A spot warm pool with a ranking strategy calls `GetSpotPlacementScores`, `DescribeSpotPriceHistory` and `DescribeSubnets` at most every 15 minutes, and only when it launches instances. These need `ec2:GetSpotPlacementScores`, `ec2:DescribeSpotPriceHistory` and `ec2:DescribeSubnets`, which the module grants to the pool of a spot warm pool.
 - Spot API request limits are shared by everything in the account and region. A spot warm pool reads spot requests only by ID, at most once per run, and only for its own instances; scale-up and on-demand warm pools do not read spot requests at all. If the Spot API throttles that read, the run continues without it: stopped spot instances are classified from EC2 data, spot request cleanup waits for a later run, and `WarmPoolReconcileErrors` is published with `Operation` `describe-spot-requests`.
 
 ## Disabling

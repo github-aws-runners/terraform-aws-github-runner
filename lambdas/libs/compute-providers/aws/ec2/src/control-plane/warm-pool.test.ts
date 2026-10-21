@@ -82,7 +82,7 @@ describe('reconcileWarmPool', () => {
     await reconcile(2, { maxAgeHours: 24 });
 
     expect(standby.list).toHaveBeenCalledWith(POOL_INPUT);
-    expect(standby.launch).toHaveBeenCalledWith({ ...POOL_INPUT, numberOfInstances: 2, maxAgeHours: 24 });
+    expect(standby.launch).toHaveBeenCalledWith({ ...POOL_INPUT, numberOfInstances: 2, maxAgeHours: 24, poolSize: 2 });
   });
 
   describe('eviction', () => {
@@ -227,6 +227,22 @@ describe('reconcileWarmPool', () => {
       expect(standby.launch).toHaveBeenCalledWith(expect.objectContaining({ numberOfInstances: 1 }));
       expect(result.errors).toEqual([{ operation: 'describe-spot-requests', code: 'RequestResourceCountExceeded' }]);
     });
+  });
+
+  it('reports a placement lookup failure of the refill as a reconcile error', async () => {
+    standby.launch.mockResolvedValue({
+      instances: ['i-new'],
+      retryableErrorCount: 0,
+      nonRetryableErrorCount: 0,
+      placementError: { operation: 'spot-placement', code: 'UnauthorizedOperation' },
+    });
+
+    await expect(reconcile(1)).resolves.toEqual(
+      expect.objectContaining({
+        launched: 1,
+        errors: [{ operation: 'spot-placement', code: 'UnauthorizedOperation' }],
+      }),
+    );
   });
 
   describe('refill', () => {
