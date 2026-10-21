@@ -148,16 +148,21 @@ availability_zone=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.
 # NoCredentials, leaving the instance unregistered but running (see #5517).
 echo "Waiting for instance profile credentials to become available"
 credential_wait_retries=0
+credentials_timed_out=false
 until aws sts get-caller-identity --region "$region" >/dev/null 2>&1; do
   credential_wait_retries=$((credential_wait_retries + 1))
   if [ "$credential_wait_retries" -ge 12 ]; then
-    echo "WARNING: instance profile credentials still unavailable after 60 s; continuing anyway"
+    credentials_timed_out=true
     break
   fi
   echo "Instance profile credentials not available yet, retrying in 5 seconds ($credential_wait_retries/12)"
   sleep 5
 done
-echo "Instance profile credentials available"
+if [ "$credentials_timed_out" = true ]; then
+  echo "WARNING: instance profile credentials still unavailable after 60 s; continuing anyway"
+else
+  echo "Instance profile credentials available"
+fi
 
 %{ if metadata_tags == "enabled" }
 environment=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/tags/instance/ghr:environment)
