@@ -73,6 +73,21 @@ describe('adjustWarmPool', () => {
       expect(createSingleMetric).not.toHaveBeenCalled();
     });
 
+    it('publishes a spot placement lookup failure as a reconcile error', async () => {
+      process.env.ENABLE_METRIC_WARM_POOL = 'true';
+      reconcile.mockResolvedValue({
+        ...emptyResult,
+        errors: [{ operation: 'spot-placement', code: 'UnauthorizedOperation' }],
+      });
+
+      await adjustWarmPool(provider, 1);
+
+      expect(createSingleMetric).toHaveBeenCalledWith('WarmPoolReconcileErrors', 'Count', 1, {
+        Environment: ENVIRONMENT,
+        Operation: 'spot-placement',
+      });
+    });
+
     it('publishes counts, evictions by reason and errors by operation from the result', async () => {
       process.env.ENABLE_METRIC_WARM_POOL = 'true';
       reconcile.mockResolvedValue(result);

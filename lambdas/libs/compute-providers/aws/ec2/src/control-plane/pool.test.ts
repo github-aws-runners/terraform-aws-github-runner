@@ -3,6 +3,7 @@ import type { CreateGitHubRunnerConfig, CreateStartRunnerConfig, RunnerInfo } fr
 import { bootTimeExceeded, type Ec2RunnerResourceOperations } from '../runners';
 import type { Ec2StandbyOperations } from '../standby';
 import type { WarmIndexStore } from '../warm-index';
+import type { Ec2PlacementSignalOperations } from '../warm-placement-signals';
 import type { Ec2PoolStandbyOperations } from '../standby-types';
 import {
   createEc2PoolCapability,
@@ -195,6 +196,8 @@ describe('createEc2PoolCapability.standby', () => {
     markUnusable: vi.fn<WarmIndexStore['markUnusable']>(),
     releaseWithCooldown: vi.fn<WarmIndexStore['releaseWithCooldown']>(),
     claimReconcile: vi.fn<WarmIndexStore['claimReconcile']>(),
+    readPlacement: vi.fn<WarmIndexStore['readPlacement']>(),
+    writePlacement: vi.fn<WarmIndexStore['writePlacement']>(),
   } satisfies WarmIndexStore;
   const createIndexStore = vi.fn<CreateWarmIndexStore>(() => index);
   let standby: Ec2PoolStandbyOperations;
@@ -341,6 +344,35 @@ describe('createEc2PoolCapability.standby', () => {
     ]);
   });
 
+  it('places spot refills with the cached placement signals and reports a failed refresh', async () => {
+    const placementSignals = {
+      describeSubnetAzIds: vi.fn<Ec2PlacementSignalOperations['describeSubnetAzIds']>(),
+      getSpotPlacementScores: vi.fn<Ec2PlacementSignalOperations['getSpotPlacementScores']>(),
+      getSpotPrices: vi.fn<Ec2PlacementSignalOperations['getSpotPrices']>(),
+    } satisfies Ec2PlacementSignalOperations;
+    placementSignals.describeSubnetAzIds.mockRejectedValue(
+      Object.assign(new Error('denied'), { name: 'UnauthorizedOperation' }),
+    );
+    index.readPlacement.mockResolvedValue(undefined);
+    standbyOperations.launchWarm.mockResolvedValue({ instances: ['i-1'], failedInstanceCount: 0, failureCodes: [] });
+    process.env.AWS_REGION = 'eu-west-1';
+    const withSignals = createEc2PoolStandbyOperations(standbyOperations, createIndexStore, placementSignals);
+
+    await expect(
+      withSignals.launch({ ...poolInput, numberOfInstances: 1, maxAgeHours: 12, poolSize: 4 }),
+    ).resolves.toEqual({
+      instances: ['i-1'],
+      retryableErrorCount: 0,
+      nonRetryableErrorCount: 0,
+      placementError: { operation: 'spot-placement', code: 'UnauthorizedOperation' },
+    });
+    expect(standbyOperations.launchWarm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        placement: { source: 'unavailable', subnetAzIds: {}, signals: {}, error: expect.anything() },
+      }),
+    );
+  });
+
   it('launches warm instances from the provider config, indexes them and maps retryable failures', async () => {
     standbyOperations.launchWarm.mockResolvedValue({
       instances: ['i-1'],
@@ -348,11 +380,13 @@ describe('createEc2PoolCapability.standby', () => {
       failureCodes: ['aws-name:InsufficientInstanceCapacity'],
     });
 
-    await expect(standby.launch({ ...poolInput, numberOfInstances: 2, maxAgeHours: 12 })).resolves.toEqual({
-      instances: ['i-1'],
-      retryableErrorCount: 1,
-      nonRetryableErrorCount: 0,
-    });
+    await expect(standby.launch({ ...poolInput, numberOfInstances: 2, maxAgeHours: 12, poolSize: 4 })).resolves.toEqual(
+      {
+        instances: ['i-1'],
+        retryableErrorCount: 1,
+        nonRetryableErrorCount: 0,
+      },
+    );
     expect(standbyOperations.launchWarm).toHaveBeenCalledWith({
       ...poolInput,
       subnets: providerConfig.subnets,
@@ -371,7 +405,7 @@ describe('createEc2PoolCapability.standby', () => {
     standbyOperations.launchWarm.mockResolvedValue({ instances: ['i-1'], failedInstanceCount: 0, failureCodes: [] });
     index.update.mockRejectedValue(new Error('throttled'));
 
-    await expect(standby.launch({ ...poolInput, numberOfInstances: 1, maxAgeHours: 12 })).resolves.toEqual(
+    await expect(standby.launch({ ...poolInput, numberOfInstances: 1, maxAgeHours: 12, poolSize: 4 })).resolves.toEqual(
       expect.objectContaining({ instances: ['i-1'] }),
     );
   });

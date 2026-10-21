@@ -53,6 +53,13 @@ compute-provider core contract carries no instance, image, launch template or
 spot types. Classification, eviction, spot request handling, the index and
 activation are implemented by the EC2 provider.
 
+Warm spot instances must come from persistent spot requests launched with
+`RunInstances`, because fleet spot instances cannot be stopped. Each call
+targets one instance type in one Availability Zone, so the EC2 provider ranks
+the configured instance type and subnet pairs by the configured allocation
+strategy, using cached Spot placement scores and prices, and spreads each
+refill over the ranked pairs instead of filling the first pair with capacity.
+
 A warm instance is activated at most once. Runners that ran a job are never parked again; a non-ephemeral runner keeps its normal lifecycle after activation.
 
 ### Lifecycle

@@ -301,7 +301,7 @@ function fleetFailureCodes(errors: FleetError[]): Ec2RunnerFailureCode[] {
 // so a value valid for one capacity type can be invalid for the other. AWS rejects CreateFleet
 // when the strategy is not valid for the target capacity type, so fall back to 'lowest-price'
 // (the AWS default) when the configured value is invalid for the given capacity type.
-function sanitizeAllocationStrategy(
+export function sanitizeAllocationStrategy(
   strategy: string,
   targetCapacityType: string,
 ): SpotAllocationStrategy | FleetOnDemandAllocationStrategy {

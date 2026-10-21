@@ -1,4 +1,4 @@
-import type { CreateRunnerResult, ListPoolRunnersInput } from '../../../core';
+import type { CreateRunnerResult, ListPoolRunnersInput, StandbyReconcileError } from '../../../core';
 
 export type StandbyInstanceState = 'PRIMING' | 'WARM' | 'ACTIVE' | 'GARBAGE';
 
@@ -22,6 +22,13 @@ export type ListStandbyInput = ListPoolRunnersInput;
 export interface LaunchStandbyInput extends ListPoolRunnersInput {
   numberOfInstances: number;
   maxAgeHours: number;
+  /** Target size of the warm pool; spot placement scores are read for this capacity. */
+  poolSize: number;
+}
+
+export interface StandbyLaunchResult extends CreateRunnerResult {
+  /** Set when the spot placement signals could not be refreshed. */
+  placementError?: StandbyReconcileError;
 }
 
 export type DestroyStandbyInput = Pick<StandbyInstance, 'instanceId' | 'spotInstanceRequestId'>;
@@ -55,7 +62,7 @@ export interface StandbyImage {
 
 export interface Ec2PoolStandbyOperations {
   list(input: ListStandbyInput): Promise<StandbyListing>;
-  launch(input: LaunchStandbyInput): Promise<CreateRunnerResult>;
+  launch(input: LaunchStandbyInput): Promise<StandbyLaunchResult>;
   destroy(instances: DestroyStandbyInput[]): Promise<StandbyBatchResult>;
   /** Cancels each request and terminates its replacement instance, if any. */
   cancelSpotRequests(requests: StandbySpotRequest[]): Promise<StandbyBatchResult>;

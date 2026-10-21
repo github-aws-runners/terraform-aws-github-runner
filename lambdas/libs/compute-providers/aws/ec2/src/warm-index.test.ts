@@ -2,6 +2,7 @@ import {
   ConditionalCheckFailedException,
   DeleteItemCommand,
   DynamoDBClient,
+  GetItemCommand,
   QueryCommand,
   UpdateItemCommand,
   type UpdateItemCommandInput,
@@ -362,5 +363,66 @@ describe('claimReconcile', () => {
         ':ttl': { N: String(NOW_SECONDS + 3600 + 86400) },
       },
     });
+  });
+});
+
+describe('placement cache', () => {
+  const cache = {
+    configHash: 'hash-1',
+    fetchedAt: NOW_SECONDS,
+    expiresAt: NOW_SECONDS + 900,
+    subnetAzIds: { 'subnet-a': 'euw1-az1' },
+    azScores: { 'euw1-az1': 7 },
+  };
+
+  it('writes only the placement attribute of the reconcile marker', async () => {
+    mockDynamoClient.on(UpdateItemCommand).resolves({});
+
+    await index.writePlacement(cache);
+
+    expect(updateInputs()[0]).toEqual({
+      TableName: 'warm-index',
+      Key: KEY('#reconcile'),
+      UpdateExpression: 'SET placement = :placement',
+      ExpressionAttributeValues: { ':placement': { S: JSON.stringify(cache) } },
+    });
+  });
+
+  it('reads the placement attribute of the reconcile marker', async () => {
+    mockDynamoClient.on(GetItemCommand).resolves({ Item: { placement: { S: JSON.stringify(cache) } } });
+
+    await expect(index.readPlacement()).resolves.toEqual(cache);
+    expect(mockDynamoClient).toHaveReceivedCommandWith(GetItemCommand, {
+      TableName: 'warm-index',
+      Key: KEY('#reconcile'),
+      ProjectionExpression: 'placement',
+      ConsistentRead: true,
+    });
+  });
+
+  it('resolves undefined without a cached or with a malformed placement', async () => {
+    mockDynamoClient
+      .on(GetItemCommand)
+      .resolvesOnce({})
+      .resolvesOnce({ Item: { placement: { S: '{' } } });
+
+    await expect(index.readPlacement()).resolves.toBeUndefined();
+    await expect(index.readPlacement()).resolves.toBeUndefined();
+  });
+
+  it('is not listed as an instance by the index query', async () => {
+    mockDynamoClient.on(QueryCommand).resolves({
+      Items: [
+        {
+          environment: { S: 'unit-test' },
+          instanceId: { S: '#reconcile' },
+          lastRun: { N: '1' },
+          placement: { S: '{}' },
+        },
+        { environment: { S: 'unit-test' }, instanceId: { S: 'i-1' }, state: { S: 'WARM' } },
+      ],
+    });
+
+    await expect(index.query()).resolves.toEqual([expect.objectContaining({ instanceId: 'i-1' })]);
   });
 });

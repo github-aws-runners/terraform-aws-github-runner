@@ -11,6 +11,7 @@ import { createEc2ScaleUpCapability } from './src/control-plane/scale-up';
 import { createEc2RunnerClient } from './src/runners';
 import { createEc2StandbyClient } from './src/standby';
 import { createWarmIndexStore } from './src/warm-index';
+import { createEc2PlacementSignalClient } from './src/warm-placement-signals';
 
 export function createEc2ControlPlanePlugin(
   createStartRunnerConfig: CreateStartRunnerConfig,
@@ -27,7 +28,11 @@ export function createEc2ControlPlanePlugin(
     type: 'ec2',
     capabilities: {
       pool: () =>
-        createEc2PoolCapability(ec2Operations, createStartRunnerConfig, { standbyOperations, createIndexStore }),
+        createEc2PoolCapability(ec2Operations, createStartRunnerConfig, {
+          standbyOperations,
+          createIndexStore,
+          placementSignals: createEc2PlacementSignalClient(ec2Client).forRequest({ signal: undefined }),
+        }),
       scaleUp: () => createEc2ScaleUpCapability(ec2Operations, createStartRunnerConfig, warmOperations),
       scaleDown: () => createEc2ScaleDownCapability(ec2Operations, standbyOperations),
     },

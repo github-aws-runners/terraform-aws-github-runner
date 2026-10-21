@@ -40,6 +40,8 @@ import type {
   StandbyListing,
   StandbySpotRequest,
 } from './standby-types';
+import type { WarmPlacementSignalSource } from './warm-placement-cache';
+import { dealWarmShares, planWarmPlacement, type WarmPlacementPair, type WarmPlacementSignals } from './warm-placement';
 
 const logger = createChildLogger('standby');
 
@@ -92,7 +94,14 @@ export type Ec2WarmLaunchParameters = Pick<
   | 'source'
   | 'amiIdSsmParameterName'
   | 'tracingEnabled'
-> & { maxAgeHours: number };
+> & {
+  maxAgeHours: number;
+  placement?: {
+    source: WarmPlacementSignalSource;
+    subnetAzIds: Record<string, string>;
+    signals: WarmPlacementSignals;
+  };
+};
 
 export type Ec2CurrentImageParameters = Partial<
   Pick<RunnerInputParameters, 'launchTemplateName' | 'amiIdSsmParameterName'>
@@ -319,40 +328,79 @@ async function launchWarmInstances(
     { Key: WARM_EXPIRES_AT_TAG, Value: expiresAt.toISOString() },
   ];
 
+  const criteria = parameters.ec2instanceCriteria;
+  const subnetAzIds = parameters.placement?.subnetAzIds ?? {};
+  const plan = planWarmPlacement({
+    capacityType: criteria.targetCapacityType,
+    strategy: criteria.instanceAllocationStrategy,
+    instanceTypes: criteria.instanceTypes,
+    instanceTypePriorities: criteria.instanceTypePriorities,
+    subnets: parameters.subnets.map((subnetId) => ({ subnetId, azId: subnetAzIds[subnetId] })),
+    signals: parameters.placement?.signals,
+  });
+  logger.info('Warm placement plan.', {
+    capacityType: criteria.targetCapacityType,
+    configuredStrategy: criteria.instanceAllocationStrategy,
+    effectiveStrategy: plan.effectiveStrategy,
+    signalSource: parameters.placement?.source ?? 'not-needed',
+    spread: plan.spread,
+    requested: parameters.numberOfRunners,
+    pairs: plan.pairs.map(placementFields),
+  });
+
   const instances: string[] = [];
   const failureCodes = new Set<Ec2RunnerFailureCode>();
-  for (const instanceType of parameters.ec2instanceCriteria.instanceTypes) {
-    for (const subnetId of parameters.subnets) {
-      const remaining = parameters.numberOfRunners - instances.length;
-      if (remaining <= 0) break;
+  let candidates = plan.pairs;
+  while (instances.length < parameters.numberOfRunners && candidates.length > 0) {
+    const shares = dealWarmShares(parameters.numberOfRunners - instances.length, candidates.length, plan.spread);
+    const exhausted = new Set<WarmPlacementPair>();
+    for (const [position, pair] of candidates.entries()) {
+      const requested = shares[position];
+      if (requested <= 0) continue;
       try {
         const result = await ec2Client.send(
           new RunInstancesCommand(
-            buildWarmRunInstancesInput(parameters, { amiId, expiresAt, instanceType, subnetId, tags, remaining }),
+            buildWarmRunInstancesInput(parameters, {
+              amiId,
+              expiresAt,
+              instanceType: pair.instanceType,
+              subnetId: pair.subnetId,
+              tags,
+              remaining: requested,
+            }),
           ),
           { abortSignal: signal },
         );
-        instances.push(...(result.Instances?.flatMap((instance) => instance.InstanceId ?? []) ?? []));
+        const launched = result.Instances?.flatMap((instance) => instance.InstanceId ?? []) ?? [];
+        instances.push(...launched);
+        logger.info('Warm launch request.', { ...placementFields(pair), requested, launched: launched.length });
+        if (launched.length < requested) exhausted.add(pair);
       } catch (error) {
         throwIfAborted(signal, error);
         requestFailureCodes(error).forEach((failureCode) => failureCodes.add(failureCode));
         if (!WARM_LAUNCH_FALLBACK_ERRORS.has(awsErrorCode(error) ?? '')) {
           logger.warn('Warm launch failed with a non-capacity error.', {
-            instanceType,
-            subnetId,
+            ...placementFields(pair),
+            requested,
             ...failureDetails(error),
           });
           return warmLaunchResult(parameters, instances, failureCodes);
         }
-        logger.info('Warm launch capacity error, trying next instance type and subnet.', {
-          instanceType,
-          subnetId,
+        logger.info('Warm launch capacity error, moving its share to the next pools.', {
+          ...placementFields(pair),
+          requested,
           ...failureDetails(error),
         });
+        exhausted.add(pair);
       }
     }
+    candidates = candidates.filter((pair) => !exhausted.has(pair));
   }
   return warmLaunchResult(parameters, instances, failureCodes);
+}
+
+function placementFields({ instanceType, subnetId, azId, score, price }: WarmPlacementPair) {
+  return { instanceType, subnetId, azId, score, price };
 }
 
 function warmLaunchResult(
