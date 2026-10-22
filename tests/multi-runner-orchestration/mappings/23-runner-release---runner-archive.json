@@ -1,0 +1,14 @@
+{
+  "name": "Runner release - runner archive",
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "/downloads/actions-runner-linux-x64-2\\.321\\.0\\.tar\\.gz"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/octet-stream"
+    },
+    "bodyFileName": "actions-runner-linux-x64-2.321.0.tar.gz"
+  }
+}

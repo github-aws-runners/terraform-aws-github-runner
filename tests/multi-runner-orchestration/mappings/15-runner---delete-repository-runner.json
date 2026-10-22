@@ -1,0 +1,10 @@
+{
+  "name": "Runner - delete repository runner",
+  "request": {
+    "method": "DELETE",
+    "urlPathPattern": "(?:/api/v3)?/repos/[^/]+/[^/]+/actions/runners/\\d+"
+  },
+  "response": {
+    "status": 204
+  }
+}

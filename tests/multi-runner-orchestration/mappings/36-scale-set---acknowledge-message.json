@@ -1,0 +1,10 @@
+{
+  "name": "Scale set - acknowledge message",
+  "request": {
+    "method": "DELETE",
+    "urlPathPattern": "(?:/queue/sessions/[^/]+/messages/\\d+|/messages/\\d+)"
+  },
+  "response": {
+    "status": 204
+  }
+}

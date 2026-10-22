@@ -1,0 +1,24 @@
+{
+  "name": "Runner - org runner groups",
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "(?:/api/v3)?/orgs/[^/]+/actions/runner-groups"
+  },
+  "response": {
+    "status": 200,
+    "jsonBody": {
+      "total_count": 1,
+      "runner_groups": [
+        {
+          "id": 1,
+          "name": "Default",
+          "size": 100,
+          "isDefaultGroup": true
+        }
+      ]
+    },
+    "headers": {
+      "Content-Type": "application/json"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "name": "GitHub App - list installations",
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "(?:/api/v3)?/app/installations"
+  },
+  "response": {
+    "status": 200,
+    "jsonBody": [
+      {
+        "id": 1111,
+        "app_id": 999,
+        "target_id": 2222,
+        "target_type": "Organization",
+        "account": {
+          "login": "acme",
+          "id": 2222,
+          "type": "Organization"
+        }
+      }
+    ],
+    "headers": {
+      "Content-Type": "application/json"
+    }
+  }
+}

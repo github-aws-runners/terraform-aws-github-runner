@@ -1,0 +1,10 @@
+{
+  "name": "Scale set - close message session",
+  "request": {
+    "method": "DELETE",
+    "urlPathPattern": "(?:/api/v3)?(?:/tenant/[^/]+)?/_apis/runtime/runnerscalesets/\\d+/sessions/[^/]+"
+  },
+  "response": {
+    "status": 204
+  }
+}

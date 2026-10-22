@@ -1,0 +1,37 @@
+{
+  "name": "Runner - list org runners",
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "(?:/api/v3)?/orgs/[^/]+/actions/runners"
+  },
+  "response": {
+    "status": 200,
+    "jsonBody": {
+      "total_count": 1,
+      "runners": [
+        {
+          "id": 4242,
+          "name": "wiremock-runner-001",
+          "os": "Linux",
+          "status": "online",
+          "busy": false,
+          "labels": [
+            {
+              "id": 1,
+              "name": "self-hosted",
+              "type": "read-only"
+            },
+            {
+              "id": 2,
+              "name": "Linux",
+              "type": "read-only"
+            }
+          ]
+        }
+      ]
+    },
+    "headers": {
+      "Content-Type": "application/json"
+    }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "name": "Scale set - create scale set",
+  "request": {
+    "method": "POST",
+    "urlPathPattern": "(?:/api/v3)?(?:/tenant/[^/]+)?/_apis/runtime/runnerscalesets"
+  },
+  "response": {
+    "status": 200,
+    "jsonBody": {
+      "id": 223,
+      "name": "linux-scale-set",
+      "runnerGroupId": 48,
+      "runnerGroupName": "experimental-euw1-sl-cicd-forge-emu",
+      "labels": [
+        {
+          "name": "linux-scale-set",
+          "type": "system"
+        }
+      ],
+      "runnerSetting": {},
+      "statistics": {
+        "totalAvailableJobs": 0,
+        "totalAcquiredJobs": 0,
+        "totalAssignedJobs": 0,
+        "totalRunningJobs": 0,
+        "totalRegisteredRunners": 0,
+        "totalBusyRunners": 0,
+        "totalIdleRunners": 0
+      }
+    },
+    "headers": {
+      "Content-Type": "application/json"
+    }
+  }
+}

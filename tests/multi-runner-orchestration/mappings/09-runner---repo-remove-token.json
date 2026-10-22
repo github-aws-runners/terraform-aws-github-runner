@@ -1,0 +1,17 @@
+{
+  "name": "Runner - repo remove token",
+  "request": {
+    "method": "POST",
+    "urlPathPattern": "(?:/api/v3)?/repos/[^/]+/[^/]+/actions/runners/remove-token"
+  },
+  "response": {
+    "status": 201,
+    "jsonBody": {
+      "token": "runner-removal-token-mock",
+      "expires_at": "2099-01-01T00:00:00Z"
+    },
+    "headers": {
+      "Content-Type": "application/json"
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "Scale set - refresh message session",
+  "request": {
+    "method": "PATCH",
+    "urlPathPattern": "(?:/api/v3)?(?:/tenant/[^/]+)?/_apis/runtime/runnerscalesets/\\d+/sessions/[^/]+"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": "{\"sessionId\":\"11111111-1111-1111-1111-111111111111\",\"ownerName\":\"local.linux-scale-set\",\"runnerScaleSet\":{\"id\":223,\"name\":\"linux-scale-set\",\"runnerGroupId\":48},\"messageQueueUrl\":\"{{request.baseUrl}}/messages?sessionId=11111111-1111-1111-1111-111111111111&api-version=6.0-preview\",\"messageQueueAccessToken\":\"fake-queue-token\",\"statistics\":{\"totalAvailableJobs\":0,\"totalAcquiredJobs\":0,\"totalAssignedJobs\":0,\"totalRunningJobs\":0,\"totalRegisteredRunners\":0,\"totalBusyRunners\":0,\"totalIdleRunners\":0}}"
+  }
+}

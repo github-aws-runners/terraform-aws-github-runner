@@ -1,0 +1,27 @@
+{
+  "name": "Runner - repo workflow job",
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "(?:/api/v3)?/repos/[^/]+/[^/]+/actions/jobs/\\d+"
+  },
+  "response": {
+    "status": 200,
+    "jsonBody": {
+      "id": 5150,
+      "run_id": 8080,
+      "status": "queued",
+      "conclusion": null,
+      "name": "wiremock-job",
+      "started_at": null,
+      "completed_at": null,
+      "html_url": "https://github.com/acme/repo/actions/runs/8080/job/5150",
+      "labels": [
+        "self-hosted",
+        "Linux"
+      ]
+    },
+    "headers": {
+      "Content-Type": "application/json"
+    }
+  }
+}

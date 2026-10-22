@@ -1,0 +1,16 @@
+{
+  "name": "Scale set - acquire jobs",
+  "request": {
+    "method": "POST",
+    "urlPathPattern": "(?:/api/v3)?(?:/tenant/[^/]+)?/_apis/runtime/runnerscalesets/\\d+/acquirejobs"
+  },
+  "response": {
+    "status": 200,
+    "jsonBody": {
+      "value": []
+    },
+    "headers": {
+      "Content-Type": "application/json"
+    }
+  }
+}

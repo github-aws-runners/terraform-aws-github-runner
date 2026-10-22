@@ -1,0 +1,14 @@
+{
+  "name": "Scale set - get runner by id",
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "(?:/api/v3)?(?:/tenant/[^/]+)?/_apis/distributedtask/pools/0/agents/\\d+"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": "{\"id\":321,\"name\":\"linux-scale-set\",\"runnerScaleSetId\":223}"
+  }
+}

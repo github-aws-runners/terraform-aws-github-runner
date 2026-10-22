@@ -1,0 +1,10 @@
+{
+  "name": "Scale set - delete scale set",
+  "request": {
+    "method": "DELETE",
+    "urlPathPattern": "(?:/api/v3)?(?:/tenant/[^/]+)?/_apis/runtime/runnerscalesets/\\d+"
+  },
+  "response": {
+    "status": 204
+  }
+}
