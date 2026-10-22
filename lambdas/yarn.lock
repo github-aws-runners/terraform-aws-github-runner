@@ -1939,6 +1939,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@dual-bundle/import-meta-resolve@npm:^4.2.1":
+  version: 4.2.1
+  resolution: "@dual-bundle/import-meta-resolve@npm:4.2.1"
+  checksum: 10c0/8f1e572c14c4d20ea35734635085213abd13bd440c251309cf8ae5ed1082f6759cefa1c2c52a631f76859c57e26062f78a8cee4acc239c0edc87cd316a5d3b5b
+  languageName: node
+  linkType: hard
+
 "@emnapi/core@npm:1.11.2":
   version: 1.11.2
   resolution: "@emnapi/core@npm:1.11.2"
@@ -2269,7 +2276,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@eslint/js@npm:9.39.5":
+"@eslint/js@npm:9.39.5, @eslint/js@npm:^9.39.5":
   version: 9.39.5
   resolution: "@eslint/js@npm:9.39.5"
   checksum: 10c0/49894e98ba313a7d3bfb1b20d55c0f9826be45a7db876fd84e533ac7f101b1d95b51cd22c6a6db3a45066b9c0d068c31b4a22fa0db8a6cc8744a25540efdb824
@@ -4188,7 +4195,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@typescript-eslint/eslint-plugin@npm:^8.47.0":
+"@typescript-eslint/eslint-plugin@npm:^8.71.2":
   version: 8.71.2
   resolution: "@typescript-eslint/eslint-plugin@npm:8.71.2"
   dependencies:
@@ -4208,7 +4215,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@typescript-eslint/parser@npm:^8.46.2":
+"@typescript-eslint/parser@npm:^8.71.2":
   version: 8.71.2
   resolution: "@typescript-eslint/parser@npm:8.71.2"
   dependencies:
@@ -5694,12 +5701,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-plugin-prettier@npm:5.5.4":
-  version: 5.5.4
-  resolution: "eslint-plugin-prettier@npm:5.5.4"
+"eslint-plugin-prettier@npm:^5.5.7":
+  version: 5.5.7
+  resolution: "eslint-plugin-prettier@npm:5.5.7"
   dependencies:
-    prettier-linter-helpers: "npm:^1.0.0"
-    synckit: "npm:^0.11.7"
+    prettier-linter-helpers: "npm:^1.0.1"
+    synckit: "npm:^0.12.3"
   peerDependencies:
     "@types/eslint": ">=8.0.0"
     eslint: ">=8.0.0"
@@ -5710,7 +5717,7 @@ __metadata:
       optional: true
     eslint-config-prettier:
       optional: true
-  checksum: 10c0/5cc780e0ab002f838ad8057409e86de4ff8281aa2704a50fa8511abff87028060c2e45741bc9cbcbd498712e8d189de8026e70aed9e20e50fe5ba534ee5a8442
+  checksum: 10c0/76a1a99ace86471a320d99371cc34b0eee179f39bd383e46244b65b7b08b980b7a8e72f9d7eaaa74e92ede8032bf04ba0b05ba7c648c44a7c49d121df07eb58f
   languageName: node
   linkType: hard
 
@@ -6099,17 +6106,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"follow-redirects@npm:1.16.0":
-  version: 1.16.0
-  resolution: "follow-redirects@npm:1.16.0"
-  peerDependenciesMeta:
-    debug:
-      optional: true
-  checksum: 10c0/a1e2900163e6f1b4d1ed5c221b607f41decbab65534c63fe7e287e40a5d552a6496e7d9d7d976fa4ba77b4c51c11e5e9f683f10b43011ea11e442ff128d0e181
-  languageName: node
-  linkType: hard
-
-"follow-redirects@npm:^1.16.0":
+"follow-redirects@npm:1.16.1":
   version: 1.16.1
   resolution: "follow-redirects@npm:1.16.1"
   peerDependenciesMeta:
@@ -6829,6 +6826,7 @@ __metadata:
   resolution: "lambdas@workspace:."
   dependencies:
     "@eslint/eslintrc": "npm:^3.3.1"
+    "@eslint/js": "npm:^9.39.5"
     "@nx/eslint": "npm:23.2.1"
     "@nx/js": "npm:23.2.1"
     "@nx/vite": "npm:23.2.1"
@@ -6837,12 +6835,12 @@ __metadata:
     "@swc/core": "npm:~1.15.8"
     "@swc/helpers": "npm:~0.5.18"
     "@trivago/prettier-plugin-sort-imports": "npm:^6.0.0"
-    "@typescript-eslint/eslint-plugin": "npm:^8.47.0"
-    "@typescript-eslint/parser": "npm:^8.46.2"
+    "@typescript-eslint/eslint-plugin": "npm:^8.71.2"
+    "@typescript-eslint/parser": "npm:^8.71.2"
     "@vitest/coverage-v8": "npm:^4.1.11"
     chalk: "npm:^5.6.2"
     eslint: "npm:^9.39.2"
-    eslint-plugin-prettier: "npm:5.5.4"
+    eslint-plugin-prettier: "npm:^5.5.7"
     nx: "npm:23.2.1"
     prettier: "npm:^3.6.2"
     ts-node: "npm:^10.9.2"
@@ -7837,7 +7835,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"prettier-linter-helpers@npm:^1.0.0":
+"prettier-linter-helpers@npm:^1.0.1":
   version: 1.0.1
   resolution: "prettier-linter-helpers@npm:1.0.1"
   dependencies:
@@ -8626,12 +8624,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"synckit@npm:^0.11.7":
-  version: 0.11.13
-  resolution: "synckit@npm:0.11.13"
+"synckit@npm:^0.12.3":
+  version: 0.12.3
+  resolution: "synckit@npm:0.12.3"
   dependencies:
+    "@dual-bundle/import-meta-resolve": "npm:^4.2.1"
     "@pkgr/core": "npm:^0.3.6"
-  checksum: 10c0/5a6c19f4f79045aaa7994106401bff6dbe7cca23a6d0a0723ff14eb8b1bebeb4a71729118f6914905598e304ea2fa13509885e11ba07d92e7cb68a06740cb328
+  checksum: 10c0/e7c3c5bd8272c55c0e108c296dbd0d326e9f22614227079b46ff7bd51c0970d810b222a3a14f5b0f1797d8af2c82058b9a927ac63a06219ead8535d271b382e1
   languageName: node
   linkType: hard
 
