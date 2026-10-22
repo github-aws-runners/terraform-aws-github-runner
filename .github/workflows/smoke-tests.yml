@@ -34,12 +34,16 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Build and run MiniStack smoke tests
+      - name: Build
         run: |
           compose_file=tests/multi-runner-orchestration/docker-compose.yml
           docker compose -f "$compose_file" build
+
+      - name: Run MiniStack smoke tests
+        run: |
+          compose_file=tests/multi-runner-orchestration/docker-compose.yml
           docker compose -f "$compose_file" run --no-TTY --rm smoke-tests
 
-      - name: Stop MiniStack Compose services
-        if: always()
-        run: docker compose -f tests/multi-runner-orchestration/docker-compose.yml down --remove-orphans
+      - name: Print MiniStack logs on failure
+        if: failure()
+        run: docker compose -f tests/multi-runner-orchestration/docker-compose.yml logs --no-color --timestamps --tail=all ministack || true

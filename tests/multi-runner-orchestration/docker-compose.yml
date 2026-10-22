@@ -148,7 +148,7 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - ../..:/workspace
-      - terraform-data:/terraform-data
+      - terraform-data:/workspace/examples/multi-runner-orchestration/.terraform
     environment:
       AWS_ACCESS_KEY_ID: "000000000000"
       AWS_SECRET_ACCESS_KEY: test-only
@@ -158,7 +158,6 @@ services:
       AWS_ENDPOINT_URL: http://ministack:4566
       TF_IN_AUTOMATION: "true"
       TF_INPUT: "false"
-      TF_DATA_DIR: /terraform-data
 
   smoke-tests:
     image: hashicorp/terraform:1.17
@@ -177,7 +176,7 @@ services:
           tests/multi-runner-orchestration/smoke/*.test.mjs
     volumes:
       - ../..:/workspace
-      - terraform-data:/terraform-data
+      - terraform-data:/workspace/examples/multi-runner-orchestration/.terraform
     environment:
       AWS_ACCESS_KEY_ID: "000000000000"
       AWS_SECRET_ACCESS_KEY: test-only
@@ -187,7 +186,6 @@ services:
       AWS_ENDPOINT_URL: http://ministack:4566
       TF_IN_AUTOMATION: "true"
       TF_INPUT: "false"
-      TF_DATA_DIR: /terraform-data
 
 volumes:
   terraform-data:

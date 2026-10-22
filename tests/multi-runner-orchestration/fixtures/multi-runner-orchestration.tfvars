@@ -5,7 +5,7 @@ runners_lambda_zip = "../../lambda_output/runners.zip"
 webhook_lambda_zip = "../../lambda_output/webhook.zip"
 
 github = {
-  url                = "https://host.docker.internal:8443"
+  url                = "https://github-api:8443"
   ssl_verify         = false
   runner_owner       = "example"
   registration_level = "organization"

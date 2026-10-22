@@ -68,7 +68,7 @@ The mappings directory contains only the requests exercised by the current MiniS
 
 | Flow | Requests covered |
 |---|---|
-| Webhook and EC2 pool | `POST /app/installations/{id}/access_tokens`; `POST /orgs/{org}/actions/runners/registration-token`; `GET /orgs/{org}/actions/runners`; `GET /orgs/{org}/actions/runner-groups`; `POST /orgs/{org}/actions/runners/generate-jitconfig`; `GET /orgs/{org}/actions/runners/{runner_id}` during orphan cleanup; `GET /repos/{owner}/{repo}/actions/jobs/{job_id}` |
+| Webhook and EC2 pool | `POST /app/installations/{id}/access_tokens`; `GET /orgs/{org}/installation` (pool installation lookup); `POST /orgs/{org}/actions/runners/registration-token`; `GET /orgs/{org}/actions/runners`; `GET /orgs/{org}/actions/runner-groups`; `POST /orgs/{org}/actions/runners/generate-jitconfig`; `GET /orgs/{org}/actions/runners/{runner_id}` during orphan cleanup; `GET /repos/{owner}/{repo}/actions/jobs/{job_id}` |
 | EC2 scale set | Registration handshake; runner-group and scale-set lookup/update; JIT runner config; message-session create/close and empty queue polling; runner lookup by name and removal |
 
 Mapping filenames use `<trigger>.<compute-provider>.<request>.json`; add provider-specific files alongside the matching smoke suite when new paths are exercised. Fixtures for other GitHub API paths can be added in a follow-up.

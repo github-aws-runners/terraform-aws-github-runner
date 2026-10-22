@@ -271,7 +271,7 @@ export async function assertCloudWatchLogContains(logGroup, description, text, s
 function eventMatches(message, eventName, expectedFields) {
   try {
     const event = JSON.parse(message);
-    return event.event === eventName
+    return (event.event === eventName || event.message === eventName)
       && Object.entries(expectedFields).every(([key, value]) => event[key] === value);
   } catch {
     return message.includes(eventName)
@@ -289,10 +289,16 @@ export async function assertCloudWatchEvent(
   logStreamName,
 ) {
   const description = `CloudWatch ${eventName} (${JSON.stringify(expectedFields)}) in ${logGroup}`;
-  const message = await waitFor(description, async () => {
-    const messages = await logMessages(logGroup, startTime, logStreamName);
-    return messages.find((entry) => eventMatches(entry, eventName, expectedFields));
-  });
-
-  return message;
+  let recentMessages = [];
+  try {
+    return await waitFor(description, async () => {
+      recentMessages = await logMessages(logGroup, startTime, logStreamName);
+      return recentMessages.find((entry) => eventMatches(entry, eventName, expectedFields));
+    });
+  } catch (error) {
+    const logContext = recentMessages.length
+      ? recentMessages.slice(-10).join('\n')
+      : `No CloudWatch messages found in ${logGroup} after ${new Date(startTime).toISOString()}`;
+    throw new Error(`${error.message}\nRecent CloudWatch messages:\n${logContext}`, { cause: error });
+  }
 }
