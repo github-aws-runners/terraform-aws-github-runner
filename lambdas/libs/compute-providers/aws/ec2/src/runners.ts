@@ -281,8 +281,7 @@ function sanitizeAllocationStrategy(
 ): SpotAllocationStrategy | FleetOnDemandAllocationStrategy {
   const validStrategies = targetCapacityType === 'spot' ? SPOT_ALLOCATION_STRATEGIES : ON_DEMAND_ALLOCATION_STRATEGIES;
   return (validStrategies.includes(strategy) ? strategy : 'lowest-price') as
-    | SpotAllocationStrategy
-    | FleetOnDemandAllocationStrategy;
+    SpotAllocationStrategy | FleetOnDemandAllocationStrategy;
 }
 
 function generateFleetOverrides(
@@ -300,13 +299,11 @@ function generateFleetOverrides(
   const amiIdToUse = ec2OverrideConfig?.ImageId ?? amiId;
 
   if (ec2OverrideConfig?.InstanceRequirements) {
-    return subnetsToUse.map(
-      (subnetId): FleetLaunchTemplateOverridesRequest => ({
-        SubnetId: subnetId,
-        ImageId: amiIdToUse,
-        ...ec2OverrideConfig,
-      }),
-    );
+    return subnetsToUse.map((subnetId): FleetLaunchTemplateOverridesRequest => ({
+      SubnetId: subnetId,
+      ImageId: amiIdToUse,
+      ...ec2OverrideConfig,
+    }));
   }
 
   const instanceTypesToUse = ec2OverrideConfig?.InstanceType ? [ec2OverrideConfig.InstanceType] : instancesTypes;

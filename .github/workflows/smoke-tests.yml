@@ -2,7 +2,11 @@ name: "Smoke Tests"
 
 on:
   pull_request:
-    paths: ["**/*.tf", "**/*.hcl", ".github/workflows/smoke-tests.yml"]
+    paths: 
+      - lambdas/**
+      - "**/*.tf"
+      - "**/*.hcl"
+      - ".github/workflows/smoke-tests.yml"
   workflow_dispatch:
 
 concurrency:
