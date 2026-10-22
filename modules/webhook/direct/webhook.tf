@@ -141,7 +141,7 @@ resource "aws_iam_role_policy" "webhook_ssm" {
     resource_arns = jsonencode(
       concat(
         [var.config.github_app_parameters.webhook_secret.arn],
-        [for p in var.config.ssm_parameter_runner_matcher_config : p.arn]
+        [var.config.ssm_parameter_runner_matcher_config_arn_pattern]
       )
     )
   })

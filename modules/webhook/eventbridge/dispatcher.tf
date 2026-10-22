@@ -138,7 +138,7 @@ resource "aws_iam_role_policy" "dispatcher_ssm" {
   policy = templatefile("${path.module}/../policies/lambda-ssm.json", {
     resource_arns = jsonencode(
       concat(
-        [for p in var.config.ssm_parameter_runner_matcher_config : p.arn]
+        [var.config.ssm_parameter_runner_matcher_config_arn_pattern]
       )
     )
   })
