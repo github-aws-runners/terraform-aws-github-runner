@@ -2,45 +2,6 @@
 # the common runner role.
 data "aws_caller_identity" "current" {}
 
-locals {
-  ssm_parameter_arn_prefix = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter"
-  ssm_config_arn           = "${local.ssm_parameter_arn_prefix}${var.storage_provider.aws.ssm.paths.root}/${var.storage_provider.aws.ssm.paths.config}"
-  cloudwatch_config_arn    = "${local.ssm_config_arn}/cloudwatch_agent_config_runner"
-}
-
-data "aws_iam_policy_document" "ssm_parameters" {
-  statement {
-    effect = "Allow"
-    actions = [
-      "ssm:DeleteParameter",
-      "ssm:GetParameters",
-      "ssm:GetParameter",
-    ]
-    resources = [
-      "${local.ssm_parameter_arn_prefix}${var.storage_provider.aws.ssm.paths.root}/${var.storage_provider.aws.ssm.paths.tokens}/*",
-    ]
-
-    condition {
-      test     = "StringLike"
-      variable = "ec2:SourceInstanceARN"
-      values   = ["*/&{aws:ResourceTag/InstanceId}"]
-    }
-  }
-
-  statement {
-    effect = "Allow"
-    actions = [
-      "ssm:GetParameter",
-      "ssm:GetParameters",
-      "ssm:GetParametersByPath",
-    ]
-    resources = [
-      local.ssm_config_arn,
-      "${local.ssm_config_arn}/*",
-    ]
-  }
-}
-
 data "aws_iam_policy_document" "session_manager" {
   statement {
     effect = "Allow"
@@ -143,6 +104,10 @@ data "aws_iam_policy_document" "terminate_self" {
 data "aws_iam_policy_document" "cloudwatch" {
   count = var.config.cloudwatch_agent.enabled ? 1 : 0
 
+  source_policy_documents = var.storage_provider.aws.ssm != null ? [
+    data.aws_iam_policy_document.ssm_cloudwatch[0].json
+  ] : []
+
   statement {
     effect = "Allow"
     actions = [
@@ -156,16 +121,11 @@ data "aws_iam_policy_document" "cloudwatch" {
     ]
     resources = ["*"]
   }
-
-  statement {
-    effect    = "Allow"
-    actions   = ["ssm:GetParameter"]
-    resources = ["${local.cloudwatch_config_arn}/*"]
-  }
 }
 
 locals {
   runner_inline_policies = merge(
+    local.ssm_runner_inline_policies,
     {
       describe_tags = {
         name        = "runner-describe-tags"
@@ -178,12 +138,6 @@ locals {
       terminate_self = {
         name        = "ec2"
         policy_json = data.aws_iam_policy_document.terminate_self.json
-      }
-    },
-    {
-      ssm_parameters = {
-        name        = "runner-ssm-parameters"
-        policy_json = data.aws_iam_policy_document.ssm_parameters.json
       }
     },
     var.config.ssm_enabled ? {
