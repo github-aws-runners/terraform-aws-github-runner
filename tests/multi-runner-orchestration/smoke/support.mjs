@@ -253,10 +253,18 @@ export async function logMessages(logGroup, startTime, logStreamName) {
 }
 
 export async function assertCloudWatchLogContains(logGroup, description, text, startTime) {
-  await waitFor(description, async () => {
-    const messages = await logMessages(logGroup, startTime);
-    return messages.find((message) => message.includes(String(text)));
-  });
+  let recentMessages = [];
+  try {
+    await waitFor(description, async () => {
+      recentMessages = await logMessages(logGroup, startTime);
+      return recentMessages.find((message) => message.includes(String(text)));
+    });
+  } catch (error) {
+    const logContext = recentMessages.length
+      ? recentMessages.slice(-10).join('\n')
+      : `No CloudWatch messages found in ${logGroup} after ${new Date(startTime).toISOString()}`;
+    throw new Error(`${error.message}\nRecent CloudWatch messages:\n${logContext}`, { cause: error });
+  }
 
 }
 

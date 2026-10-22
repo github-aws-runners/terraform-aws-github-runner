@@ -27,11 +27,17 @@ The controller image build is configured directly in the `docker-buildx` Compose
 
 ## Programmatic MiniStack smoke test
 
-Compose owns the environment lifecycle: `up` starts WireMock and MiniStack, seeds AWS fixtures, builds the Lambda archives and scale-set controller image, applies `examples/multi-runner-orchestration`, then runs the `smoke-tests` job container. That job first registers a scale-set task-definition revision with dummy MiniStack credentials, updates the ECS service, then runs the Node.js smoke suite:
+Compose owns the environment lifecycle: `run smoke-tests` starts the required WireMock and MiniStack dependencies, seeds AWS fixtures, builds the Lambda archives and scale-set controller image, applies `examples/multi-runner-orchestration`, then runs the smoke-test container. The command streams the Node.js reporter output and returns the smoke container's exit code. The job first registers a scale-set task-definition revision with dummy MiniStack credentials and updates the ECS service:
 
 ```sh
-docker compose -f tests/multi-runner-orchestration/docker-compose.yml up --build --detach
-docker compose -f tests/multi-runner-orchestration/docker-compose.yml wait aws-fixtures lambda-builder docker-buildx terraform-apply smoke-tests
+docker compose -f tests/multi-runner-orchestration/docker-compose.yml build
+docker compose -f tests/multi-runner-orchestration/docker-compose.yml run --no-TTY --rm smoke-tests
+```
+
+Stop the long-running MiniStack and WireMock services after the command finishes:
+
+```sh
+docker compose -f tests/multi-runner-orchestration/docker-compose.yml down --remove-orphans
 ```
 
 Name smoke suites `<trigger>.<compute-provider>.test.mjs`; the current suites are `webhook.ec2.test.mjs` and `scale-set.ec2.test.mjs`. To cover MicroVM, add `webhook.microvm.test.mjs` and/or `scale-set.microvm.test.mjs`. Webhook suites can reuse `sendWorkflowJob` and shared AWS/CloudWatch helpers from `smoke/support.mjs`; scale-set suites can register the common lifecycle with `registerScaleSetLifecycleTest` from `smoke/scale-set-support.mjs` and provide provider-specific reconciliation assertions. Keep resource checks and cleanup provider-specific. The `*.test.mjs` command discovers new suites automatically. The suite contains four named Node.js test cases: EC2 webhook scale-up and scale-down with standard labels, EC2 webhook scale-up and scale-down with a dynamic instance-type label, EC2 pool runner creation and scale-down, and EC2 scale-set scale-up and scale-down. The webhook and pool cases assert the EC2 runner count before launch, after launch, and after cleanup; the dynamic-label case also verifies the requested `m5.large` override in the scale-up logs. The scale-set case checks zero runners at baseline, one runner after scale-up, and a termination returning the count to zero. All cases assert the corresponding Lambda or controller CloudWatch logs. WireMock API responses are test fixtures, so the tests do not assert those routes. Run the smoke cases with the concise reporter:

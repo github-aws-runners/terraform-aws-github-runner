@@ -44,6 +44,7 @@ services:
       - |
         apk add --no-cache bash git
         cd /workspace
+        git config --global --add safe.directory /workspace
         OUTPUT_DIR=/workspace/lambda_output bash .ci/build.sh
     volumes:
       - ../..:/workspace
@@ -73,6 +74,12 @@ services:
           echo "Could not resolve MiniStack on the Compose network" >&2
           exit 1
         fi
+        docker_arch="$$(docker info --format '{{.Architecture}}')"
+        case "$$docker_arch" in
+          aarch64|arm64) scale_set_platform=linux/arm64 ;;
+          x86_64|amd64) scale_set_platform=linux/amd64 ;;
+          *) echo "Unsupported Docker host architecture: $$docker_arch" >&2; exit 1 ;;
+        esac
         export MINISTACK_REGISTRY="$$ministack_ip:4566"
         docker_config="$$(mktemp -d)"
         export DOCKER_CONFIG="$$docker_config"
@@ -94,7 +101,7 @@ services:
           --use --bootstrap
         docker buildx build --builder runner-smoke-builder \
           --network host --allow network.host \
-          --platform linux/amd64,linux/arm64 \
+          --platform "$$scale_set_platform" \
           --target runtime \
           --file /workspace/lambdas/services/scale-set/Dockerfile \
           --tag "$${MINISTACK_REGISTRY}/scale-set-controller:latest" \
@@ -141,6 +148,7 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - ../..:/workspace
+      - terraform-data:/terraform-data
     environment:
       AWS_ACCESS_KEY_ID: "000000000000"
       AWS_SECRET_ACCESS_KEY: test-only
@@ -150,6 +158,7 @@ services:
       AWS_ENDPOINT_URL: http://ministack:4566
       TF_IN_AUTOMATION: "true"
       TF_INPUT: "false"
+      TF_DATA_DIR: /terraform-data
 
   smoke-tests:
     image: hashicorp/terraform:1.17
@@ -168,6 +177,7 @@ services:
           tests/multi-runner-orchestration/smoke/*.test.mjs
     volumes:
       - ../..:/workspace
+      - terraform-data:/terraform-data
     environment:
       AWS_ACCESS_KEY_ID: "000000000000"
       AWS_SECRET_ACCESS_KEY: test-only
@@ -177,6 +187,10 @@ services:
       AWS_ENDPOINT_URL: http://ministack:4566
       TF_IN_AUTOMATION: "true"
       TF_INPUT: "false"
+      TF_DATA_DIR: /terraform-data
+
+volumes:
+  terraform-data:
 
 networks:
   default:
