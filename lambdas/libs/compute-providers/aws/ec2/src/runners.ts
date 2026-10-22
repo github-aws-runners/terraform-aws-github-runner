@@ -39,6 +39,7 @@ export interface Ec2RunnerRequestContext {
 
 export interface Ec2RunnerResourceOperations {
   list(filters?: Ec2ListRunnerFilters): Promise<RunnerInfo[]>;
+  describe(instanceId: string): Promise<RunnerInfo | undefined>;
   create(runnerParameters: RunnerInputParameters): Promise<Ec2RunnerCreateResult>;
   terminate(instanceId: string): Promise<void>;
   tag(instanceId: string, tags: Tag[]): Promise<void>;
@@ -65,6 +66,7 @@ export function createEc2RunnerClient(ec2Client: EC2Client): Ec2RunnerClient {
   return {
     forRequest: ({ signal }) => ({
       list: (filters) => runWithRequestSignal(signal, () => listEc2Runners(ec2Client, filters, signal)),
+      describe: (instanceId) => runWithRequestSignal(signal, () => describeEc2Runner(ec2Client, instanceId, signal)),
       create: (runnerParameters) =>
         runWithRequestSignal(signal, () => createEc2Runner(ec2Client, runnerParameters, signal)),
       terminate: (instanceId) => runWithRequestSignal(signal, () => terminateEc2Runner(ec2Client, instanceId, signal)),
@@ -137,6 +139,28 @@ async function getRunners(
     runners.push(...getRunnerInfo(instances));
   }
   return runners;
+}
+
+async function describeEc2Runner(
+  ec2Client: EC2Client,
+  instanceId: string,
+  signal: AbortSignal | undefined,
+): Promise<RunnerInfo | undefined> {
+  try {
+    const instances: DescribeInstancesResult = await ec2Client.send(
+      new DescribeInstancesCommand({
+        InstanceIds: [instanceId],
+        Filters: [{ Name: 'instance-state-name', Values: ['running', 'pending'] }],
+      }),
+      { abortSignal: signal },
+    );
+    return getRunnerInfo(instances)[0];
+  } catch (error) {
+    // EC2 forgets terminated instances after about an hour and then rejects the id instead of
+    // returning an empty result. Either way the runner is gone.
+    if (error instanceof Error && error.name === 'InvalidInstanceID.NotFound') return undefined;
+    throw error;
+  }
 }
 
 function getRunnerInfo(runningInstances: DescribeInstancesResult) {

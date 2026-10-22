@@ -18,6 +18,7 @@ export function createEc2ScaleDownCapability(
     unmarkOrphan: (id) => ec2Operations.untag(id, [{ Key: 'ghr:orphan', Value: 'true' }]),
     markIdle: (id, at) => ec2Operations.tag(id, [{ Key: IDLE_DETECTED_TAG, Value: at }]),
     unmarkIdle: (id) => ec2Operations.untag(id, [{ Key: IDLE_DETECTED_TAG }]),
+    describe: (id) => ec2Operations.describe(id),
     terminate: (id) => ec2Operations.terminate(id),
   };
 }
