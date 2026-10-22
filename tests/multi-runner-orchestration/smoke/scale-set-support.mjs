@@ -11,9 +11,11 @@ import {
 
 const testTimeout = Number(process.env.MINISTACK_SMOKE_TIMEOUT_MS ?? 7200000);
 
-async function findScaleSetControllerService() {
+export async function findScaleSetControllerService(
+  clusterName = process.env.MINISTACK_SCALE_SET_CLUSTER ?? 'multi-runner-webhook-scale-set',
+) {
   const clusters = (await aws('ecs', 'list-clusters')).clusterArns ?? [];
-  const clusterArn = clusters.find((arn) => arn.includes('multi-runner-webhook-scale-set'));
+  const clusterArn = clusters.find((arn) => arn.includes(clusterName));
   assert.ok(clusterArn, 'Scale-set ECS cluster is missing; ensure Compose terraform-apply completed');
 
   const serviceArns = (await aws('ecs', 'list-services', '--cluster', clusterArn)).serviceArns ?? [];
@@ -46,7 +48,7 @@ async function findScaleSetControllerService() {
   throw new Error('Scale-set controller ECS service/task definition not found');
 }
 
-function prepareTaskDefinition(controller, minimumRunners) {
+export function prepareTaskDefinition(controller, minimumRunners) {
   const taskDefinition = structuredClone(controller.taskDefinition);
   const registeredFields = [
     'taskDefinitionArn',
@@ -78,7 +80,7 @@ function prepareTaskDefinition(controller, minimumRunners) {
   return taskDefinition;
 }
 
-async function waitForTaskRevision(controller, taskDefinitionArn, minimumRunners) {
+export async function waitForTaskRevision(controller, taskDefinitionArn, minimumRunners) {
   return waitFor(`controller deployment with minimum ${minimumRunners}`, async () => {
     const response = await aws(
       'ecs', 'list-tasks',
@@ -100,7 +102,7 @@ async function waitForTaskRevision(controller, taskDefinitionArn, minimumRunners
   });
 }
 
-async function deployMinimumRunners(controller, minimumRunners, temporaryDirectory) {
+export async function deployMinimumRunners(controller, minimumRunners, temporaryDirectory) {
   const taskDefinition = prepareTaskDefinition(controller, minimumRunners);
   const inputFile = path.join(temporaryDirectory, `task-${minimumRunners}.json`);
   await writeFile(inputFile, JSON.stringify(taskDefinition));
@@ -131,7 +133,7 @@ async function deployMinimumRunners(controller, minimumRunners, temporaryDirecto
   };
 }
 
-async function assertReconciliation(controller, minimumRunners, deployment) {
+export async function assertReconciliation(controller, minimumRunners, deployment) {
   await assertCloudWatchEvent(
     controller.logGroup,
     'scale_set_compute_provider_reconcile_started',
@@ -151,68 +153,49 @@ async function assertReconciliation(controller, minimumRunners, deployment) {
   return JSON.parse(message);
 }
 
-test('Scale set: baseline at 0, scale up to 1, and scale down to 0 runners', {
-  timeout: testTimeout,
-}, async () => {
-  const controller = await findScaleSetControllerService();
-  assert.ok(controller.logGroup, 'Scale-set controller task has no CloudWatch log group');
-
-  const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'scale-set-smoke-'));
-  const scaleSteps = [
-    {
-      minimumRunners: 0,
-      verify: (event) => assert.equal(
-        event.currentRunners,
-        0,
-        'Scale-set baseline should have no runners',
-      ),
-    },
-    {
-      minimumRunners: 1,
-      verify: (event) => {
-        assert.ok(
-          event.actions?.launched > 0,
-          'Scale-set scale-up did not launch a runner',
-        );
-        assert.equal(
-          event.currentRunners,
-          1,
-          'Scale-set scale-up did not reach one runner',
-        );
-      },
-    },
-    {
-      minimumRunners: 0,
-      verify: (event) => {
-        assert.ok(
-          event.actions?.terminated > 0,
-          'Scale-set scale-down did not terminate a runner',
-        );
-        assert.equal(
-          event.currentRunners,
-          0,
-          'Scale-set scale-down did not return to zero runners',
-        );
-      },
-    },
-  ];
-
-  try {
-    for (const step of scaleSteps) {
-      const deployment = await deployMinimumRunners(
-        controller,
-        step.minimumRunners,
-        temporaryDirectory,
-      );
-      const reconciliation = await assertReconciliation(
-        controller,
-        step.minimumRunners,
-        deployment,
-      );
-
-      step.verify?.(reconciliation);
+export function registerScaleSetLifecycleTest({
+  providerName,
+  clusterName = process.env.MINISTACK_SCALE_SET_CLUSTER ?? 'multi-runner-webhook-scale-set',
+  verifyBaseline,
+  verifyScaleUp,
+  verifyScaleDown,
+}) {
+  for (const [name, verifier] of Object.entries({ verifyBaseline, verifyScaleUp, verifyScaleDown })) {
+    if (typeof verifier !== 'function') {
+      throw new TypeError(`${name} must be a function for ${providerName} scale-set smoke coverage`);
     }
-  } finally {
-    await rm(temporaryDirectory, { recursive: true, force: true });
   }
-});
+
+  test(`${providerName} Scale set: baseline at 0, scale up to 1, and scale down to 0 runners`, {
+    timeout: testTimeout,
+  }, async () => {
+    const controller = await findScaleSetControllerService(clusterName);
+    assert.ok(controller.logGroup, 'Scale-set controller task has no CloudWatch log group');
+
+    const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'scale-set-smoke-'));
+    const scaleSteps = [
+      { minimumRunners: 0, verify: verifyBaseline },
+      { minimumRunners: 1, verify: verifyScaleUp },
+      { minimumRunners: 0, verify: verifyScaleDown },
+    ];
+
+    try {
+      for (const step of scaleSteps) {
+        const deployment = await deployMinimumRunners(
+          controller,
+          step.minimumRunners,
+          temporaryDirectory,
+        );
+        const reconciliation = await assertReconciliation(
+          controller,
+          step.minimumRunners,
+          deployment,
+        );
+
+        step.verify(reconciliation);
+      }
+    } finally {
+      await rm(temporaryDirectory, { recursive: true, force: true });
+    }
+  });
+}

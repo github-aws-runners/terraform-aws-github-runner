@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { createHmac, randomUUID } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -128,6 +129,69 @@ export async function terraformOutput(name) {
   );
 
   return result.stdout;
+}
+
+let nextJobId = 0;
+
+function createWorkflowJobEvent(jobId, labels) {
+  const repositoryName = 'test-owner/test-repo';
+  const jobUrl = `https://github.example.invalid/${repositoryName}/actions/jobs/${jobId}`;
+  const workflowRunUrl = `https://github.example.invalid/${repositoryName}/actions/runs/654321`;
+
+  return {
+    action: 'queued',
+    installation: { id: 123 },
+    repository: {
+      full_name: repositoryName,
+      id: 1,
+      name: 'test-repo',
+      owner: { login: 'test-owner', type: 'Organization' },
+    },
+    workflow_job: {
+      conclusion: null,
+      html_url: jobUrl,
+      id: jobId,
+      labels,
+      name: `node-smoke-${jobId}`,
+      run_id: 654321,
+      run_url: workflowRunUrl,
+      status: 'queued',
+      url: jobUrl,
+    },
+  };
+}
+
+export async function sendWorkflowJob(labels) {
+  const endpoint = process.env.MINISTACK_WEBHOOK_ENDPOINT
+    ?? await terraformOutput('webhook_endpoint');
+  const secret = process.env.MINISTACK_WEBHOOK_SECRET
+    ?? await terraformOutput('webhook_secret');
+  const jobId = Number(process.env.MINISTACK_SMOKE_JOB_ID ?? Date.now().toString().slice(-8))
+    + nextJobId;
+  nextJobId += 1;
+
+  const eventBody = Buffer.from(JSON.stringify(createWorkflowJobEvent(jobId, labels)));
+  const signature = createHmac('sha256', secret).update(eventBody).digest('hex');
+  const webhookUrl = new URL(endpoint);
+  const startTime = Date.now() - 1000;
+  const response = await postWebhook(
+    webhookUrl.host,
+    `${webhookUrl.pathname}${webhookUrl.search}`,
+    {
+      'content-type': 'application/json',
+      'x-github-event': 'workflow_job',
+      'x-github-delivery': `node-smoke-${randomUUID()}`,
+      'x-github-hook-installation-target-id': '123',
+      'x-hub-signature-256': `sha256=${signature}`,
+    },
+    eventBody,
+  );
+
+  if (![200, 201].includes(response.status)) {
+    throw new Error(`Webhook failed with HTTP ${response.status}: ${response.body}`);
+  }
+
+  return { jobId, startTime };
 }
 
 export function postWebhook(host, pathname, headers, body) {

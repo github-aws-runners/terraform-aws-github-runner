@@ -34,7 +34,7 @@ docker compose -f tests/multi-runner-orchestration/docker-compose.yml up --build
 docker compose -f tests/multi-runner-orchestration/docker-compose.yml wait aws-fixtures lambda-builder docker-buildx terraform-apply smoke-tests
 ```
 
-The suite contains four named Node.js test cases: webhook scale-up and scale-down with standard labels, webhook scale-up and scale-down with a dynamic EC2 instance-type label, pool runner creation and scale-down, and scale-set scale-up and scale-down. The webhook and pool cases assert the EC2 runner count before launch, after launch, and after cleanup; the dynamic-label case also verifies the requested `m5.large` override in the scale-up logs. The scale-set case checks zero runners at baseline, one runner after scale-up, and a termination returning the count to zero. All cases assert the corresponding Lambda or controller CloudWatch logs. WireMock API responses are test fixtures, so the tests do not assert those routes. Run the smoke cases with the concise reporter:
+Name smoke suites `<trigger>.<compute-provider>.test.mjs`; the current suites are `webhook.ec2.test.mjs` and `scale-set.ec2.test.mjs`. To cover MicroVM, add `webhook.microvm.test.mjs` and/or `scale-set.microvm.test.mjs`. Webhook suites can reuse `sendWorkflowJob` and shared AWS/CloudWatch helpers from `smoke/support.mjs`; scale-set suites can register the common lifecycle with `registerScaleSetLifecycleTest` from `smoke/scale-set-support.mjs` and provide provider-specific reconciliation assertions. Keep resource checks and cleanup provider-specific. The `*.test.mjs` command discovers new suites automatically. The suite contains four named Node.js test cases: EC2 webhook scale-up and scale-down with standard labels, EC2 webhook scale-up and scale-down with a dynamic instance-type label, EC2 pool runner creation and scale-down, and EC2 scale-set scale-up and scale-down. The webhook and pool cases assert the EC2 runner count before launch, after launch, and after cleanup; the dynamic-label case also verifies the requested `m5.large` override in the scale-up logs. The scale-set case checks zero runners at baseline, one runner after scale-up, and a termination returning the count to zero. All cases assert the corresponding Lambda or controller CloudWatch logs. WireMock API responses are test fixtures, so the tests do not assert those routes. Run the smoke cases with the concise reporter:
 
 MiniStack does not start the EC2 runner agent, so the webhook and pool tests invoke scale-down twice: the first pass marks the unregistered instance orphaned, and the next pass confirms it is absent from GitHub and terminates it.
 
@@ -56,19 +56,16 @@ Scale-set stubs follow `lambdas/libs/github-actions-scale-set/src/endpoints.ts`,
 
 The mock does not validate GitHub App JWTs, installation permissions, runner token validity, or GitHub's authorization policy. It accepts any request matching a mapping. It also does not implement the runner agent's actual Actions service protocol; the scale-set routes here support the Lambda controller's HTTP client only.
 
-## Covered GitHub API requests
+## GitHub API mappings used by this smoke suite
 
-| Area | Requests represented in `mappings/` |
+The mappings directory contains only the requests exercised by the current MiniStack smoke paths:
+
+| Flow | Requests covered |
 |---|---|
-| GitHub App auth | `GET /app/installations`; `GET /orgs/{org}/installation`; `GET /repos/{owner}/{repo}/installation`; `POST /app/installations/{id}/access_tokens` |
-| Registration and deregistration | Org/repo/enterprise registration and remove-token requests; list/get/delete runner requests |
-| Workflow jobs | `GET /repos/{owner}/{repo}/actions/jobs/{job_id}` |
-| Runner groups and JIT | `GET /orgs/{org}/actions/runner-groups`; org/repo/enterprise JIT config requests |
-| Runner release syncer | `GET /repos/actions/runner/releases/latest`; mock asset download under `/downloads/` |
-| Actions scale-set API | Runner registration handshake; runner group and scale-set get/list/create/update/delete; JIT config; runner list/get/remove |
-| Scale-set sessions | Session create/refresh/close, queue poll/acknowledge, and acquire-jobs |
+| Webhook and EC2 pool | `POST /app/installations/{id}/access_tokens`; `POST /orgs/{org}/actions/runners/registration-token`; `GET /orgs/{org}/actions/runners`; `GET /orgs/{org}/actions/runner-groups`; `POST /orgs/{org}/actions/runners/generate-jitconfig`; `GET /orgs/{org}/actions/runners/{runner_id}` during orphan cleanup; `GET /repos/{owner}/{repo}/actions/jobs/{job_id}` |
+| EC2 scale set | Registration handshake; runner-group and scale-set lookup/update; JIT runner config; message-session create/close and empty queue polling; runner lookup by name and removal |
 
-The enterprise routes are included as fixtures for forward-looking coverage. The current control-plane's classic runner path primarily uses organization/repository routes. The enterprise runner registration APIs have different token-auth requirements in GitHub, so the mock does not prove that an app token will be accepted by a real enterprise account.
+Mapping filenames use `<trigger>.<compute-provider>.<request>.json`; add provider-specific files alongside the matching smoke suite when new paths are exercised. Fixtures for other GitHub API paths can be added in a follow-up.
 
 ## CI usage
 
