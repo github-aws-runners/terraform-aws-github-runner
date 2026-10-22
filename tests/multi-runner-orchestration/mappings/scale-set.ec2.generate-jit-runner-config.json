@@ -1,0 +1,14 @@
+{
+  "name": "Scale set - generate JIT runner config",
+  "request": {
+    "method": "POST",
+    "urlPathPattern": "(?:/api/v3)?(?:/tenant/[^/]+)?/_apis/runtime/runnerscalesets/\\d+/generatejitconfig"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": "{\"runner\":{\"id\":321,\"name\":\"{{jsonPath request.body '$.name'}}\",\"runnerScaleSetId\":223},\"encodedJITConfig\":\"test-only-jit-configuration\"}"
+  }
+}

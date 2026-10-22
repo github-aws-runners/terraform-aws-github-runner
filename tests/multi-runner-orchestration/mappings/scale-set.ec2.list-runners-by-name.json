@@ -1,0 +1,14 @@
+{
+  "name": "Scale set - list runners by name",
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "(?:/api/v3)?(?:/tenant/[^/]+)?/_apis/distributedtask/pools/0/agents"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": "{\"count\":1,\"value\":[{\"id\":321,\"name\":\"{{request.query.agentName}}\",\"runnerScaleSetId\":223}]}"
+  }
+}

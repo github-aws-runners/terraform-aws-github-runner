@@ -1,0 +1,14 @@
+{
+  "name": "Scale set - list runner groups",
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "(?:/api/v3)?(?:/tenant/[^/]+)?/_apis/runtime/runnergroups/?"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": "{\"count\":1,\"value\":[{\"id\":48,\"name\":\"experimental-euw1-sl-cicd-forge-emu\",\"size\":100,\"isDefaultGroup\":false}]}"
+  }
+}

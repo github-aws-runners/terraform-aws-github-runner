@@ -1,0 +1,195 @@
+services:
+  github-api:
+    build: .
+    pull_policy: build
+    platform: linux/amd64
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+  ministack:
+    image: ghcr.io/ministackorg/ministack:v1.5.30@sha256:9019a8ab2531163fc6c3119a277a181faadcd2cde8fd20272dc8ec0ccda154b9
+    platform: linux/amd64
+    ports:
+      - "4566:4566"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      MINISTACK_ACCOUNT_ID: "000000000000"
+      MINISTACK_REGION: eu-west-1
+      DOCKER_NETWORK: multi-runner-orchestration_default
+  aws-fixtures:
+    image: amazon/aws-cli:2.27.41@sha256:bc6b7bba44ce38f9604ede49c584824af919047ea03fbcc7c7610671fdef95d8
+    platform: linux/amd64
+    depends_on:
+      ministack:
+        condition: service_started
+    entrypoint: ["/usr/bin/python"]
+    command: ["/workspace/tests/multi-runner-orchestration/fixtures/seed_ministack_fixtures.py", "--manifest", "/workspace/tests/multi-runner-orchestration/fixtures/ministack-fixtures.json", "--type", "ami", "--type", "ecr-repository"]
+    volumes:
+      - ../..:/workspace:ro
+    environment:
+      AWS_ACCESS_KEY_ID: "000000000000"
+      AWS_SECRET_ACCESS_KEY: test-only
+      AWS_DEFAULT_REGION: eu-west-1
+      AWS_EC2_METADATA_DISABLED: "true"
+      MINISTACK_ENDPOINT_URL: http://ministack:4566
+  lambda-builder:
+    image: docker:27-cli
+    platform: linux/amd64
+    working_dir: /workspace
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        apk add --no-cache bash git
+        cd /workspace
+        git config --global --add safe.directory /workspace
+        OUTPUT_DIR=/workspace/lambda_output bash .ci/build.sh
+    volumes:
+      - ../..:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      DOCKER_HOST: unix:///var/run/docker.sock
+  docker-buildx:
+    image: docker:27-cli
+    platform: linux/amd64
+    depends_on:
+      ministack:
+        condition: service_started
+      aws-fixtures:
+        condition: service_completed_successfully
+    working_dir: /workspace
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        apk add --no-cache aws-cli
+        ecr_password="$$(aws ecr get-login-password --endpoint-url "$${AWS_ENDPOINT_URL}" --region "$${AWS_DEFAULT_REGION}")"
+        if [ -z "$$ecr_password" ]; then
+          echo "MiniStack returned an empty ECR login password" >&2
+          exit 1
+        fi
+        ministack_ip="$$(getent hosts ministack | awk 'NR == 1 { print $1 }')"
+        if [ -z "$$ministack_ip" ]; then
+          echo "Could not resolve MiniStack on the Compose network" >&2
+          exit 1
+        fi
+        docker_arch="$$(docker info --format '{{.Architecture}}')"
+        case "$$docker_arch" in
+          aarch64|arm64) scale_set_platform=linux/arm64 ;;
+          x86_64|amd64) scale_set_platform=linux/amd64 ;;
+          *) echo "Unsupported Docker host architecture: $$docker_arch" >&2; exit 1 ;;
+        esac
+        export MINISTACK_REGISTRY="$$ministack_ip:4566"
+        docker_config="$$(mktemp -d)"
+        export DOCKER_CONFIG="$$docker_config"
+        cp /workspace/tests/multi-runner-orchestration/buildkitd.toml "$$DOCKER_CONFIG/buildkitd.toml"
+        cat >> "$$DOCKER_CONFIG/buildkitd.toml" <<EOF
+        [registry."$${MINISTACK_REGISTRY}"]
+          http = true
+        EOF
+        registry_auth="$$(printf 'AWS:%s' "$$ecr_password" | base64 | tr -d '\n')"
+        printf '{"auths":{"%s":{"auth":"%s"}}}\n' \
+          "$${MINISTACK_REGISTRY}" "$$registry_auth" > "$$DOCKER_CONFIG/config.json"
+        docker buildx rm runner-smoke-builder >/dev/null 2>&1 || true
+        trap 'docker buildx rm runner-smoke-builder >/dev/null 2>&1 || true; rm -rf "$$DOCKER_CONFIG"' EXIT
+        docker buildx create \
+          --name runner-smoke-builder \
+          --driver docker-container \
+          --driver-opt network=multi-runner-orchestration_default \
+          --buildkitd-config "$$DOCKER_CONFIG/buildkitd.toml" \
+          --use --bootstrap
+        docker buildx build --builder runner-smoke-builder \
+          --network host --allow network.host \
+          --platform "$$scale_set_platform" \
+          --target runtime \
+          --file /workspace/lambdas/services/scale-set/Dockerfile \
+          --tag "$${MINISTACK_REGISTRY}/scale-set-controller:latest" \
+          --provenance=false --push /workspace
+    volumes:
+      - ../..:/workspace:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      DOCKER_HOST: unix:///var/run/docker.sock
+      AWS_ACCESS_KEY_ID: "000000000000"
+      AWS_SECRET_ACCESS_KEY: test-only
+      AWS_DEFAULT_REGION: eu-west-1
+      AWS_EC2_METADATA_DISABLED: "true"
+      AWS_ENDPOINT_URL: http://ministack:4566
+      DOCKER_BUILDKIT: 1
+  terraform-apply:
+    image: hashicorp/terraform:1.17
+    depends_on:
+      github-api:
+        condition: service_started
+      aws-fixtures:
+        condition: service_completed_successfully
+      lambda-builder:
+        condition: service_completed_successfully
+      docker-buildx:
+        condition: service_completed_successfully
+    working_dir: /workspace
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        host_arch=$$(uname -m)
+        case "$$host_arch" in
+          aarch64|arm64) scale_set_arch=ARM64 ;;
+          x86_64|amd64) scale_set_arch=X86_64 ;;
+          *) echo "Unsupported host architecture: $$host_arch" >&2; exit 1 ;;
+        esac
+        sed "s/architecture = \".*\"/architecture = \"$$scale_set_arch\"/" \
+          /workspace/tests/multi-runner-orchestration/fixtures/multi-runner-orchestration.tfvars \
+          > /tmp/multi-runner-orchestration.tfvars
+        terraform -chdir=/workspace/examples/multi-runner-orchestration init -input=false
+        terraform -chdir=/workspace/examples/multi-runner-orchestration apply -auto-approve -input=false \
+          -var-file=/tmp/multi-runner-orchestration.tfvars
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ../..:/workspace
+      - terraform-data:/workspace/examples/multi-runner-orchestration/.terraform
+    environment:
+      AWS_ACCESS_KEY_ID: "000000000000"
+      AWS_SECRET_ACCESS_KEY: test-only
+      AWS_DEFAULT_REGION: eu-west-1
+      AWS_REGION: eu-west-1
+      AWS_EC2_METADATA_DISABLED: "true"
+      AWS_ENDPOINT_URL: http://ministack:4566
+      TF_IN_AUTOMATION: "true"
+      TF_INPUT: "false"
+
+  smoke-tests:
+    image: hashicorp/terraform:1.17
+    platform: linux/amd64
+    depends_on:
+      terraform-apply:
+        condition: service_completed_successfully
+    working_dir: /workspace
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        apk add --no-cache aws-cli nodejs
+        node tests/multi-runner-orchestration/smoke/prepare-scale-set-credentials.mjs
+        node --test --test-concurrency=1 \
+          --test-reporter=./tests/multi-runner-orchestration/smoke/reporter.mjs \
+          tests/multi-runner-orchestration/smoke/*.test.mjs
+    volumes:
+      - ../..:/workspace
+      - terraform-data:/workspace/examples/multi-runner-orchestration/.terraform
+    environment:
+      AWS_ACCESS_KEY_ID: "000000000000"
+      AWS_SECRET_ACCESS_KEY: test-only
+      AWS_DEFAULT_REGION: eu-west-1
+      AWS_REGION: eu-west-1
+      AWS_EC2_METADATA_DISABLED: "true"
+      AWS_ENDPOINT_URL: http://ministack:4566
+      TF_IN_AUTOMATION: "true"
+      TF_INPUT: "false"
+
+volumes:
+  terraform-data:
+
+networks:
+  default:
+    name: multi-runner-orchestration_default

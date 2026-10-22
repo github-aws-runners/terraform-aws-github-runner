@@ -1,0 +1,11 @@
+{
+  "name": "Scale set - poll message queue empty",
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "(?:/queue/sessions/[^/]+/messages|/messages)"
+  },
+  "response": {
+    "status": 202,
+    "fixedDelayMilliseconds": 1000
+  }
+}

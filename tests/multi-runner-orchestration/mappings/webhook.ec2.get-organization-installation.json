@@ -1,0 +1,21 @@
+{
+  "name": "GitHub App - get organization installation",
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "(?:/api/v3)?/orgs/[^/]+/installation"
+  },
+  "response": {
+    "status": 200,
+    "jsonBody": {
+      "id": 123,
+      "account": {
+        "login": "test-owner",
+        "type": "Organization"
+      },
+      "target_type": "Organization"
+    },
+    "headers": {
+      "Content-Type": "application/json"
+    }
+  }
+}

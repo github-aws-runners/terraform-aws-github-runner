@@ -1,0 +1,22 @@
+{
+  "name": "GitHub App - create installation access token",
+  "request": {
+    "method": "POST",
+    "urlPathPattern": "(?:/api/v3)?/app/installations/\\d+/access_tokens"
+  },
+  "response": {
+    "status": 201,
+    "jsonBody": {
+      "token": "ghs_wiremock_installation_token",
+      "expires_at": "2099-01-01T00:00:00Z",
+      "permissions": {
+        "actions": "write",
+        "contents": "read",
+        "metadata": "read"
+      }
+    },
+    "headers": {
+      "Content-Type": "application/json"
+    }
+  }
+}
