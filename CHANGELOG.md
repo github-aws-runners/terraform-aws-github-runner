@@ -2,6 +2,35 @@
 
 ## [8.0.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v7.11.0...v8.0.0) (2026-10-21)
 
+### Release highlights
+
+**Version 2 of the Multi-runner system is the future direction for the project.** This release introduces a more extensible, provider-based architecture that makes it easier to evolve runner configurations and add compute and orchestration options. V2 is currently experimental and enabled through an explicit feature gate, so its interfaces may evolve as it matures. We plan to deprecate multi-runner v1 in the future, so we recommend starting to evaluate and migrate to v2 now. Please share feedback on what we should improve.
+
+#### Multi-runner v2: a more extensible foundation
+
+Version 2 of the Multi-runner system separates shared runner configuration from compute and orchestration providers. This gives the project a clearer foundation for supporting different runner backends and evolving the architecture over time.
+
+This release includes a v2 example and configuration guidance, along with migration tooling for existing v1 deployments. The migration process includes a dry run, collision checks, an optional state backup, and verification steps. **V1 remains available for now, but we encourage you to try v2 and tell us where the configuration, migration experience, or capabilities could be better.** ([#5367](https://github.com/github-aws-runners/terraform-aws-github-runner/pull/5367), [#5415](https://github.com/github-aws-runners/terraform-aws-github-runner/pull/5415))
+
+#### More flexibility for runner workloads
+
+- **Experimental scale-set support:** Deploy a scale-set controller on ECS Fargate and route jobs through the new provider architecture. The scale-set integration is experimental, and its interfaces and behavior may evolve. ([#5299](https://github.com/github-aws-runners/terraform-aws-github-runner/pull/5299))
+- **Choose Spot or On-Demand per job:** Use the `ghr-ec2-capacity-type:spot` or `ghr-ec2-capacity-type:on-demand` dynamic label to override a runner configuration's default for an individual job. ([#5485](https://github.com/github-aws-runners/terraform-aws-github-runner/pull/5485))
+- **Configure advanced EC2 networking:** Set network interfaces through runner configuration for more control over EC2 launch templates. ([#5427](https://github.com/github-aws-runners/terraform-aws-github-runner/pull/5427))
+
+#### Improved reliability and lifecycle management
+
+GitHub App selection now considers observed rate-limit budgets, and requests can fail over when an app is rate-limited. Additional app credentials are loaded through an SSM manifest, avoiding Lambda environment-size limits as the app list grows. This release also adds an optional idle-confirmation window before runner termination and opt-in native SSM expiration policies for runner token parameters. ([#5391](https://github.com/github-aws-runners/terraform-aws-github-runner/pull/5391), [#5523](https://github.com/github-aws-runners/terraform-aws-github-runner/pull/5523), [#5282](https://github.com/github-aws-runners/terraform-aws-github-runner/pull/5282), [#5397](https://github.com/github-aws-runners/terraform-aws-github-runner/pull/5397), [#5265](https://github.com/github-aws-runners/terraform-aws-github-runner/pull/5265))
+
+#### Breaking change and upgrade note
+
+**Terraform 1.5.6 or later is now required.** Upgrade Terraform before upgrading this module if you are running 1.5.5 or older. The Lambda MicroVM modules also require AWS provider version `>= 6.33`. ([#5261](https://github.com/github-aws-runners/terraform-aws-github-runner/pull/5261))
+
+#### Thank you
+
+**A massive thank-you to every contributor who helped make this version possible.** Your code, reviews, testing, documentation, issue reports, and feedback have all moved the project forward. We especially appreciate everyone who helped build and refine this change, and everyone who tries it and shares ideas for making it better.
+
+The detailed changelog below lists the full set of changes included in this release.
 
 ### ⚠ BREAKING CHANGES
 
