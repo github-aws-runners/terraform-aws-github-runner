@@ -262,6 +262,28 @@ describe('Scale down runners', () => {
     mockCreateClient.mockResolvedValue(mockOctokit as unknown as Octokit);
   });
 
+  it('selects Apps before owner-cache lookup and reuses clients within each App', async () => {
+    process.env.SCALE_DOWN_CONFIG = '[]';
+    const runners = ['first', 'second', 'third'].map((id) => createRunnerTestData(id, 'Org', 60, true, false, false));
+    mockGitHubRunners(runners);
+    mockListRunners.mockResolvedValueOnce([]).mockResolvedValueOnce(runners).mockResolvedValue([]);
+    const authentication = { type: 'app' as const, token: 'token', appId: 1 };
+    mockedAppAuth
+      .mockResolvedValueOnce({ ...authentication, appIndex: 0 })
+      .mockResolvedValue({ ...authentication, appIndex: 1 });
+    vi.mocked(ghAuth.getStoredInstallationId).mockResolvedValue(123);
+    try {
+      await scaleDown();
+      expect(mockedInstallationAuth).toHaveBeenCalledTimes(2);
+      expect(mockedInstallationAuth).toHaveBeenCalledWith(123, '', 0);
+      expect(mockedInstallationAuth).toHaveBeenCalledWith(123, '', 1);
+      expect(githubCache.clients.has(`0:Org:${runners[0].owner}`)).toBe(true);
+      expect(githubCache.clients.has(`1:Org:${runners[0].owner}`)).toBe(true);
+    } finally {
+      vi.mocked(ghAuth.getStoredInstallationId).mockResolvedValue(undefined);
+    }
+  });
+
   const endpoints = ['https://api.github.com', 'https://github.enterprise.something', 'https://companyname.ghe.com'];
 
   describe.each(endpoints)('for %s', (endpoint) => {
