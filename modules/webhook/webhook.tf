@@ -1,9 +1,18 @@
 locals {
-  # config with combined key and order
+  # Config keyed so that lexicographic sorting yields the dispatch order: strict
+  # matchers (exact or bidirectional) first, then ascending priority, then the
+  # config key as a stable tiebreaker. The dispatcher consumes this order as-is
+  # and does no sorting of its own.
+  #
+  # Priority is zero padded so string sorting matches numeric sorting. The pad
+  # width relies on the 0-999 range validation on var.runner_matcher_config: a
+  # wider value would sort by its leading digit, putting 1000 ahead of 999.
   runner_matcher_config = {
-    for k, v in var.runner_matcher_config : format("%03d-%s", v.matcherConfig.priority, k) => merge(v, {
-      key             = k
-      computeProvider = lower(trimspace(v.computeProvider))
+    for k, v in var.runner_matcher_config : format("%d-%03d-%s",
+      (v.matcherConfig.bidirectionalLabelMatch || v.matcherConfig.exactMatch) ? 0 : 1,
+      v.matcherConfig.priority, k) => merge(v, {
+        key             = k
+        computeProvider = lower(trimspace(v.computeProvider))
     })
   }
 

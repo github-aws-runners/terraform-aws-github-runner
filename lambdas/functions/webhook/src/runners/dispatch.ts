@@ -46,13 +46,11 @@ async function handleWorkflowJob(
       `Run ID: ${body.workflow_job.run_id}, Labels: ${JSON.stringify(body.workflow_job.labels)}`,
   );
 
-  // Sort queues by priority (exact/bidirectional match first), as before.
-  matcherConfig.sort((a, b) => {
-    const aStrict = a.matcherConfig.bidirectionalLabelMatch || a.matcherConfig.exactMatch;
-    const bStrict = b.matcherConfig.bidirectionalLabelMatch || b.matcherConfig.exactMatch;
-    return aStrict === bStrict ? 0 : aStrict ? -1 : 1;
-  });
-
+  // matcherConfig arrives already in dispatch order: strict matchers (exact or
+  // bidirectional) first, then ascending priority. That order is built in
+  // modules/webhook/webhook.tf and serialised to SSM, so there is nothing to sort
+  // here. Sorting locally would also mutate the config held on the ConfigLoader
+  // singleton, which outlives a single invocation.
   const { nonGhrLabels, sanitizedGhrLabels, hasDynamicLabels } = splitWorkflowJobLabels(body.workflow_job.labels);
 
   // 1. Collect all queues whose non-dynamic labels match the job.
