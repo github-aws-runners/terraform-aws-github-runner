@@ -34,7 +34,6 @@ const ec2Operations = {
 } satisfies Ec2RunnerProvisioningOperations;
 const standby = {
   startInstance: vi.fn<Ec2WarmActivationOperations['standby']['startInstance']>(),
-  cancelSpotRequest: vi.fn<Ec2WarmActivationOperations['standby']['cancelSpotRequest']>(),
   destroyInstance: vi.fn<Ec2WarmActivationOperations['standby']['destroyInstance']>(),
 };
 
@@ -51,6 +50,8 @@ const index = {
   claimReconcile: vi.fn<WarmIndexStore['claimReconcile']>(),
   readPlacement: vi.fn<WarmIndexStore['readPlacement']>(),
   writePlacement: vi.fn<WarmIndexStore['writePlacement']>(),
+  markSpotRequestBound: vi.fn<WarmIndexStore['markSpotRequestBound']>(),
+  recordSpotBindFailure: vi.fn<WarmIndexStore['recordSpotBindFailure']>(),
 } satisfies WarmIndexStore;
 const createIndexStore = vi.fn<Ec2WarmActivationOperations['createIndexStore']>(() => index);
 
@@ -157,7 +158,6 @@ beforeEach(() => {
     { instanceId: 'i-priming', state: 'PRIMING', launchTime: NOW.toISOString() },
   ]);
   standby.startInstance.mockResolvedValue(undefined);
-  standby.cancelSpotRequest.mockResolvedValue(undefined);
   index.claim.mockResolvedValue(true);
   index.release.mockResolvedValue(undefined);
   index.markActivated.mockResolvedValue(undefined);
@@ -221,7 +221,6 @@ describe('warm pool activation in EC2 scale-up', () => {
       { Key: 'ghr:runner_labels', Value: 'label1,label2' },
     ]);
     expect(standby.startInstance).toHaveBeenCalledWith('i-new');
-    expect(standby.cancelSpotRequest).not.toHaveBeenCalled();
     expect(index.markActivated).toHaveBeenCalledWith('i-new', NOW.toISOString());
     expect(ec2Operations.create).not.toHaveBeenCalled();
     expect(index.release).not.toHaveBeenCalled();
@@ -287,42 +286,44 @@ describe('warm pool activation in EC2 scale-up', () => {
 
   describe('spot instances', () => {
     beforeEach(() => {
-      mockWarmIndex([warm('i-spot', 5, { spotInstanceRequestId: 'sir-1' })]);
+      mockWarmIndex([warm('i-spot', 5, { spotInstanceRequestId: 'sir-1', spotRequestBound: true })]);
     });
 
-    it('cancels the spot request right after a successful start', async () => {
+    it('tags the spot request ID for the instance and leaves the request to the instance', async () => {
       const result = await createRunners();
 
       expect(result.instances).toEqual(['i-spot']);
-      expect(standby.cancelSpotRequest).toHaveBeenCalledWith('sir-1');
-      expect(callOrder(standby.startInstance)).toBeLessThan(callOrder(standby.cancelSpotRequest));
+      expect(ec2Operations.tag).toHaveBeenNthCalledWith(1, 'i-spot', [
+        { Key: 'ghr:warm-activated', Value: NOW.toISOString() },
+        { Key: 'ghr:Owner', Value: JOB_OWNER },
+        { Key: 'ghr:Type', Value: 'Repo' },
+        { Key: 'ghr:spot-request-id', Value: 'sir-1' },
+      ]);
+      expect(standby.destroyInstance).not.toHaveBeenCalled();
     });
 
-    it('keeps the activation when cancelling the spot request fails', async () => {
-      standby.cancelSpotRequest.mockRejectedValue(new Error('cancel failed'));
+    it('does not activate a spot instance whose request is not bound to it', async () => {
+      mockWarmIndex([
+        warm('i-unbound', 1, { spotInstanceRequestId: 'sir-1' }),
+        warm('i-bound', 5, { spotInstanceRequestId: 'sir-2', spotRequestBound: true }),
+      ]);
 
-      const result = await createRunners();
+      const result = await createRunners(2);
 
-      expect(result).toEqual({ instances: ['i-spot'], retryableErrorCount: 0, nonRetryableErrorCount: 0 });
-      expect(standby.cancelSpotRequest).toHaveBeenCalledTimes(3);
-      expect(ec2Operations.untag).not.toHaveBeenCalled();
-      expect(index.release).not.toHaveBeenCalled();
+      expect(index.claim).not.toHaveBeenCalledWith('i-unbound');
+      expect(result.instances).toEqual(['i-bound', 'i-cold-1']);
     });
 
-    it('retries a failed spot request cancellation', async () => {
-      standby.cancelSpotRequest.mockRejectedValueOnce(new Error('throttled'));
+    it('does not tag a spot request ID on an on-demand instance', async () => {
+      mockWarmIndex([warm('i-ondemand', 5)]);
 
       await createRunners();
 
-      expect(standby.cancelSpotRequest).toHaveBeenCalledTimes(2);
-    });
-
-    it('does not cancel the spot request when the start fails', async () => {
-      standby.startInstance.mockRejectedValue(new Error('IncorrectSpotRequestState'));
-
-      await createRunners();
-
-      expect(standby.cancelSpotRequest).not.toHaveBeenCalled();
+      expect(ec2Operations.tag).toHaveBeenNthCalledWith(1, 'i-ondemand', [
+        { Key: 'ghr:warm-activated', Value: NOW.toISOString() },
+        { Key: 'ghr:Owner', Value: JOB_OWNER },
+        { Key: 'ghr:Type', Value: 'Repo' },
+      ]);
     });
   });
 
@@ -558,14 +559,13 @@ describe('warm pool activation in EC2 scale-up', () => {
       expect(standby.destroyInstance.mock.calls.map(([input]) => input.instanceId)).toEqual(['i-new', 'i-old']);
     });
 
-    it('destroys a spot instance with its request after detaching it', async () => {
-      mockWarmIndex([warm('i-spot', 5, { spotInstanceRequestId: 'sir-1' })]);
+    it('destroys a spot instance with its request when its registration fails', async () => {
+      mockWarmIndex([warm('i-spot', 5, { spotInstanceRequestId: 'sir-1', spotRequestBound: true })]);
       mockCreateStartRunnerConfig.mockResolvedValue(['i-spot']);
 
       await createRunners();
 
       expect(standby.destroyInstance).toHaveBeenCalledWith({ instanceId: 'i-spot', spotInstanceRequestId: 'sir-1' });
-      expect(callOrder(standby.cancelSpotRequest)).toBeLessThan(callOrder(standby.destroyInstance));
     });
 
     it('keeps the remaining activations when destroying an unregistered instance fails', async () => {

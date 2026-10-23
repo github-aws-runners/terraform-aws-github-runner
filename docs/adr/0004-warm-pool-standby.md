@@ -72,10 +72,11 @@ A warm instance is activated at most once. Runners that ran a job are never park
      |
      v
   WARM     stopped by the instance itself
-     |  scale-up: claim (DynamoDB index), tag, StartInstances, cancel spot
-     |            request if any, then write registration config to SSM
+     |  scale-up: claim (DynamoDB index), tag (with the spot request ID if
+     |            any), StartInstances, then write registration config to SSM
      v
-  ACTIVE   boot hook waits for its config, registers, runs the job
+  ACTIVE   boot hook waits for its config, registers, runs the job; a spot
+           instance cancels its own spot request
 ```
 
 - **Priming never registers with GitHub.** Warm instances are owner-agnostic,
@@ -118,17 +119,30 @@ behavior `stop`, `ValidUntil` set to `max_age_hours` plus a margin, and tags on
 both the instance and the request. `CreateFleet` cannot be used, because spot
 instances in a fleet cannot be stopped. Cold launches keep using `CreateFleet`.
 
-Every destroy cancels the spot request before terminating. When scale-up
-starts a warm spot instance, it cancels the request immediately after the
-start. The running instance then has no request that can respawn it, and the
-rest of the lifecycle does not need to know about spot requests.
+Every destroy cancels the spot request before terminating. An activated spot
+instance cancels its own request: in the background 60 seconds after boot, and
+always right before it terminates itself. If it cannot, it shuts down instead
+of terminating, and scale-down destroys it. Scale-up does not cancel the
+request: right after `StartInstances` the request is often still `disabled`,
+and AWS terminates the instance of a cancelled `disabled` request about two
+minutes later. In production that killed many activated instances during
+their job.
+
+The instance may cancel only its own request. The pool tags each warm spot
+request with `ghr:instance-arn`, and the runner role may cancel a request only
+when that tag equals `ec2:SourceInstanceARN`. The runner role can neither tag
+nor read spot requests, so an instance cannot claim another instance's
+request.
 
 A sandbox spike confirmed the AWS behavior this relies on:
 
 - An OS shutdown reports `Client.InstanceInitiatedShutdown` for on-demand and
   spot instances. The spot request status follows about a minute later.
 - A request can be cancelled while its instance is `pending` or `running`; the
-  instance keeps running and nothing respawns.
+  instance keeps running and nothing respawns. A second spike found the
+  request `active` within 3 seconds of `StartInstances`, but did not
+  reproduce the production failure, so the instance waits 60 seconds.
+- The tag condition limits the cancel to the instance's own request.
 - The shutdown behavior of a spot instance cannot be modified. A detached spot
   instance stops rather than terminates on an OS shutdown, and cannot be
   started again.
@@ -149,7 +163,7 @@ activated spot instances that stopped instead of terminating.
 - Jobs start from a pre-booted disk in seconds, while idle warm capacity costs
   only EBS storage.
 - One owner per state. Persistent spot requests are handled only by the pool
-  (launch, evict) and at activation (cancel).
+  (launch, evict) and by the activated instance itself (cancel).
 - Schedule-based sizing comes from the existing `pool_config`, including a size
   of 0 to drain outside working hours.
 - Works for organization and repository runners, with on-demand and spot.

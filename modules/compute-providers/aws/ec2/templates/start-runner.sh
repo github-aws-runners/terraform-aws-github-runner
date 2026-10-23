@@ -147,6 +147,72 @@ EOF
   systemctl daemon-reload && systemctl enable ghr-start-runner.service
 }
 
+# An activated warm spot instance keeps its persistent spot request until it cancels the request itself.
+spot_detach_delay_seconds=60
+spot_detach_marker=/var/lib/ghr/spot-request-cancelled
+
+is_activated_spot() {
+  [[ -n "$warm_activated" && "$instance_life_cycle" == "spot" ]]
+}
+
+uptime_seconds() {
+  awk '{print int($1)}' /proc/uptime 2> /dev/null || echo 0
+}
+
+cancel_spot_request() {
+  local attempt output reason=""
+  if [[ -z "$spot_request_id" ]]; then
+    echo "warm-pool-spot-request-cancel-failed reason=missing-request-id"
+    return 1
+  fi
+  for attempt in 1 2 3; do
+    if output=$(aws ec2 cancel-spot-instance-requests --spot-instance-request-ids "$spot_request_id" --region "$region" 2>&1); then
+      mkdir -p "$(dirname "$spot_detach_marker")" && touch "$spot_detach_marker"
+      echo "warm-pool-spot-request-cancelled seconds-after-boot=$(uptime_seconds)"
+      return 0
+    fi
+    reason=$(echo "$output" | grep -oE '\([A-Za-z.]+\)' | head -n1 | tr -d '()')
+    [[ "$reason" == "InvalidSpotInstanceRequestID.NotFound" ]] && return 0
+    sleep $((attempt * 2))
+  done
+  echo "warm-pool-spot-request-cancel-failed reason=$${reason:-unknown}"
+  return 1
+}
+
+# A terminate notice right after the cancel means the request was cancelled while still disabled.
+watch_spot_instance_action() {
+  local imds_token action
+  for _ in 1 2 3 4 5 6; do
+    sleep 5
+    imds_token=$(curl -f -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 60" || true)
+    action=$(curl -f -H "X-aws-ec2-metadata-token: $imds_token" http://169.254.169.254/latest/meta-data/spot/instance-action 2> /dev/null || true)
+    if [[ -n "$action" ]]; then
+      echo "ERROR: warm-pool-spot-request-cancel-interrupted instance-action=$action"
+      return 1
+    fi
+  done
+}
+
+start_spot_detach() {
+  is_activated_spot && [[ -n "$spot_request_id" ]] || return 0
+  (
+    wait_seconds=$((spot_detach_delay_seconds - $(uptime_seconds)))
+    if [[ "$wait_seconds" -gt 0 ]]; then sleep "$wait_seconds"; fi
+    if cancel_spot_request; then watch_spot_instance_action || true; fi
+  ) &
+  spot_detach_pid=$!
+}
+
+# Cancelling right before terminating is safe in any request state; terminating with a live request respawns the instance.
+ensure_spot_request_cancelled() {
+  [[ -f "$spot_detach_marker" ]] && return 0
+  if [[ -n "$${spot_detach_pid:-}" ]]; then
+    kill "$spot_detach_pid" 2> /dev/null || true
+    wait "$spot_detach_pid" 2> /dev/null || true
+  fi
+  [[ -f "$spot_detach_marker" ]] || cancel_spot_request
+}
+
 cleanup() {
   local exit_code="$1"
   local error_location="$2"
@@ -165,6 +231,11 @@ cleanup() {
   if [ "$agent_mode" = "ephemeral" ] || [ "$exit_code" -ne 0 ]; then
     echo "Stopping CloudWatch service"
     systemctl stop amazon-cloudwatch-agent.service || true
+    if is_activated_spot && ! ensure_spot_request_cancelled; then
+      echo "Shutting down instead of terminating, so the live spot request cannot launch a replacement"
+      shutdown -h now
+      return
+    fi
     echo "Terminating instance"
     aws ec2 terminate-instances \
       --instance-ids "$instance_id" \
@@ -200,6 +271,7 @@ echo "Retrieved INSTANCE_ID from AWS API ($instance_id)"
 
 instance_type=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/instance-type)
 availability_zone=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/placement/availability-zone)
+instance_life_cycle=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/instance-life-cycle || echo "")
 
 %{ if metadata_tags == "enabled" }
 environment=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/tags/instance/ghr:environment)
@@ -208,6 +280,7 @@ runner_name_prefix=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169
 xray_trace_id=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/tags/instance/ghr:trace_id || echo "")
 warm_pool=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/tags/instance/ghr:warm-pool || echo "")
 warm_activated=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/tags/instance/ghr:warm-activated || echo "")
+spot_request_id=$(curl -f -H "X-aws-ec2-metadata-token: $token" -v http://169.254.169.254/latest/meta-data/tags/instance/ghr:spot-request-id || echo "")
 
 %{ else }
 tags=$(aws ec2 describe-tags --region "$region" --filters "Name=resource-id,Values=$instance_id")
@@ -219,6 +292,7 @@ runner_name_prefix=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:runner
 xray_trace_id=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:trace_id") | .Value' || echo "")
 warm_pool=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:warm-pool") | .Value')
 warm_activated=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:warm-activated") | .Value')
+spot_request_id=$(echo "$tags" | jq -r '.Tags[]  | select(.Key == "ghr:spot-request-id") | .Value')
 
 %{ endif }
 
@@ -253,6 +327,9 @@ echo "Selected boot mode: $boot_mode"
 # An activated warm instance is single use; later reboots must not rerun the start logic.
 if [[ "$boot_mode" != "PRIME" && -f /etc/systemd/system/ghr-start-runner.service ]]; then
   systemctl disable ghr-start-runner.service || true
+fi
+if [[ "$boot_mode" != "PRIME" ]]; then
+  start_spot_detach
 fi
 
 if [[ "$xray_trace_id" != "" && "$boot_mode" != "PRIME" ]]; then

@@ -140,6 +140,24 @@ data "aws_iam_policy_document" "terminate_self" {
   }
 }
 
+# Only the pool tags a request with ghr:instance-arn, so an instance can cancel nothing but its own request.
+data "aws_iam_policy_document" "cancel_own_spot_request" {
+  count = var.warm_pool.enabled && var.config.instance_target_capacity_type == "spot" ? 1 : 0
+
+  statement {
+    sid       = "CancelOwnSpotRequest"
+    effect    = "Allow"
+    actions   = ["ec2:CancelSpotInstanceRequests"]
+    resources = ["arn:*:ec2:*:*:spot-instances-request/*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:ResourceTag/ghr:instance-arn"
+      values   = ["&{ec2:SourceInstanceARN}"]
+    }
+  }
+}
+
 data "aws_iam_policy_document" "cloudwatch" {
   count = var.config.cloudwatch_agent.enabled ? 1 : 0
 
@@ -202,6 +220,12 @@ locals {
       cloudwatch = {
         name        = "CloudWatchLogginAndMetrics"
         policy_json = data.aws_iam_policy_document.cloudwatch[0].json
+      }
+    } : {},
+    length(data.aws_iam_policy_document.cancel_own_spot_request) > 0 ? {
+      cancel_own_spot_request = {
+        name        = "runner-cancel-own-spot-request"
+        policy_json = data.aws_iam_policy_document.cancel_own_spot_request[0].json
       }
     } : {},
   )

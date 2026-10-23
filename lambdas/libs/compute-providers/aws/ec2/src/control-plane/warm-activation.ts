@@ -7,14 +7,18 @@ import yn from 'yn';
 
 import type { CreateGitHubRunnerConfig, CreateStartRunnerConfig } from '../../../../core';
 import { awsErrorCode, type Ec2RunnerResourceOperations, failureDetails } from '../runners';
-import { type Ec2StandbyOperations, WARM_ACTIVATED_TAG, WARM_ACTIVATION_GRACE_MS } from '../standby';
+import {
+  type Ec2StandbyOperations,
+  SPOT_REQUEST_ID_TAG,
+  WARM_ACTIVATED_TAG,
+  WARM_ACTIVATION_GRACE_MS,
+} from '../standby';
 import type { ListStandbyInput, StandbyInstance } from '../standby-types';
 import type { WarmIndexItem, WarmIndexStore } from '../warm-index';
 import type { CreateWarmIndexStore } from './pool';
 import { createEc2StartRunnerConfigOptions } from './runner-creation';
 
 const logger = createChildLogger('ec2-warm-activation');
-const SPOT_CANCEL_ATTEMPTS = 3;
 const TRACE_ID_TAG = 'ghr:trace_id';
 // The index entry no longer matches EC2; another warm instance may still start.
 const STALE_START_ERRORS = new Set([
@@ -32,7 +36,7 @@ const CAPACITY_START_ERRORS = new Set([
 export type WarmActivationFallbackReason = 'no-warm-instance' | 'claim-lost' | 'index-unavailable' | 'start-failed';
 
 export interface Ec2WarmActivationOperations {
-  standby: Pick<Ec2StandbyOperations, 'startInstance' | 'cancelSpotRequest' | 'destroyInstance'>;
+  standby: Pick<Ec2StandbyOperations, 'startInstance' | 'destroyInstance'>;
   createIndexStore: CreateWarmIndexStore;
 }
 
@@ -161,24 +165,28 @@ function warmCandidates(items: WarmIndexItem[]): StandbyInstance[] {
   // Scale-down sweeps expired standby instances, so never activate one that expires during activation.
   const claimableUntil = now + WARM_ACTIVATION_GRACE_MS;
   const launchedAt = (item: WarmIndexItem) => Date.parse(item.launchTime ?? '') || 0;
-  return items
-    .filter((item) => item.state === 'WARM')
-    .filter((item) => item.claimUntil === undefined || item.claimUntil * 1000 < now)
-    .filter((item) => item.cooldownUntil === undefined || item.cooldownUntil * 1000 <= now)
-    .filter((item) => {
-      const expiresAt = Date.parse(item.expiresAt ?? '');
-      return Number.isNaN(expiresAt) || expiresAt > claimableUntil;
-    })
-    .sort((a, b) => launchedAt(b) - launchedAt(a))
-    .map((item) => ({
-      instanceId: item.instanceId,
-      state: 'WARM',
-      launchTime: item.launchTime ? new Date(item.launchTime) : undefined,
-      expiresAt: item.expiresAt,
-      instanceType: item.instanceType,
-      availabilityZone: item.availabilityZone,
-      spotInstanceRequestId: item.spotInstanceRequestId,
-    }));
+  return (
+    items
+      .filter((item) => item.state === 'WARM')
+      // The instance cancels its own spot request after activation, which needs the request bound to it (D20).
+      .filter((item) => item.spotInstanceRequestId === undefined || item.spotRequestBound === true)
+      .filter((item) => item.claimUntil === undefined || item.claimUntil * 1000 < now)
+      .filter((item) => item.cooldownUntil === undefined || item.cooldownUntil * 1000 <= now)
+      .filter((item) => {
+        const expiresAt = Date.parse(item.expiresAt ?? '');
+        return Number.isNaN(expiresAt) || expiresAt > claimableUntil;
+      })
+      .sort((a, b) => launchedAt(b) - launchedAt(a))
+      .map((item) => ({
+        instanceId: item.instanceId,
+        state: 'WARM',
+        launchTime: item.launchTime ? new Date(item.launchTime) : undefined,
+        expiresAt: item.expiresAt,
+        instanceType: item.instanceType,
+        availabilityZone: item.availabilityZone,
+        spotInstanceRequestId: item.spotInstanceRequestId,
+      }))
+  );
 }
 
 function capacityKey({ instanceType, availabilityZone }: StandbyInstance): string | undefined {
@@ -240,7 +248,10 @@ async function activateBatch(
       continue;
     }
     try {
-      await context.ec2Operations.tag(instance.instanceId, activationTags(input.githubRunnerConfig, activatedAt));
+      await context.ec2Operations.tag(
+        instance.instanceId,
+        activationTags(input.githubRunnerConfig, activatedAt, instance),
+      );
     } catch (error) {
       logger.warn(`Failed to tag warm instance '${instance.instanceId}' for activation.`, failureDetails(error));
       await rollbackActivation(context, instance.instanceId, 'release');
@@ -270,9 +281,6 @@ async function activateBatch(
       outcome.coldFallbacks++;
       continue;
     }
-    if (instance.spotInstanceRequestId) {
-      await detachSpotRequest(context.warmOperations, instance.instanceId, instance.spotInstanceRequestId);
-    }
     running.push(instance);
   }
 
@@ -296,12 +304,17 @@ function startFailureOutcome(code: string): RollbackOutcome {
   return CAPACITY_START_ERRORS.has(code) ? 'cooldown' : 'release';
 }
 
-function activationTags(githubRunnerConfig: CreateGitHubRunnerConfig, activatedAt: string): Tag[] {
+function activationTags(
+  githubRunnerConfig: CreateGitHubRunnerConfig,
+  activatedAt: string,
+  instance: StandbyInstance,
+): Tag[] {
   const tags = [
     { Key: WARM_ACTIVATED_TAG, Value: activatedAt },
     { Key: 'ghr:Owner', Value: githubRunnerConfig.runnerOwner },
     { Key: 'ghr:Type', Value: githubRunnerConfig.runnerType },
   ];
+  if (instance.spotInstanceRequestId) tags.push({ Key: SPOT_REQUEST_ID_TAG, Value: instance.spotInstanceRequestId });
   const traceId = yn(process.env.POWERTOOLS_TRACE_ENABLED, { default: false })
     ? tracer.getRootXrayTraceId()
     : undefined;
@@ -380,30 +393,6 @@ async function bestEffort(description: string, instanceId: string, operation: ()
     await operation();
   } catch (error) {
     logger.error(`Failed to ${description} warm instance '${instanceId}'.`, failureDetails(error));
-  }
-}
-
-async function detachSpotRequest(
-  warmOperations: Ec2WarmActivationOperations,
-  instanceId: string,
-  spotInstanceRequestId: string,
-): Promise<void> {
-  for (let attempt = 1; ; attempt++) {
-    try {
-      await warmOperations.standby.cancelSpotRequest(spotInstanceRequestId);
-      return;
-    } catch (error) {
-      if (attempt < SPOT_CANCEL_ATTEMPTS) continue;
-      // The pool lambda cancels it later as an orphan once the activation has settled.
-      logger.error(
-        `Failed to cancel spot request '${spotInstanceRequestId}' of activated warm instance '${instanceId}'.`,
-        {
-          spotInstanceRequestId,
-          ...failureDetails(error),
-        },
-      );
-      return;
-    }
   }
 }
 

@@ -125,6 +125,8 @@ With a custom `userdata_template`, keep `${start_runner}` unmodified, including 
 
 Without the hook, warm instances never stop themselves: the pool evicts them after `runner_boot_time_in_minutes`, the warm tier stays empty, and jobs fall back to cold launches.
 
+With `instance_target_capacity_type = "spot"`, the start script also cancels the spot request of an activated warm instance, as described in [Spot request after activation](warm-pool.md#spot-request-after-activation). A custom start script or runner agent must do the same.
+
 ## Idle runners
 
 The module will scale down to zero runners by default. By specifying a `idle_config` config, idle runners can be kept active. The scale down lambda checks if any of the cron expressions matches the current time with a margin of 5 seconds. When there is a match, the number of runners specified in the idle config will be kept active. In case multiple cron expressions match, the first one will be used. Below is an idle configuration for keeping runners active from 9:00am to 5:59pm on working days. The [cron expression generator by Cronhub](https://crontab.cronhub.io/) is a great resource to set up your idle config.
