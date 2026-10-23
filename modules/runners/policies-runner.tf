@@ -81,4 +81,12 @@ resource "aws_iam_role_policy" "ec2" {
   policy = templatefile("${path.module}/policies/instance-ec2.json", {})
 }
 
+# Only the pool tags a request with ghr:instance-arn, so an instance can cancel nothing but its own request.
+resource "aws_iam_role_policy" "cancel_own_spot_request" {
+  count  = (var.iam_overrides["override_runner_role"] || var.iam_overrides["override_instance_profile"]) || !var.warm_pool.enabled || var.instance_target_capacity_type != "spot" ? 0 : 1
+  name   = "runner-cancel-own-spot-request"
+  role   = aws_iam_role.runner[0].name
+  policy = templatefile("${path.module}/policies/instance-cancel-own-spot-request-policy.json", {})
+}
+
 # see also logging.tf for logging and metrics policies

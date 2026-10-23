@@ -9,6 +9,7 @@ const MINUTE_IN_MS = 60 * 1000;
 const HOUR_IN_MS = 60 * MINUTE_IN_MS;
 // A stopped instance starts only with its own type and AZ, so repeated capacity failures are unlikely to clear soon.
 export const WARM_START_FAILURE_LIMIT = 3;
+export const WARM_SPOT_BIND_FAILURE_LIMIT = 3;
 
 export type WarmPoolEvictionReason =
   | 'max-age'
@@ -16,6 +17,7 @@ export type WarmPoolEvictionReason =
   | 'over-target'
   | 'stuck-priming'
   | 'start-failed'
+  | 'spot-request-unbound'
   | 'garbage'
   | 'orphaned-spot-request';
 
@@ -121,12 +123,19 @@ function selectEvictions(instances: StandbyInstance[], policy: EvictionPolicy): 
 
 function evictionReason(instance: StandbyInstance, policy: EvictionPolicy): WarmPoolEvictionReason | undefined {
   const age = instance.launchTime ? policy.now - instance.launchTime.getTime() : undefined;
+  // An unbound instance could not cancel its own spot request after activation (D20).
+  const unbound =
+    instance.spotInstanceRequestId !== undefined &&
+    !instance.spotRequestBound &&
+    (instance.spotBindFailures ?? 0) >= WARM_SPOT_BIND_FAILURE_LIMIT;
   switch (instance.state) {
     case 'GARBAGE':
       return 'garbage';
     case 'PRIMING':
+      if (unbound) return 'spot-request-unbound';
       return age !== undefined && age > policy.bootTimeInMinutes * MINUTE_IN_MS ? 'stuck-priming' : undefined;
     case 'WARM':
+      if (unbound) return 'spot-request-unbound';
       if ((instance.startFailures ?? 0) >= WARM_START_FAILURE_LIMIT) return 'start-failed';
       if (age !== undefined && age > policy.maxAgeHours * HOUR_IN_MS) return 'max-age';
       return isDrifted(instance, policy.current) ? 'drift' : undefined;

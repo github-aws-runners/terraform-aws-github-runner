@@ -23,7 +23,9 @@ render() {
     -e 's/\$\${/${/g' \
     -e "s|/opt/actions-runner|$SANDBOX/opt/actions-runner|g" \
     -e "s|/etc/systemd/system|$SANDBOX/etc/systemd/system|g" \
-    -e "s|/usr/local/sbin|$SANDBOX/usr/local/sbin|g"
+    -e "s|/usr/local/sbin|$SANDBOX/usr/local/sbin|g" \
+    -e "s|/var/lib/ghr|$SANDBOX/var/lib/ghr|g" \
+    -e "s|/proc/uptime|$SANDBOX/uptime|g"
 }
 
 stub() {
@@ -34,15 +36,17 @@ stub() {
 new_sandbox() {
   SANDBOX=$(mktemp -d "${TMPDIR:-/tmp}/start-runner-test.XXXXXX")
   export SANDBOX
-  unset FAIL_AT CONFIG_AFTER
+  unset FAIL_AT CONFIG_AFTER CANCEL_FAILS RUN_WAITS_FOR
   local imds="$SANDBOX/imds/latest"
   mkdir -p "$SANDBOX/bin" "$SANDBOX/opt/actions-runner" "$SANDBOX/etc/systemd/system" \
-    "$imds/meta-data/placement" "$imds/meta-data/tags/instance" "$imds/dynamic/instance-identity"
+    "$imds/meta-data/placement" "$imds/meta-data/tags/instance" "$imds/meta-data/spot" "$imds/dynamic/instance-identity"
   touch "$SANDBOX/calls.log"
+  printf '300.00 600.00' > "$SANDBOX/uptime"
 
   printf 'ami-0123' > "$imds/meta-data/ami-id"
   printf '%s' "$instance_id" > "$imds/meta-data/instance-id"
   printf 'm7i.large' > "$imds/meta-data/instance-type"
+  printf 'on-demand' > "$imds/meta-data/instance-life-cycle"
   printf 'eu-west-1a' > "$imds/meta-data/placement/availability-zone"
   printf '{"region":"eu-west-1"}' > "$imds/dynamic/instance-identity/document"
   set_tag ghr:environment test
@@ -89,6 +93,12 @@ case "$1 $2" in
       echo "An error occurred (ParameterNotFound)" >&2
       exit 254
     fi ;;
+  "ec2 cancel-spot-instance-requests")
+    if [ -n "${CANCEL_FAILS:-}" ]; then
+      echo "An error occurred ($CANCEL_FAILS) when calling the CancelSpotInstanceRequests operation" >&2
+      exit 254
+    fi
+    echo '{"CancelledSpotInstanceRequests":[{"State":"cancelled"}]}' ;;
 esac
 exit 0
 EOF
@@ -109,13 +119,31 @@ exit 0
 EOF
 
   local cmd
-  for cmd in shutdown chown sleep amazon-cloudwatch-agent-ctl; do
+  for cmd in shutdown chown amazon-cloudwatch-agent-ctl; do
     printf '#!/usr/bin/env bash\necho "%s $*" >> "$SANDBOX/calls.log"\n' "$cmd" | stub "$cmd"
   done
-  for cmd in config.sh run.sh svc.sh; do
+  # Short sleeps return at once; the detach delay really waits, so a short job ends while it is pending.
+  stub sleep <<'EOF'
+#!/usr/bin/env bash
+echo "sleep $*" >> "$SANDBOX/calls.log"
+if [ "${1%%.*}" -ge 30 ] 2> /dev/null; then exec /bin/sleep 5; fi
+EOF
+  for cmd in config.sh svc.sh; do
     printf '#!/usr/bin/env bash\necho "%s $*" >> "$SANDBOX/calls.log"\n' "$cmd" > "$SANDBOX/opt/actions-runner/$cmd"
     chmod +x "$SANDBOX/opt/actions-runner/$cmd"
   done
+  # RUN_WAITS_FOR makes the job last until the background detach has logged that text.
+  cat > "$SANDBOX/opt/actions-runner/run.sh" <<'EOF'
+#!/usr/bin/env bash
+echo "run.sh $*" >> "$SANDBOX/calls.log"
+if [ -n "${RUN_WAITS_FOR:-}" ]; then
+  for _ in $(seq 1 100); do
+    grep -q -- "$RUN_WAITS_FOR" "$SANDBOX/out.log" 2> /dev/null && break
+    /bin/sleep 0.05
+  done
+fi
+EOF
+  chmod +x "$SANDBOX/opt/actions-runner/run.sh"
 
   render > "$SANDBOX/start-runner.sh"
   { printf '#!/bin/bash -e\necho "user-data preamble"\n'; cat "$SANDBOX/start-runner.sh"; } > "$SANDBOX/user-data.sh"
@@ -284,6 +312,98 @@ check "runs with JIT config" called "run.sh --jitconfig jit-config-blob"
 check "disables boot hook (single use)" called "systemctl disable $unit"
 check "logs activation latency" grep -qE '^warm-pool-activation-latency-seconds=-?[0-9]+$' "$SANDBOX/out.log"
 check "no shutdown" not_called "shutdown"
+
+line_of() { grep -n -- "$1" "$SANDBOX/calls.log" | head -n1 | cut -d: -f1; }
+before() { local a b; a=$(line_of "$1"); b=$(line_of "$2"); [ -n "$a" ] && [ -n "$b" ] && [ "$a" -lt "$b" ]; }
+cancel_call="aws ec2 cancel-spot-instance-requests --spot-instance-request-ids sir-0123"
+activated_spot() {
+  new_sandbox
+  printf 'spot' > "$SANDBOX/imds/latest/meta-data/instance-life-cycle"
+  set_tag ghr:warm-pool true
+  set_tag ghr:warm-activated 2026-09-30T12:00:00Z
+  set_tag ghr:spot-request-id sir-0123
+  touch "$SANDBOX/runner-config"
+}
+
+echo "# activated spot instance, job outlasting the detach delay -> cancels its own request in the background"
+activated_spot
+export RUN_WAITS_FOR=warm-pool-spot-request-cancelled
+boot "$SANDBOX/user-data.sh"
+check "mode RUN" mode_is RUN
+check "cancels its own spot request" called "$cancel_call"
+check "cancels exactly once" test "$(grep -c -- "$cancel_call" "$SANDBOX/calls.log")" -eq 1
+check "cancels during the job" before "$cancel_call" "terminate-instances"
+check "logs the cancel" grep -qE '^warm-pool-spot-request-cancelled seconds-after-boot=[0-9]+$' "$SANDBOX/out.log"
+check "self-terminates after the cancel" called "aws ec2 terminate-instances"
+check "no shutdown" not_called "shutdown"
+
+echo "# activated spot instance booted before the detach delay -> waits until the delay after boot"
+activated_spot
+printf '15.00 30.00' > "$SANDBOX/uptime"
+boot "$SANDBOX/user-data.sh"
+check "waits the rest of the delay" called "sleep 45"
+check "cancels its own spot request" called "$cancel_call"
+
+echo "# activated spot instance, job shorter than the detach delay -> cancels at exit, then terminates"
+activated_spot
+printf '5.00 10.00' > "$SANDBOX/uptime"
+boot "$SANDBOX/user-data.sh"
+check "the background detach was still waiting" called "sleep 55"
+check "cancels its own spot request once" test "$(grep -c -- "$cancel_call" "$SANDBOX/calls.log")" -eq 1
+check "cancels before terminating" before "$cancel_call" "terminate-instances"
+check "self-terminates" called "aws ec2 terminate-instances"
+
+echo "# activated spot instance whose cancel is denied -> stops instead of terminating"
+activated_spot
+export CANCEL_FAILS=UnauthorizedOperation
+boot "$SANDBOX/user-data.sh"
+check "retries the cancel" test "$(grep -c -- "$cancel_call" "$SANDBOX/calls.log")" -ge 3
+check "logs the failure" grep -q '^warm-pool-spot-request-cancel-failed reason=UnauthorizedOperation$' "$SANDBOX/out.log"
+check "shuts down" called "shutdown -h now"
+check "no terminate-instances" not_called "terminate-instances"
+
+echo "# activated spot instance without its request ID -> stops instead of terminating"
+activated_spot
+rm "$SANDBOX/imds/latest/meta-data/tags/instance/ghr:spot-request-id"
+boot "$SANDBOX/user-data.sh"
+check "makes no cancel call" not_called "cancel-spot-instance-requests"
+check "logs the failure" grep -q '^warm-pool-spot-request-cancel-failed reason=missing-request-id$' "$SANDBOX/out.log"
+check "shuts down" called "shutdown -h now"
+check "no terminate-instances" not_called "terminate-instances"
+
+echo "# activated spot instance that gets a terminate notice after its cancel -> logs it"
+activated_spot
+printf '{"action":"terminate"}' > "$SANDBOX/imds/latest/meta-data/spot/instance-action"
+export RUN_WAITS_FOR=warm-pool-spot-request-cancel-interrupted
+boot "$SANDBOX/user-data.sh"
+check "logs the interruption" grep -q 'warm-pool-spot-request-cancel-interrupted' "$SANDBOX/out.log"
+
+echo "# activated on-demand instance -> no spot request"
+new_sandbox
+set_tag ghr:warm-pool true
+set_tag ghr:warm-activated 2026-09-30T12:00:00Z
+touch "$SANDBOX/runner-config"
+boot "$SANDBOX/user-data.sh"
+check "makes no cancel call" not_called "cancel-spot-instance-requests"
+check "self-terminates" called "aws ec2 terminate-instances"
+
+echo "# cold spot instance -> leaves its request alone"
+new_sandbox
+printf 'spot' > "$SANDBOX/imds/latest/meta-data/instance-life-cycle"
+touch "$SANDBOX/runner-config"
+boot "$SANDBOX/user-data.sh"
+check "makes no cancel call" not_called "cancel-spot-instance-requests"
+check "self-terminates" called "aws ec2 terminate-instances"
+
+echo "# priming spot instance -> keeps its request"
+new_sandbox
+printf 'spot' > "$SANDBOX/imds/latest/meta-data/instance-life-cycle"
+set_tag ghr:warm-pool true
+set_tag ghr:spot-request-id sir-0123
+boot "$SANDBOX/user-data.sh"
+check "mode PRIME" mode_is PRIME
+check "makes no cancel call" not_called "cancel-spot-instance-requests"
+check "shuts down" called "shutdown -h now"
 
 echo
 echo "passed: $pass, failed: $fail"

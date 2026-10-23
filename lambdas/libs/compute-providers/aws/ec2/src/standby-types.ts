@@ -11,6 +11,12 @@ export interface StandbyInstance {
   instanceType?: string;
   availabilityZone?: string;
   spotInstanceRequestId?: string;
+  /** Built from EC2 data when the account is known; bound to the spot request as `ghr:instance-arn`. */
+  instanceArn?: string;
+  /** The spot request carries `ghr:instance-arn` (D20); only bound spot instances are activated. */
+  spotRequestBound?: boolean;
+  /** Failed attempts to bind the spot request. */
+  spotBindFailures?: number;
   /** ISO-8601 time after which the instance must be destroyed, from `ghr:warm-expires-at`. */
   expiresAt?: string;
   /** Starts that failed for lack of capacity since the instance was primed. */

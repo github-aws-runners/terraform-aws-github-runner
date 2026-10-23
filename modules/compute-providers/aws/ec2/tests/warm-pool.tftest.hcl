@@ -199,3 +199,64 @@ run "warm_pool_on_demand_without_spot_placement" {
     error_message = "An on-demand warm pool must not get the spot placement permissions."
   }
 }
+
+run "spot_warm_pool_runner_cancels_only_its_own_request" {
+  command = plan
+
+  variables {
+    warm_pool = { enabled = true }
+  }
+
+  assert {
+    condition     = contains(keys(output.provider.policies.runner.inline_policies), "cancel_own_spot_request")
+    error_message = "The runner of a spot warm pool must be able to cancel its own spot request."
+  }
+
+  assert {
+    condition = (
+      data.aws_iam_policy_document.cancel_own_spot_request[0].statement[0].actions == toset(["ec2:CancelSpotInstanceRequests"])
+      && data.aws_iam_policy_document.cancel_own_spot_request[0].statement[0].resources == toset(["arn:*:ec2:*:*:spot-instances-request/*"])
+      && one(data.aws_iam_policy_document.cancel_own_spot_request[0].statement[0].condition).variable == "aws:ResourceTag/ghr:instance-arn"
+      && one(data.aws_iam_policy_document.cancel_own_spot_request[0].statement[0].condition).values == tolist(["&{ec2:SourceInstanceARN}"])
+    )
+    error_message = "The runner may cancel only the spot request tagged with its own instance ARN."
+  }
+
+  assert {
+    condition = (
+      data.aws_iam_policy_document.create_tags.statement[0].resources == toset(["arn:*:ec2:*:*:instance/*"])
+      && !anytrue([
+        for statement in flatten([
+          data.aws_iam_policy_document.describe_tags.statement,
+          data.aws_iam_policy_document.create_tags.statement,
+          data.aws_iam_policy_document.terminate_self.statement,
+          data.aws_iam_policy_document.cancel_own_spot_request[0].statement,
+        ]) : contains(statement.actions, "ec2:DescribeSpotInstanceRequests")
+      ])
+    )
+    error_message = "The runner must not tag spot requests or read spot requests."
+  }
+}
+
+run "on_demand_warm_pool_runner_cannot_cancel_spot_requests" {
+  command = plan
+
+  variables {
+    warm_pool = { enabled = true }
+    config    = merge(var.config, { instance_target_capacity_type = "on-demand" })
+  }
+
+  assert {
+    condition     = !contains(keys(output.provider.policies.runner.inline_policies), "cancel_own_spot_request")
+    error_message = "An on-demand warm pool runner needs no spot request permission."
+  }
+}
+
+run "spot_runner_without_warm_pool_cannot_cancel_spot_requests" {
+  command = plan
+
+  assert {
+    condition     = !contains(keys(output.provider.policies.runner.inline_policies), "cancel_own_spot_request")
+    error_message = "Only warm pool runners get the spot request permission."
+  }
+}

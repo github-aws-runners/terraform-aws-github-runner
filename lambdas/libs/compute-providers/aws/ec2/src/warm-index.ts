@@ -41,6 +41,9 @@ export interface WarmIndexItem {
   instanceType?: string;
   availabilityZone?: string;
   spotInstanceRequestId?: string;
+  /** The spot request carries `ghr:instance-arn`, so the instance may cancel it itself (D20). */
+  spotRequestBound?: boolean;
+  spotBindFailures?: number;
   activatedAt?: string;
   claimUntil?: number;
   startFailures?: number;
@@ -74,6 +77,8 @@ export interface WarmIndexStore {
   readPlacement(): Promise<WarmPlacementCache | undefined>;
   /** Stored on the reconcile marker, which the index query already skips. */
   writePlacement(cache: WarmPlacementCache): Promise<void>;
+  markSpotRequestBound(instanceId: string): Promise<void>;
+  recordSpotBindFailure(instanceId: string): Promise<void>;
 }
 
 function isConditionalCheckFailed(error: unknown): boolean {
@@ -107,6 +112,8 @@ function toItem(instanceId: string, item: Record<string, AttributeValue>): WarmI
     instanceType: item.instanceType?.S,
     availabilityZone: item.availabilityZone?.S,
     spotInstanceRequestId: item.spotInstanceRequestId?.S,
+    spotRequestBound: item.spotRequestBound?.BOOL,
+    spotBindFailures: numberAttribute(item.spotBindFailures),
     activatedAt: item.activatedAt?.S,
     claimUntil: numberAttribute(item.claimUntil),
     startFailures: numberAttribute(item.startFailures),
@@ -347,6 +354,36 @@ export function createWarmIndexStore(
           UpdateExpression: 'SET placement = :placement',
           ExpressionAttributeValues: { ':placement': { S: JSON.stringify(cache) } },
         }),
+      );
+    },
+
+    markSpotRequestBound: async (instanceId) => {
+      await unlessConditionFails(() =>
+        dynamoClient.send(
+          new UpdateItemCommand({
+            TableName: tableName,
+            Key: key(instanceId),
+            UpdateExpression: 'SET spotRequestBound = :true REMOVE spotBindFailures',
+            ConditionExpression: 'attribute_exists(#state)',
+            ExpressionAttributeNames: { '#state': 'state' },
+            ExpressionAttributeValues: { ':true': { BOOL: true } },
+          }),
+        ),
+      );
+    },
+
+    recordSpotBindFailure: async (instanceId) => {
+      await unlessConditionFails(() =>
+        dynamoClient.send(
+          new UpdateItemCommand({
+            TableName: tableName,
+            Key: key(instanceId),
+            UpdateExpression: 'ADD spotBindFailures :one',
+            ConditionExpression: 'attribute_exists(#state)',
+            ExpressionAttributeNames: { '#state': 'state' },
+            ExpressionAttributeValues: { ':one': { N: '1' } },
+          }),
+        ),
       );
     },
   };

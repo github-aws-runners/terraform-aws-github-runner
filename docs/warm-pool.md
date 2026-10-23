@@ -94,7 +94,19 @@ The examples in [`examples/multi-runner`](https://github.com/github-aws-runners/
 
 With `instance_target_capacity_type = "on-demand"`, warm instances are regular on-demand instances.
 
-With `instance_target_capacity_type = "spot"`, warm instances are launched with `RunInstances` from a persistent spot request, because spot instances from a one-time request or a fleet cannot be stopped. The request is tagged like the instance and expires after `max_age_hours` plus 24 hours. The module always cancels the spot request before terminating a warm instance, so AWS never launches a replacement. When a warm spot instance is activated, its request is cancelled right after the start; if that fails, the pool cancels it on a later run.
+With `instance_target_capacity_type = "spot"`, warm instances are launched with `RunInstances` from a persistent spot request, because spot instances from a one-time request or a fleet cannot be stopped. The request is tagged like the instance and expires after `max_age_hours` plus 24 hours. The module always cancels the spot request before terminating a warm instance, so AWS never launches a replacement.
+
+### Spot request after activation
+
+An activated warm spot instance still has its persistent request, and cancels it itself:
+
+- After launching a warm spot instance, the pool tags its spot request with `ghr:instance-arn`, the ARN of the instance. Scale-up only activates spot instances whose request carries that tag, and adds `ghr:spot-request-id` to the instance when it activates it.
+- The runner role of a spot warm pool may cancel only the spot request whose `ghr:instance-arn` equals its own instance ARN (`ec2:SourceInstanceARN`). Only the pool can tag spot requests; the runner can neither tag nor read them.
+- The start script cancels the request in the background 60 seconds after the instance booted, while the job runs. AWS terminates the instance of a request that is cancelled while it is still `disabled`, as it is right after a start, so the request is never cancelled right away.
+- Before the instance terminates itself, the start script makes sure the request is cancelled, which is safe at that point. If it cannot cancel the request, the instance shuts down instead of terminating, so the live request cannot launch a replacement, and scale-down destroys the stopped instance.
+- The start script logs `warm-pool-spot-request-cancelled seconds-after-boot=<n>`, or `warm-pool-spot-request-cancel-failed reason=<code>`.
+
+Scale-up does not cancel spot requests. A custom start script or runner agent used with a spot warm pool must follow the same steps, or every finished job re-opens its request and the pool has to cancel it and terminate the replacement.
 
 A stopped instance can only start with its own instance type in its own Availability Zone, and a spot instance needs spot capacity at that moment. If the start fails, the job gets a new instance and the warm instance stays in the pool. After a start fails for lack of capacity, scale-up skips that instance for 10 minutes, and skips other warm instances of the same type and zone for the rest of that run. The pool replaces an instance whose start failed this way three times.
 
@@ -131,10 +143,11 @@ Each time the pool runs, before refilling, it destroys:
 - the oldest warm instances above the pool size;
 - instances that did not finish priming within `runner_boot_time_in_minutes`;
 - warm instances whose start failed for lack of capacity three times;
+- warm spot instances whose request could not be tagged with the instance ARN three times;
 - stopped instances that did not stop themselves (spot interruption, manual stop) or whose spot request can no longer start them;
-- live spot requests of warm spot instances that were terminated, or that were activated and could not be detached; a replacement instance AWS launched for such a request is terminated too.
+- live spot requests of warm spot instances that were terminated or stopped, or that were activated more than 10 minutes ago and could not cancel their request themselves; a replacement instance AWS launched for such a request is terminated too. The request of a running instance is only cancelled when it is `active`.
 
-Scale-down additionally destroys stopped warm instances past their expiry, or that were activated and later stopped. This also cleans up after warm mode is disabled or the pool is removed.
+Scale-down additionally destroys stopped warm instances past their expiry, or that were activated and later stopped. This also cleans up after warm mode is disabled or the pool is removed. When scale-down terminates an idle activated spot runner, it cancels the spot request first.
 
 ## Custom user data
 
@@ -142,7 +155,7 @@ The boot hook is installed by the default start script. If you use a custom `use
 
 ## Observability
 
-With metrics enabled, the pool publishes `WarmPoolWarmInstances`, `WarmPoolPrimingInstances`, `WarmPoolEvictions` (by `Reason`), and `WarmPoolReconcileErrors` (by `Operation`), and scale-up publishes `WarmPoolActivations` and `WarmPoolActivationFallbacks` (by `Reason`: `no-warm-instance`, `claim-lost`, `index-unavailable`, or `start-failed`). Activated instances log `warm-pool-activation-latency-seconds=<n>`, the time from activation until the runner starts.
+With metrics enabled, the pool publishes `WarmPoolWarmInstances`, `WarmPoolPrimingInstances`, `WarmPoolEvictions` (by `Reason`), and `WarmPoolReconcileErrors` (by `Operation`), and scale-up publishes `WarmPoolActivations` and `WarmPoolActivationFallbacks` (by `Reason`: `no-warm-instance`, `claim-lost`, `index-unavailable`, or `start-failed`). Activated instances log `warm-pool-activation-latency-seconds=<n>`, the time from activation until the runner starts, and activated spot instances log the spot request cancel described above. An alarm on `WarmPoolEvictions` with `Reason` `orphaned-spot-request` shows runners that terminate without cancelling their spot request.
 
 ## Costs and limits
 
@@ -152,6 +165,7 @@ With metrics enabled, the pool publishes `WarmPoolWarmInstances`, `WarmPoolPrimi
 - EC2 stop events cannot be filtered by tag, so the stop-event queue receives every instance stop in the account and region. Each batch costs one `DescribeInstances` by ID; instances outside the warm pools need no further calls.
 - A spot warm pool with a ranking strategy calls `GetSpotPlacementScores`, `DescribeSpotPriceHistory` and `DescribeSubnets` at most every 15 minutes, and only when it launches instances. These need `ec2:GetSpotPlacementScores`, `ec2:DescribeSpotPriceHistory` and `ec2:DescribeSubnets`, which the module grants to the pool of a spot warm pool.
 - Spot API request limits are shared by everything in the account and region. A spot warm pool reads spot requests only by ID, at most once per run, and only for its own instances; scale-up and on-demand warm pools do not read spot requests at all. If the Spot API throttles that read, the run continues without it: stopped spot instances are classified from EC2 data, spot request cleanup waits for a later run, and `WarmPoolReconcileErrors` is published with `Operation` `describe-spot-requests`.
+- A spot warm pool tags each new spot request once, and each activated spot instance cancels its own request once.
 
 ## Disabling
 
