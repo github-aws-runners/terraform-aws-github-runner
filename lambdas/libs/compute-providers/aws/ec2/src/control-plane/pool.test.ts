@@ -175,6 +175,7 @@ describe('createEc2PoolCapability.standby', () => {
   const standbyOperations = {
     destroyInstance: vi.fn<Ec2StandbyOperations['destroyInstance']>(),
     launchWarm: vi.fn<Ec2StandbyOperations['launchWarm']>(),
+    bindSpotRequest: vi.fn<Ec2StandbyOperations['bindSpotRequest']>(),
     listStandby: vi.fn<Ec2StandbyOperations['listStandby']>(),
     readStandby: vi.fn<Ec2StandbyOperations['readStandby']>(),
     readWarmPoolInstances: vi.fn<Ec2StandbyOperations['readWarmPoolInstances']>(),
@@ -198,6 +199,8 @@ describe('createEc2PoolCapability.standby', () => {
     claimReconcile: vi.fn<WarmIndexStore['claimReconcile']>(),
     readPlacement: vi.fn<WarmIndexStore['readPlacement']>(),
     writePlacement: vi.fn<WarmIndexStore['writePlacement']>(),
+    markSpotRequestBound: vi.fn<WarmIndexStore['markSpotRequestBound']>(),
+    recordSpotBindFailure: vi.fn<WarmIndexStore['recordSpotBindFailure']>(),
   } satisfies WarmIndexStore;
   const createIndexStore = vi.fn<CreateWarmIndexStore>(() => index);
   let standby: Ec2PoolStandbyOperations;
@@ -354,7 +357,12 @@ describe('createEc2PoolCapability.standby', () => {
       Object.assign(new Error('denied'), { name: 'UnauthorizedOperation' }),
     );
     index.readPlacement.mockResolvedValue(undefined);
-    standbyOperations.launchWarm.mockResolvedValue({ instances: ['i-1'], failedInstanceCount: 0, failureCodes: [] });
+    standbyOperations.launchWarm.mockResolvedValue({
+      instances: ['i-1'],
+      failedInstanceCount: 0,
+      failureCodes: [],
+      spotRequests: [],
+    });
     process.env.AWS_REGION = 'eu-west-1';
     const withSignals = createEc2PoolStandbyOperations(standbyOperations, createIndexStore, placementSignals);
 
@@ -378,6 +386,7 @@ describe('createEc2PoolCapability.standby', () => {
       instances: ['i-1'],
       failedInstanceCount: 1,
       failureCodes: ['aws-name:InsufficientInstanceCapacity'],
+      spotRequests: [],
     });
 
     await expect(standby.launch({ ...poolInput, numberOfInstances: 2, maxAgeHours: 12, poolSize: 4 })).resolves.toEqual(
@@ -402,12 +411,98 @@ describe('createEc2PoolCapability.standby', () => {
   });
 
   it('still reports launched instances when indexing them fails', async () => {
-    standbyOperations.launchWarm.mockResolvedValue({ instances: ['i-1'], failedInstanceCount: 0, failureCodes: [] });
+    standbyOperations.launchWarm.mockResolvedValue({
+      instances: ['i-1'],
+      failedInstanceCount: 0,
+      failureCodes: [],
+      spotRequests: [],
+    });
     index.update.mockRejectedValue(new Error('throttled'));
 
     await expect(standby.launch({ ...poolInput, numberOfInstances: 1, maxAgeHours: 12, poolSize: 4 })).resolves.toEqual(
       expect.objectContaining({ instances: ['i-1'] }),
     );
+  });
+
+  it('records which launched spot requests are bound to their instance', async () => {
+    standbyOperations.launchWarm.mockResolvedValue({
+      instances: ['i-1', 'i-2'],
+      failedInstanceCount: 0,
+      failureCodes: [],
+      spotRequests: [
+        { instanceId: 'i-1', spotInstanceRequestId: 'sir-1', instanceArn: 'arn-1', bound: true },
+        { instanceId: 'i-2', spotInstanceRequestId: 'sir-2', instanceArn: 'arn-2', bound: false },
+      ],
+    });
+
+    await standby.launch({ ...poolInput, numberOfInstances: 2, maxAgeHours: 12, poolSize: 4 });
+
+    expect(index.markSpotRequestBound).toHaveBeenCalledTimes(1);
+    expect(index.markSpotRequestBound).toHaveBeenCalledWith('i-1');
+    expect(index.update.mock.invocationCallOrder[0]).toBeLessThan(
+      index.markSpotRequestBound.mock.invocationCallOrder[0],
+    );
+  });
+
+  describe('binding spot requests on later runs', () => {
+    const warmSpot = {
+      instanceId: 'i-spot',
+      state: 'WARM' as const,
+      spotInstanceRequestId: 'sir-spot',
+      instanceArn: 'arn:aws:ec2:eu-west-1:123456789012:instance/i-spot',
+    };
+
+    it('binds an unbound spot request and reports the instance as bound', async () => {
+      index.query.mockResolvedValue([{ instanceId: 'i-spot', state: 'WARM', spotInstanceRequestId: 'sir-spot' }]);
+      standbyOperations.readStandby.mockResolvedValue({ ...emptyRead, instances: [warmSpot] });
+
+      const listing = await standby.list(poolInput);
+
+      expect(standbyOperations.bindSpotRequest).toHaveBeenCalledWith({
+        instanceId: 'i-spot',
+        spotInstanceRequestId: 'sir-spot',
+        instanceArn: warmSpot.instanceArn,
+      });
+      expect(index.markSpotRequestBound).toHaveBeenCalledWith('i-spot');
+      expect(listing.instances[0]).toEqual(expect.objectContaining({ spotRequestBound: true }));
+    });
+
+    it('counts a failed binding', async () => {
+      index.query.mockResolvedValue([
+        { instanceId: 'i-spot', state: 'WARM', spotInstanceRequestId: 'sir-spot', spotBindFailures: 1 },
+      ]);
+      standbyOperations.readStandby.mockResolvedValue({ ...emptyRead, instances: [warmSpot] });
+      standbyOperations.bindSpotRequest.mockRejectedValue(new Error('denied'));
+
+      const listing = await standby.list(poolInput);
+
+      expect(index.recordSpotBindFailure).toHaveBeenCalledWith('i-spot');
+      expect(index.markSpotRequestBound).not.toHaveBeenCalled();
+      expect(listing.instances[0]).toEqual(
+        expect.objectContaining({ spotRequestBound: undefined, spotBindFailures: 2 }),
+      );
+    });
+
+    it('leaves bound, on-demand and garbage instances alone', async () => {
+      index.query.mockResolvedValue([
+        { instanceId: 'i-spot', state: 'WARM', spotInstanceRequestId: 'sir-spot', spotRequestBound: true },
+        { instanceId: 'i-ondemand', state: 'WARM' },
+        { instanceId: 'i-garbage', state: 'GARBAGE', spotInstanceRequestId: 'sir-garbage' },
+      ]);
+      standbyOperations.readStandby.mockResolvedValue({
+        ...emptyRead,
+        instances: [
+          warmSpot,
+          { instanceId: 'i-ondemand', state: 'WARM' },
+          { instanceId: 'i-garbage', state: 'GARBAGE', spotInstanceRequestId: 'sir-garbage' },
+        ],
+      });
+
+      const listing = await standby.list(poolInput);
+
+      expect(standbyOperations.bindSpotRequest).not.toHaveBeenCalled();
+      expect(listing.instances[0]).toEqual(expect.objectContaining({ spotRequestBound: true }));
+    });
   });
 
   it('destroys unclaimed instances and reports failures without stopping', async () => {

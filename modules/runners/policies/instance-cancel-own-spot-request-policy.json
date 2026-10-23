@@ -1,0 +1,16 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "CancelOwnSpotRequest",
+      "Effect": "Allow",
+      "Action": "ec2:CancelSpotInstanceRequests",
+      "Resource": "arn:*:ec2:*:*:spot-instances-request/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:ResourceTag/ghr:instance-arn": "$${ec2:SourceInstanceARN}"
+        }
+      }
+    }
+  ]
+}

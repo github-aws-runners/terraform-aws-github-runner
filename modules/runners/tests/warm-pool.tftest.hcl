@@ -201,3 +201,49 @@ run "warm_pool_rejects_fractional_max_age" {
 
   expect_failures = [var.warm_pool]
 }
+
+run "spot_warm_pool_runner_cancels_only_its_own_request" {
+  command = plan
+
+  variables {
+    warm_pool = { enabled = true, max_age_hours = 24 }
+  }
+
+  assert {
+    condition = (
+      length(aws_iam_role_policy.cancel_own_spot_request) == 1
+      && jsondecode(aws_iam_role_policy.cancel_own_spot_request[0].policy).Statement[0].Action == "ec2:CancelSpotInstanceRequests"
+      && jsondecode(aws_iam_role_policy.cancel_own_spot_request[0].policy).Statement[0].Resource == "arn:*:ec2:*:*:spot-instances-request/*"
+      && jsondecode(aws_iam_role_policy.cancel_own_spot_request[0].policy).Statement[0].Condition.StringEquals["aws:ResourceTag/ghr:instance-arn"] == "$${ec2:SourceInstanceARN}"
+    )
+    error_message = "The runner of a spot warm pool may cancel only the spot request tagged with its own instance ARN."
+  }
+
+  assert {
+    condition     = jsondecode(aws_iam_role_policy.create_tag[0].policy).Statement[0].Resource == "arn:*:ec2:*:*:instance/*"
+    error_message = "The runner must not be able to tag spot requests."
+  }
+}
+
+run "on_demand_warm_pool_runner_cannot_cancel_spot_requests" {
+  command = plan
+
+  variables {
+    warm_pool                     = { enabled = true, max_age_hours = 24 }
+    instance_target_capacity_type = "on-demand"
+  }
+
+  assert {
+    condition     = length(aws_iam_role_policy.cancel_own_spot_request) == 0
+    error_message = "An on-demand warm pool runner needs no spot request permission."
+  }
+}
+
+run "spot_runner_without_warm_pool_cannot_cancel_spot_requests" {
+  command = plan
+
+  assert {
+    condition     = length(aws_iam_role_policy.cancel_own_spot_request) == 0
+    error_message = "Only warm pool runners get the spot request permission."
+  }
+}

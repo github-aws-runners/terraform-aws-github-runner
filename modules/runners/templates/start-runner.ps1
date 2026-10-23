@@ -5,6 +5,75 @@
 $bootHookDir = "C:\ProgramData\ghr"
 $bootHookScript = "$bootHookDir\start-runner.ps1"
 $bootHookTask = "ghr-start-runner"
+# An activated warm spot instance keeps its persistent spot request until it cancels the request itself.
+$spotDetachDelaySeconds = 60
+$spotDetachMarker = Join-Path $bootHookDir "spot-request-cancelled"
+$spotDetach = $null
+
+function Test-ActivatedSpot {
+    return [bool]$warm_activated -and ($instance_life_cycle -eq "spot")
+}
+
+# Shared with the background job, which runs in its own process.
+$cancelSpotRequest = {
+    param($SpotRequestId, $Region, $Marker, $BootTime)
+    if (-not $SpotRequestId) {
+        Write-Host "warm-pool-spot-request-cancel-failed reason=missing-request-id"
+        return $false
+    }
+    $reason = "unknown"
+    foreach ($attempt in 1..3) {
+        $result = aws ec2 cancel-spot-instance-requests --spot-instance-request-ids $SpotRequestId --region $Region 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            New-Item -ItemType Directory -Path (Split-Path $Marker) -Force | Out-Null
+            New-Item -ItemType File -Path $Marker -Force | Out-Null
+            Write-Host "warm-pool-spot-request-cancelled seconds-after-boot=$([int]((Get-Date) - $BootTime).TotalSeconds)"
+            return $true
+        }
+        if ("$result" -match '\(([A-Za-z.]+)\)') { $reason = $Matches[1] }
+        if ($reason -eq "InvalidSpotInstanceRequestID.NotFound") { return $true }
+        Start-Sleep -Seconds ($attempt * 2)
+    }
+    Write-Host "warm-pool-spot-request-cancel-failed reason=$reason"
+    return $false
+}
+
+$spotDetachJob = {
+    param($SpotRequestId, $Region, $Marker, $BootTime, $WaitSeconds, $CancelSpotRequest)
+    if ($WaitSeconds -gt 0) { Start-Sleep -Seconds $WaitSeconds }
+    if (-not (& ([scriptblock]::Create($CancelSpotRequest)) $SpotRequestId $Region $Marker $BootTime)) { return }
+    # A terminate notice right after the cancel means the request was cancelled while still disabled.
+    foreach ($i in 1..6) {
+        Start-Sleep -Seconds 5
+        try {
+            $imdsToken = Invoke-RestMethod -Method PUT -Uri "http://169.254.169.254/latest/api/token" -Headers @{"X-aws-ec2-metadata-token-ttl-seconds" = "60"} -TimeoutSec 2
+            $action = Invoke-RestMethod -Uri "http://169.254.169.254/latest/meta-data/spot/instance-action" -Headers @{"X-aws-ec2-metadata-token" = $imdsToken} -TimeoutSec 2
+            if ($action) {
+                Write-Host "ERROR: warm-pool-spot-request-cancel-interrupted instance-action=$($action | ConvertTo-Json -Compress)"
+                return
+            }
+        }
+        catch { }
+    }
+}
+
+function Start-SpotDetach {
+    if (-not (Test-ActivatedSpot) -or -not $spot_request_id) { return }
+    $waitSeconds = $spotDetachDelaySeconds - [int]((Get-Date) - $bootTime).TotalSeconds
+    $script:spotDetach = Start-Job -ScriptBlock $spotDetachJob -ArgumentList $spot_request_id, $Region, $spotDetachMarker, $bootTime, $waitSeconds, $cancelSpotRequest.ToString()
+}
+
+# Cancelling right before terminating is safe in any request state; terminating with a live request respawns the instance.
+function Confirm-SpotRequestCancelled {
+    if ($spotDetach) { Receive-Job $spotDetach -ErrorAction SilentlyContinue }
+    if (Test-Path $spotDetachMarker) { return $true }
+    if ($spotDetach) {
+        Stop-Job $spotDetach -ErrorAction SilentlyContinue
+        Receive-Job $spotDetach -ErrorAction SilentlyContinue
+    }
+    if (Test-Path $spotDetachMarker) { return $true }
+    return [bool](& $cancelSpotRequest $spot_request_id $Region $spotDetachMarker $bootTime)
+}
 
 function Test-WarmStandby {
     return ($warm_pool -eq "true") -and (-not $warm_activated)
@@ -120,6 +189,13 @@ Write-Host  "Retrieved REGION from AWS API ($Region)"
 $InstanceId = $metadata.instanceId
 Write-Host  "Retrieved InstanceId from AWS API ($InstanceId)"
 
+try {
+    $instance_life_cycle = Invoke-RestMethod -Uri "http://169.254.169.254/latest/meta-data/instance-life-cycle" -Headers @{"X-aws-ec2-metadata-token" = $token}
+}
+catch {
+    $instance_life_cycle = ""
+}
+
 $tags=aws ec2 describe-tags --region "$Region" --filters "Name=resource-id,Values=$InstanceId" | ConvertFrom-Json
 Write-Host  "Retrieved tags from AWS API"
 
@@ -134,6 +210,7 @@ Write-Host  "Retrieved ghr:ssm_config_path tag - ($ssm_config_path)"
 
 $warm_pool=$tags.Tags.where( {$_.Key -eq 'ghr:warm-pool'}).value
 $warm_activated=$tags.Tags.where( {$_.Key -eq 'ghr:warm-activated'}).value
+$spot_request_id=$tags.Tags.where( {$_.Key -eq 'ghr:spot-request-id'}).value
 Write-Host  "Retrieved ghr:warm-pool tag - ($warm_pool), ghr:warm-activated tag - ($warm_activated)"
 
 $parameters=$(aws ssm get-parameters-by-path --path "$ssm_config_path" --region "$Region" --query "Parameters[*].{Name:Name,Value:Value}") | ConvertFrom-Json
@@ -162,6 +239,10 @@ Write-Host "Selected boot mode: $boot_mode"
 # An activated warm instance is single use; later reboots must not rerun the start logic.
 if ($boot_mode -ne "PRIME" -and (Get-ScheduledTask -TaskName $bootHookTask -ErrorAction Ignore)) {
     Disable-ScheduledTask -TaskName $bootHookTask | Out-Null
+}
+$bootTime = (gcim Win32_OperatingSystem).LastBootUpTime
+if ($boot_mode -ne "PRIME") {
+    Start-SpotDetach
 }
 
 if ($enable_cloudwatch_agent -eq "true")
@@ -262,14 +343,22 @@ if ($agent_mode -eq "ephemeral") {
     }
     Write-Host "Runner has finished"
 
+    $spotCancelFailed = (Test-ActivatedSpot) -and -not (Confirm-SpotRequestCancelled)
+
     if ($enable_cloudwatch_agent)
     {
         Write-Host "Stopping CloudWatch Agent"
         & 'C:\Program Files\Amazon\AmazonCloudWatchAgent\amazon-cloudwatch-agent-ctl.ps1' -a stop
     }
 
-    Write-Host "Terminating instance"
-    aws ec2 terminate-instances --instance-ids "$InstanceId" --region "$Region"
+    if ($spotCancelFailed) {
+        Write-Host "Shutting down instead of terminating, so the live spot request cannot launch a replacement"
+        shutdown.exe /s /t 0 /f
+    }
+    else {
+        Write-Host "Terminating instance"
+        aws ec2 terminate-instances --instance-ids "$InstanceId" --region "$Region"
+    }
 } else {
     Write-Host  "Installing the runner as a service"
 
@@ -277,5 +366,10 @@ if ($agent_mode -eq "ephemeral") {
     $trigger = Get-CimClass "MSFT_TaskRegistrationTrigger" -Namespace "Root/Microsoft/Windows/TaskScheduler"
     Register-ScheduledTask -TaskName "runnertask" -Action $action -Trigger $trigger -User $username -Password $password -RunLevel Highest -Force
     Write-Host "Starting runner after $(((get-date) - (gcim Win32_OperatingSystem).LastBootUpTime).tostring("hh':'mm':'ss''"))"
+    # The job ends with this script, so wait for the detach of a persistent runner.
+    if ($spotDetach) {
+        Wait-Job $spotDetach -Timeout 180 | Out-Null
+        Receive-Job $spotDetach -ErrorAction SilentlyContinue
+    }
 }
 # ghr:start-runner:end

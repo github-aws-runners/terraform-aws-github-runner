@@ -126,6 +126,49 @@ async function adoptUntracked(
   }
 }
 
+// Spot instances launched before binding existed, or whose binding failed at launch, are bound on later runs.
+async function bindUnboundSpotRequests(
+  standbyOperations: Ec2StandbyOperations,
+  index: WarmIndexStore,
+  instances: StandbyInstance[],
+  items: WarmIndexItem[],
+): Promise<StandbyInstance[]> {
+  const itemById = new Map(items.map((item) => [item.instanceId, item]));
+  const result: StandbyInstance[] = [];
+  for (const instance of instances) {
+    const item = itemById.get(instance.instanceId);
+    const binding = { spotRequestBound: item?.spotRequestBound, spotBindFailures: item?.spotBindFailures };
+    const unbound =
+      instance.spotInstanceRequestId !== undefined &&
+      !binding.spotRequestBound &&
+      (instance.state === 'PRIMING' || instance.state === 'WARM');
+    if (unbound) {
+      try {
+        await standbyOperations.bindSpotRequest({
+          instanceId: instance.instanceId,
+          spotInstanceRequestId: instance.spotInstanceRequestId as string,
+          instanceArn: instance.instanceArn,
+        });
+        await bestEffort(`record the spot request binding of '${instance.instanceId}'`, () =>
+          index.markSpotRequestBound(instance.instanceId),
+        );
+        binding.spotRequestBound = true;
+      } catch (error) {
+        logger.warn(
+          `Failed to bind the spot request of warm instance '${instance.instanceId}'.`,
+          failureDetails(error),
+        );
+        await bestEffort(`record a failed spot request binding of '${instance.instanceId}'`, () =>
+          index.recordSpotBindFailure(instance.instanceId),
+        );
+        binding.spotBindFailures = (binding.spotBindFailures ?? 0) + 1;
+      }
+    }
+    result.push({ ...instance, ...binding });
+  }
+  return result;
+}
+
 async function syncIndex(index: WarmIndexStore, items: WarmIndexItem[], read: Ec2StandbyRead): Promise<void> {
   const itemById = new Map(items.map((item) => [item.instanceId, item]));
   for (const instance of read.instances) {
@@ -169,8 +212,9 @@ export function createEc2PoolStandbyOperations(
       );
       await syncIndex(index(), items, read);
       const startFailures = new Map(items.map(({ instanceId, startFailures }) => [instanceId, startFailures]));
+      const instances = await bindUnboundSpotRequests(standbyOperations, index(), read.instances, items);
       return {
-        instances: read.instances.map((instance) => ({
+        instances: instances.map((instance) => ({
           ...instance,
           startFailures: startFailures.get(instance.instanceId),
         })),
@@ -213,6 +257,13 @@ export function createEc2PoolStandbyOperations(
         await bestEffort(`index launched warm instance '${instanceId}'`, () =>
           index().update({ instanceId, state: 'PRIMING' }),
         );
+      }
+      for (const { instanceId, bound } of result.spotRequests) {
+        if (bound) {
+          await bestEffort(`record the spot request binding of '${instanceId}'`, () =>
+            index().markSpotRequestBound(instanceId),
+          );
+        }
       }
       return {
         ...toControlPlaneCreateRunnerResult(result, config.scaleErrors),
