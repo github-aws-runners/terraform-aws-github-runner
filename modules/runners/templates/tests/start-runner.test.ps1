@@ -20,9 +20,18 @@ function Get-LocalUser { $null }
 function New-LocalUser { Log "New-LocalUser $args" }
 function Set-LocalUser { }
 function Get-LocalGroup { $null }
-function gcim { [pscustomobject]@{ LastBootUpTime = (Get-Date) } }
+function gcim { [pscustomobject]@{ LastBootUpTime = (Get-Date).AddSeconds(-[int]$env:BOOT_SECONDS_AGO) } }
 function shutdown.exe { Log "shutdown.exe $args" }
-function run-cmd { Log "run.cmd $args" }
+# With RUN_WAITS_FOR_DETACH the job lasts until the background detach has cancelled the request.
+function run-cmd {
+    Log "run.cmd $args"
+    if ($env:RUN_WAITS_FOR_DETACH) {
+        foreach ($i in 1..100) {
+            if (Test-Path "$sandbox/ProgramData/ghr/spot-request-cancelled") { break }
+            [Threading.Thread]::Sleep(100)
+        }
+    }
+}
 function config-cmd { Log "config.cmd $args" }
 function New-ScheduledTaskAction { [CmdletBinding()] param($Execute, $WorkingDirectory, $Argument) [pscustomobject]@{ Execute = $Execute; Argument = $Argument } }
 function New-ScheduledTaskTrigger { [CmdletBinding()] param([switch]$AtStartup) [pscustomobject]@{ AtStartup = [bool]$AtStartup } }
@@ -41,6 +50,7 @@ function Invoke-RestMethod {
     switch -Wildcard ($Uri) {
         '*/latest/api/token' { 'imds-token' }
         '*/meta-data/ami-id' { 'ami-0123' }
+        '*/meta-data/instance-life-cycle' { $env:LIFE_CYCLE }
         '*/dynamic/instance-identity/document' { [pscustomobject]@{ region = 'eu-west-1'; instanceId = $env:INSTANCE_ID } }
         default { throw "unexpected IMDS call $Uri" }
     }
@@ -64,9 +74,23 @@ function aws {
             if ($env:CONFIG_AFTER -and $polls -ge [int]$env:CONFIG_AFTER) { Set-Content "$sandbox/runner-config" 'x'; $hasConfig = $true }
             if ($hasConfig) { '[{"Name":"config","Value":"jit-config-blob"}]' } else { '[]' }
         }
+        'ec2 cancel-spot-instance-requests' {
+            if ($env:CANCEL_FAILS) { "An error occurred ($env:CANCEL_FAILS) when calling the CancelSpotInstanceRequests operation"; $global:LASTEXITCODE = 254 }
+        }
         default { }
     }
 }
+'@
+
+# The background detach runs in its own process, so it finds aws on PATH instead of the function above.
+$awsStub = @'
+#!/usr/bin/env bash
+echo "job: aws $*" >> "$SANDBOX/calls.log"
+if [ "$1 $2" = "ec2 cancel-spot-instance-requests" ] && [ -n "${CANCEL_FAILS:-}" ]; then
+  echo "An error occurred ($CANCEL_FAILS) when calling the CancelSpotInstanceRequests operation" >&2
+  exit 254
+fi
+exit 0
 '@
 
 function Render([string]$path) {
@@ -78,7 +102,14 @@ function New-Sandbox([hashtable]$Tags = @{}) {
     $env:INSTANCE_ID = $instanceId
     $env:CONFIG_AFTER = ''
     $env:REGISTER_FAIL = ''
+    $env:LIFE_CYCLE = 'on-demand'
+    $env:BOOT_SECONDS_AGO = '300'
+    $env:CANCEL_FAILS = ''
+    $env:RUN_WAITS_FOR_DETACH = ''
     New-Item -ItemType Directory -Path "$env:SANDBOX/actions-runner" | Out-Null
+    New-Item -ItemType Directory -Path "$env:SANDBOX/bin" | Out-Null
+    Set-Content "$env:SANDBOX/bin/aws" $awsStub
+    if (-not $IsWindows) { chmod +x "$env:SANDBOX/bin/aws" }
     New-Item -ItemType File -Path "$env:SANDBOX/calls.log" | Out-Null
     $allTags = @{ 'ghr:environment' = 'test'; 'ghr:ssm_config_path' = '/ghr/config'; 'ghr:runner_name_prefix' = 'test-' } + $Tags
     @{ Tags = @($allTags.GetEnumerator() | ForEach-Object { @{ Key = $_.Key; Value = $_.Value } }) } | ConvertTo-Json -Depth 4 | Set-Content "$env:SANDBOX/tags.json"
@@ -100,11 +131,13 @@ function New-Sandbox([hashtable]$Tags = @{}) {
 function Invoke-Boot([string]$scriptPath) {
     Set-Content "$env:SANDBOX/calls.log" ''
     Push-Location "$env:SANDBOX/actions-runner"
+    $path = $env:PATH
+    $env:PATH = "$env:SANDBOX/bin$([IO.Path]::PathSeparator)$path"
     try {
         $script:output = & pwsh -NoProfile -NonInteractive -Command ". '$env:SANDBOX/prelude.ps1'; . '$scriptPath'; exit `$LASTEXITCODE" 2>&1 | Out-String
         $script:exitCode = $LASTEXITCODE
     }
-    finally { Pop-Location }
+    finally { Pop-Location; $env:PATH = $path }
     $script:calls = Get-Content "$env:SANDBOX/calls.log" -Raw
 }
 
@@ -213,6 +246,82 @@ Invoke-Boot "$env:SANDBOX/start-runner.ps1"
 Check 'exits non-zero' { $script:exitCode -ne 0 }
 Check 'no shutdown' { -not (Called 'shutdown.exe') }
 Check 'no startup task' { -not (Called 'Register-ScheduledTask') }
+
+$cancelCall = 'aws ec2 cancel-spot-instance-requests --spot-instance-request-ids sir-0123'
+function CallCount([string]$text) { ([regex]::Matches($script:calls, [regex]::Escape($text))).Count }
+function CalledBefore([string]$first, [string]$second) {
+    $a = $script:calls.IndexOf($first); $b = $script:calls.IndexOf($second)
+    $a -ge 0 -and $b -ge 0 -and $a -lt $b
+}
+function New-ActivatedSpot {
+    New-Sandbox @{ 'ghr:warm-pool' = 'true'; 'ghr:warm-activated' = '2026-09-30T12:00:00Z'; 'ghr:spot-request-id' = 'sir-0123' }
+    $env:LIFE_CYCLE = 'spot'
+    Set-Content "$env:SANDBOX/runner-config" 'x'
+}
+
+Write-Host '# activated spot instance, job outlasting the detach delay -> cancels its own request in the background'
+New-ActivatedSpot
+$env:RUN_WAITS_FOR_DETACH = '1'
+Invoke-Boot "$env:SANDBOX/start-runner.ps1"
+Check 'mode RUN' { ModeIs 'RUN' }
+Check 'the background job cancels its own spot request' { Called "job: $cancelCall" }
+Check 'cancels once' { (CallCount $cancelCall) -eq 1 }
+Check 'cancels before terminating' { CalledBefore $cancelCall 'aws ec2 terminate-instances' }
+Check 'logs the cancel' { $script:output -match '(?m)^warm-pool-spot-request-cancelled seconds-after-boot=\d+\r?$' }
+Check 'self-terminates' { Called 'aws ec2 terminate-instances' }
+Check 'no shutdown' { -not (Called 'shutdown.exe') }
+
+Write-Host '# activated spot instance, job shorter than the detach delay -> cancels at exit, then terminates'
+New-ActivatedSpot
+$env:BOOT_SECONDS_AGO = '5'
+Invoke-Boot "$env:SANDBOX/start-runner.ps1"
+Check 'the background job was still waiting' { -not (Called "job: $cancelCall") }
+Check 'cancels its own spot request once' { (CallCount $cancelCall) -eq 1 }
+Check 'cancels before terminating' { CalledBefore $cancelCall 'aws ec2 terminate-instances' }
+Check 'self-terminates' { Called 'aws ec2 terminate-instances' }
+
+Write-Host '# activated spot instance whose cancel is denied -> shuts down instead of terminating'
+New-ActivatedSpot
+$env:BOOT_SECONDS_AGO = '5'
+$env:CANCEL_FAILS = 'UnauthorizedOperation'
+Invoke-Boot "$env:SANDBOX/start-runner.ps1"
+Check 'retries the cancel' { (CallCount $cancelCall) -ge 3 }
+Check 'logs the failure' { $script:output -match '(?m)^warm-pool-spot-request-cancel-failed reason=UnauthorizedOperation\r?$' }
+Check 'shuts down' { Called 'shutdown.exe /s /t 0 /f' }
+Check 'no terminate-instances' { -not (Called 'terminate-instances') }
+
+Write-Host '# activated spot instance without its request ID -> shuts down instead of terminating'
+New-Sandbox @{ 'ghr:warm-pool' = 'true'; 'ghr:warm-activated' = '2026-09-30T12:00:00Z' }
+$env:LIFE_CYCLE = 'spot'
+Set-Content "$env:SANDBOX/runner-config" 'x'
+Invoke-Boot "$env:SANDBOX/start-runner.ps1"
+Check 'makes no cancel call' { -not (Called 'cancel-spot-instance-requests') }
+Check 'logs the failure' { $script:output -match '(?m)^warm-pool-spot-request-cancel-failed reason=missing-request-id\r?$' }
+Check 'shuts down' { Called 'shutdown.exe /s /t 0 /f' }
+Check 'no terminate-instances' { -not (Called 'terminate-instances') }
+
+Write-Host '# activated on-demand instance -> no spot request'
+New-Sandbox @{ 'ghr:warm-pool' = 'true'; 'ghr:warm-activated' = '2026-09-30T12:00:00Z' }
+Set-Content "$env:SANDBOX/runner-config" 'x'
+Invoke-Boot "$env:SANDBOX/start-runner.ps1"
+Check 'makes no cancel call' { -not (Called 'cancel-spot-instance-requests') }
+Check 'self-terminates' { Called 'aws ec2 terminate-instances' }
+
+Write-Host '# cold spot instance -> leaves its request alone'
+New-Sandbox
+$env:LIFE_CYCLE = 'spot'
+Set-Content "$env:SANDBOX/runner-config" 'x'
+Invoke-Boot "$env:SANDBOX/start-runner.ps1"
+Check 'makes no cancel call' { -not (Called 'cancel-spot-instance-requests') }
+Check 'self-terminates' { Called 'aws ec2 terminate-instances' }
+
+Write-Host '# priming spot instance -> keeps its request'
+New-Sandbox @{ 'ghr:warm-pool' = 'true'; 'ghr:spot-request-id' = 'sir-0123' }
+$env:LIFE_CYCLE = 'spot'
+Invoke-Boot "$env:SANDBOX/start-runner.ps1"
+Check 'mode PRIME' { ModeIs 'PRIME' }
+Check 'makes no cancel call' { -not (Called 'cancel-spot-instance-requests') }
+Check 'schedules a shutdown' { Called 'shutdown.exe /s /t 60 /f' }
 
 Write-Host ''
 Write-Host "passed: $script:pass, failed: $script:fail"

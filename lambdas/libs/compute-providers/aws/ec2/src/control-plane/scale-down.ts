@@ -24,6 +24,7 @@ export function createEc2ScaleDownCapability(
 ): Omit<ScaleDownComputeProvider, 'type'> {
   // The runner listing also returns stopped warm instances, so the sweep needs no scan of its own.
   let stoppedWarm: Ec2StoppedWarmInstance[] | undefined;
+  let activatedSpotRequests: Record<string, string> = {};
   return {
     ...(standbyOperations && {
       sweepStandby: (environment: string) => {
@@ -36,6 +37,7 @@ export function createEc2ScaleDownCapability(
       if (orphan || !standbyOperations) return ec2Operations.list({ environment, orphan });
       const listing = await standbyOperations.listScaleDownInstances(environment);
       stoppedWarm = listing.stoppedWarm;
+      activatedSpotRequests = listing.activatedSpotRequests;
       return listing.runners;
     },
     bootTimeExceeded,
@@ -43,7 +45,13 @@ export function createEc2ScaleDownCapability(
     unmarkOrphan: (id) => ec2Operations.untag(id, [{ Key: 'ghr:orphan', Value: 'true' }]),
     markIdle: (id, at) => ec2Operations.tag(id, [{ Key: IDLE_DETECTED_TAG, Value: at }]),
     unmarkIdle: (id) => ec2Operations.untag(id, [{ Key: IDLE_DETECTED_TAG }]),
-    terminate: (id) => ec2Operations.terminate(id),
+    // An activated warm spot instance may still hold its persistent request; terminating it would respawn it.
+    terminate: (id) => {
+      const spotInstanceRequestId = activatedSpotRequests[id];
+      return standbyOperations && spotInstanceRequestId
+        ? standbyOperations.destroyInstance({ instanceId: id, spotInstanceRequestId })
+        : ec2Operations.terminate(id);
+    },
   };
 }
 

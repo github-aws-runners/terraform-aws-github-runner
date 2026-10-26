@@ -156,6 +156,7 @@ describe('Standby sweep', () => {
     mockListScaleDownInstances.mockResolvedValue({
       runners: [runner],
       stoppedWarm: [{ instanceId: 'i-expired', expiresAt: PAST, activated: false }],
+      activatedSpotRequests: {},
     });
     mockListStoppedWarmInstances.mockResolvedValue([]);
 
@@ -192,5 +193,27 @@ describe('Standby sweep', () => {
 
     expect(mockDestroyInstance).toHaveBeenCalledWith({ instanceId: 'i-fail', spotInstanceRequestId: undefined });
     expect(mockDestroyInstance).toHaveBeenCalledWith({ instanceId: 'i-ok', spotInstanceRequestId: undefined });
+  });
+
+  it('cancels the spot request of an activated warm runner before terminating it', async () => {
+    const runners = ['i-activated-spot', 'i-cold'].map(
+      (id) => ({ id, launchTime: new Date(), owner: 'o', type: 'Org' }) as RunnerInfo,
+    );
+    mockListScaleDownInstances.mockResolvedValue({
+      runners,
+      stoppedWarm: [],
+      activatedSpotRequests: { 'i-activated-spot': 'sir-activated' },
+    });
+
+    await sweepCapability.list('unit-test-environment');
+    await sweepCapability.terminate('i-activated-spot');
+    await sweepCapability.terminate('i-cold');
+
+    expect(mockDestroyInstance).toHaveBeenCalledWith({
+      instanceId: 'i-activated-spot',
+      spotInstanceRequestId: 'sir-activated',
+    });
+    expect(mockTerminateRunner).toHaveBeenCalledTimes(1);
+    expect(mockTerminateRunner).toHaveBeenCalledWith('i-cold');
   });
 });

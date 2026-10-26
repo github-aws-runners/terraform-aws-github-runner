@@ -426,3 +426,60 @@ describe('placement cache', () => {
     await expect(index.query()).resolves.toEqual([expect.objectContaining({ instanceId: 'i-1' })]);
   });
 });
+
+describe('spot request binding', () => {
+  it('marks an existing item bound and clears its failures', async () => {
+    mockDynamoClient.on(UpdateItemCommand).resolves({});
+
+    await index.markSpotRequestBound('i-1');
+
+    expect(updateInputs()[0]).toEqual({
+      TableName: 'warm-index',
+      Key: KEY('i-1'),
+      UpdateExpression: 'SET spotRequestBound = :true REMOVE spotBindFailures',
+      ConditionExpression: 'attribute_exists(#state)',
+      ExpressionAttributeNames: { '#state': 'state' },
+      ExpressionAttributeValues: { ':true': { BOOL: true } },
+    });
+  });
+
+  it('counts a failed binding of an existing item', async () => {
+    mockDynamoClient.on(UpdateItemCommand).resolves({});
+
+    await index.recordSpotBindFailure('i-1');
+
+    expect(updateInputs()[0]).toEqual({
+      TableName: 'warm-index',
+      Key: KEY('i-1'),
+      UpdateExpression: 'ADD spotBindFailures :one',
+      ConditionExpression: 'attribute_exists(#state)',
+      ExpressionAttributeNames: { '#state': 'state' },
+      ExpressionAttributeValues: { ':one': { N: '1' } },
+    });
+  });
+
+  it('does not create an item that was removed meanwhile', async () => {
+    mockDynamoClient.on(UpdateItemCommand).rejects(conditionalCheckFailed());
+
+    await expect(index.markSpotRequestBound('i-gone')).resolves.toBeUndefined();
+    await expect(index.recordSpotBindFailure('i-gone')).resolves.toBeUndefined();
+  });
+
+  it('reads the binding attributes', async () => {
+    mockDynamoClient.on(QueryCommand).resolves({
+      Items: [
+        {
+          environment: { S: 'unit-test' },
+          instanceId: { S: 'i-1' },
+          state: { S: 'WARM' },
+          spotRequestBound: { BOOL: true },
+          spotBindFailures: { N: '2' },
+        },
+      ],
+    });
+
+    await expect(index.query()).resolves.toEqual([
+      expect.objectContaining({ instanceId: 'i-1', spotRequestBound: true, spotBindFailures: 2 }),
+    ]);
+  });
+});

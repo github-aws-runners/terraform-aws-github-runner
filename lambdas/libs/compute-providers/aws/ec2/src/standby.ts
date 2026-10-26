@@ -1,5 +1,6 @@
 import {
   CancelSpotInstanceRequestsCommand,
+  CreateTagsCommand,
   DescribeInstancesCommand,
   DescribeLaunchTemplateVersionsCommand,
   DescribeSpotInstanceRequestsCommand,
@@ -48,6 +49,9 @@ const logger = createChildLogger('standby');
 export const WARM_POOL_TAG = 'ghr:warm-pool';
 export const WARM_ACTIVATED_TAG = 'ghr:warm-activated';
 export const WARM_EXPIRES_AT_TAG = 'ghr:warm-expires-at';
+// The runner role may cancel only the spot request whose tag equals its own instance ARN (D20).
+export const INSTANCE_ARN_TAG = 'ghr:instance-arn';
+export const SPOT_REQUEST_ID_TAG = 'ghr:spot-request-id';
 export const LAUNCH_TEMPLATE_VERSION_TAG = 'aws:ec2launchtemplate:version';
 // Extra lifetime beyond max age for `ghr:warm-expires-at` and the spot request `ValidUntil`.
 export const WARM_EXPIRY_MARGIN_HOURS = 24;
@@ -77,6 +81,7 @@ const SPOT_REQUEST_NOT_FOUND = 'InvalidSpotInstanceRequestID.NotFound';
 const PRIMING_EC2_STATES = new Set(['pending', 'running', 'stopping']);
 const LIVE_EC2_STATES = ['pending', 'running', 'stopping', 'stopped'];
 const GONE_EC2_STATES = ['shutting-down', 'terminated'];
+const RUNNING_EC2_STATES = ['pending', 'running'];
 const LIVE_SPOT_REQUEST_STATES = ['open', 'active', 'disabled'];
 const HOUR_IN_MS = 60 * 60 * 1000;
 // Matches the activation lease TTL; a younger activation may still be starting its instance.
@@ -106,6 +111,17 @@ export type Ec2WarmLaunchParameters = Pick<
 export type Ec2CurrentImageParameters = Partial<
   Pick<RunnerInputParameters, 'launchTemplateName' | 'amiIdSsmParameterName'>
 >;
+
+export interface Ec2SpotRequestBinding {
+  instanceId: string;
+  spotInstanceRequestId: string;
+  instanceArn?: string;
+}
+
+export interface Ec2WarmLaunchResult extends Ec2RunnerCreateResult {
+  /** Spot requests of the launched instances, and whether each now carries `ghr:instance-arn`. */
+  spotRequests: (Ec2SpotRequestBinding & { bound: boolean })[];
+}
 
 export interface StandbyClassificationInput {
   ec2State?: string;
@@ -142,6 +158,8 @@ export interface Ec2ScaleDownListing {
   /** Running and pending runners, as the runner listing returns them. */
   runners: RunnerInfo[];
   stoppedWarm: Ec2StoppedWarmInstance[];
+  /** Spot request IDs of activated warm runners, which must be cancelled before terminating (D20). */
+  activatedSpotRequests: Record<string, string>;
 }
 
 export interface Ec2StandbyRead extends StandbyListing {
@@ -151,7 +169,9 @@ export interface Ec2StandbyRead extends StandbyListing {
 
 export interface Ec2StandbyOperations {
   destroyInstance(input: DestroyStandbyInput): Promise<void>;
-  launchWarm(parameters: Ec2WarmLaunchParameters): Promise<Ec2RunnerCreateResult>;
+  launchWarm(parameters: Ec2WarmLaunchParameters): Promise<Ec2WarmLaunchResult>;
+  /** Tags the spot request with its instance ARN; throws when the ARN is unknown or the tag write fails. */
+  bindSpotRequest(binding: Ec2SpotRequestBinding): Promise<void>;
   /** Tag-filtered scan, classified from EC2 data only; slow with many matching instances. */
   listStandby(filters: ListStandbyInput): Promise<StandbyInstance[]>;
   /** Reads exactly the indexed instances by ID, with one by-ID spot request lookup. */
@@ -176,6 +196,7 @@ export function createEc2StandbyClient(ec2Client: EC2Client): Ec2StandbyClient {
       destroyInstance: (input) => runWithRequestSignal(signal, () => destroyInstance(ec2Client, input, signal)),
       launchWarm: (parameters) =>
         runWithRequestSignal(signal, () => launchWarmInstances(ec2Client, parameters, signal)),
+      bindSpotRequest: (binding) => runWithRequestSignal(signal, () => bindSpotRequest(ec2Client, binding, signal)),
       listStandby: (filters) => runWithRequestSignal(signal, () => listStandbyInstances(ec2Client, filters, signal)),
       readStandby: (indexed) => runWithRequestSignal(signal, () => readStandbyInstances(ec2Client, indexed, signal)),
       readWarmPoolInstances: (instanceIds) =>
@@ -264,6 +285,50 @@ async function cancelSpotRequest(
   }
 }
 
+export function instanceArn(
+  region: string | undefined,
+  ownerId: string | undefined,
+  instanceId: string,
+): string | undefined {
+  if (!region || !ownerId) return undefined;
+  const partition = region.startsWith('cn-') ? 'aws-cn' : region.startsWith('us-gov-') ? 'aws-us-gov' : 'aws';
+  return `arn:${partition}:ec2:${region}:${ownerId}:instance/${instanceId}`;
+}
+
+async function bindSpotRequest(
+  ec2Client: EC2Client,
+  { instanceId, spotInstanceRequestId, instanceArn: arn }: Ec2SpotRequestBinding,
+  signal: AbortSignal | undefined,
+): Promise<void> {
+  if (!arn) throw new Error(`The ARN of instance '${instanceId}' is unknown.`);
+  await ec2Client.send(
+    new CreateTagsCommand({ Resources: [spotInstanceRequestId], Tags: [{ Key: INSTANCE_ARN_TAG, Value: arn }] }),
+    { abortSignal: signal },
+  );
+}
+
+async function bindLaunchedSpotRequests(
+  ec2Client: EC2Client,
+  bindings: Ec2SpotRequestBinding[],
+  signal: AbortSignal | undefined,
+): Promise<Ec2WarmLaunchResult['spotRequests']> {
+  const results: Ec2WarmLaunchResult['spotRequests'] = [];
+  for (const binding of bindings) {
+    try {
+      await bindSpotRequest(ec2Client, binding, signal);
+      results.push({ ...binding, bound: true });
+    } catch (error) {
+      throwIfAborted(signal, error);
+      logger.warn(`Failed to bind spot request '${binding.spotInstanceRequestId}' to its warm instance.`, {
+        instanceId: binding.instanceId,
+        ...failureDetails(error),
+      });
+      results.push({ ...binding, bound: false });
+    }
+  }
+  return results;
+}
+
 async function currentImage(
   ec2Client: EC2Client,
   parameters: Ec2CurrentImageParameters,
@@ -309,7 +374,7 @@ async function launchWarmInstances(
   ec2Client: EC2Client,
   parameters: Ec2WarmLaunchParameters,
   signal: AbortSignal | undefined,
-): Promise<Ec2RunnerCreateResult> {
+): Promise<Ec2WarmLaunchResult> {
   let amiId: string | undefined;
   try {
     amiId = await getAmiIdOverride(parameters);
@@ -317,7 +382,7 @@ async function launchWarmInstances(
     throwIfAborted(signal, error);
     const failureCodes = requestFailureCodes(error);
     logger.warn('Warm launch failed before an EC2 request could be made.', { ...failureDetails(error), failureCodes });
-    return { instances: [], failedInstanceCount: parameters.numberOfRunners, failureCodes };
+    return { instances: [], failedInstanceCount: parameters.numberOfRunners, failureCodes, spotRequests: [] };
   }
 
   const expiresAt = new Date(Date.now() + (parameters.maxAgeHours + WARM_EXPIRY_MARGIN_HOURS) * HOUR_IN_MS);
@@ -349,6 +414,7 @@ async function launchWarmInstances(
   });
 
   const instances: string[] = [];
+  const spotBindings: Ec2SpotRequestBinding[] = [];
   const failureCodes = new Set<Ec2RunnerFailureCode>();
   let candidates = plan.pairs;
   while (instances.length < parameters.numberOfRunners && candidates.length > 0) {
@@ -373,6 +439,14 @@ async function launchWarmInstances(
         );
         const launched = result.Instances?.flatMap((instance) => instance.InstanceId ?? []) ?? [];
         instances.push(...launched);
+        for (const instance of result.Instances ?? []) {
+          if (!instance.InstanceId || !instance.SpotInstanceRequestId) continue;
+          spotBindings.push({
+            instanceId: instance.InstanceId,
+            spotInstanceRequestId: instance.SpotInstanceRequestId,
+            instanceArn: instanceArn(process.env.AWS_REGION, result.OwnerId, instance.InstanceId),
+          });
+        }
         logger.info('Warm launch request.', { ...placementFields(pair), requested, launched: launched.length });
         if (launched.length < requested) exhausted.add(pair);
       } catch (error) {
@@ -384,7 +458,12 @@ async function launchWarmInstances(
             requested,
             ...failureDetails(error),
           });
-          return warmLaunchResult(parameters, instances, failureCodes);
+          return warmLaunchResult(
+            parameters,
+            instances,
+            failureCodes,
+            await bindLaunchedSpotRequests(ec2Client, spotBindings, signal),
+          );
         }
         logger.info('Warm launch capacity error, moving its share to the next pools.', {
           ...placementFields(pair),
@@ -396,7 +475,12 @@ async function launchWarmInstances(
     }
     candidates = candidates.filter((pair) => !exhausted.has(pair));
   }
-  return warmLaunchResult(parameters, instances, failureCodes);
+  return warmLaunchResult(
+    parameters,
+    instances,
+    failureCodes,
+    await bindLaunchedSpotRequests(ec2Client, spotBindings, signal),
+  );
 }
 
 function placementFields({ instanceType, subnetId, azId, score, price }: WarmPlacementPair) {
@@ -407,7 +491,8 @@ function warmLaunchResult(
   parameters: Ec2WarmLaunchParameters,
   instances: string[],
   failureCodes: Set<Ec2RunnerFailureCode>,
-): Ec2RunnerCreateResult {
+  spotRequests: Ec2WarmLaunchResult['spotRequests'],
+): Ec2WarmLaunchResult {
   const failedInstanceCount = Math.max(parameters.numberOfRunners - instances.length, 0);
   if (instances.length > 0) logger.info(`Launched warm instance(s): ${instances.join(',')}`);
   if (failedInstanceCount > 0) {
@@ -416,7 +501,12 @@ function warmLaunchResult(
       failureCodes: [...failureCodes],
     });
   }
-  return { instances, failedInstanceCount, failureCodes: failedInstanceCount > 0 ? [...failureCodes] : [] };
+  return {
+    instances,
+    failedInstanceCount,
+    failureCodes: failedInstanceCount > 0 ? [...failureCodes] : [],
+    spotRequests,
+  };
 }
 
 function buildWarmRunInstancesInput(
@@ -578,6 +668,11 @@ function toStandbyInstance(instance: Instance, request: SpotInstanceRequest | un
     instanceType: instance.InstanceType,
     availabilityZone: instance.Placement?.AvailabilityZone,
     spotInstanceRequestId: instance.SpotInstanceRequestId,
+    instanceArn: instanceArn(
+      process.env.AWS_REGION,
+      instance.NetworkInterfaces?.[0]?.OwnerId,
+      instance.InstanceId as string,
+    ),
     expiresAt: tagValue(instance, WARM_EXPIRES_AT_TAG),
   };
 }
@@ -672,6 +767,18 @@ async function readStandbyInstances(
       releasedInstanceIds.push(entry.instanceId);
       continue;
     }
+    // AWS terminates the instance of a cancelled disabled request, so only detach a running instance when active.
+    const running = !entry.gone && RUNNING_EC2_STATES.includes(entry.instance?.State?.Name ?? '');
+    if (running && request.State !== 'active') {
+      logger.warn(
+        `Not cancelling spot request '${entry.spotInstanceRequestId}' of running instance '${entry.instanceId}'.`,
+        {
+          spotRequestState: request.State,
+          spotStatusCode: request.Status?.Code,
+        },
+      );
+      continue;
+    }
     const replacementInstanceId =
       request.InstanceId !== undefined && request.InstanceId !== entry.instanceId ? request.InstanceId : undefined;
     orphanedSpotRequests.push({
@@ -738,10 +845,18 @@ async function listScaleDownInstances(
     signal,
   );
   const stopped = (instance: Instance) => instance.State?.Name === 'stopped';
+  const running = instances.filter((instance) => !stopped(instance));
   return {
-    runners: instances.filter((instance) => !stopped(instance)).map(toRunnerInfo),
+    runners: running.map(toRunnerInfo),
     stoppedWarm: instances
       .filter((instance) => stopped(instance) && tagValue(instance, WARM_POOL_TAG) === 'true')
       .flatMap(toStoppedWarmInstance),
+    activatedSpotRequests: Object.fromEntries(
+      running.flatMap((instance) =>
+        instance.InstanceId && instance.SpotInstanceRequestId && tagValue(instance, WARM_ACTIVATED_TAG) !== undefined
+          ? [[instance.InstanceId, instance.SpotInstanceRequestId]]
+          : [],
+      ),
+    ),
   };
 }

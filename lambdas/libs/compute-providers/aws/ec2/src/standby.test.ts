@@ -1,5 +1,6 @@
 import {
   CancelSpotInstanceRequestsCommand,
+  CreateTagsCommand,
   DescribeInstancesCommand,
   type DescribeInstancesResult,
   DescribeLaunchTemplateVersionsCommand,
@@ -21,6 +22,7 @@ import {
   classifyStandbyInstance,
   createEc2StandbyClient,
   type Ec2WarmLaunchParameters,
+  instanceArn,
   type StandbyClassificationInput,
   WARM_EXPIRY_MARGIN_HOURS,
 } from './standby';
@@ -199,7 +201,7 @@ describe('launchWarm', () => {
   it('launches on-demand warm instances that stop on shutdown without market options', async () => {
     const result = await standby.launchWarm(baseParameters);
 
-    expect(result).toEqual({ instances: ['i-warm'], failedInstanceCount: 0, failureCodes: [] });
+    expect(result).toEqual({ instances: ['i-warm'], failedInstanceCount: 0, failureCodes: [], spotRequests: [] });
     expect(runInstancesInputs()).toEqual([
       {
         LaunchTemplate: { LaunchTemplateName: 'lt-1', Version: '$Default' },
@@ -259,12 +261,105 @@ describe('launchWarm', () => {
     ]);
   });
 
+  describe('spot request binding', () => {
+    const spotLaunch = {
+      ...baseParameters,
+      numberOfRunners: 2,
+      ec2instanceCriteria: { ...baseParameters.ec2instanceCriteria, targetCapacityType: 'spot' as const },
+    };
+
+    beforeEach(() => {
+      let launched = 0;
+      mockEC2Client.on(RunInstancesCommand).callsFake((input: RunInstancesCommandInput) => ({
+        OwnerId: '123456789012',
+        Instances: Array.from({ length: input.MaxCount ?? 1 }, () => {
+          launched++;
+          return { InstanceId: `i-${launched}`, SpotInstanceRequestId: `sir-${launched}` };
+        }),
+      }));
+    });
+
+    it('tags each spot request with the ARN of its instance', async () => {
+      const result = await standby.launchWarm(spotLaunch);
+
+      expect(result.spotRequests).toEqual([
+        {
+          instanceId: 'i-1',
+          spotInstanceRequestId: 'sir-1',
+          instanceArn: 'arn:aws:ec2:eu-east-1:123456789012:instance/i-1',
+          bound: true,
+        },
+        {
+          instanceId: 'i-2',
+          spotInstanceRequestId: 'sir-2',
+          instanceArn: 'arn:aws:ec2:eu-east-1:123456789012:instance/i-2',
+          bound: true,
+        },
+      ]);
+      expect(mockEC2Client).toHaveReceivedCommandWith(CreateTagsCommand, {
+        Resources: ['sir-1'],
+        Tags: [{ Key: 'ghr:instance-arn', Value: 'arn:aws:ec2:eu-east-1:123456789012:instance/i-1' }],
+      });
+      expect(mockEC2Client).toHaveReceivedCommandTimes(CreateTagsCommand, 2);
+    });
+
+    it('still reports the launch when a binding fails', async () => {
+      mockEC2Client.on(CreateTagsCommand).rejectsOnce(awsError('RequestLimitExceeded')).resolves({});
+
+      const result = await standby.launchWarm(spotLaunch);
+
+      expect(result.instances).toEqual(['i-1', 'i-2']);
+      expect(result.spotRequests.map(({ instanceId, bound }) => [instanceId, bound])).toEqual([
+        ['i-1', false],
+        ['i-2', true],
+      ]);
+    });
+
+    it('does not bind without the account of the instance', async () => {
+      mockEC2Client
+        .on(RunInstancesCommand)
+        .resolves({ Instances: [{ InstanceId: 'i-1', SpotInstanceRequestId: 'sir-1' }] });
+
+      const result = await standby.launchWarm({ ...spotLaunch, numberOfRunners: 1 });
+
+      expect(result.spotRequests).toEqual([
+        { instanceId: 'i-1', spotInstanceRequestId: 'sir-1', instanceArn: undefined, bound: false },
+      ]);
+      expect(mockEC2Client).not.toHaveReceivedCommand(CreateTagsCommand);
+    });
+
+    it('binds a request later through the standby operations', async () => {
+      await standby.bindSpotRequest({
+        instanceId: 'i-1',
+        spotInstanceRequestId: 'sir-1',
+        instanceArn: 'arn:aws:ec2:eu-east-1:123456789012:instance/i-1',
+      });
+
+      expect(mockEC2Client).toHaveReceivedCommandWith(CreateTagsCommand, {
+        Resources: ['sir-1'],
+        Tags: [{ Key: 'ghr:instance-arn', Value: 'arn:aws:ec2:eu-east-1:123456789012:instance/i-1' }],
+      });
+      await expect(standby.bindSpotRequest({ instanceId: 'i-1', spotInstanceRequestId: 'sir-1' })).rejects.toThrow(
+        "The ARN of instance 'i-1' is unknown.",
+      );
+    });
+
+    it.each([
+      ['eu-west-1', 'arn:aws:ec2:eu-west-1:123456789012:instance/i-1'],
+      ['cn-north-1', 'arn:aws-cn:ec2:cn-north-1:123456789012:instance/i-1'],
+      ['us-gov-west-1', 'arn:aws-us-gov:ec2:us-gov-west-1:123456789012:instance/i-1'],
+    ])('builds the instance ARN in %s', (region, arn) => {
+      expect(instanceArn(region, '123456789012', 'i-1')).toBe(arn);
+      expect(instanceArn(region, undefined, 'i-1')).toBeUndefined();
+    });
+  });
+
   it('launches every requested instance with the first instance type and subnet when capacity is available', async () => {
     mockEC2Client.on(RunInstancesCommand).resolves({ Instances: [{ InstanceId: 'i-1' }, { InstanceId: 'i-2' }] });
 
     const result = await standby.launchWarm({ ...baseParameters, numberOfRunners: 2 });
 
-    expect(result).toEqual({ instances: ['i-1', 'i-2'], failedInstanceCount: 0, failureCodes: [] });
+    expect(result).toEqual({ instances: ['i-1', 'i-2'], failedInstanceCount: 0, failureCodes: [], spotRequests: [] });
     expect(runInstancesInputs()).toHaveLength(1);
     expect(runInstancesInputs()[0]).toMatchObject({ MinCount: 1, MaxCount: 2 });
   });
@@ -278,7 +373,7 @@ describe('launchWarm', () => {
 
     const result = await standby.launchWarm(baseParameters);
 
-    expect(result).toEqual({ instances: ['i-fallback'], failedInstanceCount: 0, failureCodes: [] });
+    expect(result).toEqual({ instances: ['i-fallback'], failedInstanceCount: 0, failureCodes: [], spotRequests: [] });
     expect(runInstancesInputs().map((input) => [input.InstanceType, input.SubnetId])).toEqual([
       ['m5.large', 'subnet-a'],
       ['m5.large', 'subnet-b'],
@@ -322,6 +417,7 @@ describe('launchWarm', () => {
       instances: [],
       failedInstanceCount: 2,
       failureCodes: ['aws-name:SpotMaxPriceTooLow'],
+      spotRequests: [],
     });
     expect(runInstancesInputs()).toHaveLength(4);
   });
@@ -335,6 +431,7 @@ describe('launchWarm', () => {
       instances: [],
       failedInstanceCount: 1,
       failureCodes: ['aws-name:UnauthorizedOperation'],
+      spotRequests: [],
     });
     expect(runInstancesInputs()).toHaveLength(1);
   });
@@ -413,7 +510,12 @@ describe('launchWarm', () => {
 
       const result = await standby.launchWarm({ ...spotParameters, numberOfRunners: 3 });
 
-      expect(result).toEqual({ instances: ['i-1', 'i-2', 'i-3'], failedInstanceCount: 0, failureCodes: [] });
+      expect(result).toEqual({
+        instances: ['i-1', 'i-2', 'i-3'],
+        failedInstanceCount: 0,
+        failureCodes: [],
+        spotRequests: [],
+      });
       expect(launchedPairs()).toEqual([
         'm5.large@subnet-b:1',
         'c5.large@subnet-b:1',
@@ -444,6 +546,7 @@ describe('launchWarm', () => {
         instances: ['i-1'],
         failedInstanceCount: 3,
         failureCodes: ['aws-name:UnauthorizedOperation'],
+        spotRequests: [],
       });
       expect(launchedPairs()).toHaveLength(2);
     });
@@ -506,6 +609,7 @@ describe('launchWarm', () => {
       instances: [],
       failedInstanceCount: 1,
       failureCodes: ['aws-name:ParameterNotFound'],
+      spotRequests: [],
     });
     expect(mockEC2Client).not.toHaveReceivedCommand(RunInstancesCommand);
   });
@@ -891,6 +995,39 @@ describe('readStandby', () => {
     expect(result.releasedInstanceIds).toEqual(['i-going', 'i-missing']);
   });
 
+  it('never reports the disabled request of a running activated instance, which AWS would terminate', async () => {
+    mockEC2Client.on(DescribeInstancesCommand).resolves(
+      describeResult([
+        {
+          InstanceId: 'i-running',
+          State: { Name: 'running' },
+          SpotInstanceRequestId: 'sir-disabled',
+          Tags: activated('2026-09-30T11:00:00.000Z'),
+        },
+        {
+          InstanceId: 'i-stopped',
+          State: { Name: 'stopped' },
+          SpotInstanceRequestId: 'sir-stopped',
+          Tags: activated('2026-09-30T11:00:00.000Z'),
+        },
+      ]),
+    );
+    mockEC2Client.on(DescribeSpotInstanceRequestsCommand).resolves({
+      SpotInstanceRequests: [
+        { SpotInstanceRequestId: 'sir-disabled', State: 'disabled', InstanceId: 'i-running' },
+        { SpotInstanceRequestId: 'sir-stopped', State: 'disabled', InstanceId: 'i-stopped' },
+      ],
+    });
+
+    const result = await standby.readStandby([{ instanceId: 'i-running' }, { instanceId: 'i-stopped' }]);
+
+    expect(result.orphanedSpotRequests).toEqual([
+      { spotInstanceRequestId: 'sir-stopped', state: 'disabled', instanceId: 'i-stopped' },
+    ]);
+    // Kept in the index, so a later run detaches it once the request is active.
+    expect(result.releasedInstanceIds).toEqual([]);
+  });
+
   it('releases settled activated and gone on-demand instances', async () => {
     mockEC2Client.on(DescribeInstancesCommand).resolves(
       describeResult([
@@ -978,6 +1115,13 @@ describe('listScaleDownInstances', () => {
           ],
         },
         { InstanceId: 'i-stopped-other', State: { Name: 'stopped' } },
+        {
+          InstanceId: 'i-activated-spot',
+          State: { Name: 'running' },
+          SpotInstanceRequestId: 'sir-activated',
+          Tags: [{ Key: 'ghr:warm-activated', Value: '2026-09-30T11:00:00.000Z' }],
+        },
+        { InstanceId: 'i-cold-spot', State: { Name: 'running' }, SpotInstanceRequestId: 'sir-cold' },
       ]),
     );
 
@@ -991,7 +1135,12 @@ describe('listScaleDownInstances', () => {
         { Name: 'tag:ghr:Application', Values: ['github-action-runner'] },
       ],
     });
-    expect(result.runners).toEqual([expect.objectContaining({ id: 'i-runner', owner: 'owner', type: 'Org' })]);
+    expect(result.runners).toEqual([
+      expect.objectContaining({ id: 'i-runner', owner: 'owner', type: 'Org' }),
+      expect.objectContaining({ id: 'i-activated-spot' }),
+      expect.objectContaining({ id: 'i-cold-spot' }),
+    ]);
+    expect(result.activatedSpotRequests).toEqual({ 'i-activated-spot': 'sir-activated' });
     expect(result.stoppedWarm).toEqual([
       {
         instanceId: 'i-expired',

@@ -163,6 +163,24 @@ describe('reconcileWarmPool', () => {
       expect(result.evictions).toEqual({ 'start-failed': 1 });
     });
 
+    it('replaces spot instances whose request could not be bound to them three times', async () => {
+      mockListing([
+        instance('i-unbound', 'WARM', HOUR, { spotInstanceRequestId: 'sir-1', spotBindFailures: 3 }),
+        instance('i-priming', 'PRIMING', MINUTE, { spotInstanceRequestId: 'sir-2', spotBindFailures: 3 }),
+        instance('i-retrying', 'WARM', HOUR, { spotInstanceRequestId: 'sir-3', spotBindFailures: 2 }),
+        instance('i-bound', 'WARM', HOUR, {
+          spotInstanceRequestId: 'sir-4',
+          spotRequestBound: true,
+          spotBindFailures: 5,
+        }),
+      ]);
+
+      const result = await reconcile(4);
+
+      expect(destroyedIds()).toEqual(['i-unbound', 'i-priming']);
+      expect(result.evictions).toEqual({ 'spot-request-unbound': 2 });
+    });
+
     it('never touches ACTIVE instances', async () => {
       mockListing([
         instance('i-active-old', 'ACTIVE', 300 * HOUR, { imageId: 'ami-old', launchTemplateVersion: '1' }),
