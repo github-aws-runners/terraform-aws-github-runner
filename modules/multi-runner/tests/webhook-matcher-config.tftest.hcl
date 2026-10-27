@@ -164,3 +164,29 @@ run "changed_matcher_config_uses_new_chunk_names" {
     error_message = "A changed matcher config must use new chunk names."
   }
 }
+
+run "changed_parameter_tier_uses_new_chunk_names" {
+  command = apply
+
+  variables {
+    matcher_config_parameter_store_tier = "Advanced"
+    multi_runner_config = {
+      stable = {
+        runner_config = {
+          runner_os             = "linux"
+          runner_architecture   = "x64"
+          instance_types        = ["m5.large"]
+          runners_maximum_count = 1
+        }
+        matcherConfig = {
+          labelMatchers = [["first-label"]]
+        }
+      }
+    }
+  }
+
+  assert {
+    condition     = output.webhook.lambda.environment[0].variables["PARAMETER_RUNNER_MATCHER_CONFIG_PATH"] != run.matcher_config_chunk_names_include_config_hash.webhook.lambda.environment[0].variables["PARAMETER_RUNNER_MATCHER_CONFIG_PATH"]
+    error_message = "A changed parameter tier must use new chunk names."
+  }
+}

@@ -42,7 +42,7 @@ locals {
   matcher_json_chunks = [for i in range(0, length(local.matcher_json), local.chunk_size) : substr(local.matcher_json, i, local.chunk_size)]
 
   matcher_config_path        = "${var.storage_provider.aws.ssm.paths.root}/${var.storage_provider.aws.ssm.paths.webhook}/runner-matcher-config"
-  matcher_config_hash        = substr(sha256(local.matcher_json), 0, 12)
+  matcher_config_hash        = substr(sha256(jsonencode([var.matcher_config_parameter_store_tier, local.matcher_json_chunks])), 0, 12)
   matcher_config_arn_pattern = "arn:${var.aws_partition}:ssm:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:parameter${local.matcher_config_path}*"
 }
 

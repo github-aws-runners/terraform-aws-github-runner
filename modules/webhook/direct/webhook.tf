@@ -16,7 +16,7 @@ resource "aws_lambda_function" "webhook" {
   memory_size       = var.config.lambda_memory_size
   timeout           = var.config.lambda_timeout
   architectures     = [var.config.lambda_architecture]
-  depends_on        = [aws_cloudwatch_log_group.webhook]
+  depends_on        = [aws_cloudwatch_log_group.webhook, aws_iam_role_policy.webhook_ssm]
 
   environment {
     variables = merge({

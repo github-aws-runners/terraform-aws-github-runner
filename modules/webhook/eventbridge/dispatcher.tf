@@ -37,7 +37,7 @@ resource "aws_lambda_function" "dispatcher" {
   memory_size       = var.config.lambda_memory_size
   timeout           = var.config.lambda_timeout
   architectures     = [var.config.lambda_architecture]
-  depends_on        = [aws_cloudwatch_log_group.dispatcher]
+  depends_on        = [aws_cloudwatch_log_group.dispatcher, aws_iam_role_policy.dispatcher_ssm]
 
   environment {
     variables = merge({
