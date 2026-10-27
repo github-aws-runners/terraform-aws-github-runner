@@ -1078,7 +1078,7 @@ variable "associate_public_ipv4_address" {
 }
 
 variable "runner_network_interfaces" {
-  description = "Advanced network interface configuration for the runner launch template. See https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#network-interfaces for details. Leave unset (default) to keep using associate_public_ipv4_address for a simple single-interface setup; set this to fully control one or more interfaces."
+  description = "Advanced network interface configuration for the runner launch template. See https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#network-interfaces for details. Leave unset (default) to keep using associate_public_ipv4_address for a simple single-interface setup; set this to fully control one or more interfaces. When set, security groups are set on the interfaces, not on the instance. An interface without `security_groups` gets the managed security group and `runner_additional_security_group_ids`, unless it attaches an existing `network_interface_id`."
   type = list(object({
     associate_carrier_ip_address = optional(bool)
     associate_public_ip_address  = optional(bool)

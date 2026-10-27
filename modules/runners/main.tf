@@ -158,13 +158,15 @@ locals {
     ena_srd_specification             = null
   }
 
+  runner_security_group_ids = compact(concat(
+    var.enable_managed_runner_security_group ? [aws_security_group.runner_sg[0].id] : [],
+    var.runner_additional_security_group_ids,
+  ))
+
   network_interfaces = length(var.network_interfaces) > 0 ? var.network_interfaces : (
     var.associate_public_ipv4_address ? [merge(local.network_interfaces_zero, {
       associate_public_ip_address = true
-      security_groups = compact(concat(
-        var.enable_managed_runner_security_group ? [aws_security_group.runner_sg[0].id] : [],
-        var.runner_additional_security_group_ids,
-      ))
+      security_groups             = local.runner_security_group_ids
     })] : []
   )
 }
@@ -264,10 +266,8 @@ resource "aws_launch_template" "runner" {
   key_name                             = var.key_name
   ebs_optimized                        = var.ebs_optimized
 
-  vpc_security_group_ids = !var.associate_public_ipv4_address ? compact(concat(
-    var.enable_managed_runner_security_group ? [aws_security_group.runner_sg[0].id] : [],
-    var.runner_additional_security_group_ids,
-  )) : []
+  # EC2 rejects instance-level security groups combined with network interfaces.
+  vpc_security_group_ids = length(local.network_interfaces) == 0 ? local.runner_security_group_ids : []
 
   tag_specifications {
     resource_type = "instance"
@@ -359,7 +359,7 @@ resource "aws_launch_template" "runner" {
       network_interface_id         = try(network_interfaces.value.network_interface_id, null)
       primary_ipv6                 = try(network_interfaces.value.primary_ipv6, null)
       private_ip_address           = try(network_interfaces.value.private_ip_address, null)
-      security_groups              = try(network_interfaces.value.security_groups, null)
+      security_groups              = try(network_interfaces.value.security_groups, null) != null || try(network_interfaces.value.network_interface_id, null) != null ? try(network_interfaces.value.security_groups, null) : local.runner_security_group_ids
       subnet_id                    = try(network_interfaces.value.subnet_id, null)
 
       dynamic "connection_tracking_specification" {
