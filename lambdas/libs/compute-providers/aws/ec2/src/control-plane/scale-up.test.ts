@@ -131,6 +131,7 @@ beforeEach(() => {
   delete process.env.POWERTOOLS_TRACE_ENABLED;
   delete process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS;
   delete process.env.USE_DEDICATED_HOST;
+  delete process.env.ON_DEMAND_OVERRIDE_LAUNCH_TEMPLATE_NAME;
 
   mockGetDefaultBlockDeviceNameFromLaunchTemplate.mockResolvedValue('/dev/sda1');
 
@@ -486,6 +487,30 @@ describe('scaleUp with GHES', () => {
         ).rejects.toThrow(InvalidRunnerLabelsError);
 
         expect(mockCreateRunner).not.toHaveBeenCalled();
+      });
+
+      it('routes an on-demand override to the on-demand-override launch template when configured', async () => {
+        process.env.ON_DEMAND_OVERRIDE_LAUNCH_TEMPLATE_NAME = 'lt-1-on-demand-override';
+
+        await createProviderRunners({ labels: ['self-hosted', 'ghr-ec2-capacity-type:on-demand'] });
+
+        expect(mockCreateRunner).toHaveBeenCalledWith(
+          expect.objectContaining({ launchTemplateName: 'lt-1-on-demand-override' }),
+        );
+      });
+
+      it('keeps the default launch template for a spot runner even when an override template is configured', async () => {
+        process.env.ON_DEMAND_OVERRIDE_LAUNCH_TEMPLATE_NAME = 'lt-1-on-demand-override';
+
+        await createProviderRunners({ labels: ['self-hosted', 'ghr-ec2-capacity-type:spot'] });
+
+        expect(mockCreateRunner).toHaveBeenCalledWith(expect.objectContaining({ launchTemplateName: 'lt-1' }));
+      });
+
+      it('keeps the default launch template for an on-demand override when no override template is configured', async () => {
+        await createProviderRunners({ labels: ['self-hosted', 'ghr-ec2-capacity-type:on-demand'] });
+
+        expect(mockCreateRunner).toHaveBeenCalledWith(expect.objectContaining({ launchTemplateName: 'lt-1' }));
       });
     });
 

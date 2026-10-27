@@ -24,6 +24,7 @@ resource "aws_lambda_function" "scale_down" {
       SCALE_DOWN_IDLE_CONFIRMATION_SECONDS     = var.config.scale_down.idle_confirmation_seconds
       NODE_TLS_REJECT_UNAUTHORIZED             = var.config.github.enterprise_server.url != null && !var.config.github.enterprise_server.ssl_verify ? 0 : 1
       POWERTOOLS_LOGGER_LOG_EVENT              = var.config.observability.logs.level == "debug" ? "true" : "false"
+      RUNNER_NAME_PREFIX                       = var.config.runner.name_prefix
       SCALE_DOWN_CONFIG                        = jsonencode(var.config.scale_down.idle_config)
       POWERTOOLS_SERVICE_NAME                  = "${var.config.prefix}-scale-down"
       POWERTOOLS_METRICS_NAMESPACE             = var.config.observability.metrics.namespace
