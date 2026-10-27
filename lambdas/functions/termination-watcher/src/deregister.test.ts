@@ -1,7 +1,8 @@
+import { request } from '@octokit/request';
 import { Instance } from '@aws-sdk/client-ec2';
 import { createCommonStorage, type GitHubAppCredentialsStore } from '@aws-github-runner/storage-providers';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { deregisterRunner, createThrottleOptions, resetAppCredentialsCache } from './deregister';
+import { deregisterRunner, handleDeregisterRetry, createThrottleOptions, resetAppCredentialsCache } from './deregister';
 import { Config } from './ConfigResolver';
 import type { EndpointDefaults } from '@octokit/types';
 
@@ -34,8 +35,13 @@ const mockApps = {
   getRepoInstallation: vi.fn(),
 };
 
-function MockOctokit() {
+const mockHookAfter = vi.fn();
+
+const mockOctokitOptions = vi.fn();
+function MockOctokit(options: unknown) {
+  mockOctokitOptions(options);
   return {
+    hook: { after: mockHookAfter },
     actions: mockActions,
     apps: mockApps,
     paginate: mockPaginate,
@@ -112,6 +118,72 @@ describe('deregisterRunner', () => {
     resetAppCredentialsCache();
     mockedCreateCommonStorage.mockReturnValue({ githubAppCredentials: credentialsStore });
     setupAuthMocks();
+  });
+
+  it('preserves the GHES endpoint for additional-App SQS retries', async () => {
+    const endpoint = 'https://github.example.com/api/v3';
+    vi.stubEnv('GHES_URL', endpoint);
+    mockGetCredentials.mockResolvedValue([
+      { appId: 1, privateKey: 'one' },
+      { appId: 2, privateKey: 'two' },
+    ]);
+    mockApps.getOrgInstallation.mockResolvedValue({ data: { id: 222 } });
+    mockPaginate.iterator.mockReturnValue(
+      (async function* () {
+        yield { data: [{ id: 42, name: `runner-${orgInstance.InstanceId}` }] };
+      })(),
+    );
+    mockActions.deleteSelfHostedRunnerFromOrg.mockResolvedValue({});
+    const random = vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    try {
+      await handleDeregisterRetry('queue', {
+        instanceId: orgInstance.InstanceId!,
+        owner: 'test-org',
+        runnerType: 'Org',
+        runnerId: 0,
+        retryCount: 1,
+      });
+      expect(request.defaults).toHaveBeenCalledTimes(2);
+      expect(request.defaults).toHaveBeenNthCalledWith(1, { baseUrl: endpoint });
+      expect(request.defaults).toHaveBeenNthCalledWith(2, { baseUrl: endpoint });
+      const configuredRequest = vi.mocked(request.defaults).mock.results[0].value;
+      expect(mockCreateAppAuth).toHaveBeenNthCalledWith(1, { appId: 2, privateKey: 'two', request: configuredRequest });
+      expect(mockCreateAppAuth).toHaveBeenNthCalledWith(2, {
+        appId: 2,
+        privateKey: 'two',
+        installationId: 222,
+        request: configuredRequest,
+      });
+      expect(mockOctokitOptions).toHaveBeenCalledTimes(2);
+      for (const [options] of mockOctokitOptions.mock.calls)
+        expect(options).toEqual(expect.objectContaining({ baseUrl: endpoint }));
+      expect(mockActions.deleteSelfHostedRunnerFromOrg).toHaveBeenCalledWith({ org: 'test-org', runner_id: 42 });
+    } finally {
+      random.mockRestore();
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it('deregisters through an additional App when it is selected', async () => {
+    mockGetCredentials.mockResolvedValue([
+      { appId: 1, privateKey: 'one' },
+      { appId: 2, privateKey: 'two' },
+    ]);
+    mockApps.getOrgInstallation.mockResolvedValue({ data: { id: 222 } });
+    mockPaginate.iterator.mockReturnValue(
+      (async function* () {
+        yield { data: [{ id: 42, name: `runner-${orgInstance.InstanceId}` }] };
+      })(),
+    );
+    mockActions.deleteSelfHostedRunnerFromOrg.mockResolvedValue({});
+    const random = vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    try {
+      await deregisterRunner(orgInstance, baseConfig);
+      expect(mockCreateAppAuth).toHaveBeenCalledWith({ appId: 2, privateKey: 'two', installationId: 222 });
+      expect(mockActions.deleteSelfHostedRunnerFromOrg).toHaveBeenCalledWith({ org: 'test-org', runner_id: 42 });
+    } finally {
+      random.mockRestore();
+    }
   });
 
   it('should skip deregistration when disabled', async () => {

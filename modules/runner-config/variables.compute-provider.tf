@@ -1,16 +1,3 @@
-# Optional plan-known dispatch key supplied by the multi-runner topology layer.
-variable "compute_provider_key" {
-  description = "Optional plan-known compute-provider dispatch key. Null discovers the key from the exactly one populated compute_provider block."
-  type        = string
-  default     = null
-
-  validation {
-    condition     = var.compute_provider_key == null ? true : contains(["aws_ec2"], var.compute_provider_key)
-    error_message = "compute_provider_key must be null or aws_ec2."
-  }
-}
-
-# Typed compute-provider input boundary between the common control plane and compute implementations.
 variable "compute_provider" {
   description = <<-EOT
     Typed compute-provider configuration. Provider-owned settings remain inside the selected compute-provider block.
@@ -53,6 +40,7 @@ variable "compute_provider" {
     - `aws.ec2.block_device_mappings[].volume_type`: EBS volume type.
     - `aws.ec2.ebs_optimized`: Requests EBS-optimized runner instances.
     - `aws.ec2.instance_target_capacity_type`: Primary capacity type, either `spot` or `on-demand`.
+    - `aws.ec2.instance_capacity_type_override_enabled`: Allows a per-job label to override capacity type to `on-demand` at launch time. When true, an additional launch template variant without the Spot-request tag specification is created so an on-demand override never conflicts with it.
     - `aws.ec2.instance_allocation_strategy`: EC2 Fleet allocation strategy used to select instance capacity.
     - `aws.ec2.instance_type_priorities`: Optional numeric priorities keyed by instance type.
     - `aws.ec2.instance_max_spot_price`: Optional maximum hourly Spot price.
@@ -163,12 +151,13 @@ variable "compute_provider" {
           volume_size                = number
           volume_type                = optional(string, "gp3")
         })), [{ volume_size = 30 }])
-        ebs_optimized                 = optional(bool, false)
-        instance_target_capacity_type = optional(string, "spot")
-        instance_allocation_strategy  = optional(string, "lowest-price")
-        instance_type_priorities      = optional(map(number), null)
-        instance_max_spot_price       = optional(string, null)
-        instance_types                = list(string)
+        ebs_optimized                           = optional(bool, false)
+        instance_target_capacity_type           = optional(string, "spot")
+        instance_capacity_type_override_enabled = optional(bool, false)
+        instance_allocation_strategy            = optional(string, "lowest-price")
+        instance_type_priorities                = optional(map(number), null)
+        instance_max_spot_price                 = optional(string, null)
+        instance_types                          = list(string)
         user_data = optional(object({
           enabled               = optional(bool, true)
           template              = optional(string, null)
@@ -294,4 +283,8 @@ variable "compute_provider" {
     }), {})
   })
 
+  validation {
+    condition     = var.compute_provider.aws.ec2 != null
+    error_message = "Exactly one compute-provider block must be set. Supported compute-provider blocks: aws.ec2."
+  }
 }

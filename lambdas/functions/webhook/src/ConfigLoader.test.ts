@@ -292,4 +292,52 @@ describe('ConfigLoader Tests', () => {
       await expect(ConfigDispatcher.load()).rejects.toThrow('Failed to load config: Matcher config is empty');
     });
   });
+
+  describe('Failed loads are not cached', () => {
+    const matcherConfig: RunnerMatcherConfig[] = [
+      { id: '1', arn: 'arn:aws:sqs:queue1', matcherConfig: { labelMatchers: [['x']], exactMatch: true } },
+    ];
+
+    it('loads the config again after a failed load', async () => {
+      runnerMatcherConfigStore.get
+        .mockRejectedValueOnce(new Error('Parameter not found'))
+        .mockResolvedValueOnce(JSON.stringify(matcherConfig));
+
+      await expect(ConfigDispatcher.load()).rejects.toThrow('Failed to load config: Parameter not found');
+      const config: ConfigDispatcher = await ConfigDispatcher.load();
+
+      expect(config.matcherConfig).toEqual(matcherConfig);
+      expect(runnerMatcherConfigStore.get).toHaveBeenCalledTimes(2);
+    });
+
+    it('throws on every call while the config cannot be loaded', async () => {
+      runnerMatcherConfigStore.get.mockRejectedValue(new Error('Parameter not found'));
+
+      for (let i = 0; i < 3; i++) {
+        await expect(ConfigDispatcher.load()).rejects.toThrow('Failed to load config: Parameter not found');
+      }
+      expect(runnerMatcherConfigStore.get).toHaveBeenCalledTimes(3);
+    });
+
+    it('keeps the config after a successful load', async () => {
+      runnerMatcherConfigStore.get.mockResolvedValue(JSON.stringify(matcherConfig));
+
+      const first: ConfigDispatcher = await ConfigDispatcher.load();
+      const second: ConfigDispatcher = await ConfigDispatcher.load();
+
+      expect(second).toBe(first);
+      expect(runnerMatcherConfigStore.get).toHaveBeenCalledTimes(1);
+    });
+
+    it('logs a failed load as an error', async () => {
+      const errorSpy = vi.spyOn(logger, 'error');
+      runnerMatcherConfigStore.get.mockRejectedValue(new Error('Parameter not found'));
+
+      await expect(ConfigDispatcher.load()).rejects.toThrow();
+
+      expect(errorSpy).toHaveBeenCalledWith('Failed to load config', {
+        errors: expect.arrayContaining(['Parameter not found']),
+      });
+    });
+  });
 });

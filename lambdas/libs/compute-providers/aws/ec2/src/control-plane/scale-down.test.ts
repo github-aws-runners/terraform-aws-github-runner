@@ -23,6 +23,11 @@ describe('Scale down runners', () => {
     vi.clearAllMocks();
   });
 
+  it('persists the verified GitHub registration ID on the instance', async () => {
+    await capability.setGitHubRunnerId!('i-runner', '42');
+    expect(mockTagRunner).toHaveBeenCalledWith('i-runner', [{ Key: 'ghr:github_runner_id', Value: '42' }]);
+  });
+
   const endpoints = ['https://api.github.com', 'https://github.enterprise.something', 'https://companyname.ghe.com'];
 
   describe.each(endpoints)('for %s', () => {

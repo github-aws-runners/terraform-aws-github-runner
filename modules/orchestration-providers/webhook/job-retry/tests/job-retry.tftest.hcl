@@ -11,6 +11,13 @@ mock_provider "aws" {
     }
   }
 
+
+  mock_resource "aws_sqs_queue" {
+    defaults = {
+      arn = "arn:aws:sqs:eu-west-1:123456789012:mock-queue"
+    }
+  }
+
 }
 
 variables {
@@ -37,7 +44,7 @@ variables {
       runtime                        = "nodejs24.x"
       memory_size                    = 256
       timeout                        = 30
-      reserved_concurrent_executions = 1
+      reserved_concurrent_executions = null
       environment_variables = {
         CUSTOM_ENV         = "preserved"
         RUNNER_NAME_PREFIX = "caller-prefix-"
@@ -136,6 +143,11 @@ run "preserves_nested_job_retry_configuration" {
   command = plan
 
   assert {
+    condition     = aws_lambda_event_source_mapping.job_retry.function_response_types == toset(["ReportBatchItemFailures"])
+    error_message = "Job retry must acknowledge successful records independently from failed records."
+  }
+
+  assert {
     condition     = output.lambda.function.environment[0].variables["CUSTOM_ENV"] == "preserved"
     error_message = "Caller-provided job-retry environment variables must be preserved."
   }
@@ -166,7 +178,7 @@ run "preserves_nested_job_retry_configuration" {
       toset(keys(output.lambda)) == toset(["function", "log_group", "role"])
       && output.lambda.function.s3_bucket == "lambda-artifacts"
       && output.lambda.function.s3_key == "job-retry.zip"
-      && output.lambda.function.reserved_concurrent_executions == 1
+      && output.lambda.function.reserved_concurrent_executions == null
     )
     error_message = "The nested Lambda configuration and direct resource output contract must be preserved."
   }
@@ -230,6 +242,14 @@ run "does_not_enable_partial_vpc_configuration" {
   command = plan
 
   variables {
+    storage_provider = {
+      aws = {
+        ssm = {
+          kms_key_id = null
+        }
+      }
+    }
+
     config = {
       prefix        = "job-retry-test"
       aws_partition = "aws"
@@ -245,7 +265,7 @@ run "does_not_enable_partial_vpc_configuration" {
         runtime                        = "nodejs24.x"
         memory_size                    = 256
         timeout                        = 30
-        reserved_concurrent_executions = 1
+        reserved_concurrent_executions = 4
         environment_variables          = {}
         vpc = {
           security_group_ids = []
@@ -331,6 +351,11 @@ run "does_not_enable_partial_vpc_configuration" {
     )
     error_message = "Partial VPC inputs must stay disabled and a null KMS key must omit the KMS statement entirely."
   }
+
+  assert {
+    condition     = output.lambda.function.reserved_concurrent_executions == 4
+    error_message = "An explicit job-retry Lambda concurrency limit must reach the Lambda resource."
+  }
 }
 
 run "rejects_unsupported_lambda_architecture" {
@@ -341,11 +366,76 @@ run "rejects_unsupported_lambda_architecture" {
   }
 
   variables {
-    config = merge(var.config, {
-      lambda = merge(var.config.lambda, {
-        architecture = "unsupported"
-      })
-    })
+    config = {
+      prefix        = "job-retry-test"
+      aws_partition = "aws"
+      lambda = {
+        artifact = {
+          zip = "unused.zip"
+          s3 = {
+            bucket = "lambda-artifacts"
+            key    = "job-retry.zip"
+          }
+        }
+        architecture                   = "unsupported"
+        runtime                        = "nodejs24.x"
+        memory_size                    = 256
+        timeout                        = 30
+        reserved_concurrent_executions = 1
+        environment_variables          = {}
+        vpc = {
+          subnet_ids         = []
+          security_group_ids = []
+        }
+        role = {
+          path       = "/job-retry-test/"
+          principals = []
+        }
+      }
+      runner = { name_prefix = "required-prefix-" }
+      github = {
+        organization_runners = false
+        enterprise_server    = { url = null, ssl_verify = false }
+        app_parameters       = { key_base64 = {}, id = {} }
+      }
+      queue = {
+        build = {
+          url = "https://sqs.eu-west-1.amazonaws.com/123456789012/build-queue"
+          arn = "arn:aws:sqs:eu-west-1:123456789012:build-queue"
+        }
+        event_source_mapping = {
+          batch_size                         = 10
+          maximum_batching_window_in_seconds = 0
+        }
+        encryption = { sqs_managed_sse_enabled = true }
+      }
+      observability = {
+        logs = {
+          level             = "trace"
+          retention_in_days = 14
+          class             = "STANDARD"
+        }
+        tracing = {
+          capture_http_requests = false
+          capture_error         = false
+        }
+        metrics = {
+          enabled   = false
+          namespace = "JobRetryTest"
+          metric = {
+            github_app_rate_limit = { enabled = false }
+            job_retry             = { enabled = false }
+          }
+        }
+      }
+      tags = {
+        resources            = {}
+        lambda               = {}
+        log_group            = {}
+        queue                = {}
+        event_source_mapping = {}
+      }
+    }
   }
 
   expect_failures = [terraform_data.validate_config]
@@ -359,13 +449,76 @@ run "rejects_unsupported_log_level" {
   }
 
   variables {
-    config = merge(var.config, {
-      observability = merge(var.config.observability, {
-        logs = merge(var.config.observability.logs, {
-          level = "verbose"
-        })
-      })
-    })
+    config = {
+      prefix        = "job-retry-test"
+      aws_partition = "aws"
+      lambda = {
+        artifact = {
+          zip = "unused.zip"
+          s3 = {
+            bucket = "lambda-artifacts"
+            key    = "job-retry.zip"
+          }
+        }
+        architecture                   = "arm64"
+        runtime                        = "nodejs24.x"
+        memory_size                    = 256
+        timeout                        = 30
+        reserved_concurrent_executions = 1
+        environment_variables          = {}
+        vpc = {
+          subnet_ids         = []
+          security_group_ids = []
+        }
+        role = {
+          path       = "/job-retry-test/"
+          principals = []
+        }
+      }
+      runner = { name_prefix = "required-prefix-" }
+      github = {
+        organization_runners = false
+        enterprise_server    = { url = null, ssl_verify = false }
+        app_parameters       = { key_base64 = {}, id = {} }
+      }
+      queue = {
+        build = {
+          url = "https://sqs.eu-west-1.amazonaws.com/123456789012/build-queue"
+          arn = "arn:aws:sqs:eu-west-1:123456789012:build-queue"
+        }
+        event_source_mapping = {
+          batch_size                         = 10
+          maximum_batching_window_in_seconds = 0
+        }
+        encryption = { sqs_managed_sse_enabled = true }
+      }
+      observability = {
+        logs = {
+          level             = "verbose"
+          retention_in_days = 14
+          class             = "STANDARD"
+        }
+        tracing = {
+          capture_http_requests = false
+          capture_error         = false
+        }
+        metrics = {
+          enabled   = false
+          namespace = "JobRetryTest"
+          metric = {
+            github_app_rate_limit = { enabled = false }
+            job_retry             = { enabled = false }
+          }
+        }
+      }
+      tags = {
+        resources            = {}
+        lambda               = {}
+        log_group            = {}
+        queue                = {}
+        event_source_mapping = {}
+      }
+    }
   }
 
   expect_failures = [terraform_data.validate_config]
@@ -379,9 +532,76 @@ run "rejects_resource_prefix_longer_than_aws_limit" {
   }
 
   variables {
-    config = merge(var.config, {
-      prefix = "1234567890123456789012345678901234567890123456789012345"
-    })
+    config = {
+      prefix        = "1234567890123456789012345678901234567890123456789012345"
+      aws_partition = "aws"
+      lambda = {
+        artifact = {
+          zip = "unused.zip"
+          s3 = {
+            bucket = "lambda-artifacts"
+            key    = "job-retry.zip"
+          }
+        }
+        architecture                   = "arm64"
+        runtime                        = "nodejs24.x"
+        memory_size                    = 256
+        timeout                        = 30
+        reserved_concurrent_executions = 1
+        environment_variables          = {}
+        vpc = {
+          subnet_ids         = []
+          security_group_ids = []
+        }
+        role = {
+          path       = "/job-retry-test/"
+          principals = []
+        }
+      }
+      runner = { name_prefix = "required-prefix-" }
+      github = {
+        organization_runners = false
+        enterprise_server    = { url = null, ssl_verify = false }
+        app_parameters       = { key_base64 = {}, id = {} }
+      }
+      queue = {
+        build = {
+          url = "https://sqs.eu-west-1.amazonaws.com/123456789012/build-queue"
+          arn = "arn:aws:sqs:eu-west-1:123456789012:build-queue"
+        }
+        event_source_mapping = {
+          batch_size                         = 10
+          maximum_batching_window_in_seconds = 0
+        }
+        encryption = { sqs_managed_sse_enabled = true }
+      }
+      observability = {
+        logs = {
+          level             = "trace"
+          retention_in_days = 14
+          class             = "STANDARD"
+        }
+        tracing = {
+          capture_http_requests = false
+          capture_error         = false
+        }
+        metrics = {
+          enabled   = false
+          namespace = "JobRetryTest"
+          metric = {
+            github_app_rate_limit = { enabled = false }
+            job_retry             = { enabled = false }
+          }
+        }
+      }
+      tags = {
+        resources            = {}
+        lambda               = {}
+        log_group            = {}
+        queue                = {}
+        event_source_mapping = {}
+      }
+    }
   }
 
   expect_failures = [terraform_data.validate_config]
