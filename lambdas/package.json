@@ -50,7 +50,7 @@
     "chalk": "^5.6.2",
     "eslint": "^9.39.2",
     "eslint-plugin-prettier": "^5.5.7",
-    "nx": "23.2.1",
+    "nx": "23.3.0",
     "prettier": "^3.6.2",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
