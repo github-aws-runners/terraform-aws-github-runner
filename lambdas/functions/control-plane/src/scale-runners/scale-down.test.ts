@@ -706,6 +706,31 @@ describe('Scale down runners', () => {
   });
 
   describe('multi-org lifecycle', () => {
+    it('retains one allowance per organization across inventory pages', async () => {
+      process.env.ENABLE_MULTI_ORG_RUNNERS = 'true';
+      process.env.SCALE_DOWN_CONFIG = JSON.stringify([{ idleCount: 1, cron: '* * * * * *', timeZone: 'UTC' }]);
+      const runners = ['Org-A', 'ORG-B', 'org-a', 'org-b'].map((org, i) =>
+        createRunnerTestData(String(i), 'Org', 60, true, false, false, org),
+      );
+      mockGitHubRunners(runners);
+      const listPage = vi
+        .fn()
+        .mockResolvedValueOnce({ runners: runners.slice(0, 2), nextToken: 'second' })
+        .mockResolvedValueOnce({ runners: runners.slice(2) });
+      mockedResolveCapability.mockReturnValue(() => ({
+        ...mockComputeProvider,
+        listPage,
+        setGitHubRunnerId: vi.fn().mockResolvedValue(undefined),
+      }));
+      await scaleDown();
+      expect(mockTerminateRunners).toHaveBeenCalledTimes(2);
+      for (const runner of runners.slice(0, 2)) expect(mockTerminateRunners).not.toHaveBeenCalledWith(runner.id);
+      for (const runner of runners.slice(2)) expect(mockTerminateRunners).toHaveBeenCalledWith(runner.id);
+      expect(mockOctokit.apps.getOrgInstallation).toHaveBeenCalledWith({ org: 'org-a' });
+      expect(mockOctokit.apps.getOrgInstallation).toHaveBeenCalledWith({ org: 'org-b' });
+      expect(mockOctokit.apps.getOrgInstallation).toHaveBeenCalledTimes(2);
+    });
+
     it.each([true, false])('applies idle retention per organization only when enabled=%s', async (enabled) => {
       process.env.ENABLE_MULTI_ORG_RUNNERS = String(enabled);
       process.env.SCALE_DOWN_CONFIG = JSON.stringify([{ idleCount: 1, cron: '* * * * * *', timeZone: 'UTC' }]);
@@ -731,10 +756,14 @@ describe('Scale down runners', () => {
       await scaleDown();
       expect(mockTerminateRunners).toHaveBeenCalledTimes(1);
       expect(mockOctokit.apps.getOrgInstallation).toHaveBeenCalledExactlyOnceWith({ org: 'org-a' });
-      expect(mockOctokit.paginate).toHaveBeenCalledExactlyOnceWith(mockOctokit.actions.listSelfHostedRunnersForOrg, {
-        org: 'org-a',
-        per_page: 100,
-      });
+      expect(mockOctokit.paginate).toHaveBeenCalledTimes(2);
+      for (const runner of runners) {
+        expect(mockOctokit.paginate).toHaveBeenCalledWith(mockOctokit.actions.listSelfHostedRunnersForOrg, {
+          org: 'org-a',
+          name: runner.githubRunnerName,
+          per_page: 100,
+        });
+      }
       expect(mockOctokit.actions.deleteSelfHostedRunnerFromOrg).toHaveBeenCalledWith(
         expect.objectContaining({ org: 'org-a' }),
       );

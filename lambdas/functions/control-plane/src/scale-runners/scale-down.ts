@@ -631,7 +631,7 @@ export async function scaleDown(remainingTime = () => Infinity): Promise<void> {
   if (computeProvider.listPage) {
     const sweep = {
       idleRemaining: getIdleRunnerCount(scaleDownConfigs),
-    idleByOwner: new Map<string, number>(),
+      idleByOwner: new Map<string, number>(),
       evictionStrategy: getEvictionStrategy(scaleDownConfigs),
     };
     let pages = 0;
