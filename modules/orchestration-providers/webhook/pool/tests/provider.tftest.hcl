@@ -20,6 +20,8 @@ mock_provider "aws" {
 }
 
 variables {
+  config = jsondecode(file("tests/fixtures/pool-config.json"))
+
   storage_provider = {
     aws = {
       ssm = {
@@ -33,77 +35,7 @@ variables {
     }
   }
 
-  config = {
-    lambda = {
-      log_level                      = "info"
-      logging_retention_in_days      = 14
-      logging_kms_key_id             = null
-      log_class                      = "STANDARD"
-      reserved_concurrent_executions = 1
-      s3_bucket                      = "lambda-artifacts"
-      s3_key                         = "runners.zip"
-      s3_object_version              = null
-      security_group_ids             = []
-      runtime                        = "nodejs24.x"
-      architecture                   = "arm64"
-      memory_size                    = 256
-      timeout                        = 60
-      zip                            = "runners.zip"
-      subnet_ids                     = []
-      principals = [{
-        type        = "AWS"
-        identifiers = ["arn:aws:iam::123456789012:role/local-testing"]
-      }]
-    }
-    tags = {
-      Environment = "pool-test"
-    }
-    ghes = {
-      url        = null
-      ssl_verify = true
-    }
-    github_app_parameters = {
-      key_base64 = {
-        name = "/github-runner/key-base64"
-        arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64"
-      }
-      id = {
-        name = "/github-runner/app-id"
-        arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id"
-      }
-      additional_apps_manifest = {
-        name = "/github-runner/additional-apps-manifest"
-        arn  = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/additional-apps-manifest"
-      }
-      additional_app_parameter_arns = [
-        "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/app-id-2",
-        "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/key-base64-2",
-        "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/installation-id-2",
-      ]
-    }
-    runner = {
-      disable_runner_autoupdate = false
-      ephemeral                 = true
-      enable_jit_config         = true
-      labels                    = ["self-hosted", "microvm"]
-      group_name                = "default"
-      name_prefix               = "microvm"
-      pool_owner                = "example"
-      boot_time_in_minutes      = 13
-    }
-    runners_maximum_count = 10
-    prefix                = "pool-test"
-    pool = [{
-      schedule_expression          = "cron(0 8 * * ? *)"
-      schedule_expression_timezone = "UTC"
-      size                         = 2
-    }]
-    include_busy_runners      = false
-    role_permissions_boundary = null
-    role_path                 = "/"
-    lambda_tags               = {}
-    user_agent                = "terraform-aws-github-runner"
-  }
+
 
   runner_provider = {
     type = "microvm"
@@ -325,4 +257,177 @@ run "requires_enabled_compute_provider_managed_policy_arn" {
   }
 
   expect_failures = [terraform_data.validate_config]
+}
+
+
+run "multi_org_pool_schedules" {
+  command = plan
+  variables {
+    config = merge(jsondecode(file("tests/fixtures/pool-config.json")), {
+      enable_multi_org_runners = true
+      pool = [
+        { schedule_expression = "cron(0 8 * * ? *)", schedule_expression_timezone = "UTC", size = 2, org = "org-a" },
+        { schedule_expression = "cron(0 8 * * ? *)", schedule_expression_timezone = "UTC", size = 5, org = "org-b" },
+      ]
+    })
+  }
+  assert {
+    condition = (
+      aws_lambda_function.pool.environment[0].variables["ENABLE_MULTI_ORG_RUNNERS"] == "true" &&
+      jsondecode(aws_scheduler_schedule.pool["0"].target[0].input).org == "org-a" &&
+      jsondecode(aws_scheduler_schedule.pool["1"].target[0].input).org == "org-b" &&
+      jsondecode(aws_scheduler_schedule.pool["1"].target[0].input).poolSize == 5
+    )
+    error_message = "Each pool schedule must preserve its organization and capacity."
+  }
+}
+
+run "legacy_pool_payload_is_unchanged" {
+  command = plan
+  assert {
+    condition = (
+      aws_lambda_function.pool.environment[0].variables["ENABLE_MULTI_ORG_RUNNERS"] == "false" &&
+      !contains(keys(jsondecode(aws_scheduler_schedule.pool["0"].target[0].input)), "org")
+    )
+    error_message = "Legacy pool payloads must not include organization overrides."
+  }
+}
+
+run "multi_org_pool_requires_an_owner" {
+  command = plan
+  variables {
+    config = merge(jsondecode(file("tests/fixtures/pool-config.json")), {
+      enable_multi_org_runners = true
+      runner                   = merge(jsondecode(file("tests/fixtures/pool-config.json")).runner, { pool_owner = null })
+    })
+  }
+  expect_failures = [var.config]
+}
+
+
+run "multi_org_pool_rejects_empty_override" {
+  command = plan
+  variables {
+    config = merge(jsondecode(file("tests/fixtures/pool-config.json")), {
+      enable_multi_org_runners = true
+      pool                     = [{ schedule_expression = "cron(0 8 * * ? *)", schedule_expression_timezone = "UTC", size = 2, org = "" }]
+    })
+  }
+  expect_failures = [var.config]
+}
+
+run "rejects_trailing_hyphen_override" {
+  command = plan
+  variables {
+    config = merge(jsondecode(file("tests/fixtures/pool-config.json")), {
+      enable_multi_org_runners = true
+      pool                     = [merge(jsondecode(file("tests/fixtures/pool-config.json")).pool[0], { org = "org-" })]
+    })
+  }
+  expect_failures = [var.config]
+}
+
+run "rejects_trailing_hyphen_default" {
+  command = plan
+  variables {
+    config = merge(jsondecode(file("tests/fixtures/pool-config.json")), {
+      enable_multi_org_runners = true
+      runner                   = merge(jsondecode(file("tests/fixtures/pool-config.json")).runner, { pool_owner = "org-" })
+    })
+  }
+  expect_failures = [var.config]
+}
+
+run "rejects_repeated_hyphen_override" {
+  command = plan
+  variables {
+    config = merge(jsondecode(file("tests/fixtures/pool-config.json")), {
+      enable_multi_org_runners = true
+      pool                     = [merge(jsondecode(file("tests/fixtures/pool-config.json")).pool[0], { org = "org--name" })]
+    })
+  }
+  expect_failures = [var.config]
+}
+
+run "rejects_repeated_hyphen_default" {
+  command = plan
+  variables {
+    config = merge(jsondecode(file("tests/fixtures/pool-config.json")), {
+      enable_multi_org_runners = true
+      runner                   = merge(jsondecode(file("tests/fixtures/pool-config.json")).runner, { pool_owner = "org--name" })
+    })
+  }
+  expect_failures = [var.config]
+}
+
+run "rejects_leading_hyphen_override" {
+  command = plan
+  variables {
+    config = merge(jsondecode(file("tests/fixtures/pool-config.json")), {
+      enable_multi_org_runners = true
+      pool                     = [merge(jsondecode(file("tests/fixtures/pool-config.json")).pool[0], { org = "-org" })]
+    })
+  }
+  expect_failures = [var.config]
+}
+
+run "rejects_leading_hyphen_default" {
+  command = plan
+  variables {
+    config = merge(jsondecode(file("tests/fixtures/pool-config.json")), {
+      enable_multi_org_runners = true
+      runner                   = merge(jsondecode(file("tests/fixtures/pool-config.json")).runner, { pool_owner = "-org" })
+    })
+  }
+  expect_failures = [var.config]
+}
+
+run "rejects_too_long_override" {
+  command = plan
+  variables {
+    config = merge(jsondecode(file("tests/fixtures/pool-config.json")), {
+      enable_multi_org_runners = true
+      pool                     = [merge(jsondecode(file("tests/fixtures/pool-config.json")).pool[0], { org = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" })]
+    })
+  }
+  expect_failures = [var.config]
+}
+
+run "rejects_too_long_default" {
+  command = plan
+  variables {
+    config = merge(jsondecode(file("tests/fixtures/pool-config.json")), {
+      enable_multi_org_runners = true
+      runner                   = merge(jsondecode(file("tests/fixtures/pool-config.json")).runner, { pool_owner = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" })
+    })
+  }
+  expect_failures = [var.config]
+}
+
+run "accepts_valid_logins_and_length_boundary" {
+  command = plan
+  variables {
+    config = merge(jsondecode(file("tests/fixtures/pool-config.json")), {
+      enable_multi_org_runners = true
+      pool                     = [for org in ["a", "Org-1", "org-a-b", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-1"] : merge(jsondecode(file("tests/fixtures/pool-config.json")).pool[0], { org = org })]
+    })
+  }
+  assert {
+    condition     = length(aws_scheduler_schedule.pool) == 5
+    error_message = "Valid logins including the 39-character boundary must be accepted."
+  }
+}
+
+run "preserves_disabled_mode_login_handling" {
+  command = plan
+  variables {
+    config = merge(jsondecode(file("tests/fixtures/pool-config.json")), {
+      enable_multi_org_runners = false
+      runner                   = merge(jsondecode(file("tests/fixtures/pool-config.json")).runner, { pool_owner = "org--name" })
+    })
+  }
+  assert {
+    condition     = aws_lambda_function.pool.environment[0].variables["RUNNER_OWNER"] == "org--name"
+    error_message = "Stricter validation must remain gated by multi-org mode."
+  }
 }

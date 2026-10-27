@@ -43,6 +43,8 @@ export type CreateStartRunnerConfig = (
 ) => Promise<string[]>;
 
 export interface CurrentRunnersInput {
+  /** Match existing owner metadata without regard to case. Defaults to exact matching. */
+  runnerOwnerIgnoreCase?: boolean;
   runnerType: RunnerType;
   runnerOwner: string;
 }
@@ -100,6 +102,8 @@ export interface RunnerInfo {
 }
 
 export interface ListRunnerFilters {
+  /** Match existing owner metadata without regard to case. Defaults to exact matching. */
+  runnerOwnerIgnoreCase?: boolean;
   runnerType?: RunnerType;
   runnerOwner?: string;
   environment?: string;
@@ -133,6 +137,8 @@ export interface RunnerStatus {
 }
 
 export interface ListPoolRunnersInput {
+  /** Match existing owner metadata without regard to case. Defaults to exact matching. */
+  runnerOwnerIgnoreCase?: boolean;
   environment: string;
   runnerOwner: string;
   runnerType: RunnerType;

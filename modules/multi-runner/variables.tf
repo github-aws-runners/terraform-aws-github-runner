@@ -131,6 +131,7 @@ variable "multi_runner_config" {
         "InsufficientCapacityOnHost",
       ])
       enable_organization_runners                                    = optional(bool, false)
+      enable_multi_org_runners                                       = optional(bool, false)
       enable_runner_binaries_syncer                                  = optional(bool, true)
       enable_ssm_on_runners                                          = optional(bool, false)
       enable_userdata                                                = optional(bool, true)
@@ -254,6 +255,7 @@ variable "multi_runner_config" {
       pool_config = optional(list(object({
         schedule_expression          = string
         schedule_expression_timezone = optional(string)
+        org                          = optional(string)
         size                         = number
       })), [])
       ssm_ttl_seconds = optional(object({
@@ -346,6 +348,7 @@ variable "multi_runner_config" {
         }), {})
         github = optional(object({
           organization_runners = optional(bool, false)
+          multi_org_runners    = optional(bool, false)
         }), {})
         matcherConfig = optional(object({
           labelMatchers           = list(list(string))
@@ -408,6 +411,7 @@ variable "multi_runner_config" {
             config = optional(list(object({
               schedule_expression          = string
               schedule_expression_timezone = optional(string)
+              org                          = optional(string)
               size                         = number
             })), null)
             include_busy_runners = optional(bool, null)
