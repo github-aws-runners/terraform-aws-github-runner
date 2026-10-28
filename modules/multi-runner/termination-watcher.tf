@@ -40,8 +40,9 @@ locals {
       additional_apps_manifest      = local.github_app_parameters.additional_apps_manifest
       additional_app_parameter_arns = local.github_app_parameters.additional_app_parameter_arns
     } : null
-    ghes_url              = local.effective_config.github.enterprise_server.url
-    environment_variables = local.effective_config.compute_provider.aws.ec2.instance_termination_watcher.environment_variables
+    github_app_kms_key_arn = local.effective_config.storage_provider.aws.ssm.kms_key_id
+    ghes_url               = local.effective_config.github.enterprise_server.url
+    environment_variables  = local.effective_config.compute_provider.aws.ec2.instance_termination_watcher.environment_variables
   }
 }
 

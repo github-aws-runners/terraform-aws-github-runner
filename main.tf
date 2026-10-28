@@ -418,7 +418,8 @@ locals {
       id         = local.github_app_parameters.id
       key_base64 = local.github_app_parameters.key_base64
     } : null
-    ghes_url = var.ghes_url
+    github_app_kms_key_arn = var.kms_key_arn
+    ghes_url               = var.ghes_url
   }
 }
 

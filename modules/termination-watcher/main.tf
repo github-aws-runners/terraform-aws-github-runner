@@ -20,6 +20,23 @@ locals {
     var.config.github_app_parameters.key_base64.arn,
   ], var.config.github_app_parameters.additional_apps_manifest == null ? [] : [var.config.github_app_parameters.additional_apps_manifest.arn], var.config.github_app_parameters.additional_app_parameter_arns) : []
 
+  ssm_policy_json = jsonencode({
+    Version = "2012-10-17"
+    Statement = concat([
+      {
+        Effect   = "Allow"
+        Action   = ["ssm:GetParameter", "ssm:GetParameters"]
+        Resource = local.ssm_parameter_arns
+      }
+      ], var.config.github_app_kms_key_arn == null ? [] : [
+      {
+        Effect   = "Allow"
+        Action   = ["kms:Decrypt"]
+        Resource = [var.config.github_app_kms_key_arn]
+      }
+    ])
+  })
+
   environment_variables = {
     ENABLE_METRICS_SPOT_WARNING = var.config.metrics != null ? var.config.metrics.enable && var.config.metrics.metric.enable_spot_termination_warning : false
     TAG_FILTERS                 = jsonencode(var.config.tag_filters)
@@ -32,7 +49,7 @@ locals {
     environment_variables         = local.environment_variables
     metrics_namespace             = var.config.metrics.namespace
     _deregistration_env_vars      = local.deregistration_env_vars
-    _ssm_parameter_arns           = local.ssm_parameter_arns
+    _ssm_policy_json              = local.ssm_policy_json
     _enable_runner_deregistration = local.enable_runner_deregistration
   })
 }
