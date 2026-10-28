@@ -57,8 +57,64 @@ run "decrypt_scoped_to_configured_key_for_all_roles" {
   }
 
   assert {
-    condition     = output.spot_termination_handler != null && output.spot_termination_notification != null && output.deregister_retry != null
-    error_message = "The handler, notification and deregister-retry roles must all receive the credential policy."
+    condition     = aws_iam_role_policy.deregister_retry_ssm[0].policy == local.ssm_policy_json
+    error_message = "The deregister-retry role must be attached the credential policy."
+  }
+}
+
+run "notification_role_gets_credential_policy" {
+  command = apply
+
+  module {
+    source = "./notification"
+  }
+
+  variables {
+    config = {
+      prefix                        = "test"
+      s3_bucket                     = "artifacts"
+      s3_key                        = "termination-watcher.zip"
+      tags                          = {}
+      tag_filters                   = { "ghr:environment" = "test" }
+      environment_variables         = {}
+      metrics                       = { enable = false, metric = { enable_spot_termination_warning = false } }
+      _deregistration_env_vars      = {}
+      _enable_runner_deregistration = true
+      _ssm_policy_json              = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":[\"kms:Decrypt\"],\"Resource\":[\"arn:aws:kms:eu-west-1:123456789012:key/11111111-1111-1111-1111-111111111111\"]}]}"
+    }
+  }
+
+  assert {
+    condition     = aws_iam_role_policy.ssm_policy[0].policy == var.config._ssm_policy_json
+    error_message = "The notification role must be attached the credential policy."
+  }
+}
+
+run "handler_role_gets_credential_policy" {
+  command = apply
+
+  module {
+    source = "./termination"
+  }
+
+  variables {
+    config = {
+      prefix                        = "test"
+      s3_bucket                     = "artifacts"
+      s3_key                        = "termination-watcher.zip"
+      tags                          = {}
+      tag_filters                   = { "ghr:environment" = "test" }
+      environment_variables         = {}
+      metrics                       = { enable = false, metric = { enable_spot_termination = false } }
+      _deregistration_env_vars      = {}
+      _enable_runner_deregistration = true
+      _ssm_policy_json              = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":[\"kms:Decrypt\"],\"Resource\":[\"arn:aws:kms:eu-west-1:123456789012:key/11111111-1111-1111-1111-111111111111\"]}]}"
+    }
+  }
+
+  assert {
+    condition     = aws_iam_role_policy.ssm_policy[0].policy == var.config._ssm_policy_json
+    error_message = "The handler role must be attached the credential policy."
   }
 }
 
