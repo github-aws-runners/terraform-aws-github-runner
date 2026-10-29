@@ -74,7 +74,9 @@ locals {
         kms_key_id = var.kms_key_arn
         tags       = {}
         parameters = {
-          tags = var.parameter_store_tags
+          tags                       = var.parameter_store_tags
+          max_concurrent_invocations = var.ssm_parameter_store_max_concurrent_invocations
+          max_writes_per_second      = var.ssm_parameter_store_max_writes_per_second
         }
         housekeeper = {
           schedule_expression = var.runners_ssm_housekeeper.schedule_expression
@@ -450,7 +452,9 @@ locals {
             }
             tags = {}
             parameters = {
-              tags = {}
+              tags                       = {}
+              max_concurrent_invocations = null
+              max_writes_per_second      = null
             }
             housekeeper = {
               schedule_expression = null

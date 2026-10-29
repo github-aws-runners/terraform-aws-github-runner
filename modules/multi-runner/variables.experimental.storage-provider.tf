@@ -12,6 +12,8 @@ variable "global_config_storage_provider" {
       aws.ssm.kms_key_id: "KMS key ID used to encrypt SSM parameters."
       aws.ssm.tags: "Tags applied to SSM resources."
       aws.ssm.parameters.tags: "Tags applied to runner configuration parameters."
+      aws.ssm.parameters.max_concurrent_invocations: "Expected number of concurrent scale-up and pool Lambda invocations writing to Parameter Store, used to pace each invocation's writes to a share of the account-wide write-rate limit."
+      aws.ssm.parameters.max_writes_per_second: "Parameter Store write-rate limit to pace against, in writes per second. Raise this above 40 only when SSM's higher-throughput tier is enabled."
       aws.ssm.housekeeper.schedule_expression: "Schedule for the SSM parameter housekeeper."
       aws.ssm.housekeeper.state: "EventBridge rule state for the SSM housekeeper."
       aws.ssm.housekeeper.tags: "Tags applied to the SSM housekeeper resources."
@@ -38,7 +40,9 @@ variable "global_config_storage_provider" {
         kms_key_id = optional(string, null)
         tags       = optional(map(string), {})
         parameters = optional(object({
-          tags = optional(map(string), {})
+          tags                       = optional(map(string), {})
+          max_concurrent_invocations = optional(number, 1)
+          max_writes_per_second      = optional(number, 40)
         }), {})
         housekeeper = optional(object({
           schedule_expression = optional(string, "rate(1 day)")
