@@ -3,6 +3,7 @@ import { getParameter, putParameter } from '@aws-github-runner/aws-ssm-util';
 import type { RunnerGroupCacheRecord, RunnerGroupCacheStore } from '../../core';
 import type {} from './environment';
 import { createAwsSsmStorageLogger, getErrorNames } from './logger';
+import { isParameterNotFoundError } from './parameter-not-found';
 import { loadSsmParameterStoreTagsFromEnvironment } from './parameter-store-tags';
 
 const logger = createAwsSsmStorageLogger('runner-group-cache-store');
@@ -89,8 +90,4 @@ class AwsSsmRunnerGroupCacheStore implements RunnerGroupCacheStore {
   private parameterName(runnerGroupName: string): string {
     return `${this.config.configPath}/runner-group/${runnerGroupName}`;
   }
-}
-
-function isParameterNotFoundError(error: unknown): boolean {
-  return getErrorNames(error).includes('ParameterNotFound');
 }
