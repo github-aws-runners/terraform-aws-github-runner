@@ -69,6 +69,56 @@ describe('aws_ssm runner group cache store', () => {
     );
   });
 
+  it('returns undefined for the SDK fallback error wrapped by the SSM provider', async () => {
+    // Production shape: the SDK could not resolve the modeled exception class and
+    // threw a plain Error (name 'Error', message = error code), which the
+    // Powertools SSM provider wrapped in a GetParameterError.
+    const cause = Object.assign(new Error('ParameterNotFound'), {
+      $fault: 'client',
+      $metadata: { httpStatusCode: 400 },
+    });
+    getParameterMock.mockRejectedValue(
+      Object.assign(new Error('ParameterNotFound'), { name: 'GetParameterError', cause }),
+    );
+
+    await expect(createAwsSsmRunnerGroupCacheStore().get('Default')).resolves.toBeUndefined();
+    expect(loggerMock.info).toHaveBeenCalledWith(
+      'Runner group cache miss; caller will resolve the ID from GitHub',
+      expect.objectContaining({
+        runnerGroupName: 'Default',
+        errorNames: ['GetParameterError', 'Error'],
+      }),
+    );
+    expect(loggerMock.error).not.toHaveBeenCalled();
+  });
+
+  it('returns undefined when the SDK error carries the ParameterNotFound error code', async () => {
+    const cause = Object.assign(new Error('ParameterNotFound'), {
+      $fault: 'client',
+      $metadata: { httpStatusCode: 400 },
+      __type: 'ParameterNotFound',
+    });
+    getParameterMock.mockRejectedValue(
+      Object.assign(new Error('ParameterNotFound'), { name: 'GetParameterError', cause }),
+    );
+
+    await expect(createAwsSsmRunnerGroupCacheStore().get('Default')).resolves.toBeUndefined();
+  });
+
+  it('rethrows a generic SDK error with a different code', async () => {
+    const error = Object.assign(new Error('ThrottlingException'), {
+      name: 'GetParameterError',
+      cause: new Error('ThrottlingException'),
+    });
+    getParameterMock.mockRejectedValue(error);
+
+    await expect(createAwsSsmRunnerGroupCacheStore().get('Default')).rejects.toBe(error);
+    expect(loggerMock.error).toHaveBeenCalledWith(
+      'Runner group cache lookup failed',
+      expect.objectContaining({ errorNames: ['GetParameterError', 'Error'] }),
+    );
+  });
+
   it('propagates access and service errors', async () => {
     const error = Object.assign(new Error('denied'), { name: 'AccessDeniedException' });
     getParameterMock.mockRejectedValue(error);

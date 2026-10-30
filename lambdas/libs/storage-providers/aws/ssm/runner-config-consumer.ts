@@ -4,7 +4,6 @@ import type { RunnerConfigConsumer, RunnerConfigConsumeOptions } from '../../cor
 import {
   composeSsmParameterName,
   delay,
-  errorName,
   isRetryableProviderError,
   positiveIntegerOption,
   resolvePollingOptions,
@@ -14,6 +13,7 @@ import {
   type RunnerConfigPollingOptions,
 } from './runner-config-consumer-common';
 import { createAwsSsmStorageLogger, getErrorNames } from './logger';
+import { isParameterNotFoundError } from './parameter-not-found';
 
 const DEFAULT_DELETE_ATTEMPTS = 3;
 const logger = createAwsSsmStorageLogger('runner-config-consumer');
@@ -119,7 +119,7 @@ class AwsSsmRunnerConfigConsumer implements RunnerConfigConsumer {
         if (options.signal.aborted) {
           throw new Error('runner configuration consumption was cancelled', { cause: error });
         }
-        if (!isSsmNotFound(error) && !isRetryableProviderError(error)) {
+        if (!isParameterNotFoundError(error) && !isRetryableProviderError(error)) {
           logger.error('Failed to read runner configuration', {
             runnerId,
             parameterName,
@@ -212,8 +212,4 @@ class AwsSsmRunnerConfigConsumer implements RunnerConfigConsumer {
     });
     throw new Error('runner configuration could not be deleted from SSM', { cause: lastError });
   }
-}
-
-function isSsmNotFound(error: unknown): boolean {
-  return errorName(error) === 'ParameterNotFound';
 }
