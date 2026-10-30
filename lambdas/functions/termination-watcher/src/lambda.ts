@@ -75,3 +75,5 @@ const addMiddleware = () => {
 };
 
 addMiddleware();
+
+export { registrationJanitor } from './registration-janitor';
