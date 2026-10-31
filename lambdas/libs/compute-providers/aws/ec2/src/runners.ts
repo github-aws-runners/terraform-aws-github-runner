@@ -55,7 +55,7 @@ export interface Ec2RunnerClient {
   forRequest(context: Ec2RunnerRequestContext): Ec2RunnerProvisioningOperations;
 }
 
-async function runWithRequestSignal<TResult>(
+export async function runWithRequestSignal<TResult>(
   signal: AbortSignal | undefined,
   operation: () => Promise<TResult>,
 ): Promise<TResult> {
@@ -241,7 +241,7 @@ function safeFailureIdentifier(value: unknown): string | undefined {
   return typeof value === 'string' && SAFE_FAILURE_IDENTIFIER.test(value) ? value : undefined;
 }
 
-function failureDetails(error: unknown): Record<string, unknown> {
+export function failureDetails(error: unknown): Record<string, unknown> {
   if (!(error instanceof Error)) return { errorMessage: String(error) };
 
   const awsError = error as AwsErrorLike;
@@ -255,7 +255,7 @@ function failureDetails(error: unknown): Record<string, unknown> {
   };
 }
 
-function requestFailureCodes(error: unknown): Ec2RunnerFailureCode[] {
+export function requestFailureCodes(error: unknown): Ec2RunnerFailureCode[] {
   const failureCodes = new Set<Ec2RunnerFailureCode>();
   const visited = new Set<Error>();
   let current = error;
@@ -562,12 +562,14 @@ function failedCreateRunnerResult(
   };
 }
 
-function throwIfAborted(signal: AbortSignal | undefined, error: unknown): void {
+export function throwIfAborted(signal: AbortSignal | undefined, error: unknown): void {
   if (signal?.aborted) signal.throwIfAborted();
   if (error instanceof Error && error.name === 'AbortError') throw error;
 }
 
-async function getAmiIdOverride(runnerParameters: RunnerInputParameters): Promise<string | undefined> {
+export async function getAmiIdOverride(
+  runnerParameters: Pick<RunnerInputParameters, 'amiIdSsmParameterName'>,
+): Promise<string | undefined> {
   if (!runnerParameters.amiIdSsmParameterName) {
     return undefined;
   }
@@ -586,12 +588,12 @@ async function getAmiIdOverride(runnerParameters: RunnerInputParameters): Promis
   }
 }
 
-async function createInstances(
-  runnerParameters: RunnerInputParameters,
-  amiIdOverride: string | undefined,
-  ec2Client: EC2Client,
-  signal: AbortSignal | undefined,
-) {
+export function createRunnerTags(
+  runnerParameters: Pick<
+    RunnerInputParameters,
+    'source' | 'environment' | 'runnerType' | 'runnerOwner' | 'tracingEnabled'
+  >,
+): Tag[] {
   const tags = [
     { Key: 'ghr:Application', Value: 'github-action-runner' },
     { Key: 'ghr:created_by', Value: runnerParameters.source },
@@ -603,6 +605,16 @@ async function createInstances(
     const traceId = tracer.getRootXrayTraceId();
     tags.push({ Key: 'ghr:trace_id', Value: traceId! });
   }
+  return tags;
+}
+
+async function createInstances(
+  runnerParameters: RunnerInputParameters,
+  amiIdOverride: string | undefined,
+  ec2Client: EC2Client,
+  signal: AbortSignal | undefined,
+) {
+  const tags = createRunnerTags(runnerParameters);
 
   const targetCapacityType = runnerParameters.ec2instanceCriteria.targetCapacityType;
   const allocationStrategy = sanitizeAllocationStrategy(
@@ -671,17 +683,7 @@ async function createInstancesWithRunInstances(
   ec2Client: EC2Client,
   signal: AbortSignal | undefined,
 ): Promise<Ec2RunnerCreateResult> {
-  const tags = [
-    { Key: 'ghr:Application', Value: 'github-action-runner' },
-    { Key: 'ghr:created_by', Value: runnerParameters.source },
-    { Key: 'ghr:environment', Value: runnerParameters.environment },
-    { Key: 'ghr:Type', Value: runnerParameters.runnerType },
-    { Key: 'ghr:Owner', Value: runnerParameters.runnerOwner },
-  ];
-  if (runnerParameters.tracingEnabled) {
-    const traceId = tracer.getRootXrayTraceId();
-    tags.push({ Key: 'ghr:trace_id', Value: traceId! });
-  }
+  const tags = createRunnerTags(runnerParameters);
 
   if (runnerParameters.ec2instanceCriteria.targetCapacityType === 'spot') {
     logger.warn(
