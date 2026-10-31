@@ -94,16 +94,7 @@ resource "aws_iam_role_policy" "deregister_retry_ssm" {
   name = "ssm-deregister-retry"
   role = module.deregister_retry_lambda[0].lambda.role.name
 
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect   = "Allow"
-        Action   = ["ssm:GetParameter", "ssm:GetParameters"]
-        Resource = local.ssm_parameter_arns
-      }
-    ]
-  })
+  policy = local.ssm_policy_json
 }
 
 # IAM: Allow the retry Lambda to describe EC2 instances (for tag lookups)

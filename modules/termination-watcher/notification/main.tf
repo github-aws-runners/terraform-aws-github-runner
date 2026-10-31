@@ -95,14 +95,5 @@ resource "aws_iam_role_policy" "ssm_policy" {
   name = "ssm-policy"
   role = module.termination_warning_watcher.lambda.role.name
 
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect   = "Allow"
-        Action   = ["ssm:GetParameter", "ssm:GetParameters"]
-        Resource = var.config._ssm_parameter_arns
-      }
-    ]
-  })
+  policy = var.config._ssm_policy_json
 }
