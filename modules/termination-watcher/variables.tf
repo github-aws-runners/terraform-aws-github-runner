@@ -29,6 +29,7 @@ variable "config" {
     `zip`: File location of the lambda zip file.
     `enable_runner_deregistration`: Enable or disable deregistering the runner from GitHub when its EC2 instance is terminated.
     `github_app_parameters`: GitHub App SSM parameters (`id` and `key_base64`, each a map of `arn`/`name`) used to authenticate to GitHub when deregistering runners. Optional `additional_apps_manifest` (`name`/`arn`) and `additional_app_parameter_arns` enable credentials from the multi-App manifest.
+    `github_app_kms_key_arn`: ARN of the KMS key encrypting the GitHub App SSM parameters. When set and runner deregistration is enabled, the Lambda roles are allowed `kms:Decrypt` on this key.
     `ghes_url`: GitHub Enterprise Server URL used to target the GHES API when deregistering runners. Leave `null` for github.com.
   EOF
   type = object({
@@ -82,6 +83,7 @@ variable "config" {
       additional_apps_manifest      = optional(object({ name = string, arn = string }))
       additional_app_parameter_arns = optional(list(string), [])
     }), null)
-    ghes_url = optional(string, null)
+    github_app_kms_key_arn = optional(string, null)
+    ghes_url               = optional(string, null)
   })
 }
