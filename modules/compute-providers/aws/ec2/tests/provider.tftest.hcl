@@ -584,6 +584,67 @@ run "network_interfaces_accepts_explicit_configuration" {
   }
 }
 
+run "network_interfaces_move_security_groups_to_the_interfaces" {
+  command = plan
+
+  variables {
+    config = {
+      vpc_id                         = "vpc-12345678"
+      subnet_ids                     = ["subnet-12345678"]
+      instance_types                 = ["m5.large"]
+      managed_security_group_enabled = false
+      additional_security_group_ids  = ["sg-shared"]
+      binaries_syncer = {
+        enabled = false
+      }
+      network_interfaces = [
+        { device_index = 0 },
+        { device_index = 1, security_groups = ["sg-own"] },
+        { device_index = 2, network_interface_id = "eni-12345678" },
+      ]
+    }
+  }
+
+  assert {
+    condition     = length(aws_launch_template.runner["default"].vpc_security_group_ids) == 0
+    error_message = "Instance-level security groups must not be set together with network interfaces."
+  }
+
+  assert {
+    condition = (
+      toset(aws_launch_template.runner["default"].network_interfaces[0].security_groups) == toset(["sg-shared"])
+      && toset(aws_launch_template.runner["default"].network_interfaces[1].security_groups) == toset(["sg-own"])
+      && length(coalesce(aws_launch_template.runner["default"].network_interfaces[2].security_groups, [])) == 0
+    )
+    error_message = "Interfaces without security groups must get the runner security groups, except interfaces that attach an existing ENI."
+  }
+}
+
+run "no_network_interfaces_keeps_instance_security_groups" {
+  command = plan
+
+  variables {
+    config = {
+      vpc_id                         = "vpc-12345678"
+      subnet_ids                     = ["subnet-12345678"]
+      instance_types                 = ["m5.large"]
+      managed_security_group_enabled = false
+      additional_security_group_ids  = ["sg-shared"]
+      binaries_syncer = {
+        enabled = false
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      toset(aws_launch_template.runner["default"].vpc_security_group_ids) == toset(["sg-shared"])
+      && length(aws_launch_template.runner["default"].network_interfaces) == 0
+    )
+    error_message = "Without network interfaces, the security groups must stay on the instance."
+  }
+}
+
 run "rejects_external_instance_profile_with_managed_role" {
   command = plan
 
