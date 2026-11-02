@@ -144,6 +144,7 @@ module "runners" {
         architecture = "x64"
         name_prefix  = "ec2-"
         extra_labels = ["ec2"]
+        group_name   = var.scale_set.runner_group_name
       }
       orchestration_provider = {
         webhook = {

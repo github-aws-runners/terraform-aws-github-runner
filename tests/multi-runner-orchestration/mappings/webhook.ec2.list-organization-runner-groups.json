@@ -11,9 +11,9 @@
       "runner_groups": [
         {
           "id": 1,
-          "name": "Default",
+          "name": "experimental-euw1-sl-cicd-forge-emu",
           "size": 100,
-          "isDefaultGroup": true
+          "isDefaultGroup": false
         }
       ]
     },

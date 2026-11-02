@@ -21,17 +21,18 @@ docker compose -f tests/multi-runner-orchestration/docker-compose.yml down
 
 ## MiniStack fixtures
 
-`docker compose -f tests/multi-runner-orchestration/docker-compose.yml up --build` runs `.ci/build.sh` to build the Lambda distributions, starts MiniStack, seeds AMIs and the `scale-set-controller` ECR repository/policy, builds the controller for `linux/amd64` and `linux/arm64`, and pushes it to MiniStack. The Compose services use `linux/amd64`; CI enables QEMU to build the ARM64 image on its AMD64 runner.
+`docker compose --parallel 1 -f tests/multi-runner-orchestration/docker-compose.yml up --build` runs `.ci/build.sh` to build the Lambda distributions, starts MiniStack, seeds the AMI, the `scale-set-controller` ECR repository/policy, builds the controller for `linux/amd64` and `linux/arm64`, and pushes it to MiniStack. The Compose services use `linux/amd64`; CI enables QEMU to build the ARM64 image on its AMD64 runner.
 
 The controller image build is configured directly in the `docker-buildx` Compose service; it is not a fixture in `fixtures/ministack-fixtures.json`. Compose creates the `multi-runner-orchestration` network and attaches MiniStack's nested ECS containers to it. The AWS CLI uses `ministack:4566` to reach MiniStack. The job resolves MiniStack's network IP for BuildKit's registry push, since BuildKit does not resolve Compose service DNS in this setup; it configures that registry as plain HTTP.
 
 ## Programmatic MiniStack smoke test
 
-Compose owns the environment lifecycle: `run smoke-tests` starts the required WireMock and MiniStack dependencies, seeds AWS fixtures, builds the Lambda archives and scale-set controller image, applies `examples/multi-runner-orchestration`, then runs the smoke-test container. The command streams the Node.js reporter output and returns the smoke container's exit code. The job first registers a scale-set task-definition revision with dummy MiniStack credentials and updates the ECS service:
+Compose owns the environment lifecycle. Run `terraform-apply` as a blocking step before starting the smoke test container; the smoke command uses `--no-deps` so it cannot begin early or trigger a second apply. The apply service starts its prerequisites, seeds AWS fixtures, builds the Lambda archives and scale-set controller image, then applies `examples/multi-runner-orchestration`. The smoke step runs only after that command exits successfully and returns the smoke container's exit code. The job first registers a scale-set task-definition revision with dummy MiniStack credentials and updates the ECS service:
 
 ```sh
-docker compose -f tests/multi-runner-orchestration/docker-compose.yml build
-docker compose -f tests/multi-runner-orchestration/docker-compose.yml run --no-TTY --rm smoke-tests
+docker compose --parallel 1 -f tests/multi-runner-orchestration/docker-compose.yml build
+docker compose -f tests/multi-runner-orchestration/docker-compose.yml run --no-TTY --rm terraform-apply
+docker compose -f tests/multi-runner-orchestration/docker-compose.yml run --no-TTY --rm --no-deps smoke-tests
 ```
 
 Stop the long-running MiniStack and WireMock services after the command finishes:
@@ -40,9 +41,11 @@ Stop the long-running MiniStack and WireMock services after the command finishes
 docker compose -f tests/multi-runner-orchestration/docker-compose.yml down --remove-orphans
 ```
 
-Name smoke suites `<trigger>.<compute-provider>.test.mjs`; the current suites are `webhook.ec2.test.mjs` and `scale-set.ec2.test.mjs`. To cover MicroVM, add `webhook.microvm.test.mjs` and/or `scale-set.microvm.test.mjs`. Webhook suites can reuse `sendWorkflowJob` and shared AWS/CloudWatch helpers from `smoke/support.mjs`; scale-set suites can register the common lifecycle with `registerScaleSetLifecycleTest` from `smoke/scale-set-support.mjs` and provide provider-specific reconciliation assertions. Keep resource checks and cleanup provider-specific. The `*.test.mjs` command discovers new suites automatically. The suite contains four named Node.js test cases: EC2 webhook scale-up and scale-down with standard labels, EC2 webhook scale-up and scale-down with a dynamic instance-type label, EC2 pool runner creation and scale-down, and EC2 scale-set scale-up and scale-down. The webhook and pool cases assert the EC2 runner count before launch, after launch, and after cleanup; the dynamic-label case also verifies the requested `m5.large` override in the scale-up logs. The scale-set case checks zero runners at baseline, one runner after scale-up, and a termination returning the count to zero. All cases assert the corresponding Lambda or controller CloudWatch logs. WireMock API responses are test fixtures, so the tests do not assert those routes. Run the smoke cases with the concise reporter:
+Name smoke suites `<trigger>.<compute-provider>.test.mjs`; the current suites are `webhook.ec2.test.mjs` and `scale-set.ec2.test.mjs`. To cover MicroVM, add `webhook.microvm.test.mjs` and/or `scale-set.microvm.test.mjs`. Keep each scenario as a readable sequence of real actions and checks: send the webhook or invoke the pool, inspect CloudWatch for delivery and scale-up, use AWS CLI to verify runner count and configuration, invoke scale-down, then verify the termination in logs and EC2 state, including for the scale-set case. The suite covers standard-label webhook, dynamic-label webhook, pool, and scale-set lifecycles.
 
-MiniStack does not start the EC2 runner agent, so the webhook and pool tests invoke scale-down twice: the first pass marks the unregistered instance orphaned, and the next pass confirms it is absent from GitHub and terminates it.
+`support.aws.mjs` provides AWS CLI execution, CloudWatch log reads, and polling. Scenario files contain the CloudWatch and EC2 assertions. Webhook payload helpers live in `support.webhook.mjs`; the smoke scenarios read the WireMock request journal directly. The EC2 scale-set scenario spells out the baseline, scale-up, and scale-down assertions directly; `smoke/support.scale-set.mjs` handles ECS discovery and task deployments. Keep provider-specific resource checks and cleanup in the scenario. The `*.test.mjs` command discovers new suites automatically. Smoke cases also check the WireMock request journal for key GitHub API calls; lifecycle behavior is validated through AWS CLI state and CloudWatch logs. Run the smoke cases with the concise reporter:
+
+MiniStack does not start the EC2 runner agent. The webhook GitHub API fixture therefore returns no registered runners; the webhook and pool tests invoke scale-down twice, first to mark the EC2 instance orphaned and then to confirm its runner ID is absent from GitHub and terminate it.
 
 ```sh
 node --test --test-concurrency=1 \
