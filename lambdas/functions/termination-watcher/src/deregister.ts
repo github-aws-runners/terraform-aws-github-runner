@@ -26,6 +26,42 @@ function getRunnerTypeFromTags(instance: Instance): string | undefined {
   return instance.Tags?.find((tag) => tag.Key === 'ghr:Type')?.Value;
 }
 
+function getRunnerNamePrefixFromTags(instance: Instance): string | undefined {
+  return instance.Tags?.find((tag) => tag.Key === 'ghr:runner_name_prefix')?.Value;
+}
+
+/**
+ * Looks up a runner by its exact registered name using the `name` filter of the
+ * list-runners API. One request regardless of how many runners the owner has.
+ */
+async function findRunnerByName(
+  octokit: Octokit,
+  owner: string,
+  runnerName: string,
+  runnerType: string,
+): Promise<{ id: number; name: string } | undefined> {
+  const response =
+    runnerType === 'Repo'
+      ? await (async () => {
+          const [repoOwner, repo] = owner.split('/');
+          return octokit.actions.listSelfHostedRunnersForRepo({
+            owner: repoOwner,
+            repo,
+            name: runnerName,
+            per_page: 1,
+          });
+        })()
+      : await octokit.actions.listSelfHostedRunnersForOrg({ org: owner, name: runnerName, per_page: 1 });
+
+  const runner = response.data.runners.find((r) => r.name === runnerName);
+  return runner ? { id: runner.id, name: runner.name } : undefined;
+}
+
+/**
+ * Fallback for instances without a `ghr:runner_name_prefix` tag: scan every page of
+ * the owner's runners for a name containing the instance id. Cost grows with the
+ * number of registered runners, so prefer `findRunnerByName` whenever the prefix is known.
+ */
 async function findRunnerByInstanceId(
   octokit: Octokit,
   owner: string,
@@ -89,6 +125,7 @@ export async function deregisterRunner(instance: Instance, config: Config): Prom
 
   const owner = getOwnerFromTags(instance);
   const runnerType = getRunnerTypeFromTags(instance) ?? 'Org';
+  const runnerNamePrefix = getRunnerNamePrefixFromTags(instance);
 
   if (!owner) {
     logger.warn('ghr:Owner tag not found on instance, cannot deregister runner', { instanceId });
@@ -100,7 +137,15 @@ export async function deregisterRunner(instance: Instance, config: Config): Prom
 
     const installationOctokit = await createRunnerInstallationClient(owner, runnerType, config.ghesApiUrl);
 
-    const runner = await findRunnerByInstanceId(installationOctokit, owner, instanceId, runnerType);
+    let runner: { id: number; name: string } | undefined;
+    if (runnerNamePrefix !== undefined) {
+      runner = await findRunnerByName(installationOctokit, owner, `${runnerNamePrefix}${instanceId}`, runnerType);
+    } else {
+      logger.debug('ghr:runner_name_prefix tag not found on instance, falling back to scanning all runners', {
+        instanceId,
+      });
+      runner = await findRunnerByInstanceId(installationOctokit, owner, instanceId, runnerType);
+    }
     if (!runner) {
       logger.info('Runner not found in GitHub, may have already been deregistered', { instanceId, owner });
       return;

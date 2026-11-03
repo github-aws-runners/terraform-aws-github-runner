@@ -378,6 +378,88 @@ describe('deregisterRunner', () => {
   });
 });
 
+describe('deregisterRunner exact-name lookup (ghr:runner_name_prefix present)', () => {
+  const prefixedOrgInstance: Instance = {
+    ...orgInstance,
+    Tags: [...(orgInstance.Tags ?? []), { Key: 'ghr:runner_name_prefix', Value: 'runners-x64_' }],
+  };
+  const prefixedRepoInstance: Instance = {
+    ...repoInstance,
+    Tags: [...(repoInstance.Tags ?? []), { Key: 'ghr:runner_name_prefix', Value: 'repo-runner-' }],
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetAppCredentialsCache();
+    mockedCreateCommonStorage.mockReturnValue({ githubAppCredentials: credentialsStore });
+    setupAuthMocks();
+  });
+
+  it('should look up an org runner by exact name with a single request and delete it', async () => {
+    mockApps.getOrgInstallation.mockResolvedValue({ data: { id: 999 } });
+    mockActions.listSelfHostedRunnersForOrg.mockResolvedValue({
+      data: { total_count: 1, runners: [{ id: 42, name: 'runners-x64_i-12345678901234567' }] },
+    });
+    mockActions.deleteSelfHostedRunnerFromOrg.mockResolvedValue({});
+
+    await deregisterRunner(prefixedOrgInstance, baseConfig);
+
+    expect(mockActions.listSelfHostedRunnersForOrg).toHaveBeenCalledTimes(1);
+    expect(mockActions.listSelfHostedRunnersForOrg).toHaveBeenCalledWith({
+      org: 'test-org',
+      name: 'runners-x64_i-12345678901234567',
+      per_page: 1,
+    });
+    expect(mockPaginate.iterator).not.toHaveBeenCalled();
+    expect(mockActions.deleteSelfHostedRunnerFromOrg).toHaveBeenCalledWith({ org: 'test-org', runner_id: 42 });
+  });
+
+  it('should look up a repo runner by exact name with a single request and delete it', async () => {
+    mockApps.getRepoInstallation.mockResolvedValue({ data: { id: 888 } });
+    mockActions.listSelfHostedRunnersForRepo.mockResolvedValue({
+      data: { total_count: 1, runners: [{ id: 55, name: 'repo-runner-i-repo12345678901234' }] },
+    });
+    mockActions.deleteSelfHostedRunnerFromRepo.mockResolvedValue({});
+
+    await deregisterRunner(prefixedRepoInstance, baseConfig);
+
+    expect(mockActions.listSelfHostedRunnersForRepo).toHaveBeenCalledWith({
+      owner: 'test-org',
+      repo: 'test-repo',
+      name: 'repo-runner-i-repo12345678901234',
+      per_page: 1,
+    });
+    expect(mockPaginate.iterator).not.toHaveBeenCalled();
+    expect(mockActions.deleteSelfHostedRunnerFromRepo).toHaveBeenCalledWith({
+      owner: 'test-org',
+      repo: 'test-repo',
+      runner_id: 55,
+    });
+  });
+
+  it('should not scan all runners when the exact name is not registered', async () => {
+    mockApps.getOrgInstallation.mockResolvedValue({ data: { id: 999 } });
+    mockActions.listSelfHostedRunnersForOrg.mockResolvedValue({ data: { total_count: 0, runners: [] } });
+
+    await deregisterRunner(prefixedOrgInstance, baseConfig);
+
+    expect(mockActions.listSelfHostedRunnersForOrg).toHaveBeenCalledTimes(1);
+    expect(mockPaginate.iterator).not.toHaveBeenCalled();
+    expect(mockActions.deleteSelfHostedRunnerFromOrg).not.toHaveBeenCalled();
+  });
+
+  it('should ignore a runner whose name does not exactly match', async () => {
+    mockApps.getOrgInstallation.mockResolvedValue({ data: { id: 999 } });
+    mockActions.listSelfHostedRunnersForOrg.mockResolvedValue({
+      data: { total_count: 1, runners: [{ id: 7, name: 'runners-x64_i-12345678901234567-other' }] },
+    });
+
+    await deregisterRunner(prefixedOrgInstance, baseConfig);
+
+    expect(mockActions.deleteSelfHostedRunnerFromOrg).not.toHaveBeenCalled();
+  });
+});
+
 describe('createThrottleOptions', () => {
   it('should return false for rate limit and log warning', () => {
     const options = createThrottleOptions();

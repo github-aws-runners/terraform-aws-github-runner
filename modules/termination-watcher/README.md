@@ -55,6 +55,8 @@ To compile all TypeScript/JavaScript sources in a single file [ncc](https://gith
 yarn run dist
 ```
 
+When a tracked instance terminates, the watcher resolves its GitHub registration from the `ghr:runner_name_prefix` tag the runner modules place on every instance: the registered name is `<prefix><instance-id>`, so the lookup is a single `name`-filtered list-runners request regardless of fleet size. Instances without that tag fall back to paginating every runner of the owner and matching on instance id, which costs one request per 100 registered runners. On ephemeral fleets the registration is normally already gone when the termination event arrives, because GitHub removes an ephemeral runner as soon as its job completes, so the per-event lookup is mostly confirmation; the scheduled `registration-janitor` module is the reconciliation path for registrations that outlive their instance.
+
 Deregistration and SQS retries can use additional GitHub Apps through `config.github_app_parameters.additional_apps_manifest` and `additional_app_parameter_arns`. The multi-runner module passes its configured additional Apps automatically. Selection uses observed installation quota, with a one-minute cooldown after throttling and fallback to another App when authentication fails. Each cleanup operation keeps App and installation authentication paired; existing single-App configurations remain supported.
 
 <!-- BEGIN_TF_DOCS -->
