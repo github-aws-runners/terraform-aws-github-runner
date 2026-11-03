@@ -16,7 +16,7 @@ resource "aws_lambda_function" "webhook" {
   memory_size       = var.config.lambda_memory_size
   timeout           = var.config.lambda_timeout
   architectures     = [var.config.lambda_architecture]
-  depends_on        = [aws_cloudwatch_log_group.webhook]
+  depends_on        = [aws_cloudwatch_log_group.webhook, aws_iam_role_policy.webhook_ssm]
 
   environment {
     variables = merge({
@@ -141,7 +141,7 @@ resource "aws_iam_role_policy" "webhook_ssm" {
     resource_arns = jsonencode(
       concat(
         [var.config.github_app_parameters.webhook_secret.arn],
-        [for p in var.config.ssm_parameter_runner_matcher_config : p.arn]
+        [var.config.ssm_parameter_runner_matcher_config_arn_pattern]
       )
     )
   })
