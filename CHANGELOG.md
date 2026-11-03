@@ -1,5 +1,21 @@
 # Changelog
 
+## [8.1.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v8.0.0...v8.1.0) (2026-10-29)
+
+
+### Features
+
+* add stateless registration cleanup with multi-App support ([#5465](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5465)) ([5959d43](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/5959d43374ea6913eab93caed276cd9ac4e66663))
+* **termination-watcher:** support additional GitHub Apps ([#5467](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5467)) ([eefcb1e](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/eefcb1eef2b46b6e75d00b105ebd33eda1c7fa08))
+
+
+### Bug Fixes
+
+* **lambda:** bump undici from 6.29.0 to 6.29.1 in /lambdas ([#5554](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5554)) ([94f46c7](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/94f46c7b5738306a166f5ebac3e18ba4674f7038))
+* **scale-down:** clean EC2 runners incrementally and isolate failures ([#5463](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5463)) ([60a4c66](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/60a4c6632bc9daf830aa81784e7b70af0793d2fd))
+* **scale-down:** scope cached clients by selected GitHub App ([#5466](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5466)) ([bbd92fe](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/bbd92fe1ea612c7b22f1effcacac1d9834f5ee72))
+* **termination-watcher:** grant kms:Decrypt for GitHub App parameters ([#5562](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5562)) ([7b54664](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/7b54664f225cbecbc702988dcef0e37a76e2231e))
+
 ## [8.0.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v7.11.0...v8.0.0) (2026-10-21)
 
 ### Release highlights
