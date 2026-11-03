@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.1.1](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v8.1.0...v8.1.1) (2026-11-03)
+
+
+### Bug Fixes
+
+* **runners:** Skip runner file ownership change when user_name is unset ([#5574](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5574)) ([2cf37e5](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/2cf37e5276beceb9f97dc8ecff20873f44af19bd))
+
 ## [8.1.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v8.0.0...v8.1.0) (2026-10-29)
 
 
