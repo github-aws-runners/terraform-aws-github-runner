@@ -1,0 +1,14 @@
+{
+  "name": "Scale set - Actions registration handshake",
+  "request": {
+    "method": "POST",
+    "urlPathPattern": "(?:/api/v3)?/actions/runner-registration"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": "{\"url\":\"{{request.baseUrl}}/tenant/123\",\"token\":\"eyJhbGciOiJub25lIn0.eyJleHAiOjQxMDI0NDgwMDB9.mock-signature\"}"
+  }
+}

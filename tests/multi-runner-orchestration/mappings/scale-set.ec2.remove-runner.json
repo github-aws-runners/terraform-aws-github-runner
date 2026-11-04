@@ -1,0 +1,10 @@
+{
+  "name": "Scale set - remove runner",
+  "request": {
+    "method": "DELETE",
+    "urlPathPattern": "(?:/api/v3)?(?:/tenant/[^/]+)?/_apis/distributedtask/pools/0/agents/\\d+"
+  },
+  "response": {
+    "status": 204
+  }
+}

@@ -108,3 +108,15 @@ updates:
       - "python"
     commit-message:
       prefix: "chore(docs)"
+
+  - package-ecosystem: "docker-compose"
+    directory: "/tests/multi-runner-orchestration"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+    labels:
+      - "dependencies"
+      - "docker-compose"
+    commit-message:
+      prefix: "chore(docker-compose)"

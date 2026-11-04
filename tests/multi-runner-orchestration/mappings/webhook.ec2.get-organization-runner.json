@@ -1,0 +1,13 @@
+{
+  "name": "runner   get org runner",
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "(?:/api/v3)?/orgs/[^/]+/actions/runners/\\d+"
+  },
+  "response": {
+    "status": 404,
+    "jsonBody": {
+      "message": "Runner not found"
+    }
+  }
+}

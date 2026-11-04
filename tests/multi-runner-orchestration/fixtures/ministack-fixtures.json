@@ -1,0 +1,38 @@
+{
+  "fixtures": [
+    {
+      "type": "ami",
+      "name": "multi-runner-orchestration",
+      "description": "MiniStack test-only AMI",
+      "architecture": "x86_64",
+      "root_device_name": "/dev/xvda",
+      "virtualization_type": "hvm",
+      "image_location": "alpine:3.20"
+    },
+    {
+      "type": "ecr-repository",
+      "name": "scale-set-controller",
+      "image_tag_mutability": "MUTABLE",
+      "image_scanning_configuration": {
+        "scanOnPush": false
+      },
+      "policy": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Sid": "AllowAccountPull",
+            "Effect": "Allow",
+            "Principal": {
+              "AWS": "arn:aws:iam::000000000000:root"
+            },
+            "Action": [
+              "ecr:BatchCheckLayerAvailability",
+              "ecr:BatchGetImage",
+              "ecr:GetDownloadUrlForLayer"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

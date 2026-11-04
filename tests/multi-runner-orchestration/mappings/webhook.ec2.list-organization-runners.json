@@ -1,0 +1,17 @@
+{
+  "name": "Runner - list org runners",
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "(?:/api/v3)?/orgs/[^/]+/actions/runners"
+  },
+  "response": {
+    "status": 200,
+    "jsonBody": {
+      "total_count": 0,
+      "runners": []
+    },
+    "headers": {
+      "Content-Type": "application/json"
+    }
+  }
+}

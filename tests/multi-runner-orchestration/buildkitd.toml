@@ -1,0 +1,5 @@
+insecure-entitlements = ["network.host"]
+
+[worker.oci]
+  max-parallelism = 1
+  networkMode = "host"
