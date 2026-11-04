@@ -1332,6 +1332,30 @@ describe('Scale down runners', () => {
             expect(mockTerminateRunners).not.toHaveBeenCalledWith(notTerminated.id);
           }
         });
+
+        it(`Should not let a busy runner use an idle slot with ${evictionStrategy} eviction strategy`, async () => {
+          // The busy runner comes first in eviction order, so it would take the only idle slot
+          // and leave the idle runner to be terminated.
+          const busyRunnerTime =
+            evictionStrategy === 'oldest_first'
+              ? MINIMUM_TIME_RUNNING_IN_MINUTES + 1
+              : MINIMUM_TIME_RUNNING_IN_MINUTES + 5;
+          const runners = [
+            createRunnerTestData('busy-1', type, busyRunnerTime, true, false, false),
+            createRunnerTestData('idle-1', type, MINIMUM_TIME_RUNNING_IN_MINUTES + 3, true, false, false),
+          ];
+
+          mockOctokit.paginate.mockResolvedValue(
+            runners.map((runner) => ({ id: runner.id, name: runner.id, busy: runner.id.includes('busy') })),
+          );
+          mockProviderRunners(runners);
+
+          await scaleDown();
+
+          expect(mockTerminateRunners).not.toHaveBeenCalled();
+          expect(scaleLogs.info).toHaveBeenCalledWith(`Runner '${runners[1].id}' will be kept idle.`);
+          expect(scaleLogs.info).not.toHaveBeenCalledWith(`Runner '${runners[0].id}' will be kept idle.`);
+        });
       });
     });
   });

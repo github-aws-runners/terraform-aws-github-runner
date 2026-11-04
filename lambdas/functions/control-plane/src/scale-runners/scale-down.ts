@@ -426,7 +426,11 @@ async function evaluateAndRemoveRunners(
         logger.debug(`GitHub runners for runner: '${runner.id}': ${JSON.stringify(ghRunnersFiltered)}`);
         if (ghRunnersFiltered.length) {
           if (runnerMinimumTimeExceeded(runner)) {
-            if (idleCounter > 0) {
+            // Only an idle runner fills an idle slot. A busy runner is never removed (removeRunner
+            // re-reads the busy state before deregistering), so letting it take a slot would leave
+            // the warm pool short and terminate an idle runner further down the list.
+            const busy = ghRunnersFiltered.some((ghRunner) => ghRunner.busy === true);
+            if (idleCounter > 0 && !busy) {
               idleCounter--;
               sweep.idleRemaining = idleCounter;
               // A runner kept idle is not evaluated for removal, so its idle marker cannot be
