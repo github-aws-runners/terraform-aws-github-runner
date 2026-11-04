@@ -9,6 +9,6 @@
     "headers": {
       "Content-Type": "application/json"
     },
-    "body": "{\"count\":1,\"value\":[{\"id\":48,\"name\":\"experimental-euw1-sl-cicd-forge-emu\",\"size\":100,\"isDefaultGroup\":false}]}"
+    "body": "{\"count\":1,\"value\":[{\"id\":48,\"name\":\"smoke-test-group\",\"size\":100,\"isDefaultGroup\":false}]}"
   }
 }

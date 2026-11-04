@@ -11,7 +11,7 @@
       "runner_groups": [
         {
           "id": 1,
-          "name": "experimental-euw1-sl-cicd-forge-emu",
+          "name": "smoke-test-group",
           "size": 100,
           "isDefaultGroup": false
         }

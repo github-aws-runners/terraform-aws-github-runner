@@ -13,7 +13,7 @@ github = {
 
 scale_set = {
   name              = "linux-scale-set"
-  runner_group_name = "experimental-euw1-sl-cicd-forge-emu"
+  runner_group_name = "smoke-test-group"
   min_runners       = 1
   container = {
     image = "localhost:4566/scale-set-controller:latest"

@@ -112,7 +112,7 @@ test('EC2 Webhook: standard labels create and terminate a runner', {
   timeout: testTimeout,
 }, async () => {
   const runnerGroupParameter =
-    '/github-action-runners/multi-runner-webhook/ec2/runners/config/runner-group/experimental-euw1-sl-cicd-forge-emu';
+    '/github-action-runners/multi-runner-webhook/ec2/runners/config/runner-group/smoke-test-group';
   try {
     await aws(
       'ssm', 'delete-parameter',
@@ -193,7 +193,7 @@ test('EC2 Webhook: standard labels create and terminate a runner', {
     'scale-up stored the GitHub runner group ID in SSM',
     async () => {
       const messages = await logMessages('/aws/lambda/multi-runner-webhook-ec2-scale-up', startTime);
-      return messages.find((message) => eventMatches(message, 'Stored runner group ID in cache', { runnerGroupName: 'experimental-euw1-sl-cicd-forge-emu', runnerGroupId: 1 }));
+      return messages.find((message) => eventMatches(message, 'Stored runner group ID in cache', { runnerGroupName: 'smoke-test-group', runnerGroupId: 1 }));
     },
   );
   await waitFor(`scale-up attempted runner launch for standard-label job ${jobId}`,
@@ -288,7 +288,7 @@ test('EC2 Webhook: dynamic labels apply m5.large and terminate the runner', {
     'scale-up found the cached runner group ID',
     async () => {
       const messages = await logMessages('/aws/lambda/multi-runner-webhook-ec2-scale-up', startTime);
-      return messages.find((message) => eventMatches(message, 'Runner group cache hit', { runnerGroupName: 'experimental-euw1-sl-cicd-forge-emu', runnerGroupId: 1 }));
+      return messages.find((message) => eventMatches(message, 'Runner group cache hit', { runnerGroupName: 'smoke-test-group', runnerGroupId: 1 }));
     },
   );
   assert.equal(

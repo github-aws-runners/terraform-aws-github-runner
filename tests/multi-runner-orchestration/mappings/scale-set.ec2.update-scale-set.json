@@ -10,7 +10,7 @@
       "id": 223,
       "name": "linux-scale-set",
       "runnerGroupId": 48,
-      "runnerGroupName": "experimental-euw1-sl-cicd-forge-emu",
+      "runnerGroupName": "smoke-test-group",
       "labels": [
         {
           "name": "linux-scale-set",
