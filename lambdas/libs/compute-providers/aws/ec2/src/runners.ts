@@ -17,6 +17,7 @@ import {
   TerminateInstancesCommand,
   _InstanceType,
 } from '@aws-sdk/client-ec2';
+import { awsErrorCodes } from '@aws-github-runner/aws-error-util';
 import { createChildLogger, tracer } from '@aws-github-runner/aws-powertools-util';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import moment from 'moment';
@@ -277,6 +278,8 @@ function requestFailureCodes(error: unknown): Ec2RunnerFailureCode[] {
     }
     current = awsError.cause;
   }
+
+  awsErrorCodes(error).forEach((code) => failureCodes.add(`aws-name:${code}`));
 
   return [...failureCodes];
 }

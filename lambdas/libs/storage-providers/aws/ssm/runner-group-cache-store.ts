@@ -1,3 +1,4 @@
+import { awsErrorCodes } from '@aws-github-runner/aws-error-util';
 import { getParameter, putParameter } from '@aws-github-runner/aws-ssm-util';
 
 import type { RunnerGroupCacheRecord, RunnerGroupCacheStore } from '../../core';
@@ -92,5 +93,5 @@ class AwsSsmRunnerGroupCacheStore implements RunnerGroupCacheStore {
 }
 
 function isParameterNotFoundError(error: unknown): boolean {
-  return getErrorNames(error).includes('ParameterNotFound');
+  return awsErrorCodes(error).includes('ParameterNotFound');
 }
