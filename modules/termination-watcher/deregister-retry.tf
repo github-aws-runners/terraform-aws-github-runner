@@ -20,7 +20,7 @@ resource "aws_sqs_queue" "deregister_retry" {
   name                       = "${var.config.prefix}-deregister-retry"
   delay_seconds              = 300   # 5 minutes
   message_retention_seconds  = 86400 # 24 hours
-  visibility_timeout_seconds = 60    # Lambda timeout + buffer
+  visibility_timeout_seconds = max(60, coalesce(var.config.timeout, 60))
   tags                       = var.config.tags
 
   redrive_policy = jsonencode({
