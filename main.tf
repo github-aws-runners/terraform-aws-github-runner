@@ -196,13 +196,14 @@ module "runners" {
     key = module.runner_binaries[0].runner_distribution_object_key
   } : null
 
-  runner_os                     = var.runner_os
-  instance_types                = var.instance_types
-  instance_target_capacity_type = var.instance_target_capacity_type
-  instance_allocation_strategy  = var.instance_allocation_strategy
-  instance_type_priorities      = var.instance_type_priorities
-  instance_max_spot_price       = var.instance_max_spot_price
-  block_device_mappings         = var.block_device_mappings
+  runner_os                               = var.runner_os
+  instance_types                          = var.instance_types
+  instance_target_capacity_type           = var.instance_target_capacity_type
+  instance_capacity_type_override_enabled = var.enable_dynamic_labels
+  instance_allocation_strategy            = var.instance_allocation_strategy
+  instance_type_priorities                = var.instance_type_priorities
+  instance_max_spot_price                 = var.instance_max_spot_price
+  block_device_mappings                   = var.block_device_mappings
 
   runner_architecture = var.runner_architecture
   ami                 = var.ami
@@ -417,7 +418,8 @@ locals {
       id         = local.github_app_parameters.id
       key_base64 = local.github_app_parameters.key_base64
     } : null
-    ghes_url = var.ghes_url
+    github_app_kms_key_arn = var.kms_key_arn
+    ghes_url               = var.ghes_url
   }
 }
 

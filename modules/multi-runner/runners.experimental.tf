@@ -41,5 +41,11 @@ module "runner_configs" {
   }
   storage_provider = each.value.storage_provider
   observability    = each.value.observability
-  compute_provider = each.value.compute_provider
+  compute_provider = merge(each.value.compute_provider, {
+    aws = merge(each.value.compute_provider.aws, {
+      ec2 = each.value.compute_provider.aws.ec2 == null ? null : merge(each.value.compute_provider.aws.ec2, {
+        instance_capacity_type_override_enabled = try(each.value.orchestration_provider.webhook.matcherConfig.dynamic_labels_enabled, false)
+      })
+    })
+  })
 }

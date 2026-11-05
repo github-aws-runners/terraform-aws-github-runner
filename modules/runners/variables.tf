@@ -129,6 +129,12 @@ variable "instance_target_capacity_type" {
   }
 }
 
+variable "instance_capacity_type_override_enabled" {
+  description = "Allows a per-job label to override capacity type to `on-demand` at launch time. When true, an additional launch template variant without the Spot-request tag specification is created so an on-demand override never conflicts with it."
+  type        = bool
+  default     = false
+}
+
 variable "instance_allocation_strategy" {
   description = "The allocation strategy for creating instances. For spot, AWS recommends `price-capacity-optimized`; for on-demand, use `lowest-price` or `prioritized`. The AWS default is `lowest-price`."
   type        = string

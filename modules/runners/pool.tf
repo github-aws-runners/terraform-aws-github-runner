@@ -50,7 +50,7 @@ module "pool" {
       scale_errors                         = var.scale_errors
       boot_time_in_minutes                 = var.runner_boot_time_in_minutes
       labels                               = var.runner_labels
-      launch_template                      = aws_launch_template.runner
+      launch_template                      = aws_launch_template.runner["default"]
       group_name                           = var.runner_group_name
       name_prefix                          = var.runner_name_prefix
       pool_owner                           = var.pool_runner_owner

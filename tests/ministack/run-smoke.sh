@@ -446,13 +446,22 @@ assert_ec2_default_instance_type "$scale_up_instance_id"
 configure_mock_runner_state() {
   instance_id="$1"
   runner_id="$2"
-  MOCKSERVER_URL="$mock_service_url" python3 - "$instance_id" "$runner_id" <<'PY'
+  runner_name_prefix=$(aws --endpoint-url "$AWS_ENDPOINT_URL" ec2 describe-instances \
+    --instance-ids "$instance_id" \
+    --query "Reservations[].Instances[].Tags[?Key=='ghr:runner_name_prefix'].Value | [0]" \
+    --output text)
+  if [ "$runner_name_prefix" = "None" ]; then
+    echo "Missing runner-name prefix tag on $instance_id." >&2
+    exit 1
+  fi
+  MOCKSERVER_URL="$mock_service_url" python3 - "$instance_id" "$runner_id" "$runner_name_prefix" <<'PY'
 import json
 import os
 import sys
 import urllib.request
 
-instance_id, runner_id = sys.argv[1:]
+instance_id, runner_id, runner_name_prefix = sys.argv[1:]
+runner_name = f"{runner_name_prefix}{instance_id}"
 runner_id = int(runner_id)
 base = "/api/v3/orgs/test-owner/actions/runners"
 
@@ -494,7 +503,7 @@ expect(
         "runners": [
             {
                 "id": runner_id,
-                "name": f"ministack-smoke-{instance_id}",
+                "name": runner_name,
                 "os": "linux",
                 "status": "offline",
                 "busy": False,
@@ -509,7 +518,7 @@ expect(
     200,
     {
         "id": runner_id,
-        "name": f"ministack-smoke-{instance_id}",
+        "name": runner_name,
         "os": "linux",
         "status": "offline",
         "busy": False,

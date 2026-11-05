@@ -32,7 +32,8 @@
     "@octokit/core": "7.0.6",
     "@octokit/plugin-throttling": "11.0.3",
     "@octokit/request": "^9.2.2",
-    "@octokit/rest": "22.0.1"
+    "@octokit/rest": "22.0.1",
+    "@aws-github-runner/compute-providers": "*"
   },
   "nx": {
     "includedScripts": [

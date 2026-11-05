@@ -27,8 +27,9 @@ locals {
   }
 
   provider_resources = {
-    launch_template    = aws_launch_template.runner
-    runners_log_groups = try(aws_cloudwatch_log_group.gh_runners, [])
-    logfiles           = local.logfiles
+    launch_template                         = aws_launch_template.runner["default"]
+    launch_template_name_on_demand_override = local.on_demand_override_launch_template_created ? aws_launch_template.runner["on_demand_override"].name : null
+    runners_log_groups                      = try(aws_cloudwatch_log_group.gh_runners, [])
+    logfiles                                = local.logfiles
   }
 }

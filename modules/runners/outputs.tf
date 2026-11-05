@@ -1,5 +1,9 @@
 output "launch_template" {
-  value = aws_launch_template.runner
+  value = aws_launch_template.runner["default"]
+}
+
+output "launch_template_name_on_demand_override" {
+  value = local.on_demand_override_launch_template_created ? aws_launch_template.runner["on_demand_override"].name : null
 }
 
 output "role_runner" {

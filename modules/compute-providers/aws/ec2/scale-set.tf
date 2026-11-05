@@ -23,7 +23,7 @@ locals {
       runnerNamePrefix        = var.runner.name_prefix
       jitConfigParameterPath  = "${var.storage_provider.aws.ssm.paths.root}/${var.storage_provider.aws.ssm.paths.tokens}"
       subnets                 = var.config.subnet_ids
-      launchTemplateName      = aws_launch_template.runner.name
+      launchTemplateName      = aws_launch_template.runner["default"].name
       ec2instanceCriteria     = local.scale_set_ec2_instance_criteria
       onDemandFailoverOnError = var.config.on_demand_failover_for_errors
       useDedicatedHost        = var.config.use_dedicated_host
@@ -83,8 +83,9 @@ locals {
       "arn:${var.aws_partition}:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:network-interface/*",
       "arn:${var.aws_partition}:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:placement-group/*",
       "arn:${var.aws_partition}:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:security-group/*",
-      aws_launch_template.runner.arn,
+      aws_launch_template.runner["default"].arn,
     ],
+    local.on_demand_override_launch_template_created ? [aws_launch_template.runner["on_demand_override"].arn] : [],
     [
       for subnet_id in var.config.subnet_ids :
       "arn:${var.aws_partition}:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:subnet/${subnet_id}"
@@ -98,8 +99,9 @@ locals {
     [
       "arn:${var.aws_partition}:ec2:${var.aws_region}::image/*",
       "arn:${var.aws_partition}:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:placement-group/*",
-      aws_launch_template.runner.arn,
+      aws_launch_template.runner["default"].arn,
     ],
+    local.on_demand_override_launch_template_created ? [aws_launch_template.runner["on_demand_override"].arn] : [],
     [
       for subnet_id in var.config.subnet_ids :
       "arn:${var.aws_partition}:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:subnet/${subnet_id}"

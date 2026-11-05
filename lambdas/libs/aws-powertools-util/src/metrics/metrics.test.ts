@@ -17,7 +17,7 @@ describe('A root tracer.', () => {
 
   test('should create a single metric', () => {
     const spy = vi.spyOn(Metrics.prototype, 'singleMetric');
-    createSingleMetric('test', MetricUnit.Count, 1, { test: 'test' });
+    createSingleMetric('test', MetricUnit.Count, 1, { environment: 'test' });
     expect(spy).toHaveBeenCalled();
   });
 });

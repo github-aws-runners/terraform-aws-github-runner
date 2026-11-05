@@ -25,7 +25,7 @@ jobs:
 
     steps:
       - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
+        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
         with:
           egress-policy: audit
 
@@ -62,7 +62,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
+        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
         with:
           egress-policy: audit
 
@@ -85,6 +85,19 @@ jobs:
           push: false
           load: true
           tags: scale-set-service:smoke-test
+          cache-from: type=gha,scope=scale-set-service
+          cache-to: type=gha,mode=max,scope=scale-set-service
+
+      - name: Build scale-set service image (arm64)
+        # The ECS module supports arm64 runners, so keep dedicated arm64 build
+        # coverage — arch-specific Dockerfile failures must not pass CI silently.
+        # The amd64 image above is reused for the smoke test; this is build-only.
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: ./lambdas/services/scale-set/Dockerfile
+          platforms: linux/arm64
+          push: false
           cache-from: type=gha,scope=scale-set-service
           cache-to: type=gha,mode=max,scope=scale-set-service
 
