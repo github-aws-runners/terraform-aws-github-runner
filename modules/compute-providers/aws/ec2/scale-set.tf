@@ -83,6 +83,7 @@ locals {
       "arn:${var.aws_partition}:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:network-interface/*",
       "arn:${var.aws_partition}:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:placement-group/*",
       "arn:${var.aws_partition}:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:security-group/*",
+      "arn:${var.aws_partition}:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:spot-instances-request/*",
       aws_launch_template.runner["default"].arn,
     ],
     local.on_demand_override_launch_template_created ? [aws_launch_template.runner["on_demand_override"].arn] : [],
