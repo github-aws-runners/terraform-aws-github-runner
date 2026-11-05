@@ -1256,6 +1256,16 @@ variable "lambda_event_source_mapping_maximum_batching_window_in_seconds" {
   }
 }
 
+variable "lambda_event_source_mapping_maximum_concurrency" {
+  description = "Maximum number of concurrent scale-up invocations the SQS event source mapping attempts (scaling_config.maximum_concurrency, 2-1000). Set it at or below the scale-up's reserved concurrency so the pollers never invoke past it: a throttled invocation returns its batch to the queue and uses one of each message's receives. Null leaves the mapping unbounded."
+  type        = number
+  default     = null
+  validation {
+    condition     = var.lambda_event_source_mapping_maximum_concurrency == null ? true : (var.lambda_event_source_mapping_maximum_concurrency >= 2 && var.lambda_event_source_mapping_maximum_concurrency <= 1000)
+    error_message = "The maximum concurrency for the lambda event source mapping must be null or between 2 and 1000."
+  }
+}
+
 variable "parameter_store_tags" {
   description = "Map of tags that will be added to all the SSM Parameter Store parameters created by the Lambda function."
   type        = map(string)
