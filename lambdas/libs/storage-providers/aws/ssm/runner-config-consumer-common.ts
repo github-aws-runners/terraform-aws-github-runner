@@ -1,3 +1,5 @@
+import { awsErrorCodes } from '@aws-github-runner/aws-error-util';
+
 import type { RunnerConfigConsumeOptions } from '../../core';
 
 export const DEFAULT_CALL_TIMEOUT_MS = 5_000;
@@ -98,13 +100,6 @@ export function validateConsumeOptions(options: RunnerConfigConsumeOptions): voi
   }
 }
 
-export function errorName(error: unknown): string {
-  if (error !== null && typeof error === 'object' && 'name' in error && typeof error.name === 'string') {
-    return error.name;
-  }
-  return 'UnknownError';
-}
-
 function httpStatus(error: unknown): number | undefined {
   if (
     error !== null &&
@@ -124,7 +119,7 @@ export function isRetryableProviderError(error: unknown): boolean {
   const status = httpStatus(error);
   return (
     error instanceof RunnerConfigCallDeadlineError ||
-    RETRYABLE_ERROR_NAMES.has(errorName(error)) ||
+    awsErrorCodes(error).some((code) => RETRYABLE_ERROR_NAMES.has(code)) ||
     (status !== undefined && status >= 500)
   );
 }
