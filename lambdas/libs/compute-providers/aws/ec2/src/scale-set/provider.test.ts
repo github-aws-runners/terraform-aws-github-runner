@@ -1,8 +1,14 @@
-import { CreateFleetCommand, DescribeInstancesCommand, TerminateInstancesCommand } from '@aws-sdk/client-ec2';
-import { PutParameterCommand } from '@aws-sdk/client-ssm';
-import { beforeEach, describe, expect, it } from 'vitest';
+import {
+  CreateFleetCommand,
+  DescribeInstancesCommand,
+  EC2Client,
+  TerminateInstancesCommand,
+} from '@aws-sdk/client-ec2';
+import { GetParameterCommand, PutParameterCommand, type SSMClient } from '@aws-sdk/client-ssm';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { config, createRequest, githubState, ownedInstance } from './test/fixtures';
+import { createEc2ScaleSetProvider } from './provider';
+import { config, createRequest, githubScope, githubState, ownedInstance } from './test/fixtures';
 import { createTestProvider, ec2Mock, resetAwsMocks, ssmMock } from './test/provider-harness';
 
 beforeEach(resetAwsMocks);
@@ -12,6 +18,52 @@ describe('EC2 scale-set provider orchestration', () => {
     expect(() => createTestProvider({ githubScope: 'https://GITHUB.com/example/' })).toThrow(
       'githubScope must be a canonical HTTPS GitHub configuration URL',
     );
+  });
+
+  it('reads the AMI id parameter with the credentials of the compute provider, not the runtime ones', async () => {
+    const instanceId = 'i-1234567890abcdef0';
+    // The injected client carries the assumed compute-provider credentials: the only ones allowed to read the parameter
+    const send = vi.fn(async (command: unknown) =>
+      command instanceof GetParameterCommand ? { Parameter: { Value: 'ami-from-provider-role' } } : {},
+    );
+    ec2Mock
+      .on(DescribeInstancesCommand)
+      .resolvesOnce({ Reservations: [] })
+      .resolves({
+        Reservations: [
+          { Instances: [ownedInstance(instanceId, { runnerId: 101, runnerName: `runner-${instanceId}` })] },
+        ],
+      });
+    ec2Mock.on(CreateFleetCommand).resolves({ Instances: [{ InstanceIds: [instanceId] }] });
+    const computeProvider = createEc2ScaleSetProvider(
+      {
+        runnerConfigName: 'linux',
+        scaleSetId: 42,
+        githubScope,
+        configuration: { ...config, amiIdSsmParameterName: '/github-runner-ami-id-main' },
+      },
+      {
+        ec2Client: new EC2Client({ region: 'eu-west-1' }),
+        ssmClient: { send } as unknown as SSMClient,
+        now: () => new Date('2026-08-24T10:05:00Z').getTime(),
+      },
+    );
+
+    const result = await computeProvider.reconcile(createRequest());
+
+    expect(result).toMatchObject({ actions: { launched: 1 }, errors: [] });
+    expect(send.mock.calls.map(([command]) => (command as { input: unknown }).input)).toContainEqual({
+      Name: '/github-runner-ami-id-main',
+      WithDecryption: true,
+    });
+    expect(ssmMock).not.toHaveReceivedCommand(GetParameterCommand);
+    expect(ec2Mock).toHaveReceivedCommandWith(CreateFleetCommand, {
+      LaunchTemplateConfigs: [
+        expect.objectContaining({
+          Overrides: expect.arrayContaining([expect.objectContaining({ ImageId: 'ami-from-provider-role' })]),
+        }),
+      ],
+    });
   });
 
   it('counts an old tagged handoff as provider capacity without public inventory', async () => {

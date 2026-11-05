@@ -542,6 +542,71 @@ describe('create runner', () => {
     });
   });
 
+  describe('with a dedicated SSM client', () => {
+    // The compute provider credentials are the only ones allowed to read the AMI parameter
+    const send = vi.fn();
+    const providerSsmClient = { send } as unknown as SSMClient;
+    const providerOperations = createEc2RunnerClient(new EC2Client({}), { ssmClient: providerSsmClient }).forRequest({
+      signal: undefined,
+    });
+
+    beforeEach(() => {
+      send.mockReset();
+    });
+
+    it('reads the ami id parameter with the given client only', async () => {
+      send.mockResolvedValue({ Parameter: { Value: 'ami-provider' } });
+
+      await providerOperations.create(
+        createRunnerConfig({ ...defaultRunnerConfig, amiIdSsmParameterName: 'my-ami-id-param' }),
+      );
+
+      expect(send).toHaveBeenCalledTimes(1);
+      expect(send.mock.calls[0][0]).toBeInstanceOf(GetParameterCommand);
+      expect(send.mock.calls[0][0].input).toEqual({ Name: 'my-ami-id-param', WithDecryption: true });
+      expect(mockSSMClient).not.toHaveReceivedCommand(GetParameterCommand);
+      expect(mockEC2Client).toHaveReceivedCommandWith(
+        CreateFleetCommand,
+        expectedCreateFleetRequest({ ...defaultExpectedFleetRequestValues, imageId: 'ami-provider' }),
+      );
+    });
+
+    it('fails the creation when the parameter has no value', async () => {
+      send.mockResolvedValue({ Parameter: {} });
+
+      await expect(
+        providerOperations.create(
+          createRunnerConfig({ ...defaultRunnerConfig, amiIdSsmParameterName: 'my-ami-id-param' }),
+        ),
+      ).resolves.toMatchObject({ instances: [], failedInstanceCount: 1 });
+      expect(mockEC2Client).not.toHaveReceivedCommand(CreateFleetCommand);
+    });
+
+    it('keeps using the given client for the on-demand failover', async () => {
+      send.mockResolvedValue({ Parameter: { Value: 'ami-provider' } });
+      mockEC2Client
+        .on(CreateFleetCommand)
+        .resolvesOnce({
+          Instances: [],
+          Errors: [{ ErrorCode: 'InsufficientInstanceCapacity', ErrorMessage: 'no capacity' }],
+        })
+        .resolves({ Instances: [{ InstanceIds: ['i-failover'] }] });
+
+      const result = await providerOperations.create(
+        createRunnerConfig({
+          ...defaultRunnerConfig,
+          amiIdSsmParameterName: 'my-ami-id-param',
+          onDemandFailoverOnError: ['InsufficientInstanceCapacity'],
+          ec2instanceCriteria: { ...defaultRunnerConfig.ec2instanceCriteria, targetCapacityType: 'spot' },
+        }),
+      );
+
+      expect(result.instances).toEqual(['i-failover']);
+      expect(send).toHaveBeenCalledTimes(2);
+      expect(mockSSMClient).not.toHaveReceivedCommand(GetParameterCommand);
+    });
+  });
+
   it('keeps cancellation request-scoped and rejects before calling AWS', async () => {
     const abortController = new AbortController();
     const abortReason = new Error('service stopping');
