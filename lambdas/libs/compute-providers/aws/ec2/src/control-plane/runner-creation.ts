@@ -28,7 +28,6 @@ export interface Ec2ProviderConfig {
   launchTemplateName: string;
   onDemandOverrideLaunchTemplateName?: string;
   ec2instanceCriteria: RunnerInputParameters['ec2instanceCriteria'];
-  ec2Tags?: Record<string, string>;
   amiIdSsmParameterName?: string;
   tracingEnabled?: boolean;
   onDemandFailoverOnError?: string[];
@@ -56,9 +55,6 @@ export function loadEc2ProviderConfig(): Ec2ProviderConfig {
       maxSpotPrice: process.env.INSTANCE_MAX_SPOT_PRICE,
       instanceAllocationStrategy: process.env.INSTANCE_ALLOCATION_STRATEGY || 'lowest-price',
     },
-    ec2Tags: process.env.RUNNER_EC2_TAGS
-      ? (JSON.parse(process.env.RUNNER_EC2_TAGS) as Record<string, string>)
-      : undefined,
     amiIdSsmParameterName: process.env.AMI_ID_SSM_PARAMETER_NAME,
     tracingEnabled: yn(process.env.POWERTOOLS_TRACE_ENABLED, { default: false }),
     onDemandFailoverOnError: process.env.ENABLE_ON_DEMAND_FAILOVER_FOR_ERRORS

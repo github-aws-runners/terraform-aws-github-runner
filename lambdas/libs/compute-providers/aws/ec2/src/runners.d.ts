@@ -42,7 +42,6 @@ export interface RunnerInputParameters {
     instanceAllocationStrategy: SpotAllocationStrategy | FleetOnDemandAllocationStrategy;
   };
   ec2OverrideConfig?: Ec2OverrideConfig;
-  ec2Tags?: Record<string, string>;
   numberOfRunners: number;
   source: RunnerSource;
   amiIdSsmParameterName?: string;

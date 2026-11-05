@@ -47,7 +47,6 @@ variable "config" {
       })
       group_name  = string
       name_prefix = string
-      ec2_tags    = map(string)
       pool_owner  = string
       role = object({
         arn = string

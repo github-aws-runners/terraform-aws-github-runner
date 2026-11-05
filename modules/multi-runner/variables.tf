@@ -717,7 +717,7 @@ variable "multi_runner_config" {
         userdata_post_install: "Script to be ran after the GitHub Actions runner is installed on the EC2 instances"
         runner_hook_job_started: "Script to be ran in the runner environment at the beginning of every job"
         runner_hook_job_completed: "Script to be ran in the runner environment at the end of every job"
-        runner_ec2_tags: "Map of tags added to the launch template instance tag specifications and to the instance, volume and fleet tags sent with every scale-up and pool launch request. Module-owned `ghr:` tags take precedence."
+        runner_ec2_tags: "Map of tags that will be added to the launch template instance tag specifications."
         runner_iam_role_managed_policy_arns: "Attach AWS or customer-managed IAM policies (by ARN) to the runner IAM role"
         vpc_id: "The VPC for security groups of the action runners. If not set uses the value of `var.vpc_id`."
         subnet_ids: "List of subnets in which the action runners will be launched, the subnets needs to be subnets in the `vpc_id`. If not set, uses the value of `var.subnet_ids`."

@@ -53,7 +53,6 @@ module "pool" {
       launch_template                      = aws_launch_template.runner["default"]
       group_name                           = var.runner_group_name
       name_prefix                          = var.runner_name_prefix
-      ec2_tags                             = var.runner_ec2_tags
       pool_owner                           = var.pool_runner_owner
       role                                 = { arn = var.iam_overrides["override_runner_role"] ? var.iam_overrides["runner_role_arn"] : aws_iam_role.runner[0].arn }
       use_dedicated_host                   = var.use_dedicated_host

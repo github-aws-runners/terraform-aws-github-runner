@@ -578,7 +578,7 @@ variable "log_level" {
 }
 
 variable "runner_ec2_tags" {
-  description = "Map of tags added to the launch template instance tag specifications and to the instance, volume and fleet tags sent with every scale-up and pool launch request. Module-owned `ghr:` tags take precedence."
+  description = "Map of tags that will be added to the launch template instance tag specifications."
   type        = map(string)
   default     = {}
 }
