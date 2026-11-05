@@ -728,7 +728,7 @@ variable "matcher_config_parameter_store_tier" {
   }
 }
 variable "runner_ec2_tags" {
-  description = "Map of tags that will be added to the launch template instance tag specifications."
+  description = "Map of tags added to the launch template instance tag specifications and to the instance, volume and fleet tags sent with every scale-up and pool launch request. Module-owned `ghr:` tags take precedence."
   type        = map(string)
   default     = {}
 }

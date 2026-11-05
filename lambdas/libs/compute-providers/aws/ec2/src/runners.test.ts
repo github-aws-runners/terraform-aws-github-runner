@@ -582,6 +582,31 @@ describe('create runner', () => {
     });
   });
 
+  it('sends caller-supplied ec2 tags on the CreateFleet request', async () => {
+    const ec2Tags = { app: 'my-app', team: 'my-team', cost_center: 'my-cost-center' };
+
+    await ec2Operations.create(createRunnerConfig({ ...defaultRunnerConfig, ec2Tags }));
+
+    expect(mockEC2Client).toHaveReceivedCommandWith(CreateFleetCommand, {
+      ...expectedCreateFleetRequest({
+        ...defaultExpectedFleetRequestValues,
+        ec2Tags,
+      }),
+    });
+  });
+
+  it('lets module-owned ghr tags take precedence over caller-supplied ec2 tags', async () => {
+    await ec2Operations.create(
+      createRunnerConfig({ ...defaultRunnerConfig, ec2Tags: { 'ghr:Application': 'spoofed', app: 'my-app' } }),
+    );
+
+    const tags = mockEC2Client.commandCalls(CreateFleetCommand)[0].args[0].input.TagSpecifications?.[0].Tags;
+    expect(tags?.filter((tag) => tag.Key === 'ghr:Application')).toEqual([
+      { Key: 'ghr:Application', Value: 'github-action-runner' },
+    ]);
+    expect(tags).toContainEqual({ Key: 'app', Value: 'my-app' });
+  });
+
   it('calls create fleet with source set to scale-up-lambda when source is specified', async () => {
     await ec2Operations.create(createRunnerConfig({ ...defaultRunnerConfig, source: 'scale-up-lambda' }));
 
@@ -1305,6 +1330,7 @@ interface RunnerConfig {
   source: RunnerSource;
   useDedicatedHost?: boolean;
   ec2OverrideConfig?: Ec2OverrideConfig;
+  ec2Tags?: Record<string, string>;
 }
 
 function createRunnerConfig(runnerConfig: RunnerConfig): RunnerInputParameters {
@@ -1328,6 +1354,7 @@ function createRunnerConfig(runnerConfig: RunnerConfig): RunnerInputParameters {
     source: runnerConfig.source,
     useDedicatedHost: runnerConfig.useDedicatedHost,
     ec2OverrideConfig: runnerConfig.ec2OverrideConfig,
+    ec2Tags: runnerConfig.ec2Tags,
   };
 }
 
@@ -1341,10 +1368,12 @@ interface ExpectedFleetRequestValues {
   imageId?: string;
   tracingEnabled?: boolean;
   source: RunnerSource;
+  ec2Tags?: Record<string, string>;
 }
 
 function expectedCreateFleetRequest(expectedValues: ExpectedFleetRequestValues): CreateFleetCommandInput {
   const tags = [
+    ...Object.entries(expectedValues.ec2Tags ?? {}).map(([Key, Value]) => ({ Key, Value })),
     { Key: 'ghr:Application', Value: 'github-action-runner' },
     {
       Key: 'ghr:created_by',
@@ -1476,6 +1505,16 @@ describe('create runner with useDedicatedHost', () => {
     });
     expect(mockEC2Client).toHaveReceivedCommand(RunInstancesCommand);
     expect(mockEC2Client).not.toHaveReceivedCommand(CreateFleetCommand);
+  });
+
+  it('sends caller-supplied ec2 tags on the RunInstances request', async () => {
+    await ec2Operations.create(createRunnerConfig({ ...dedicatedHostRunnerConfig, ec2Tags: { app: 'my-app' } }));
+
+    const specs = mockEC2Client.commandCalls(RunInstancesCommand)[0].args[0].input.TagSpecifications;
+    expect(specs?.map((spec) => spec.ResourceType)).toEqual(['instance', 'volume']);
+    for (const spec of specs ?? []) {
+      expect(spec.Tags).toContainEqual({ Key: 'app', Value: 'my-app' });
+    }
   });
 
   it('uses CreateFleet when useDedicatedHost is false', async () => {

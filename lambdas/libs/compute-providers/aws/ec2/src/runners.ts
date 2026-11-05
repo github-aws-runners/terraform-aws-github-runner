@@ -586,23 +586,31 @@ async function getAmiIdOverride(runnerParameters: RunnerInputParameters): Promis
   }
 }
 
+// Caller-supplied tags are sent on the launch request itself so organization policies that evaluate
+// aws:RequestTag (e.g. mandatory tag SCPs) are satisfied. Module-owned ghr:* tags are applied last and win.
+function buildRunnerTags(runnerParameters: RunnerInputParameters): Tag[] {
+  const tags: Record<string, string> = {
+    ...runnerParameters.ec2Tags,
+    'ghr:Application': 'github-action-runner',
+    'ghr:created_by': runnerParameters.source,
+    'ghr:environment': runnerParameters.environment,
+    'ghr:Type': runnerParameters.runnerType,
+    'ghr:Owner': runnerParameters.runnerOwner,
+  };
+  if (runnerParameters.tracingEnabled) {
+    const traceId = tracer.getRootXrayTraceId();
+    tags['ghr:trace_id'] = traceId!;
+  }
+  return Object.entries(tags).map(([Key, Value]) => ({ Key, Value }));
+}
+
 async function createInstances(
   runnerParameters: RunnerInputParameters,
   amiIdOverride: string | undefined,
   ec2Client: EC2Client,
   signal: AbortSignal | undefined,
 ) {
-  const tags = [
-    { Key: 'ghr:Application', Value: 'github-action-runner' },
-    { Key: 'ghr:created_by', Value: runnerParameters.source },
-    { Key: 'ghr:environment', Value: runnerParameters.environment },
-    { Key: 'ghr:Type', Value: runnerParameters.runnerType },
-    { Key: 'ghr:Owner', Value: runnerParameters.runnerOwner },
-  ];
-  if (runnerParameters.tracingEnabled) {
-    const traceId = tracer.getRootXrayTraceId();
-    tags.push({ Key: 'ghr:trace_id', Value: traceId! });
-  }
+  const tags = buildRunnerTags(runnerParameters);
 
   const targetCapacityType = runnerParameters.ec2instanceCriteria.targetCapacityType;
   const allocationStrategy = sanitizeAllocationStrategy(
@@ -671,17 +679,7 @@ async function createInstancesWithRunInstances(
   ec2Client: EC2Client,
   signal: AbortSignal | undefined,
 ): Promise<Ec2RunnerCreateResult> {
-  const tags = [
-    { Key: 'ghr:Application', Value: 'github-action-runner' },
-    { Key: 'ghr:created_by', Value: runnerParameters.source },
-    { Key: 'ghr:environment', Value: runnerParameters.environment },
-    { Key: 'ghr:Type', Value: runnerParameters.runnerType },
-    { Key: 'ghr:Owner', Value: runnerParameters.runnerOwner },
-  ];
-  if (runnerParameters.tracingEnabled) {
-    const traceId = tracer.getRootXrayTraceId();
-    tags.push({ Key: 'ghr:trace_id', Value: traceId! });
-  }
+  const tags = buildRunnerTags(runnerParameters);
 
   if (runnerParameters.ec2instanceCriteria.targetCapacityType === 'spot') {
     logger.warn(
