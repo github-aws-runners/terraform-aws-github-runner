@@ -56,14 +56,21 @@ export function createEc2ScaleUpCapability(
   ec2Operations: Ec2RunnerProvisioningOperations,
   createStartRunnerConfig: CreateStartRunnerConfig,
 ): Omit<ScaleUpComputeProvider<Ec2ScaleUpState>, 'type'> {
+  // A capability is created for each scale-up invocation, not each label group.
+  let ownerCounts: Map<string, number> | undefined;
   return {
     resolveLabelsForRunners: (labels) => resolveEc2ScaleUpRunnerLabels(ec2Operations, labels),
-    getCurrentRunners: async (_state, { runnerType, runnerOwner }) =>
-      (await ec2Operations.list({ environment: process.env.ENVIRONMENT, runnerType, runnerOwner })).length,
+    getCurrentRunners: async (_state, filters) => {
+      if (filters.runnerOwnerIgnoreCase && filters.runnerType === 'Org') {
+        ownerCounts ??= await ec2Operations.countByOwner({ environment: process.env.ENVIRONMENT, runnerType: 'Org' });
+        return ownerCounts.get(filters.runnerOwner.toLowerCase()) ?? 0;
+      }
+      return (await ec2Operations.list({ environment: process.env.ENVIRONMENT, ...filters })).length;
+    },
     createRunners: async ({ githubRunnerConfig, numberOfRunners, githubInstallationClient, state, storage }) => {
       const config = loadEc2ScaleUpProviderConfig();
 
-      return await createRunners(
+      const result = await createRunners(
         ec2Operations,
         githubRunnerConfig,
         {
@@ -76,6 +83,11 @@ export function createEc2ScaleUpCapability(
         'scale-up-lambda',
         storage,
       );
+      if (ownerCounts && githubRunnerConfig.runnerType === 'Org') {
+        const owner = githubRunnerConfig.runnerOwner.toLowerCase();
+        ownerCounts.set(owner, (ownerCounts.get(owner) ?? 0) + result.instances.length);
+      }
+      return result;
     },
   };
 }
