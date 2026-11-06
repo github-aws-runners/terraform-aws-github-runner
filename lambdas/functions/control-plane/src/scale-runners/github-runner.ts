@@ -23,6 +23,38 @@ export interface StartRunnerConfigOptions {
   runnerGroupCacheStore?: RunnerGroupCacheStore;
   getRunnerConfigMetadata?: (runnerId: string) => RunnerConfigMetadata[];
   onJitConfigCreated?: (runnerId: string, metadata: GitHubRunnerMetadata) => Promise<void>;
+  /** Number of JIT configs minted concurrently. Defaults to `JIT_CONFIG_CONCURRENCY` or 8. */
+  jitConfigConcurrency?: number;
+}
+
+const DEFAULT_JIT_CONFIG_CONCURRENCY = 8;
+
+/**
+ * Resolves the JIT config minting concurrency from a string (typically an environment variable).
+ * Returns the parsed value when it is a positive integer, otherwise the fallback.
+ */
+export function resolveJitConfigConcurrency(
+  value: string | undefined,
+  fallback = DEFAULT_JIT_CONFIG_CONCURRENCY,
+): number {
+  const n = Number.parseInt(value ?? '', 10);
+  return Number.isInteger(n) && n > 0 ? n : fallback;
+}
+
+/**
+ * Runs `worker` over `items` with at most `limit` invocations in flight, preserving the
+ * caller's responsibility for error handling (a rejecting worker rejects the whole run).
+ */
+async function runWithConcurrency<T>(items: T[], limit: number, worker: (item: T) => Promise<void>): Promise<void> {
+  let cursor = 0;
+  const next = async (): Promise<void> => {
+    while (cursor < items.length) {
+      const item = items[cursor++];
+      await worker(item);
+    }
+  };
+  const workers = Array.from({ length: Math.min(limit, items.length) }, () => next());
+  await Promise.all(workers);
 }
 
 function generateRunnerServiceConfig(githubRunnerConfig: CreateGitHubRunnerConfig, token: string) {
@@ -203,7 +235,12 @@ export async function createStartRunnerConfig(
 ): Promise<string[]> {
   const runnerConfigStore = options.runnerConfigStore ?? createStorageProviders().runnerConfig;
   if (githubRunnerConfig.enableJitConfig && githubRunnerConfig.ephemeral) {
-    return await createJitConfig(githubRunnerConfig, runnerIds, ghClient, runnerConfigStore, options);
+    const jitConfigConcurrency =
+      options.jitConfigConcurrency ?? resolveJitConfigConcurrency(process.env.JIT_CONFIG_CONCURRENCY);
+    return await createJitConfig(githubRunnerConfig, runnerIds, ghClient, runnerConfigStore, {
+      ...options,
+      jitConfigConcurrency,
+    });
   } else {
     return await createRegistrationTokenConfig(githubRunnerConfig, runnerIds, ghClient, runnerConfigStore, options);
   }
@@ -271,7 +308,12 @@ async function createJitConfig(
 
   logger.debug(`Runner group id: ${runnerGroupId}`);
   logger.debug(`Runner labels: ${runnerLabels}`);
-  for (const runnerId of runnerIds) {
+
+  const concurrency = options.jitConfigConcurrency ?? DEFAULT_JIT_CONFIG_CONCURRENCY;
+  // Each worker sleeps `concurrency` times longer so the aggregate write rate stays within maxWritesPerSecond.
+  const workerDelayMilliseconds = delayMilliseconds * concurrency;
+
+  const mintOne = async (runnerId: string): Promise<void> => {
     try {
       // generate jit config for runner registration
       const ephemeralRunnerConfig: EphemeralRunnerConfig = {
@@ -310,7 +352,7 @@ async function createJitConfig(
       );
       if (isDelay) {
         // Delay to stay within the selected store's maximum write throughput.
-        await delay(delayMilliseconds);
+        await delay(workerDelayMilliseconds);
       }
     } catch (error) {
       failedRunnerIds.push(runnerId);
@@ -320,7 +362,10 @@ async function createJitConfig(
         retryable: true,
       });
     }
-  }
+  };
+
+  logger.debug(`Minting JIT configs with concurrency ${concurrency}`);
+  await runWithConcurrency(runnerIds, concurrency, mintOne);
 
   if (failedRunnerIds.length > 0) {
     logger.error('Failed to create JIT config for some instances', {
