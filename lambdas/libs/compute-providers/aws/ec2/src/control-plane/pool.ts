@@ -42,6 +42,7 @@ export function createEc2PoolCapability(
         runnerOwner,
         runnerType,
         statuses: ['running'],
+        createdBy: 'pool-lambda',
       }),
     countAvailableRunners: countAvailableEc2PoolRunners,
     createRunners: async ({ githubRunnerConfig, numberOfRunners, githubInstallationClient, storage }) => {

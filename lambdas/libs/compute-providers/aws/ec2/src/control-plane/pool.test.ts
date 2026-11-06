@@ -99,6 +99,7 @@ describe('createEc2PoolCapability.listRunners', () => {
       runnerOwner: 'owner',
       runnerType: 'Org',
       statuses: ['running'],
+      createdBy: 'pool-lambda',
     });
   });
 });
