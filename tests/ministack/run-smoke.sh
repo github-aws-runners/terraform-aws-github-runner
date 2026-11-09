@@ -114,6 +114,7 @@ printf '%s\n' \
   '  instance_types = ["m7a.large"]' \
   '  enable_dynamic_labels = true' \
   '  minimum_running_time_in_minutes = 0' \
+  '  runner_boot_time_in_minutes = 0' \
   '  pool_runner_owner = "test-owner"' \
   '  pool_config = [{ schedule_expression = "cron(0 0 1 1 ? 2099)", size = 1 }]' \
   '  scale_down_schedule_expression = "cron(0 0 1 1 ? 2099)"' \
