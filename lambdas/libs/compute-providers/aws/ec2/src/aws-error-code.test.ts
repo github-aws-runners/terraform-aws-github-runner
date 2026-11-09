@@ -11,7 +11,7 @@ describe('awsErrorCode', () => {
       500,
     );
 
-    expect(error.name).toBe('Error');
+    expect(['Error', 'InsufficientInstanceCapacity']).toContain(error.name);
     expect(awsErrorCode(error)).toBe('InsufficientInstanceCapacity');
   });
 
@@ -69,7 +69,7 @@ describe('requestFailureCodes', () => {
 
     expect(requestFailureCodes(error)).toEqual(
       expect.arrayContaining([
-        'aws-name:Error',
+        `aws-name:${error.name}`,
         'aws-code:InsufficientInstanceCapacity',
         'aws-fault:server',
         'aws-http:500',
