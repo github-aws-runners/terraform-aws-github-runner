@@ -27,7 +27,17 @@ resource "aws_lambda_function" "scale_up" {
   memory_size                    = var.lambda_scale_up_memory_size
   tags                           = merge(local.tags, var.lambda_tags)
   architectures                  = [var.lambda_architecture]
-  depends_on                     = [aws_cloudwatch_log_group.scale_up]
+  # Wait for the role's permissions, so new code never starts without the grants it expects.
+  depends_on = [
+    aws_cloudwatch_log_group.scale_up,
+    aws_iam_role_policy.scale_up,
+    aws_iam_role_policy.scale_up_logging,
+    aws_iam_role_policy.service_linked_role,
+    aws_iam_role_policy.scale_up_xray,
+    aws_iam_role_policy.job_retry_sqs_publish,
+    aws_iam_role_policy_attachment.scale_up_vpc_execution_role,
+    aws_iam_role_policy_attachment.ami_id_ssm_parameter_read,
+  ]
   environment {
     variables = merge({
       AMI_ID_SSM_PARAMETER_NAME                = local.ami_id_ssm_parameter_name
