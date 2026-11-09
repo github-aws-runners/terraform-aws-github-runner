@@ -409,11 +409,23 @@ variable "warm_pool" {
 
     - `enabled`: Enables warm pool standby.
     - `max_age_hours`: Maximum age of a warm instance before the pool replaces it.
+    - `claim_order`: Order in which scale-up claims warm instances (`fifo` or `lifo`). The default is `fifo`.
+    - `min_rest_seconds`: Minimum time an instance must remain warm before scale-up can claim it. The default is `0`.
   EOT
   type = object({
-    enabled       = optional(bool, false)
-    max_age_hours = optional(number, 168)
+    enabled          = optional(bool, false)
+    max_age_hours    = optional(number, 168)
+    claim_order      = optional(string, "fifo")
+    min_rest_seconds = optional(number, 0)
   })
   default  = {}
   nullable = false
+  validation {
+    condition     = contains(["fifo", "lifo"], var.warm_pool.claim_order)
+    error_message = "warm_pool.claim_order must be either \"fifo\" or \"lifo\"."
+  }
+  validation {
+    condition     = var.warm_pool.min_rest_seconds >= 0 && floor(var.warm_pool.min_rest_seconds) == var.warm_pool.min_rest_seconds
+    error_message = "warm_pool.min_rest_seconds must be a non-negative integer."
+  }
 }

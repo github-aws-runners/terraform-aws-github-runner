@@ -51,28 +51,28 @@ yarn run dist
 ## Requirements
 
 | Name | Version |
-|------|---------|
+| ---- | ------- |
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.5.6 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 6.33 |
 
 ## Providers
 
 | Name | Version |
-|------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | >= 6.33 |
+| ---- | ------- |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.72.0 |
 | <a name="provider_terraform"></a> [terraform](#provider\_terraform) | n/a |
 
 ## Modules
 
 | Name | Source | Version |
-|------|--------|---------|
+| ---- | ------ | ------- |
 | <a name="module_job_retry"></a> [job\_retry](#module\_job\_retry) | ./job-retry | n/a |
 | <a name="module_pool"></a> [pool](#module\_pool) | ./pool | n/a |
 
 ## Resources
 
 | Name | Type |
-|------|------|
+| ---- | ---- |
 | [aws_cloudwatch_event_rule.scale_down](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_event_rule) | resource |
 | [aws_cloudwatch_event_rule.ssm_housekeeper](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_event_rule) | resource |
 | [aws_cloudwatch_event_target.scale_down](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_event_target) | resource |
@@ -141,7 +141,7 @@ yarn run dist
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
+| ---- | ----------- | ---- | ------- | :------: |
 | <a name="input_ami"></a> [ami](#input\_ami) | AMI configuration for the action runner instances. This object allows you to specify all AMI-related settings in one place.<br/><br/>Parameters:<br/>- `filter`: Map of lists to filter AMIs by various criteria (e.g., { name = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-*"], state = ["available"] })<br/>- `owners`: List of AMI owners to limit the search. Common values: ["amazon"], ["self"], or specific AWS account IDs<br/>- `id_ssm_parameter_name`: Name of an SSM parameter containing the AMI ID. If specified, this overrides the AMI filter<br/>- `id_ssm_parameter_arn`: ARN of an SSM parameter containing the AMI ID. If specified, this overrides both AMI filter and parameter name<br/>- `kms_key_arn`: Optional KMS key ARN if the AMI is encrypted with a customer managed key<br/><br/>Defaults to null, in which case the module falls back to individual AMI variables (deprecated). | <pre>object({<br/>    filter               = optional(map(list(string)), { state = ["available"] })<br/>    owners               = optional(list(string), ["amazon"])<br/>    id_ssm_parameter_arn = optional(string, null)<br/>    kms_key_arn          = optional(string, null)<br/>  })</pre> | `null` | no |
 | <a name="input_associate_public_ipv4_address"></a> [associate\_public\_ipv4\_address](#input\_associate\_public\_ipv4\_address) | Associate public IPv4 with the runner. Only tested with IPv4 | `bool` | `false` | no |
 | <a name="input_aws_partition"></a> [aws\_partition](#input\_aws\_partition) | (optional) partition for the base arn if not 'aws' | `string` | `"aws"` | no |
@@ -251,12 +251,12 @@ yarn run dist
 | <a name="input_userdata_pre_install"></a> [userdata\_pre\_install](#input\_userdata\_pre\_install) | User-data script snippet to insert before GitHub action runner install | `string` | `""` | no |
 | <a name="input_userdata_template"></a> [userdata\_template](#input\_userdata\_template) | Alternative user-data template file path, replacing the default template. By providing your own user\_data you have to take care of installing all required software, including the action runner. Variables userdata\_pre/post\_install are ignored. | `string` | `null` | no |
 | <a name="input_vpc_id"></a> [vpc\_id](#input\_vpc\_id) | The VPC for the security groups. | `string` | n/a | yes |
-| <a name="input_warm_pool"></a> [warm\_pool](#input\_warm\_pool) | Warm pool standby. When enabled, the pool keeps the `pool_config` size of stopped, pre-booted instances instead of idle runners, and scale-up starts them for jobs. Requires `pool_config`, linux or windows runners, and instance metadata tags. `max_age_hours` is the age after which a warm instance is replaced. | <pre>object({<br/>    enabled       = optional(bool, false)<br/>    max_age_hours = optional(number, 168)<br/>  })</pre> | `{}` | no |
+| <a name="input_warm_pool"></a> [warm\_pool](#input\_warm\_pool) | Warm pool standby. `claim_order` accepts `fifo` (default, oldest launched first) or `lifo` (newest first). `min_rest_seconds` is a non-negative integer, default `0`; a nonzero value can increase cold fallbacks. | <pre>object({<br/>    enabled          = optional(bool, false)<br/>    max_age_hours    = optional(number, 168)<br/>    claim_order      = optional(string, "fifo")<br/>    min_rest_seconds = optional(number, 0)<br/>  })</pre> | `{}` | no |
 
 ## Outputs
 
 | Name | Description |
-|------|-------------|
+| ---- | ----------- |
 | <a name="output_lambda_pool"></a> [lambda\_pool](#output\_lambda\_pool) | n/a |
 | <a name="output_lambda_pool_log_group"></a> [lambda\_pool\_log\_group](#output\_lambda\_pool\_log\_group) | n/a |
 | <a name="output_lambda_scale_down"></a> [lambda\_scale\_down](#output\_lambda\_scale\_down) | n/a |

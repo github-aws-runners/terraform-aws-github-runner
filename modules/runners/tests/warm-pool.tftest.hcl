@@ -109,7 +109,9 @@ run "warm_pool_enabled" {
 
   assert {
     condition = (aws_lambda_function.scale_up.environment[0].variables["WARM_POOL_ENABLED"] == "true"
-    && aws_lambda_function.scale_up.environment[0].variables["WARM_POOL_INDEX_TABLE_NAME"] == aws_dynamodb_table.warm_pool_index[0].name)
+      && aws_lambda_function.scale_up.environment[0].variables["WARM_POOL_INDEX_TABLE_NAME"] == aws_dynamodb_table.warm_pool_index[0].name
+      && aws_lambda_function.scale_up.environment[0].variables["WARM_POOL_CLAIM_ORDER"] == "fifo"
+    && aws_lambda_function.scale_up.environment[0].variables["WARM_POOL_MIN_REST_SECONDS"] == "0")
     error_message = "Scale-up should receive the warm pool env vars"
   }
 
@@ -123,6 +125,22 @@ run "warm_pool_enabled" {
   assert {
     condition     = output.warm_pool_index_table.name == aws_dynamodb_table.warm_pool_index[0].name
     error_message = "The warm pool index table should be exposed for the stop-event consumer"
+  }
+}
+
+run "warm_pool_custom_claim_settings" {
+  command = plan
+
+  variables {
+    warm_pool = { enabled = true, claim_order = "lifo", min_rest_seconds = 45 }
+  }
+
+  assert {
+    condition = (
+      aws_lambda_function.scale_up.environment[0].variables["WARM_POOL_CLAIM_ORDER"] == "lifo"
+      && aws_lambda_function.scale_up.environment[0].variables["WARM_POOL_MIN_REST_SECONDS"] == "45"
+    )
+    error_message = "Scale-up should receive the configured warm claim order and minimum rest period."
   }
 }
 
@@ -197,6 +215,36 @@ run "warm_pool_rejects_fractional_max_age" {
 
   variables {
     warm_pool = { enabled = true, max_age_hours = 0.5 }
+  }
+
+  expect_failures = [var.warm_pool]
+}
+
+run "warm_pool_rejects_invalid_claim_order" {
+  command = plan
+
+  variables {
+    warm_pool = { enabled = true, claim_order = "random" }
+  }
+
+  expect_failures = [var.warm_pool]
+}
+
+run "warm_pool_rejects_negative_min_rest" {
+  command = plan
+
+  variables {
+    warm_pool = { enabled = true, min_rest_seconds = -1 }
+  }
+
+  expect_failures = [var.warm_pool]
+}
+
+run "warm_pool_rejects_fractional_min_rest" {
+  command = plan
+
+  variables {
+    warm_pool = { enabled = true, min_rest_seconds = 0.5 }
   }
 
   expect_failures = [var.warm_pool]

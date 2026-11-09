@@ -85,6 +85,8 @@ module "runners" {
   # warm_pool = {
   #   enabled       = true
   #   max_age_hours = 24
+  #   claim_order      = "fifo"
+  #   min_rest_seconds = 0
   # }
 
   # Let the module manage the service linked role

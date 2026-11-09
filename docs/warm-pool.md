@@ -9,9 +9,11 @@ A warm pool keeps stopped, pre-booted runner instances ready. When a job arrives
 
 1. The pool Lambda launches instances until the number of warm and priming instances matches the pool size from `pool_config`.
 2. Each instance installs the runner, prepares itself, and shuts itself down. It never registers with GitHub while it is in the pool. Its stop event marks it warm within seconds.
-3. When a job is queued, scale-up claims the newest warm instance in the warm pool index, starts it, and then writes its registration config, the same order as a new instance. A boot hook waits for the config, registers the runner, and runs the job.
+3. When a job is queued, scale-up claims an eligible warm instance from the warm pool index, starts it, and then writes its registration config, the same order as a new instance. FIFO (the default) chooses the oldest-launched eligible instance; LIFO chooses the newest. A boot hook waits for the config, registers the runner, and runs the job.
 4. A warm instance is activated at most once and never returns to the pool. After activation it follows the normal runner lifecycle: an ephemeral runner runs one job, a non-ephemeral runner can pick up more jobs until scale-down removes it.
-5. If no warm instance is available, or starting one fails, scale-up launches a new instance as usual.
+5. If no warm instance is eligible, or starting one fails, scale-up launches a new instance in the same invocation as usual.
+
+`min_rest_seconds` sets how long an instance must remain warm before it can be claimed. Its rest period starts at the stop transition; when the stop event has no timestamp, the consumer uses its observation time. A nonzero value does not make scale-up wait: if all candidates are still resting, scale-up launches cold. Existing warm-index entries without a `warmSince` timestamp remain eligible for compatibility.
 
 The pool Lambda makes no GitHub API calls in warm mode, so warm pools work for organization and repository runners, and `pool_runner_owner` is not required.
 
@@ -42,8 +44,10 @@ module "runners" {
     { schedule_expression = "cron(0 19 ? * MON-FRI *)", size = 0 },
   ]
   warm_pool = {
-    enabled       = true
-    max_age_hours = 24
+    enabled          = true
+    max_age_hours    = 24
+    claim_order      = "fifo"
+    min_rest_seconds = 0
   }
 }
 ```
@@ -59,6 +63,8 @@ runner_config:
   warm_pool:
     enabled: true
     max_age_hours: 24
+    claim_order: fifo
+    min_rest_seconds: 0
 ```
 
 ### Multi-runner (v2)
@@ -71,7 +77,7 @@ multi_runner_config = {
         lambda = {
           pool = {
             config = [{ schedule_expression = "cron(* * * * ? *)", size = 1 }]
-            warm   = { enabled = true, max_age_hours = 24 }
+            warm   = { enabled = true, max_age_hours = 24, claim_order = "fifo", min_rest_seconds = 0 }
           }
         }
       }
@@ -85,8 +91,16 @@ multi_runner_config = {
 |---------|---------|-------------|
 | `enabled` | `false` | Keep the pool size of stopped instances instead of idle runners. |
 | `max_age_hours` | `168` | Whole hours, at least 1, after which a warm instance is replaced. |
+| `claim_order` | `fifo` | `fifo` selects the oldest-launched eligible instance first; `lifo` selects the newest. |
+| `min_rest_seconds` | `0` | Non-negative integer rest period before an instance is eligible for activation. |
+
+FIFO and a zero-second rest period preserve the fastest pickup behavior. A longer rest period can be useful when the runner needs time after priming to settle, but it can increase cold launches and their compute cost. Scale-up records these as `WarmPoolActivationFallbacks` with `Reason` `minimum-rest`.
 
 Primed instances become available without waiting for a schedule, but the pool only refills and evicts when a `pool_config` schedule fires, so use a frequent schedule (for example every minute) while warm instances are wanted. A schedule with `size = 0` drains the pool, for example outside office hours.
+
+### Rollout
+
+Start with the FIFO and zero-rest defaults, then compare warm activations with `minimum-rest` fallbacks before increasing the rest period. Test LIFO explicitly in a non-production configuration if newest-first reuse is preferred. A minimum-rest fallback is immediate and preserves job pickup; it trades the stopped instance's storage-only cost for the normal cost of a cold launch.
 
 The examples in [`examples/multi-runner`](https://github.com/github-aws-runners/terraform-aws-github-runner/tree/main/examples/multi-runner/templates/runner-configs) include an on-demand (`linux-x64-warm.yaml`) and a spot (`linux-x64-warm-spot.yaml`) warm pool.
 
@@ -155,12 +169,13 @@ The boot hook is installed by the default start script. If you use a custom `use
 
 ## Observability
 
-With metrics enabled, the pool publishes `WarmPoolWarmInstances`, `WarmPoolPrimingInstances`, `WarmPoolEvictions` (by `Reason`), and `WarmPoolReconcileErrors` (by `Operation`), and scale-up publishes `WarmPoolActivations` and `WarmPoolActivationFallbacks` (by `Reason`: `no-warm-instance`, `claim-lost`, `index-unavailable`, or `start-failed`). Activated instances log `warm-pool-activation-latency-seconds=<n>`, the time from activation until the runner starts, and activated spot instances log the spot request cancel described above. An alarm on `WarmPoolEvictions` with `Reason` `orphaned-spot-request` shows runners that terminate without cancelling their spot request.
+With metrics enabled, the pool publishes `WarmPoolWarmInstances`, `WarmPoolPrimingInstances`, `WarmPoolEvictions` (by `Reason`), and `WarmPoolReconcileErrors` (by `Operation`), and scale-up publishes `WarmPoolActivations` and `WarmPoolActivationFallbacks` (by `Reason`: `no-warm-instance`, `minimum-rest`, `claim-lost`, `index-unavailable`, or `start-failed`). Activated instances log `warm-pool-activation-latency-seconds=<n>`, the time from activation until the runner starts, and activated spot instances log the spot request cancel described above. An alarm on `WarmPoolEvictions` with `Reason` `orphaned-spot-request` shows runners that terminate without cancelling their spot request.
 
 ## Costs and limits
 
 - Every warm instance keeps its EBS volumes. Check the EBS volume and storage quotas for large pools.
 - Warm instances do not count toward `runners_maximum_count`. Activating one does, like launching a new instance.
+- A nonzero `min_rest_seconds` may cause cold fallback while warm instances finish resting. Cold instances have the usual instance compute charges, so monitor `WarmPoolActivationFallbacks` with `Reason` `minimum-rest` when evaluating the cost of the setting.
 - The pool reads its instances from EC2 by ID, and lists them by tag only about once an hour. Scale-up does not list instances to activate a warm one. If the warm pool index cannot be read, scale-up launches new instances and reports `index-unavailable`.
 - EC2 stop events cannot be filtered by tag, so the stop-event queue receives every instance stop in the account and region. Each batch costs one `DescribeInstances` by ID; instances outside the warm pools need no further calls.
 - A spot warm pool with a ranking strategy calls `GetSpotPlacementScores`, `DescribeSpotPriceHistory` and `DescribeSubnets` at most every 15 minutes, and only when it launches instances. These need `ec2:GetSpotPlacementScores`, `ec2:DescribeSpotPriceHistory` and `ec2:DescribeSubnets`, which the module grants to the pool of a spot warm pool.

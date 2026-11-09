@@ -33,7 +33,12 @@ const CAPACITY_START_ERRORS = new Set([
   'InsufficientInstanceCapacity',
 ]);
 
-export type WarmActivationFallbackReason = 'no-warm-instance' | 'claim-lost' | 'index-unavailable' | 'start-failed';
+export type WarmActivationFallbackReason =
+  | 'no-warm-instance'
+  | 'minimum-rest'
+  | 'claim-lost'
+  | 'index-unavailable'
+  | 'start-failed';
 
 export interface Ec2WarmActivationOperations {
   standby: Pick<Ec2StandbyOperations, 'startInstance' | 'destroyInstance'>;
@@ -99,6 +104,10 @@ export async function activateWarmRunners(
   const finish = (instances: string[], retryableErrorCount: number): WarmActivationResult => {
     if (instances.length > 0) logger.info(`Activated warm instance(s): ${instances.join(',')}`);
     if (fallbacks.size > 0) logger.info('Some runners fall back to a cold launch.', Object.fromEntries(fallbacks));
+    const minimumRestFallbacks = fallbacks.get('minimum-rest') ?? 0;
+    if (minimumRestFallbacks > 0) {
+      logger.info(`No warm instance met min_rest_seconds; launching ${minimumRestFallbacks} runner(s) cold.`);
+    }
     publishActivationMetrics(environment, instances.length, fallbacks);
     return {
       instances,
@@ -115,8 +124,14 @@ export async function activateWarmRunners(
   }
   const index = warmOperations.createIndexStore(tableName, environment);
   let candidates: StandbyInstance[];
+  let blockedByMinimumRest = false;
   try {
-    candidates = warmCandidates(await index.query());
+    const claimOrder = process.env.WARM_POOL_CLAIM_ORDER === 'lifo' ? 'lifo' : 'fifo';
+    const configuredMinRest = Number(process.env.WARM_POOL_MIN_REST_SECONDS ?? 0);
+    const minRestSeconds = Number.isFinite(configuredMinRest) && configuredMinRest >= 0 ? configuredMinRest : 0;
+    const selection = warmCandidates(await index.query(), claimOrder, minRestSeconds);
+    candidates = selection.candidates;
+    blockedByMinimumRest = selection.blockedByMinimumRest;
   } catch (error) {
     logger.warn('Warm pool index is unavailable, skipping warm activation.', failureDetails(error));
     fallBack('index-unavailable', input.numberOfRunners);
@@ -156,37 +171,52 @@ export async function activateWarmRunners(
   }
   const staleFallbacks = Math.min(needed, staleCount);
   fallBack('start-failed', staleFallbacks);
-  fallBack(claimLost ? 'claim-lost' : 'no-warm-instance', needed - staleFallbacks);
+  fallBack(
+    claimLost ? 'claim-lost' : blockedByMinimumRest ? 'minimum-rest' : 'no-warm-instance',
+    needed - staleFallbacks,
+  );
   return finish(instances, retryableErrorCount);
 }
 
-function warmCandidates(items: WarmIndexItem[]): StandbyInstance[] {
+function warmCandidates(
+  items: WarmIndexItem[],
+  claimOrder: 'fifo' | 'lifo',
+  minRestSeconds: number,
+): { candidates: StandbyInstance[]; blockedByMinimumRest: boolean } {
   const now = Date.now();
   // Scale-down sweeps expired standby instances, so never activate one that expires during activation.
   const claimableUntil = now + WARM_ACTIVATION_GRACE_MS;
   const launchedAt = (item: WarmIndexItem) => Date.parse(item.launchTime ?? '') || 0;
-  return (
-    items
-      .filter((item) => item.state === 'WARM')
-      // The instance cancels its own spot request after activation, which needs the request bound to it (D20).
-      .filter((item) => item.spotInstanceRequestId === undefined || item.spotRequestBound === true)
-      .filter((item) => item.claimUntil === undefined || item.claimUntil * 1000 < now)
-      .filter((item) => item.cooldownUntil === undefined || item.cooldownUntil * 1000 <= now)
-      .filter((item) => {
-        const expiresAt = Date.parse(item.expiresAt ?? '');
-        return Number.isNaN(expiresAt) || expiresAt > claimableUntil;
-      })
-      .sort((a, b) => launchedAt(b) - launchedAt(a))
-      .map((item) => ({
-        instanceId: item.instanceId,
-        state: 'WARM',
-        launchTime: item.launchTime ? new Date(item.launchTime) : undefined,
-        expiresAt: item.expiresAt,
-        instanceType: item.instanceType,
-        availabilityZone: item.availabilityZone,
-        spotInstanceRequestId: item.spotInstanceRequestId,
-      }))
-  );
+  const available = items
+    .filter((item) => item.state === 'WARM')
+    // The instance cancels its own spot request after activation, which needs the request bound to it (D20).
+    .filter((item) => item.spotInstanceRequestId === undefined || item.spotRequestBound === true)
+    .filter((item) => item.claimUntil === undefined || item.claimUntil * 1000 < now)
+    .filter((item) => item.cooldownUntil === undefined || item.cooldownUntil * 1000 <= now)
+    .filter((item) => {
+      const expiresAt = Date.parse(item.expiresAt ?? '');
+      return Number.isNaN(expiresAt) || expiresAt > claimableUntil;
+    });
+  let blockedByMinimumRest = false;
+  const candidates = available
+    .filter((item) => {
+      if (item.warmSince === undefined) return true;
+      const warmSince = Date.parse(item.warmSince);
+      const eligible = Number.isFinite(warmSince) && warmSince + minRestSeconds * 1000 <= now;
+      blockedByMinimumRest ||= !eligible;
+      return eligible;
+    })
+    .sort((a, b) => (claimOrder === 'fifo' ? launchedAt(a) - launchedAt(b) : launchedAt(b) - launchedAt(a)))
+    .map((item) => ({
+      instanceId: item.instanceId,
+      state: 'WARM' as const,
+      launchTime: item.launchTime ? new Date(item.launchTime) : undefined,
+      expiresAt: item.expiresAt,
+      instanceType: item.instanceType,
+      availabilityZone: item.availabilityZone,
+      spotInstanceRequestId: item.spotInstanceRequestId,
+    }));
+  return { candidates, blockedByMinimumRest };
 }
 
 function capacityKey({ instanceType, availabilityZone }: StandbyInstance): string | undefined {

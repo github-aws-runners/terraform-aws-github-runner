@@ -20,8 +20,10 @@ locals {
   }[local.orchestration_provider_type]
 
   warm_pool = try(var.orchestration_provider.webhook.lambda.pool.warm, null) != null ? var.orchestration_provider.webhook.lambda.pool.warm : {
-    enabled       = false
-    max_age_hours = 168
+    enabled          = false
+    max_age_hours    = 168
+    claim_order      = "fifo"
+    min_rest_seconds = 0
   }
 }
 

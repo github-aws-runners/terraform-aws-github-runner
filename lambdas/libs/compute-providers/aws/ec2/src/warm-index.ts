@@ -36,6 +36,7 @@ export type WarmIndexState = Exclude<StandbyInstanceState, 'ACTIVE'> | 'ACTIVATE
 export interface WarmIndexItem {
   instanceId: string;
   state: WarmIndexState;
+  warmSince?: string;
   launchTime?: string;
   expiresAt?: string;
   instanceType?: string;
@@ -50,7 +51,14 @@ export interface WarmIndexItem {
   cooldownUntil?: number;
 }
 
-const UPDATE_FIELDS = ['launchTime', 'expiresAt', 'instanceType', 'availabilityZone', 'spotInstanceRequestId'] as const;
+const UPDATE_FIELDS = [
+  'warmSince',
+  'launchTime',
+  'expiresAt',
+  'instanceType',
+  'availabilityZone',
+  'spotInstanceRequestId',
+] as const;
 
 export type WarmIndexUpdate = Pick<WarmIndexItem, 'instanceId' | 'state'> &
   Partial<Pick<WarmIndexItem, (typeof UPDATE_FIELDS)[number]>>;
@@ -107,6 +115,7 @@ function toItem(instanceId: string, item: Record<string, AttributeValue>): WarmI
   return {
     instanceId,
     state: (item.state?.S ?? 'PRIMING') as WarmIndexState,
+    warmSince: item.warmSince?.S,
     launchTime: item.launchTime?.S,
     expiresAt: item.expiresAt?.S,
     instanceType: item.instanceType?.S,

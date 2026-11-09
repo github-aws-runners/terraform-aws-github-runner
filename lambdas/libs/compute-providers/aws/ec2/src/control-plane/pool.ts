@@ -71,10 +71,11 @@ async function forEachSettled<TItem>(
   return result;
 }
 
-function indexUpdate(instance: StandbyInstance): WarmIndexUpdate {
+function indexUpdate(instance: StandbyInstance, warmSince?: string): WarmIndexUpdate {
   return {
     instanceId: instance.instanceId,
     state: instance.state as WarmIndexState,
+    ...(warmSince === undefined ? {} : { warmSince }),
     launchTime: instance.launchTime?.toISOString(),
     expiresAt: instance.expiresAt,
     instanceType: instance.instanceType,
@@ -87,6 +88,7 @@ function changed(item: WarmIndexItem | undefined, update: WarmIndexUpdate): bool
   return (
     item === undefined ||
     item.state !== update.state ||
+    item.warmSince !== update.warmSince ||
     item.launchTime !== update.launchTime ||
     item.expiresAt !== update.expiresAt ||
     item.instanceType !== update.instanceType ||
@@ -115,7 +117,8 @@ async function adoptUntracked(
     (instance) => !tracked.has(instance.instanceId) && instance.state !== 'ACTIVE',
   );
   for (const instance of untracked) {
-    const update = indexUpdate(instance);
+    const warmSince = instance.state === 'WARM' ? new Date().toISOString() : undefined;
+    const update = indexUpdate(instance, warmSince);
     await index.update(update);
     items.push(update);
   }
@@ -172,8 +175,15 @@ async function bindUnboundSpotRequests(
 async function syncIndex(index: WarmIndexStore, items: WarmIndexItem[], read: Ec2StandbyRead): Promise<void> {
   const itemById = new Map(items.map((item) => [item.instanceId, item]));
   for (const instance of read.instances) {
-    const update = indexUpdate(instance);
-    if (changed(itemById.get(instance.instanceId), update)) {
+    const previous = itemById.get(instance.instanceId);
+    const warmSince =
+      instance.state === 'WARM'
+        ? previous?.state === 'WARM'
+          ? previous.warmSince
+          : (previous?.warmSince ?? new Date().toISOString())
+        : undefined;
+    const update = indexUpdate(instance, warmSince);
+    if (changed(previous, update)) {
       await bestEffort(`update the warm pool index entry of '${instance.instanceId}'`, () => index.update(update));
     }
   }
@@ -305,17 +315,18 @@ export function createEc2PoolStandbyOperations(
       return standbyOperations.currentImage({ launchTemplateName, amiIdSsmParameterName });
     },
     // Spot request state is not read: a self-initiated stop is enough to classify a primed instance (D14).
-    markPrimed: async (instanceIds) => {
+    markPrimed: async (instances) => {
+      const warmSinceById = new Map(instances.map(({ instanceId, warmSince }) => [instanceId, warmSince]));
       const tables = warmPoolIndexTables();
       const indexes = new Map<string, WarmIndexStore>();
       const failed: string[] = [];
-      for (const instance of await standbyOperations.readWarmPoolInstances([...new Set(instanceIds)])) {
+      for (const instance of await standbyOperations.readWarmPoolInstances([...warmSinceById.keys()])) {
         const tableName = tables[instance.environment];
         if (!tableName || instance.state !== 'WARM') continue;
         if (!indexes.has(tableName)) indexes.set(tableName, createIndexStore(tableName, instance.environment));
         try {
           // The condition only matches PRIMING items, so instances the index does not track are skipped.
-          if (await indexes.get(tableName)!.markWarm(indexUpdate(instance))) {
+          if (await indexes.get(tableName)!.markWarm(indexUpdate(instance, warmSinceById.get(instance.instanceId)))) {
             logger.info(`Warm instance '${instance.instanceId}' finished priming and is available.`);
           }
         } catch (error) {
