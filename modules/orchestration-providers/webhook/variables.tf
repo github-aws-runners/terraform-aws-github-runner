@@ -63,6 +63,8 @@ variable "config" {
     - `lambda.pool.runner_owner`: Optional GitHub organization or repository owner used for pooled runners.
     - `lambda.pool.warm.enabled`: Keeps the pool size of stopped, pre-booted standby instances instead of idle runners; scale-up starts them for jobs.
     - `lambda.pool.warm.max_age_hours`: Whole hours after which a warm instance is replaced. The default is `168`.
+      - `lambda.pool.warm.claim_order`: FIFO (default) or LIFO order for warm instance activation.
+      - `lambda.pool.warm.min_rest_seconds`: Minimum warm rest period before activation. The default is `0`.
     - `lambda.pool.tags`: Tags applied within pool resource scopes after common provider tags.
     - `job_retry.enabled`: Creates the retry queue, Lambda function, event-source mapping, and related IAM resources.
     - `job_retry.delay_in_seconds`: Initial delay before a queued-job retry check.
@@ -138,8 +140,10 @@ variable "config" {
         include_busy_runners = bool
         runner_owner         = optional(string, null)
         warm = optional(object({
-          enabled       = optional(bool, false)
-          max_age_hours = optional(number, 168)
+          enabled          = optional(bool, false)
+          max_age_hours    = optional(number, 168)
+          claim_order      = optional(string, "fifo")
+          min_rest_seconds = optional(number, 0)
         }), {})
         tags = optional(map(string), {})
       })

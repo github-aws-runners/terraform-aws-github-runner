@@ -48,6 +48,8 @@ variable "orchestration_provider" {
     - `webhook.lambda.pool.include_busy_runners`: Includes busy runners when reconciling scheduled pool capacity. The default is `false`.
     - `webhook.lambda.pool.warm.enabled`: Keeps the pool size of stopped, pre-booted instances instead of idle runners. Requires the AWS EC2 compute provider, linux or windows runners, and instance metadata tags.
     - `webhook.lambda.pool.warm.max_age_hours`: Whole hours, at least 1, after which a warm instance is replaced. The default is `168`.
+      - `webhook.lambda.pool.warm.claim_order`: `fifo` selects the oldest-launched eligible instance first; `lifo` selects the newest. The default is `fifo`.
+      - `webhook.lambda.pool.warm.min_rest_seconds`: Non-negative integer minimum rest period before activation. The default is `0`.
     - `webhook.lambda.pool.runner_owner`: Optional GitHub organization or repository owner used for pooled runners. The default is null.
     - `webhook.lambda.pool.tags`: Tags applied within pool resource scopes after common provider tags. The default is `{}`.
     - `webhook.job_retry.enabled`: Creates the retry queue, Lambda function, event-source mapping, and related IAM resources. The default is `false`.
@@ -125,8 +127,10 @@ variable "orchestration_provider" {
           include_busy_runners = optional(bool, false)
           runner_owner         = optional(string, null)
           warm = optional(object({
-            enabled       = optional(bool, false)
-            max_age_hours = optional(number, 168)
+            enabled          = optional(bool, false)
+            max_age_hours    = optional(number, 168)
+            claim_order      = optional(string, "fifo")
+            min_rest_seconds = optional(number, 0)
           }), {})
           tags = optional(map(string), {})
         }), {})
@@ -161,5 +165,19 @@ variable "orchestration_provider" {
       floor(var.orchestration_provider.webhook.lambda.pool.warm.max_age_hours) == var.orchestration_provider.webhook.lambda.pool.warm.max_age_hours
     )
     error_message = "orchestration_provider.webhook.lambda.pool.warm.max_age_hours must be a whole number of hours, at least 1."
+  }
+  validation {
+    condition = var.orchestration_provider.webhook == null ? true : contains(
+      ["fifo", "lifo"],
+      var.orchestration_provider.webhook.lambda.pool.warm.claim_order
+    )
+    error_message = "orchestration_provider.webhook.lambda.pool.warm.claim_order must be either \"fifo\" or \"lifo\"."
+  }
+  validation {
+    condition = var.orchestration_provider.webhook == null ? true : (
+      var.orchestration_provider.webhook.lambda.pool.warm.min_rest_seconds >= 0 &&
+      floor(var.orchestration_provider.webhook.lambda.pool.warm.min_rest_seconds) == var.orchestration_provider.webhook.lambda.pool.warm.min_rest_seconds
+    )
+    error_message = "orchestration_provider.webhook.lambda.pool.warm.min_rest_seconds must be a non-negative integer."
   }
 }

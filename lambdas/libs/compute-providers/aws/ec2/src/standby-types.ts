@@ -60,6 +60,11 @@ export interface StandbyBatchResult {
   failed: string[];
 }
 
+export interface PrimedStandbyInstance {
+  instanceId: string;
+  warmSince: string;
+}
+
 /** Image new standby instances would launch with; undefined fields could not be determined. */
 export interface StandbyImage {
   imageId?: string;
@@ -74,5 +79,5 @@ export interface Ec2PoolStandbyOperations {
   cancelSpotRequests(requests: StandbySpotRequest[]): Promise<StandbyBatchResult>;
   currentImage(): Promise<StandbyImage>;
   /** Marks warm-pool instances that stopped themselves after priming as warm; resolves the IDs that failed. */
-  markPrimed(instanceIds: string[]): Promise<string[]>;
+  markPrimed(instances: PrimedStandbyInstance[]): Promise<string[]>;
 }

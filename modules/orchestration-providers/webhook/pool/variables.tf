@@ -47,6 +47,8 @@ variable "config" {
     - `warm`: Warm pool standby settings. When enabled, the pool keeps stopped, pre-booted instances instead of idle runners.
     - `warm.enabled`: Enables warm pool standby.
     - `warm.max_age_hours`: Maximum age of a warm instance before the pool replaces it.
+      - `warm.claim_order`: FIFO (default) or LIFO order for warm instance activation.
+      - `warm.min_rest_seconds`: Minimum warm rest period before activation. The default is `0`.
     - `metrics`: Metric settings used by warm pool standby.
     - `metrics.enabled`: Whether the pool Lambda publishes warm pool metrics.
     - `metrics.namespace`: CloudWatch metrics namespace used by the pool Lambda.
@@ -111,8 +113,10 @@ variable "config" {
     }))
     include_busy_runners = bool
     warm = optional(object({
-      enabled       = optional(bool, false)
-      max_age_hours = optional(number, 168)
+      enabled          = optional(bool, false)
+      max_age_hours    = optional(number, 168)
+      claim_order      = optional(string, "fifo")
+      min_rest_seconds = optional(number, 0)
     }), {})
     metrics = optional(object({
       enabled   = optional(bool, false)

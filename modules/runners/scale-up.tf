@@ -76,6 +76,8 @@ resource "aws_lambda_function" "scale_up" {
       } : {}, var.warm_pool.enabled ? {
       WARM_POOL_ENABLED          = "true"
       WARM_POOL_INDEX_TABLE_NAME = aws_dynamodb_table.warm_pool_index[0].name
+      WARM_POOL_CLAIM_ORDER      = var.warm_pool.claim_order
+      WARM_POOL_MIN_REST_SECONDS = tostring(var.warm_pool.min_rest_seconds)
       ENABLE_METRIC_WARM_POOL    = tostring(var.metrics.enable)
     } : {})
   }

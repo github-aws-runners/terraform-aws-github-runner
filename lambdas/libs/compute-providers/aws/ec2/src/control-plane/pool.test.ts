@@ -282,13 +282,16 @@ describe('createEc2PoolCapability.standby', () => {
       { instanceId: 'i-gone', spotInstanceRequestId: undefined, activatedAt: undefined },
     ]);
     expect(index.update).toHaveBeenCalledTimes(1);
-    expect(index.update).toHaveBeenCalledWith({
-      instanceId: 'i-primed',
-      state: 'WARM',
-      launchTime: launchTime.toISOString(),
-      expiresAt: 'later',
-      spotInstanceRequestId: 'sir-1',
-    });
+    expect(index.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'i-primed',
+        state: 'WARM',
+        warmSince: expect.any(String),
+        launchTime: launchTime.toISOString(),
+        expiresAt: 'later',
+        spotInstanceRequestId: 'sir-1',
+      }),
+    );
     expect(index.remove).toHaveBeenCalledWith('i-gone');
     expect(standbyOperations.listStandby).not.toHaveBeenCalled();
   });
@@ -569,6 +572,7 @@ describe('createEc2PoolCapability.standby', () => {
       availabilityZone: 'eu-west-1a',
       ...overrides,
     });
+    const stopped = (instanceId: string) => ({ instanceId, warmSince: '2026-10-05T15:40:00.000Z' });
 
     beforeEach(() => {
       process.env.WARM_POOL_INDEX_TABLES = JSON.stringify({ 'env-a': 'table-a', 'env-b': 'table-b' });
@@ -581,7 +585,7 @@ describe('createEc2PoolCapability.standby', () => {
         primed('i-b', 'env-b'),
       ]);
 
-      await expect(standby.markPrimed(['i-a', 'i-b', 'i-a'])).resolves.toEqual([]);
+      await expect(standby.markPrimed([stopped('i-a'), stopped('i-b'), stopped('i-a')])).resolves.toEqual([]);
 
       expect(standbyOperations.readWarmPoolInstances).toHaveBeenCalledWith(['i-a', 'i-b']);
       expect(createIndexStore).toHaveBeenCalledWith('table-a', 'env-a');
@@ -589,6 +593,7 @@ describe('createEc2PoolCapability.standby', () => {
       expect(index.markWarm).toHaveBeenCalledWith({
         instanceId: 'i-a',
         state: 'WARM',
+        warmSince: '2026-10-05T15:40:00.000Z',
         launchTime: '2026-10-05T15:35:00.000Z',
         expiresAt: 'later',
         instanceType: 'm7g.large',
@@ -606,7 +611,7 @@ describe('createEc2PoolCapability.standby', () => {
     ])('leaves %s alone', async (_, instance) => {
       standbyOperations.readWarmPoolInstances.mockResolvedValue([instance]);
 
-      await expect(standby.markPrimed(['i-x'])).resolves.toEqual([]);
+      await expect(standby.markPrimed([stopped('i-x')])).resolves.toEqual([]);
 
       expect(index.markWarm).not.toHaveBeenCalled();
     });
@@ -615,14 +620,14 @@ describe('createEc2PoolCapability.standby', () => {
       standbyOperations.readWarmPoolInstances.mockResolvedValue([primed('i-a', 'env-a'), primed('i-b', 'env-a')]);
       index.markWarm.mockRejectedValueOnce(new Error('throttled'));
 
-      await expect(standby.markPrimed(['i-a', 'i-b'])).resolves.toEqual(['i-a']);
+      await expect(standby.markPrimed([stopped('i-a'), stopped('i-b')])).resolves.toEqual(['i-a']);
       expect(index.markWarm).toHaveBeenCalledTimes(2);
     });
 
     it('fails when no index tables are configured', async () => {
       delete process.env.WARM_POOL_INDEX_TABLES;
 
-      await expect(standby.markPrimed(['i-a'])).rejects.toThrow('WARM_POOL_INDEX_TABLES is not set.');
+      await expect(standby.markPrimed([stopped('i-a')])).rejects.toThrow('WARM_POOL_INDEX_TABLES is not set.');
     });
   });
 

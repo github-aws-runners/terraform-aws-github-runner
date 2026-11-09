@@ -29,3 +29,5 @@ runner_config:
   warm_pool:
     enabled: true
     max_age_hours: 24
+    claim_order: lifo
+    min_rest_seconds: 30

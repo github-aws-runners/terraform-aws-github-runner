@@ -135,6 +135,8 @@ beforeEach(() => {
   process.env.SCALE_ERRORS = '["UnfulfillableCapacity"]';
   process.env.WARM_POOL_ENABLED = 'true';
   process.env.WARM_POOL_INDEX_TABLE_NAME = 'warm-index';
+  process.env.WARM_POOL_CLAIM_ORDER = 'lifo';
+  process.env.WARM_POOL_MIN_REST_SECONDS = '0';
   process.env.RUNNER_OWNER = POOL_OWNER;
   process.env.ENABLE_METRIC_WARM_POOL = 'true';
   delete process.env.INSTANCE_TYPE_PRIORITIES;
@@ -198,7 +200,18 @@ describe('warm pool activation in EC2 scale-up', () => {
     expect(index.query).not.toHaveBeenCalled();
   });
 
-  it('activates the newest warm instance instead of launching cold', async () => {
+  it('defaults to FIFO and activates the oldest warm instance', async () => {
+    delete process.env.WARM_POOL_CLAIM_ORDER;
+
+    const result = await createRunners();
+
+    expect(result.instances).toEqual(['i-old']);
+    expect(index.claim).toHaveBeenCalledWith('i-old');
+  });
+
+  it('activates the newest warm instance when LIFO is configured', async () => {
+    process.env.WARM_POOL_CLAIM_ORDER = 'lifo';
+
     const result = await createRunners();
 
     expect(result).toEqual({ instances: ['i-new'], retryableErrorCount: 0, nonRetryableErrorCount: 0 });
@@ -282,6 +295,42 @@ describe('warm pool activation in EC2 scale-up', () => {
     });
     expect(ec2Operations.create).toHaveBeenCalledWith(expect.objectContaining({ numberOfRunners: 2 }));
     expectFallbackMetric('no-warm-instance', 2);
+  });
+
+  it('filters warm instances that have not met the minimum rest period', async () => {
+    process.env.WARM_POOL_MIN_REST_SECONDS = '120';
+    mockWarmIndex([
+      warm('i-ready', 60, { warmSince: new Date(NOW.getTime() - 10 * MINUTE).toISOString() }),
+      warm('i-resting', 5, { warmSince: new Date(NOW.getTime() - MINUTE).toISOString() }),
+    ]);
+
+    const result = await createRunners();
+
+    expect(result.instances).toEqual(['i-ready']);
+    expect(index.claim).toHaveBeenCalledTimes(1);
+    expect(index.claim).toHaveBeenCalledWith('i-ready');
+  });
+
+  it('launches cold with a distinct fallback when every warm instance is resting', async () => {
+    process.env.WARM_POOL_MIN_REST_SECONDS = '300';
+    mockWarmIndex([warm('i-resting', 5, { warmSince: new Date(NOW.getTime() - MINUTE).toISOString() })]);
+
+    const result = await createRunners();
+
+    expect(result.instances).toEqual(['i-cold-1']);
+    expect(index.claim).not.toHaveBeenCalled();
+    expect(ec2Operations.create).toHaveBeenCalledWith(expect.objectContaining({ numberOfRunners: 1 }));
+    expectFallbackMetric('minimum-rest', 1);
+  });
+
+  it('keeps legacy warm index items without warmSince eligible', async () => {
+    process.env.WARM_POOL_MIN_REST_SECONDS = '300';
+    mockWarmIndex([warm('i-legacy', 5)]);
+
+    const result = await createRunners();
+
+    expect(result.instances).toEqual(['i-legacy']);
+    expect(index.claim).toHaveBeenCalledWith('i-legacy');
   });
 
   describe('spot instances', () => {

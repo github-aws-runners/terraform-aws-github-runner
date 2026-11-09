@@ -46,6 +46,7 @@ describe('query', () => {
           {
             ...KEY('i-warm'),
             state: { S: 'WARM' },
+            warmSince: { S: '2026-09-30T10:30:00.000Z' },
             launchTime: { S: '2026-09-30T10:00:00.000Z' },
             expiresAt: { S: '2026-10-08T10:00:00.000Z' },
             instanceType: { S: 'm7g.large' },
@@ -56,6 +57,7 @@ describe('query', () => {
             cooldownUntil: { N: '456' },
           },
           { ...KEY('#reconcile'), lastRun: { N: '1' } },
+          { ...KEY('i-legacy'), state: { S: 'WARM' } },
         ],
         LastEvaluatedKey: KEY('i-warm'),
       })
@@ -65,6 +67,7 @@ describe('query', () => {
       {
         instanceId: 'i-warm',
         state: 'WARM',
+        warmSince: '2026-09-30T10:30:00.000Z',
         launchTime: '2026-09-30T10:00:00.000Z',
         expiresAt: '2026-10-08T10:00:00.000Z',
         instanceType: 'm7g.large',
@@ -75,6 +78,7 @@ describe('query', () => {
         startFailures: 2,
         cooldownUntil: 456,
       },
+      expect.objectContaining({ instanceId: 'i-legacy', state: 'WARM', warmSince: undefined }),
       expect.objectContaining({ instanceId: 'i-active', state: 'ACTIVATED', activatedAt: 'then' }),
     ]);
     expect(mockDynamoClient).toHaveReceivedCommandWith(QueryCommand, {
@@ -96,6 +100,7 @@ describe('markWarm', () => {
       index.markWarm({
         instanceId: 'i-1',
         state: 'WARM',
+        warmSince: '2026-09-30T11:00:00.000Z',
         expiresAt: '2026-10-08T10:00:00.000Z',
         instanceType: 'm7g.large',
       }),
@@ -103,9 +108,14 @@ describe('markWarm', () => {
 
     expect(updateInputs()[0]).toMatchObject({
       Key: KEY('i-1'),
-      UpdateExpression: 'SET #state = :state, #ttl = :ttl, expiresAt = :expiresAt, instanceType = :instanceType',
+      UpdateExpression:
+        'SET #state = :state, #ttl = :ttl, warmSince = :warmSince, expiresAt = :expiresAt, instanceType = :instanceType',
       ConditionExpression: '#state = :priming',
-      ExpressionAttributeValues: expect.objectContaining({ ':state': { S: 'WARM' }, ':priming': { S: 'PRIMING' } }),
+      ExpressionAttributeValues: expect.objectContaining({
+        ':state': { S: 'WARM' },
+        ':priming': { S: 'PRIMING' },
+        ':warmSince': { S: '2026-09-30T11:00:00.000Z' },
+      }),
     });
   });
 

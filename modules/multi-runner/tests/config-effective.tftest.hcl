@@ -129,7 +129,7 @@ run "v1_warm_pool_translates_to_webhook_pool" {
           instance_types        = ["m5.large"]
           runners_maximum_count = 1
           pool_config           = [{ schedule_expression = "cron(* * * * ? *)", size = 2 }]
-          warm_pool             = { enabled = true, max_age_hours = 24 }
+          warm_pool             = { enabled = true, max_age_hours = 24, claim_order = "lifo", min_rest_seconds = 45 }
         }
         matcherConfig = {
           labelMatchers = [["warm-label"]]
@@ -142,7 +142,11 @@ run "v1_warm_pool_translates_to_webhook_pool" {
     condition = (
       local.effective_config.multi_runner_config["warm"].orchestration_provider.webhook.lambda.pool.warm.enabled
       && local.effective_config.multi_runner_config["warm"].orchestration_provider.webhook.lambda.pool.warm.max_age_hours == 24
+      && local.effective_config.multi_runner_config["warm"].orchestration_provider.webhook.lambda.pool.warm.claim_order == "lifo"
+      && local.effective_config.multi_runner_config["warm"].orchestration_provider.webhook.lambda.pool.warm.min_rest_seconds == 45
       && module.runners["warm"].lambda_scale_up.environment[0].variables["WARM_POOL_ENABLED"] == "true"
+      && module.runners["warm"].lambda_scale_up.environment[0].variables["WARM_POOL_CLAIM_ORDER"] == "lifo"
+      && module.runners["warm"].lambda_scale_up.environment[0].variables["WARM_POOL_MIN_REST_SECONDS"] == "45"
     )
     error_message = "The v1 warm_pool setting must reach the webhook pool config and the scale-up lambda."
   }
@@ -186,7 +190,7 @@ run "v2_warm_pool_reaches_pool_and_scale_up" {
             lambda = {
               pool = {
                 config = [{ schedule_expression = "cron(* * * * ? *)", size = 2 }]
-                warm   = { enabled = true, max_age_hours = 24 }
+                warm   = { enabled = true, max_age_hours = 24, claim_order = "lifo", min_rest_seconds = 45 }
               }
             }
           }
@@ -201,6 +205,8 @@ run "v2_warm_pool_reaches_pool_and_scale_up" {
       module.runner_configs["warm"].pool.lambda.environment[0].variables["WARM_POOL_ENABLED"] == "true"
       && module.runner_configs["warm"].pool.lambda.environment[0].variables["WARM_POOL_MAX_AGE_HOURS"] == "24"
       && module.runner_configs["warm"].scale_up.lambda.environment[0].variables["WARM_POOL_ENABLED"] == "true"
+      && module.runner_configs["warm"].scale_up.lambda.environment[0].variables["WARM_POOL_CLAIM_ORDER"] == "lifo"
+      && module.runner_configs["warm"].scale_up.lambda.environment[0].variables["WARM_POOL_MIN_REST_SECONDS"] == "45"
     )
     error_message = "A native v2 warm pool must reach the pool and scale-up lambdas."
   }

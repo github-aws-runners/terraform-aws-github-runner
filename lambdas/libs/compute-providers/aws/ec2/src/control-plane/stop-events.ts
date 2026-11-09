@@ -6,13 +6,25 @@ import type { Ec2PoolStandbyOperations } from '../standby-types';
 const logger = createChildLogger('warm-pool-stop-events');
 
 interface InstanceStateChangeEvent {
+  time?: string;
   detail?: { 'instance-id'?: string; state?: string };
 }
 
-function stoppedInstanceId(event: StandbyEvent): string | undefined {
+interface StoppedInstance {
+  instanceId: string;
+  warmSince: string;
+}
+
+function stoppedInstance(event: StandbyEvent): StoppedInstance | undefined {
   try {
     const parsed = JSON.parse(event.body) as InstanceStateChangeEvent;
-    return parsed.detail?.state === 'stopped' ? parsed.detail['instance-id'] : undefined;
+    const instanceId = parsed.detail?.state === 'stopped' ? parsed.detail['instance-id'] : undefined;
+    if (!instanceId) return undefined;
+    const eventTime = Date.parse(parsed.time ?? '');
+    return {
+      instanceId,
+      warmSince: Number.isNaN(eventTime) ? new Date().toISOString() : new Date(eventTime).toISOString(),
+    };
   } catch {
     logger.warn('Ignoring a stop event that is not valid JSON.', { eventId: event.id });
     return undefined;
@@ -24,21 +36,30 @@ export async function processStopEvents(
   standby: Pick<Ec2PoolStandbyOperations, 'markPrimed'>,
   events: StandbyEvent[],
 ): Promise<string[]> {
-  const eventsByInstance = new Map<string, string[]>();
+  const eventsByInstance = new Map<string, { warmSince: string; eventIds: string[] }>();
   for (const event of events) {
-    const instanceId = stoppedInstanceId(event);
-    if (instanceId) eventsByInstance.set(instanceId, [...(eventsByInstance.get(instanceId) ?? []), event.id]);
+    const stopped = stoppedInstance(event);
+    if (!stopped) continue;
+    const existing = eventsByInstance.get(stopped.instanceId);
+    if (existing) {
+      if (Date.parse(stopped.warmSince) > Date.parse(existing.warmSince)) existing.warmSince = stopped.warmSince;
+      existing.eventIds.push(event.id);
+    } else {
+      eventsByInstance.set(stopped.instanceId, { warmSince: stopped.warmSince, eventIds: [event.id] });
+    }
   }
   if (eventsByInstance.size === 0) return [];
 
   let failed: string[];
   try {
-    failed = await standby.markPrimed([...eventsByInstance.keys()]);
+    failed = await standby.markPrimed(
+      [...eventsByInstance].map(([instanceId, { warmSince }]) => ({ instanceId, warmSince })),
+    );
   } catch (error) {
     logger.warn('Failed to read the stopped instances, retrying the batch.', {
       error: error instanceof Error ? error.message : String(error),
     });
     failed = [...eventsByInstance.keys()];
   }
-  return failed.flatMap((instanceId) => eventsByInstance.get(instanceId) ?? []);
+  return failed.flatMap((instanceId) => eventsByInstance.get(instanceId)?.eventIds ?? []);
 }
