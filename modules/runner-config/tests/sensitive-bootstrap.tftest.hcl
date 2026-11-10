@@ -112,3 +112,30 @@ run "sensitive_post_install_plans" {
   }
 }
 
+run "computed_sensitive_content_plans" {
+  command = plan
+
+  module {
+    source = "./tests/fixtures/sensitive-bootstrap"
+  }
+
+  override_module {
+    target = module.runner.module.ssm_housekeeper
+  }
+
+  variables {
+    computed_bootstrap = true
+    user_data = {
+      content = "#!/bin/bash\necho secret-bootstrap-value > /etc/example-token"
+    }
+  }
+
+  assert {
+
+    # OpenTofu cannot evaluate issensitive() on the unknown rendered userdata.
+    # The known-content cases above separately verify sensitivity retention.
+    condition     = output.provider_type == "ec2"
+    error_message = "Computed bootstrap content must not prevent provider selection or IAM resource planning."
+  }
+}
+

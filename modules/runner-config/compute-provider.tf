@@ -4,10 +4,11 @@ locals {
   }
 
   # Provider presence is public topology; nested bootstrap values may be secret.
-  # Terraform 1.5 rejects nonsensitive() when the boolean is already public.
+  # Mark the boolean first for Terraform 1.5, which rejects redundant unmarking.
+  # Avoid try(): it makes selection unknown when nested values are computed.
   provider_key = one([
     for provider_key, provider_config in local.compute_providers : provider_key
-    if try(nonsensitive(provider_config != null), provider_config != null)
+    if nonsensitive(sensitive(provider_config != null))
   ])
 
   provider_types = {

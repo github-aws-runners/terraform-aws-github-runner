@@ -12,6 +12,15 @@ variable "user_data" {
   type = map(string)
 }
 
+variable "computed_bootstrap" {
+  type    = bool
+  default = false
+}
+
+resource "terraform_data" "bootstrap" {
+  input = "computed-bootstrap-value"
+}
+
 module "runner" {
   source     = "../../.."
   aws_region = "eu-west-1"
@@ -23,7 +32,7 @@ module "runner" {
         subnet_ids     = ["subnet-12345678"]
         instance_types = ["m5.large"]
         ssm_enabled    = true
-        user_data      = { for key, value in var.user_data : key => sensitive(value) }
+        user_data      = { for key, value in var.user_data : key => sensitive(var.computed_bootstrap ? "${value}${terraform_data.bootstrap.output}" : value) }
         ami = {
           filter = { state = ["available"] }
           owners = ["amazon"]
