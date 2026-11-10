@@ -3,9 +3,10 @@ locals {
     aws_ec2 = var.compute_provider.aws.ec2
   }
 
+  # Provider presence is public topology; nested bootstrap values may be secret.
   provider_key = one([
     for provider_key, provider_config in local.compute_providers : provider_key
-    if provider_config != null
+    if nonsensitive(provider_config != null)
   ])
 
   provider_types = {
@@ -20,8 +21,9 @@ locals {
 
   provider_assume_role_policy = local.provider_assume_role_policies[local.provider_key]
 
+  # Avoid one() here: it promotes nested userdata sensitivity to sibling policies.
   provider_contracts = {
-    aws_ec2 = one(module.compute_aws_ec2[*].provider)
+    aws_ec2 = local.provider_key == "aws_ec2" ? module.compute_aws_ec2[0].provider : null
   }
 
   provider_contract = local.provider_contracts[local.provider_key]
