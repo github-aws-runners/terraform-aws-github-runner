@@ -56,7 +56,7 @@ run "sensitive_content_plans" {
 
   variables {
     user_data = {
-      content = sensitive("#!/bin/bash\necho secret-bootstrap-value > /etc/example-token")
+      content = "#!/bin/bash\necho secret-bootstrap-value > /etc/example-token"
     }
   }
 
@@ -79,7 +79,7 @@ run "sensitive_pre_install_plans" {
 
   variables {
     user_data = {
-      pre_install = sensitive("#!/bin/bash\necho secret-bootstrap-value > /etc/example-token")
+      pre_install = "#!/bin/bash\necho secret-bootstrap-value > /etc/example-token"
     }
   }
 
@@ -102,7 +102,7 @@ run "sensitive_post_install_plans" {
 
   variables {
     user_data = {
-      post_install = sensitive("#!/bin/bash\necho secret-bootstrap-value > /etc/example-token")
+      post_install = "#!/bin/bash\necho secret-bootstrap-value > /etc/example-token"
     }
   }
 

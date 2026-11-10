@@ -6,8 +6,10 @@ terraform {
   }
 }
 
+# Apply sensitivity inside the fixture: OpenTofu cannot serialize nested sensitive
+# values supplied directly by a test variables block.
 variable "user_data" {
-  type = any
+  type = map(string)
 }
 
 module "runner" {
@@ -21,7 +23,7 @@ module "runner" {
         subnet_ids     = ["subnet-12345678"]
         instance_types = ["m5.large"]
         ssm_enabled    = true
-        user_data      = var.user_data
+        user_data      = { for key, value in var.user_data : key => sensitive(value) }
         ami = {
           filter = { state = ["available"] }
           owners = ["amazon"]

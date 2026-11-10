@@ -4,9 +4,10 @@ locals {
   }
 
   # Provider presence is public topology; nested bootstrap values may be secret.
+  # Terraform 1.5 rejects nonsensitive() when the boolean is already public.
   provider_key = one([
     for provider_key, provider_config in local.compute_providers : provider_key
-    if nonsensitive(provider_config != null)
+    if try(nonsensitive(provider_config != null), provider_config != null)
   ])
 
   provider_types = {
