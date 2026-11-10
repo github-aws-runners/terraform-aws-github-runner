@@ -141,6 +141,8 @@ resource "aws_lambda_event_source_mapping" "job_retry" {
   batch_size                         = var.config.queue.event_source_mapping.batch_size
   maximum_batching_window_in_seconds = var.config.queue.event_source_mapping.maximum_batching_window_in_seconds
   tags                               = var.config.tags.event_source_mapping
+
+  depends_on = [aws_iam_role_policy.job_retry]
 }
 
 resource "aws_lambda_permission" "job_retry" {
