@@ -143,6 +143,14 @@ run "preserves_nested_job_retry_configuration" {
   command = plan
 
   assert {
+    condition = (
+      output.lambda.function.environment[0].variables["LOG_LEVEL"] == "TRACE"
+      && output.lambda.function.environment[0].variables["POWERTOOLS_LOGGER_LOG_EVENT"] == "false"
+    )
+    error_message = "The configured log level must be uppercase without enabling event logging for non-debug levels."
+  }
+
+  assert {
     condition     = aws_lambda_event_source_mapping.job_retry.function_response_types == toset(["ReportBatchItemFailures"])
     error_message = "Job retry must acknowledge successful records independently from failed records."
   }
@@ -236,6 +244,43 @@ run "preserves_nested_job_retry_configuration" {
     error_message = "Only the resource-agnostic X-Ray APIs may retain a wildcard resource in the job-retry policies."
   }
 
+}
+
+run "enables_debug_event_logging" {
+  command = plan
+
+  variables {
+    config = merge(var.config, {
+      observability = merge(var.config.observability, {
+        logs = merge(var.config.observability.logs, { level = "debug" })
+      })
+    })
+  }
+
+  assert {
+    condition = (
+      output.lambda.function.environment[0].variables["LOG_LEVEL"] == "DEBUG"
+      && output.lambda.function.environment[0].variables["POWERTOOLS_LOGGER_LOG_EVENT"] == "true"
+    )
+    error_message = "Debug logging must set the uppercase log level and enable event logging."
+  }
+}
+
+run "preserves_log_level_environment_override" {
+  command = plan
+
+  variables {
+    config = merge(var.config, {
+      lambda = merge(var.config.lambda, {
+        environment_variables = merge(var.config.lambda.environment_variables, { LOG_LEVEL = "ERROR" })
+      })
+    })
+  }
+
+  assert {
+    condition     = output.lambda.function.environment[0].variables["LOG_LEVEL"] == "ERROR"
+    error_message = "An explicit environment override must take precedence over the configured log level."
+  }
 }
 
 run "does_not_enable_partial_vpc_configuration" {

@@ -8,7 +8,7 @@ locals {
 
   lambda_environment_variables = {
     ENVIRONMENT                              = var.config.prefix
-    LOG_LEVEL                                = var.config.observability.logs.level
+    LOG_LEVEL                                = upper(var.config.observability.logs.level)
     PREFIX                                   = var.config.prefix
     POWERTOOLS_LOGGER_LOG_EVENT              = var.config.observability.logs.level == "debug" ? "true" : "false"
     POWERTOOLS_SERVICE_NAME                  = local.name
