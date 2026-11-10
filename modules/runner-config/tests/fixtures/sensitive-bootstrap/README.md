@@ -21,7 +21,7 @@ No resources.
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_user_data"></a> [user\_data](#input\_user\_data) | n/a | `any` | n/a | yes |
+| <a name="input_user_data"></a> [user\_data](#input\_user\_data) | Apply sensitivity inside the fixture: OpenTofu cannot serialize nested sensitive values supplied directly by a test variables block. | `map(string)` | n/a | yes |
 
 ## Outputs
 
