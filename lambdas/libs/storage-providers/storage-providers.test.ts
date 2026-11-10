@@ -1,7 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { createAwsSsmRunnerConfigStore } from './aws/ssm/runner-config-store';
-
 import { createStorageProviders } from './storage-providers';
 import { createAwsSsmRunnerConfigStore } from './aws/ssm/runner-config-store';
 
