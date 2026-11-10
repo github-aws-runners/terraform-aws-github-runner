@@ -534,6 +534,51 @@ describe('Scale down runners', () => {
     expect(mockTerminateRunners).not.toHaveBeenCalled();
   });
 
+  it('defers identity lookup during boot and evaluates the runner after registration', async () => {
+    const runner = createRunnerTestData('booting', 'Org', 0, false, false, false);
+    delete runner.githubRunnerId;
+    mockedResolveCapability.mockReturnValue(() => ({
+      ...mockComputeProvider,
+      listPage: vi.fn().mockResolvedValue({ runners: [runner] }),
+    }));
+
+    await scaleDown();
+    expect(mockCreateClient).not.toHaveBeenCalled();
+    expect(mockOctokit.paginate).not.toHaveBeenCalled();
+    expect(scaleLogs.error).not.toHaveBeenCalled();
+    expect(mockMarkOrphan).not.toHaveBeenCalled();
+    expect(mockTerminateRunners).not.toHaveBeenCalled();
+
+    runner.githubRunnerId = '123';
+    await scaleDown();
+    expect(mockCreateClient).toHaveBeenCalled();
+    expect(scaleLogs.error).not.toHaveBeenCalled();
+    expect(mockTerminateRunners).not.toHaveBeenCalled();
+  });
+
+  it('retains an unverified runner after its boot grace expires', async () => {
+    const runner = createRunnerTestData('boot-expired', 'Org', 0, false, false, false);
+    delete runner.githubRunnerId;
+    mockedResolveCapability.mockReturnValue(() => ({
+      ...mockComputeProvider,
+      listPage: vi.fn().mockResolvedValue({ runners: [runner] }),
+    }));
+    await scaleDown();
+    expect(scaleLogs.error).not.toHaveBeenCalled();
+
+    runner.launchTime = moment()
+      .subtract(MINIMUM_BOOT_TIME + 1, 'minutes')
+      .toDate();
+    await scaleDown();
+    expect(mockOctokit.paginate).toHaveBeenCalled();
+    expect(scaleLogs.error).toHaveBeenCalledWith(
+      expect.stringContaining('not found by expected name'),
+      expect.objectContaining({ code: 'UNVERIFIABLE_RUNNER', runnerId: runner.id }),
+    );
+    expect(mockMarkOrphan).not.toHaveBeenCalled();
+    expect(mockTerminateRunners).not.toHaveBeenCalled();
+  });
+
   it('retains a custom-name registration after an exact-name miss, including an existing orphan', async () => {
     const runner = createRunnerTestData('custom-name', 'Org', 60, true, true, false);
     delete runner.githubRunnerId;
