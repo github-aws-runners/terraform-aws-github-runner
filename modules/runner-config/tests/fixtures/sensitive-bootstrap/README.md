@@ -5,7 +5,9 @@ No requirements.
 
 ## Providers
 
-No providers.
+| Name | Version |
+|------|---------|
+| <a name="provider_terraform"></a> [terraform](#provider\_terraform) | n/a |
 
 ## Modules
 
@@ -15,12 +17,15 @@ No providers.
 
 ## Resources
 
-No resources.
+| Name | Type |
+|------|------|
+| [terraform_data.bootstrap](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/resources/data) | resource |
 
 ## Inputs
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
+| <a name="input_computed_bootstrap"></a> [computed\_bootstrap](#input\_computed\_bootstrap) | n/a | `bool` | `false` | no |
 | <a name="input_user_data"></a> [user\_data](#input\_user\_data) | Apply sensitivity inside the fixture: OpenTofu cannot serialize nested sensitive values supplied directly by a test variables block. | `map(string)` | n/a | yes |
 
 ## Outputs
