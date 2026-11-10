@@ -102,9 +102,15 @@ The EC2 inventory page size is 100: approximately ten `DescribeInstances` reques
 
 | Metric | Default |
 |---|---|
-| Combined throughput (Get + Put) | **40 TPS** (shared per-account per-region) |
+| `GetParameter`, `GetParameters`, `GetParametersByPath` | **40 TPS** shared (higher throughput: 10,000 / 1,000 / 100) |
+| `PutParameter` | **3 TPS** (higher throughput: 10) |
+| `DeleteParameter`, `DeleteParameters` | **3 TPS** (higher throughput: 5) |
 
-Each runner instance requires one `PutParameter` call for its JIT config. This is account-wide, not per-invocation or per-pool: several pools' scale-up/pool lambdas can each individually look fine while their combined writes exceed the account limit. The module paces its own writes to stay under a configured ceiling — `ssm_parameter_store_max_writes_per_second` (default `40`, matching the standard tier) — dividing the per-write delay across `ssm_parameter_store_max_concurrent_invocations` (default `1`), which should reflect how many scale-up/pool invocations across all pools can realistically run at the same time.
+Limits are per account and Region. Reads and writes have separate quotas. [Source: AWS docs](https://docs.aws.amazon.com/systems-manager/latest/userguide/parameter-store-throughput.html)
+
+Each runner instance requires one `PutParameter` call for its JIT config. This is account-wide, not per-invocation or per-pool: several pools' scale-up/pool lambdas can each individually look fine while their combined writes exceed the account limit. The module paces its own writes to stay under a configured ceiling — `ssm_parameter_store_max_writes_per_second` (default `40`) — dividing the per-write delay across `ssm_parameter_store_max_concurrent_invocations` (default `1`), which should reflect how many scale-up/pool invocations across all pools can realistically run at the same time.
+
+The default of `40` is above the documented `PutParameter` quota. It keeps the pacing the module used before this setting existed, and short bursts above the quota are usually absorbed by SDK retries. If you see `ThrottlingException` or `TooManyUpdates` on `PutParameter`, lower `ssm_parameter_store_max_writes_per_second` (down to `3`, or `10` with higher throughput) or raise `ssm_parameter_store_max_concurrent_invocations`.
 
 Where to set the two values:
 
@@ -114,7 +120,7 @@ Where to set the two values:
 | Multi-runner (v1 inputs) | The same two variables, applied to all runner configurations |
 | Multi-runner (v2 inputs) | `global_config_storage_provider.aws.ssm.parameters.max_writes_per_second` and `max_concurrent_invocations` for all runner configurations. A runner configuration can override either value under its own `storage_provider.aws.ssm.parameters`. |
 
-**Higher throughput mode** raises the ceiling:
+**Higher throughput mode** raises the quotas (for writes only from 3 to 10 TPS):
 
 ```bash
 aws ssm update-service-setting \
@@ -124,7 +130,7 @@ aws ssm update-service-setting \
 
 Cost: $0.05 per 10,000 API interactions beyond the standard tier.
 
-Enabling this alone does nothing for this module's own pacing — raise `ssm_parameter_store_max_writes_per_second` to match the new ceiling too, or the module keeps pacing writes at the old 40 TPS default regardless of what AWS now allows.
+Enabling this does not change this module's pacing, which follows `ssm_parameter_store_max_writes_per_second`. Higher throughput helps mostly with reads; for writes, set the value to `10` or lower if `PutParameter` is still throttled.
 
 ### EC2 CreateFleet
 
@@ -143,7 +149,7 @@ For deployments running more than a handful of concurrent runners:
 | Running On-Demand Standard (A,C,D,H,I,M,R,T,Z) instances | **5 vCPUs** | Service Quotas console |
 | All Standard Spot Instance Requests | **5 vCPUs** | Service Quotas console |
 | EC2 CreateFleet API rate | Undocumented | AWS Support ticket |
-| SSM Parameter Store throughput | 40 TPS | `update-service-setting` (see above), then raise `ssm_parameter_store_max_writes_per_second` to match |
+| SSM Parameter Store throughput | 40 TPS reads, 3 TPS writes | `update-service-setting` (see above): 10 TPS writes; pace with `ssm_parameter_store_max_writes_per_second` |
 
 **vCPU quotas are measured in vCPUs, not instance count.** Running 50× `c5.large` (2 vCPU each) requires a quota of at least 100 vCPUs.
 
@@ -189,7 +195,7 @@ Higher windows improve batching efficiency but add latency to job pickup.
 |---|---|---|---|
 | Small (<50 concurrent jobs) | 1–5 | 90s | Defaults work |
 | Medium (50–200) | 5–10 | 180s | Monitor SSM throttling |
-| Large (200+) | 10 | 300s | Enable SSM higher throughput and raise `ssm_parameter_store_max_writes_per_second`/`ssm_parameter_store_max_concurrent_invocations` to match, raise vCPU quotas, request CreateFleet rate increase |
+| Large (200+) | 10 | 300s | Enable SSM higher throughput, set `ssm_parameter_store_max_concurrent_invocations` to the real concurrency and lower `ssm_parameter_store_max_writes_per_second` if `PutParameter` is throttled, raise vCPU quotas, request CreateFleet rate increase |
 
 ## Monitoring
 

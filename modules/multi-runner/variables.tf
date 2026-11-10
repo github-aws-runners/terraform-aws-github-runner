@@ -1288,7 +1288,7 @@ variable "ssm_parameter_store_max_concurrent_invocations" {
 }
 
 variable "ssm_parameter_store_max_writes_per_second" {
-  description = "Parameter Store write-rate limit to pace against, in writes/second. Defaults to the standard-tier limit; raise this if SSM's higher-throughput tier is enabled (up to several thousand writes/second). Applies to all runner configurations."
+  description = "Parameter Store write rate to pace against, in writes/second, shared by all scale-up and pool invocations. AWS documents a PutParameter quota of 3 TPS per account and Region (10 TPS with higher throughput enabled). The default of 40 keeps the previous pacing; lower it if PutParameter calls are throttled. Applies to all runner configurations."
   type        = number
   default     = 40
 }

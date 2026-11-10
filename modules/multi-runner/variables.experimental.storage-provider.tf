@@ -13,7 +13,7 @@ variable "global_config_storage_provider" {
       aws.ssm.tags: "Tags applied to SSM resources."
       aws.ssm.parameters.tags: "Tags applied to runner configuration parameters."
       aws.ssm.parameters.max_concurrent_invocations: "Expected number of concurrent scale-up and pool Lambda invocations writing to Parameter Store, used to pace each invocation's writes to a share of the account-wide write-rate limit."
-      aws.ssm.parameters.max_writes_per_second: "Parameter Store write-rate limit to pace against, in writes per second. Raise this above 40 only when SSM's higher-throughput tier is enabled."
+      aws.ssm.parameters.max_writes_per_second: "Parameter Store write rate to pace against, in writes per second. AWS documents a PutParameter quota of 3 TPS per account and Region (10 TPS with higher throughput enabled). The default of 40 keeps the previous pacing; lower it if PutParameter calls are throttled."
       aws.ssm.housekeeper.schedule_expression: "Schedule for the SSM parameter housekeeper."
       aws.ssm.housekeeper.state: "EventBridge rule state for the SSM housekeeper."
       aws.ssm.housekeeper.tags: "Tags applied to the SSM housekeeper resources."

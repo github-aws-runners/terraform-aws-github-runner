@@ -9,8 +9,8 @@ import { parseSsmTokenTtlSeconds } from './token-ttl';
 
 const logger = createAwsSsmStorageLogger('runner-config-store');
 
-// SSM Parameter Store's standard-tier default; accounts that enabled the higher-throughput tier
-// (up to several thousand TPS) should override this via SSM_PARAMETER_STORE_MAX_WRITES_PER_SECOND.
+// AWS documents a PutParameter quota of 3 TPS (10 TPS with higher throughput enabled). 40 keeps the
+// previous pacing; lower it via SSM_PARAMETER_STORE_MAX_WRITES_PER_SECOND if writes are throttled.
 const DEFAULT_MAX_WRITES_PER_SECOND = 40;
 
 export function resolveMaxWritesPerSecond(rawValue: string | undefined): number {
