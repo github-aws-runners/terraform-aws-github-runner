@@ -66,6 +66,8 @@ resource "aws_lambda_function" "pool" {
       INCLUDE_BUSY_RUNNERS                     = var.config.include_busy_runners
       }, var.config.ssm_ttl_seconds.tokens != null ? {
       SSM_TOKEN_TTL_SECONDS = tostring(var.config.ssm_ttl_seconds.tokens)
+      } : {}, var.config.runner_config_ssm_parameter_tier != null ? {
+      SSM_RUNNER_CONFIG_TIER = var.config.runner_config_ssm_parameter_tier
     } : {})
   }
 

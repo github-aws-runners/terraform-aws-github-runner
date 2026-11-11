@@ -20,7 +20,8 @@ module "runners" {
     tokens = each.value.storage_provider.aws.ssm.paths.tokens
     config = each.value.storage_provider.aws.ssm.paths.config
   }
-  ssm_ttl_seconds = each.value.storage_provider.aws.ssm.ttl_seconds
+  ssm_ttl_seconds                  = each.value.storage_provider.aws.ssm.ttl_seconds
+  runner_config_ssm_parameter_tier = each.value.storage_provider.aws.ssm.runner_config_tier
 
   runner_os                               = each.value.runner.os
   instance_types                          = each.value.compute_provider.aws.ec2.instance_types

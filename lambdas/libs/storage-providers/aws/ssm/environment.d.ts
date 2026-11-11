@@ -9,6 +9,7 @@ declare global {
       SSM_CONFIG_PATH?: string;
       SSM_TOKEN_PATH?: string;
       SSM_TOKEN_TTL_SECONDS?: string;
+      SSM_RUNNER_CONFIG_TIER?: string;
       PARAMETER_GITHUB_APP_ID_NAME?: string;
       PARAMETER_GITHUB_APP_KEY_BASE64_NAME?: string;
       PARAMETER_GITHUB_APP_INSTALLATION_ID_NAME?: string;

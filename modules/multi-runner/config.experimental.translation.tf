@@ -443,6 +443,7 @@ locals {
             ttl_seconds = {
               tokens = v.runner_config.ssm_ttl_seconds.tokens
             }
+            runner_config_tier = v.runner_config.runner_config_ssm_parameter_tier
             paths = {
               root   = null
               tokens = null

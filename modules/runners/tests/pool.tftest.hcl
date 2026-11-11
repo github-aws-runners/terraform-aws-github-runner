@@ -103,6 +103,56 @@ run "nested_token_ttl_reaches_scale_up" {
   }
 }
 
+run "runner_config_tier_defaults_to_size_based_selection" {
+  command = plan
+  assert {
+    condition = (!contains(keys(aws_lambda_function.scale_up.environment[0].variables), "SSM_RUNNER_CONFIG_TIER")
+    && !contains(keys(module.pool[0].lambda.environment[0].variables), "SSM_RUNNER_CONFIG_TIER"))
+    error_message = "An omitted runner config tier must leave the size-based tier selection enabled."
+  }
+}
+
+run "runner_config_tier_reaches_scale_up_and_pool" {
+  command = plan
+  variables {
+    runner_config_ssm_parameter_tier = "Advanced"
+  }
+  assert {
+    condition = (aws_lambda_function.scale_up.environment[0].variables["SSM_RUNNER_CONFIG_TIER"] == "Advanced"
+    && module.pool[0].lambda.environment[0].variables["SSM_RUNNER_CONFIG_TIER"] == "Advanced")
+    error_message = "The runner config tier must reach both scale-up and pool Lambdas."
+  }
+}
+
+run "reject_invalid_runner_config_tier" {
+  command = plan
+  variables {
+    runner_config_ssm_parameter_tier = "Premium"
+  }
+  expect_failures = [var.runner_config_ssm_parameter_tier]
+}
+
+run "reject_standard_runner_config_tier_with_token_ttl" {
+  command = plan
+  variables {
+    runner_config_ssm_parameter_tier = "Standard"
+    ssm_ttl_seconds                  = { tokens = 3600 }
+  }
+  expect_failures = [aws_lambda_function.scale_up]
+}
+
+run "allow_advanced_runner_config_tier_with_token_ttl" {
+  command = plan
+  variables {
+    runner_config_ssm_parameter_tier = "Advanced"
+    ssm_ttl_seconds                  = { tokens = 3600 }
+  }
+  assert {
+    condition     = aws_lambda_function.scale_up.environment[0].variables["SSM_RUNNER_CONFIG_TIER"] == "Advanced"
+    error_message = "An explicit Advanced tier must be accepted together with a token TTL."
+  }
+}
+
 run "reject_non_positive_token_ttl" {
   command = plan
   variables {

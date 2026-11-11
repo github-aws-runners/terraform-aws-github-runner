@@ -168,6 +168,48 @@ describe('Test getParameter and putParameter', () => {
     });
   });
 
+  it.each([
+    ['a', 'Advanced'],
+    ['a'.repeat(SSM_ADVANCED_TIER_THRESHOLD + 1), 'Standard'],
+  ] as const)('Uses the requested tier %# instead of the size-based selection', async (data, tier) => {
+    // Arrange
+    mockSSMClient.on(PutParameterCommand).resolves({ $metadata: { httpStatusCode: 200 } });
+
+    // Act
+    await putParameter('testParam', data, true, { tier });
+
+    // Assert
+    expect(mockSSMClient).toHaveReceivedCommandWith(PutParameterCommand, {
+      Name: 'testParam',
+      Value: data,
+      Type: 'SecureString',
+      Tier: tier,
+    });
+  });
+
+  it('Keeps the Advanced tier when a TTL is given together with an explicit Advanced tier', async () => {
+    // Arrange
+    mockSSMClient.on(PutParameterCommand).resolves({ $metadata: { httpStatusCode: 200 } });
+
+    // Act
+    await putParameter('testParam', 'test', true, { ttlSeconds: 60, tier: 'Advanced' });
+
+    // Assert
+    expect(mockSSMClient).toHaveReceivedCommandWith(PutParameterCommand, { Name: 'testParam', Tier: 'Advanced' });
+  });
+
+  it('Rejects a TTL combined with an explicit Standard tier without calling SSM', async () => {
+    // Arrange
+    mockSSMClient.reset();
+    mockSSMClient.on(PutParameterCommand).resolves({ $metadata: { httpStatusCode: 200 } });
+
+    // Act & Assert
+    await expect(putParameter('testParam', 'test', true, { ttlSeconds: 60, tier: 'Standard' })).rejects.toThrow(
+      'A parameter TTL requires the Advanced SSM parameter tier',
+    );
+    expect(mockSSMClient).not.toHaveReceivedCommand(PutParameterCommand);
+  });
+
   it('Puts parameters without an expiration policy when no TTL is given', async () => {
     // Arrange
     mockSSMClient.on(PutParameterCommand).resolves({ $metadata: { httpStatusCode: 200 } });

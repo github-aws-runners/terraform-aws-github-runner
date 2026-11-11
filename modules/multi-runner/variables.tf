@@ -259,6 +259,7 @@ variable "multi_runner_config" {
       ssm_ttl_seconds = optional(object({
         tokens = optional(number, null)
       }), {})
+      runner_config_ssm_parameter_tier = optional(string, null)
       job_retry = optional(object({
         enable             = optional(bool, false)
         delay_in_seconds   = optional(number, 300)
@@ -444,6 +445,7 @@ variable "multi_runner_config" {
           ttl_seconds = optional(object({
             tokens = optional(number, null)
           }), {})
+          runner_config_tier = optional(string, null)
           paths = optional(object({
             root   = optional(string, null)
             tokens = optional(string, null)
@@ -729,6 +731,7 @@ variable "multi_runner_config" {
         job_retry: "Experimental! Can be removed / changed without trigger a major release. Configure job retries. The configuration enables job retries (for ephemeral runners). After creating the instances a message will be published to a job retry queue. The job retry check lambda is checking after a delay if the job is queued. If not the message will be published again on the scale-up (build queue). Using this feature can impact the rate limit of the GitHub app."
         pool_config: "The configuration for updating the pool. The `pool_size` to adjust to by the events triggered by the `schedule_expression`. For example you can configure a cron expression for week days to adjust the pool to 10 and another expression for the weekend to adjust the pool to 1. Use `schedule_expression_timezone` to override the schedule time zone (defaults to UTC)."
         ssm_ttl_seconds.tokens: "Optional TTL in seconds for the SSM parameters holding the runner registration token / JIT config. When set, the parameters are created with an SSM expiration policy so SSM deletes them itself after the TTL passes. Requires the Advanced parameter tier for every token parameter, which incurs additional costs. Expiration is enforced asynchronously by SSM; the SSM housekeeper lambda remains as a backstop. Must be a positive number, and should comfortably exceed the runner boot time so the config does not expire before the instance reads it."
+        runner_config_ssm_parameter_tier: "Optional SSM parameter tier (`Standard` or `Advanced`) for the parameters holding the runner registration token / JIT config. When `null`, the tier is selected per parameter based on the value size. Forcing `Standard` makes the write fail if the value exceeds the Standard tier size limit (4 KB), and cannot be combined with `ssm_ttl_seconds.tokens`."
         iam_overrides: "Allows to (optionally) override the instance profile and runner role created by the module. Set `override_instance_profile` to true and provide the `instance_profile_name` to use an existing instance profile. Set `override_runner_role` to true and provide the `runner_role_arn` to use an existing role for the runner instances."
       }
       # V2 contract

@@ -23,6 +23,7 @@ describe('createStorageProviders', () => {
       RUNNER_CONFIG_STORAGE_PROVIDER: 'AWS_SSM',
       SSM_TOKEN_PATH: '/runners/tokens',
       SSM_TOKEN_TTL_SECONDS: '3600',
+      SSM_RUNNER_CONFIG_TIER: 'Advanced',
       SSM_CONFIG_PATH: '/runners/config',
       SSM_PARAMETER_STORE_TAGS: JSON.stringify([{ Key: 'Environment', Value: 'test' }]),
       PARAMETER_GITHUB_APP_ID_NAME: 'app-id',
@@ -35,7 +36,9 @@ describe('createStorageProviders', () => {
 
     const storage = createStorageProviders(environment);
 
-    expect(createAwsSsmRunnerConfigStore).toHaveBeenCalledWith(expect.objectContaining({ tokenTtlSeconds: 3600 }));
+    expect(createAwsSsmRunnerConfigStore).toHaveBeenCalledWith(
+      expect.objectContaining({ tokenTtlSeconds: 3600, parameterTier: 'Advanced' }),
+    );
     expect(storage).toEqual({
       runnerConfig: expect.any(Object),
       runnerGroupCache: expect.any(Object),
@@ -49,6 +52,14 @@ describe('createStorageProviders', () => {
     expect(() =>
       createStorageProviders({ SSM_TOKEN_PATH: '/runners/tokens', SSM_TOKEN_TTL_SECONDS: 'not-a-number' }),
     ).toThrow('SSM_TOKEN_TTL_SECONDS must be a positive number');
+    expect(createAwsSsmRunnerConfigStore).not.toHaveBeenCalled();
+  });
+
+  it('rejects an invalid runner config tier before creating a storage provider', () => {
+    vi.clearAllMocks();
+    expect(() =>
+      createStorageProviders({ SSM_TOKEN_PATH: '/runners/tokens', SSM_RUNNER_CONFIG_TIER: 'Premium' }),
+    ).toThrow('SSM_RUNNER_CONFIG_TIER must be either "Standard" or "Advanced"');
     expect(createAwsSsmRunnerConfigStore).not.toHaveBeenCalled();
   });
 });

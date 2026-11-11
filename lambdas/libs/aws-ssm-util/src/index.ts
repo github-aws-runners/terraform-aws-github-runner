@@ -105,13 +105,19 @@ export async function getParameters(parameter_names: string[]): Promise<Map<stri
 
 export const SSM_ADVANCED_TIER_THRESHOLD = 4000;
 
+export type SsmParameterTier = 'Standard' | 'Advanced';
+
 export async function putParameter(
   parameter_name: string,
   parameter_value: string,
   secure: boolean,
-  options: { tags?: Tag[]; ttlSeconds?: number } = {},
+  options: { tags?: Tag[]; ttlSeconds?: number; tier?: SsmParameterTier } = {},
 ): Promise<void> {
   const client = ssmClient();
+
+  if (options.tier === 'Standard' && options.ttlSeconds !== undefined) {
+    throw new Error('A parameter TTL requires the Advanced SSM parameter tier, but the Standard tier was requested');
+  }
 
   // Determine tier based on parameter_value size
   const valueSizeBytes = Buffer.byteLength(parameter_value, 'utf8');
@@ -132,13 +138,14 @@ export async function putParameter(
         ])
       : undefined;
 
+  // An explicitly requested tier takes precedence over the TTL / size-based selection.
   await client.send(
     new PutParameterCommand({
       Name: parameter_name,
       Value: parameter_value,
       Type: secure ? 'SecureString' : 'String',
       Tags: options.tags,
-      Tier: expiration || valueSizeBytes >= SSM_ADVANCED_TIER_THRESHOLD ? 'Advanced' : 'Standard',
+      Tier: options.tier ?? (expiration || valueSizeBytes >= SSM_ADVANCED_TIER_THRESHOLD ? 'Advanced' : 'Standard'),
       Policies: expiration,
     }),
   );
