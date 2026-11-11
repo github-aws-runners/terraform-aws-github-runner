@@ -1,10 +1,10 @@
+import { awsErrorCodes } from '@aws-github-runner/aws-error-util';
 import { DeleteParameterCommand, GetParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
 
 import type { RunnerConfigConsumer, RunnerConfigConsumeOptions } from '../../core';
 import {
   composeSsmParameterName,
   delay,
-  errorName,
   isRetryableProviderError,
   positiveIntegerOption,
   resolvePollingOptions,
@@ -215,5 +215,5 @@ class AwsSsmRunnerConfigConsumer implements RunnerConfigConsumer {
 }
 
 function isSsmNotFound(error: unknown): boolean {
-  return errorName(error) === 'ParameterNotFound';
+  return awsErrorCodes(error).includes('ParameterNotFound');
 }

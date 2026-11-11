@@ -18,6 +18,7 @@
     "all": "yarn format && yarn lint && yarn test"
   },
   "dependencies": {
+    "@aws-github-runner/aws-error-util": "*",
     "@aws-github-runner/aws-powertools-util": "*",
     "@aws-github-runner/aws-ssm-util": "*",
     "@aws-sdk/client-ssm": "^3.1009.0"
