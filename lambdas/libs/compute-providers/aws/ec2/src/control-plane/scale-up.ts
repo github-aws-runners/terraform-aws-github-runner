@@ -83,7 +83,10 @@ export function createEc2ScaleUpCapability(
         'scale-up-lambda',
         storage,
       );
-      if (ownerCounts && githubRunnerConfig.runnerType === 'Org') {
+      if (result.retryableErrorCount > 0) {
+        // Failed registration cleanup may leave instances outside result.instances.
+        ownerCounts = undefined;
+      } else if (ownerCounts && githubRunnerConfig.runnerType === 'Org') {
         const owner = githubRunnerConfig.runnerOwner.toLowerCase();
         ownerCounts.set(owner, (ownerCounts.get(owner) ?? 0) + result.instances.length);
       }

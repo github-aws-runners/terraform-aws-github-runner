@@ -1480,3 +1480,30 @@ it('shares a case-insensitive owner snapshot across groups and counts successful
   await nextInvocation.getCurrentRunners(state, filters);
   expect(counts).toHaveBeenCalledTimes(2);
 });
+
+it('refreshes owner counts when registration and instance cleanup fail', async () => {
+  const counts = vi
+    .fn()
+    .mockResolvedValueOnce(new Map([['codertocat', 2]]))
+    .mockResolvedValueOnce(new Map([['codertocat', 3]]));
+  const scoped = createEc2ScaleUpCapability({ ...ec2Operations, countByOwner: counts }, mockCreateStartRunnerConfig);
+  const { state } = await scoped.resolveLabelsForRunners([]);
+  const filters = { runnerType: 'Org' as const, runnerOwner: 'CoderToCat', runnerOwnerIgnoreCase: true };
+  expect(await scoped.getCurrentRunners(state, filters)).toBe(2);
+  mockCreateRunner.mockResolvedValueOnce(createRunnerResult(['i-unregistered']));
+  mockCreateStartRunnerConfig.mockRejectedValueOnce(new Error('Registration failed'));
+  mockTerminateRunner.mockRejectedValueOnce(new Error('Termination failed'));
+  const result = await scoped.createRunners({
+    githubRunnerConfig: runnerConfig(),
+    numberOfRunners: 1,
+    githubInstallationClient: githubClient,
+    state,
+  });
+  expect(result).toEqual({ instances: [], retryableErrorCount: 1, nonRetryableErrorCount: 0 });
+  expect(mockTerminateRunner).toHaveBeenCalledWith('i-unregistered');
+  const nextGroup = await scoped.resolveLabelsForRunners(['ghr-ec2-instance-type:m5.xlarge']);
+  expect(await scoped.getCurrentRunners(nextGroup.state, filters)).toBe(3);
+  expect(counts).toHaveBeenCalledTimes(2);
+  expect(await scoped.getCurrentRunners(nextGroup.state, filters)).toBe(3);
+  expect(counts).toHaveBeenCalledTimes(2);
+});
