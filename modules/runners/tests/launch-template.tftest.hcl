@@ -134,3 +134,63 @@ run "creates_on_demand_override_launch_template_even_when_failover_is_configured
     error_message = "Neither variant should tag spot-instances-request when on_demand_failover_for_errors is configured."
   }
 }
+
+run "registration_jit_prefix" {
+  command = plan
+  variables {
+    enable_ephemeral_runners = true
+    enable_jit_config        = null
+    runner_name_prefix       = "jit-"
+    runner_ec2_tags = {
+      "ghr:runner_name_prefix"            = "tag-"
+      "ghr:registered_runner_name_prefix" = "untrusted-"
+    }
+  }
+  assert {
+    condition = alltrue([
+      for template in values(aws_launch_template.runner) :
+      one([for tags in template.tag_specifications : tags.tags["ghr:registered_runner_name_prefix"] if tags.resource_type == "instance"]) == "jit-"
+    ])
+    error_message = "Cleanup's authoritative prefix must match the registration path and cannot be overridden by user tags."
+  }
+}
+
+run "registration_non_jit_prefix" {
+  command = plan
+  variables {
+    enable_ephemeral_runners = true
+    enable_jit_config        = false
+    runner_name_prefix       = "jit-"
+    runner_ec2_tags = {
+      "ghr:runner_name_prefix"            = "tag-"
+      "ghr:registered_runner_name_prefix" = "untrusted-"
+    }
+  }
+  assert {
+    condition = alltrue([
+      for template in values(aws_launch_template.runner) :
+      one([for tags in template.tag_specifications : tags.tags["ghr:registered_runner_name_prefix"] if tags.resource_type == "instance"]) == "tag-"
+    ])
+    error_message = "Cleanup's authoritative prefix must match the registration path and cannot be overridden by user tags."
+  }
+}
+
+run "registration_persistent_prefix" {
+  command = plan
+  variables {
+    enable_ephemeral_runners = false
+    enable_jit_config        = true
+    runner_name_prefix       = "jit-"
+    runner_ec2_tags = {
+      "ghr:runner_name_prefix"            = "tag-"
+      "ghr:registered_runner_name_prefix" = "untrusted-"
+    }
+  }
+  assert {
+    condition = alltrue([
+      for template in values(aws_launch_template.runner) :
+      one([for tags in template.tag_specifications : tags.tags["ghr:registered_runner_name_prefix"] if tags.resource_type == "instance"]) == "tag-"
+    ])
+    error_message = "Cleanup's authoritative prefix must match the registration path and cannot be overridden by user tags."
+  }
+}

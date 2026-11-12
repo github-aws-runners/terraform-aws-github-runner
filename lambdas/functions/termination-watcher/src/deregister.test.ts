@@ -34,6 +34,8 @@ const mockPaginate = {
 };
 
 const mockActions = {
+  getSelfHostedRunnerForOrg: vi.fn(),
+  getSelfHostedRunnerForRepo: vi.fn(),
   listSelfHostedRunnersForOrg: vi.fn(),
   listSelfHostedRunnersForRepo: vi.fn(),
   deleteSelfHostedRunnerFromOrg: vi.fn(),
@@ -501,6 +503,12 @@ describe('recorded runner IDs and SQS retries', () => {
     setupAuthMocks();
     mockApps.getOrgInstallation.mockResolvedValue({ data: { id: 999 } });
     mockApps.getRepoInstallation.mockResolvedValue({ data: { id: 888 } });
+    mockActions.getSelfHostedRunnerForOrg.mockImplementation(async ({ runner_id }) => ({
+      data: { id: runner_id, name: `jit-${orgInstance.InstanceId}` },
+    }));
+    mockActions.getSelfHostedRunnerForRepo.mockImplementation(async ({ runner_id }) => ({
+      data: { id: runner_id, name: `jit-${repoInstance.InstanceId}` },
+    }));
     mockSqsSend.mockResolvedValue({});
     vi.stubEnv('DEREGISTER_RETRY_QUEUE_URL', 'queue');
   });
@@ -530,6 +538,121 @@ describe('recorded runner IDs and SQS retries', () => {
       expect(mockActions.listSelfHostedRunnersForRepo).not.toHaveBeenCalled();
     },
   );
+
+  it.each([orgInstance, repoInstance])(
+    'rejects an unrelated tagged ID and queued ID ($InstanceId)',
+    async (instance) => {
+      const isOrg = instance === orgInstance;
+      const getter = isOrg ? mockActions.getSelfHostedRunnerForOrg : mockActions.getSelfHostedRunnerForRepo;
+      getter.mockResolvedValue({ data: { id: 42, name: `runner-${instance.InstanceId}-other` } });
+      const list = isOrg ? mockActions.listSelfHostedRunnersForOrg : mockActions.listSelfHostedRunnersForRepo;
+      list.mockResolvedValue({ data: { runners: [] } });
+      await deregisterRunner(
+        {
+          ...instance,
+          Tags: [
+            ...instance.Tags!,
+            { Key: 'ghr:github_runner_id', Value: '42' },
+            { Key: 'ghr:registered_runner_name_prefix', Value: 'jit-' },
+          ],
+        },
+        baseConfig,
+      );
+      await handleDeregisterRetry('queue', {
+        instanceId: instance.InstanceId!,
+        owner: isOrg ? 'test-org' : 'test-org/test-repo',
+        runnerType: isOrg ? 'Org' : 'Repo',
+        runnerId: 42,
+        retryCount: 0,
+      });
+      expect(mockActions.deleteSelfHostedRunnerFromOrg).not.toHaveBeenCalled();
+      expect(mockActions.deleteSelfHostedRunnerFromRepo).not.toHaveBeenCalled();
+      expect(mockSqsSend).not.toHaveBeenCalled();
+      expect(mockPaginate.iterator).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([orgInstance, repoInstance])(
+    'does not scan on an authoritative name miss ($InstanceId)',
+    async (instance) => {
+      const list =
+        instance === orgInstance ? mockActions.listSelfHostedRunnersForOrg : mockActions.listSelfHostedRunnersForRepo;
+      list.mockResolvedValue({ data: { runners: [] } });
+      await deregisterRunner(
+        {
+          ...instance,
+          Tags: [
+            ...instance.Tags!,
+            { Key: 'ghr:runner_name_prefix', Value: 'tag-' },
+            { Key: 'ghr:registered_runner_name_prefix', Value: '' },
+          ],
+        },
+        baseConfig,
+      );
+      expect(list).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ name: instance.InstanceId, per_page: 1 }));
+      expect(mockPaginate.iterator).not.toHaveBeenCalled();
+      expect(mockActions.deleteSelfHostedRunnerFromOrg).not.toHaveBeenCalled();
+      expect(mockActions.deleteSelfHostedRunnerFromRepo).not.toHaveBeenCalled();
+    },
+  );
+
+  it('uses the authoritative JIT prefix despite a legacy tag override', async () => {
+    mockActions.listSelfHostedRunnersForOrg.mockResolvedValue({
+      data: { runners: [{ id: 42, name: `jit-${orgInstance.InstanceId}` }] },
+    });
+    await deregisterRunner(
+      {
+        ...orgInstance,
+        Tags: [
+          ...orgInstance.Tags!,
+          { Key: 'ghr:runner_name_prefix', Value: 'tag-' },
+          { Key: 'ghr:registered_runner_name_prefix', Value: 'jit-' },
+        ],
+      },
+      baseConfig,
+    );
+    expect(mockActions.listSelfHostedRunnersForOrg).toHaveBeenCalledExactlyOnceWith({
+      org: 'test-org',
+      name: `jit-${orgInstance.InstanceId}`,
+      per_page: 1,
+    });
+    expect(mockActions.deleteSelfHostedRunnerFromOrg).toHaveBeenCalledWith({ org: 'test-org', runner_id: 42 });
+    expect(mockPaginate.iterator).not.toHaveBeenCalled();
+  });
+
+  it('treats a missing retry ID as already removed without scanning', async () => {
+    mockActions.getSelfHostedRunnerForOrg.mockRejectedValue(Object.assign(new Error('gone'), { status: 404 }));
+    await handleDeregisterRetry('queue', {
+      instanceId: orgInstance.InstanceId!,
+      owner: 'test-org',
+      runnerType: 'Org',
+      runnerId: 42,
+      retryCount: 0,
+    });
+    expect(mockActions.deleteSelfHostedRunnerFromOrg).not.toHaveBeenCalled();
+    expect(mockPaginate.iterator).not.toHaveBeenCalled();
+    expect(mockSqsSend).not.toHaveBeenCalled();
+  });
+
+  it.each([403, 422, 500])('never deletes or queues an unverified ID after lookup error %s', async (status) => {
+    const error = Object.assign(new Error('lookup failed'), { status });
+    mockActions.getSelfHostedRunnerForOrg.mockRejectedValue(error);
+    await deregisterRunner(
+      { ...orgInstance, Tags: [...orgInstance.Tags!, { Key: 'ghr:github_runner_id', Value: '42' }] },
+      baseConfig,
+    );
+    await expect(
+      handleDeregisterRetry('queue', {
+        instanceId: orgInstance.InstanceId!,
+        owner: 'test-org',
+        runnerType: 'Org',
+        runnerId: 42,
+        retryCount: 0,
+      }),
+    ).rejects.toBe(error);
+    expect(mockActions.deleteSelfHostedRunnerFromOrg).not.toHaveBeenCalled();
+    expect(mockSqsSend).not.toHaveBeenCalled();
+  });
 
   it.each(['', 'invalid', '0', '-1', '1.5', '9007199254740992'])(
     'falls back for invalid recorded ID %s and a mismatched JIT prefix',

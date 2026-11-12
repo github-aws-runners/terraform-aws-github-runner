@@ -38,6 +38,32 @@ function isNotFound(error: unknown): boolean {
   return error instanceof Error && 'status' in error && error.status === 404;
 }
 
+/** Instance-writable IDs must be checked against GitHub before use. */
+async function findRunnerById(
+  octokit: Octokit,
+  owner: string,
+  runnerId: number,
+  instanceId: string,
+  runnerType: string,
+): Promise<{ id: number; name: string } | undefined> {
+  try {
+    const [repoOwner, repo] = owner.split('/');
+    const response =
+      runnerType === 'Repo'
+        ? await octokit.actions.getSelfHostedRunnerForRepo({ owner: repoOwner, repo, runner_id: runnerId })
+        : await octokit.actions.getSelfHostedRunnerForOrg({ org: owner, runner_id: runnerId });
+    const runner = response.data;
+    if (runner.id === runnerId && runner.name.endsWith(instanceId)) {
+      return { id: runner.id, name: runner.name };
+    }
+    logger.warn('Runner ID does not belong to the terminating instance', { instanceId, runnerId });
+    return undefined;
+  } catch (error) {
+    if (isNotFound(error)) return undefined;
+    throw error;
+  }
+}
+
 /**
  * Looks up a runner by its exact registered name using the `name` filter of the
  * list-runners API. One request regardless of how many runners the owner has.
@@ -83,7 +109,7 @@ async function findRunnerByInstanceId(
       repo,
       per_page: 100,
     })) {
-      const runner = response.data.find((r) => r.name.includes(instanceId));
+      const runner = response.data.find((r) => r.name.endsWith(instanceId));
       if (runner) {
         return { id: runner.id, name: runner.name };
       }
@@ -93,7 +119,7 @@ async function findRunnerByInstanceId(
       org: owner,
       per_page: 100,
     })) {
-      const runner = response.data.find((r) => r.name.includes(instanceId));
+      const runner = response.data.find((r) => r.name.endsWith(instanceId));
       if (runner) {
         return { id: runner.id, name: runner.name };
       }
@@ -134,6 +160,7 @@ export async function deregisterRunner(instance: Instance, config: Config): Prom
   const owner = getOwnerFromTags(instance);
   const runnerType = getRunnerTypeFromTags(instance) ?? 'Org';
   const runnerNamePrefix = getRunnerNamePrefixFromTags(instance);
+  const registeredPrefix = instance.Tags?.find((tag) => tag.Key === 'ghr:registered_runner_name_prefix')?.Value;
 
   if (!owner) {
     logger.warn('ghr:Owner tag not found on instance, cannot deregister runner', { instanceId });
@@ -148,7 +175,13 @@ export async function deregisterRunner(instance: Instance, config: Config): Prom
 
     const installationOctokit = await createRunnerInstallationClient(owner, runnerType, config.ghesApiUrl);
 
-    runner = isRunnerId(taggedRunnerId) ? { id: taggedRunnerId } : undefined;
+    runner = isRunnerId(taggedRunnerId)
+      ? await findRunnerById(installationOctokit, owner, taggedRunnerId, instanceId, runnerType)
+      : undefined;
+    if (!runner && registeredPrefix !== undefined) {
+      runner = await findRunnerByName(installationOctokit, owner, `${registeredPrefix}${instanceId}`, runnerType);
+      if (!runner) return;
+    }
     if (!runner && runnerNamePrefix !== undefined) {
       runner = await findRunnerByName(installationOctokit, owner, `${runnerNamePrefix}${instanceId}`, runnerType);
     }
@@ -179,7 +212,7 @@ export async function deregisterRunner(instance: Instance, config: Config): Prom
     // Queue a delayed retry — the instance will be terminated by EC2 shortly,
     // and the runner will appear offline when we retry in 5 minutes.
     const isRunnerBusy = error instanceof Error && 'status' in error && (error as { status: number }).status === 422;
-    if (isRunnerBusy) {
+    if (isRunnerBusy && runner) {
       const queueUrl = process.env.DEREGISTER_RETRY_QUEUE_URL;
       if (queueUrl) {
         await queueDeregisterRetry(queueUrl, { instanceId, owner, runnerType, runnerId: runner?.id, retryCount: 0 });
@@ -217,7 +250,7 @@ export async function handleDeregisterRetry(queueUrl: string, message: Deregiste
     const installationOctokit = await createRunnerInstallationClient(owner, runnerType, process.env.GHES_URL ?? '');
 
     runner = isRunnerId(message.runnerId)
-      ? { id: message.runnerId }
+      ? await findRunnerById(installationOctokit, owner, message.runnerId, instanceId, runnerType)
       : await findRunnerByInstanceId(installationOctokit, owner, instanceId, runnerType);
     if (!runner) {
       logger.info('Runner not found in GitHub — already deregistered or never registered', { instanceId, owner });
@@ -238,7 +271,7 @@ export async function handleDeregisterRetry(queueUrl: string, message: Deregiste
       return;
     }
     const isRunnerBusy = error instanceof Error && 'status' in error && (error as { status: number }).status === 422;
-    if (isRunnerBusy) {
+    if (isRunnerBusy && runner) {
       // Re-enqueue for another retry — SQS maxReceiveCount DLQ will stop after 3 total attempts.
       // Re-send explicitly so each retry resets the delay (SQS visibility timeout applies on re-receive,
       // but re-sending gives us the full 5-minute DelaySeconds again).
