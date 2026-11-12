@@ -279,7 +279,12 @@ resource "aws_launch_template" "runner" {
       {
         "ghr:runner_name_prefix" = var.runner_name_prefix
       },
-      var.runner_ec2_tags
+      var.runner_ec2_tags,
+      {
+        # JIT uses the configured prefix; config.sh uses the overridable EC2 tag.
+        # Keep this authoritative tag after user tags so cleanup can avoid scans.
+        "ghr:registered_runner_name_prefix" = var.enable_ephemeral_runners && coalesce(var.enable_jit_config, var.enable_ephemeral_runners) ? var.runner_name_prefix : lookup(var.runner_ec2_tags, "ghr:runner_name_prefix", var.runner_name_prefix)
+      }
     )
   }
 
