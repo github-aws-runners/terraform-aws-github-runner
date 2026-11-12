@@ -210,6 +210,26 @@ describe('list instances', () => {
     });
   });
 
+  it('filters instances on the creating lambda', async () => {
+    mockEC2Client.on(DescribeInstancesCommand).resolves(mockRunningInstances);
+    await ec2Operations.list({
+      runnerType: 'Org',
+      runnerOwner: ORG_NAME,
+      environment: ENVIRONMENT,
+      createdBy: 'pool-lambda',
+    });
+    expect(mockEC2Client).toHaveReceivedCommandWith(DescribeInstancesCommand, {
+      Filters: [
+        { Name: 'instance-state-name', Values: ['running', 'pending'] },
+        { Name: 'tag:ghr:environment', Values: [ENVIRONMENT] },
+        { Name: 'tag:ghr:Type', Values: ['Org'] },
+        { Name: 'tag:ghr:Owner', Values: [ORG_NAME] },
+        { Name: 'tag:ghr:created_by', Values: ['pool-lambda'] },
+        { Name: 'tag:ghr:Application', Values: ['github-action-runner'] },
+      ],
+    });
+  });
+
   it('No instances, undefined reservations list.', async () => {
     const noInstances: DescribeInstancesResult = {
       Reservations: undefined,
