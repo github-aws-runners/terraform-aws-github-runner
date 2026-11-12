@@ -74,7 +74,16 @@ resource "aws_lambda_function" "scale_up" {
       USE_DEDICATED_HOST                       = var.use_dedicated_host
       }, var.ssm_ttl_seconds.tokens != null ? {
       SSM_TOKEN_TTL_SECONDS = tostring(var.ssm_ttl_seconds.tokens)
+      } : {}, var.runner_config_ssm_parameter_tier != null ? {
+      SSM_RUNNER_CONFIG_TIER = var.runner_config_ssm_parameter_tier
     } : {})
+  }
+
+  lifecycle {
+    precondition {
+      condition     = !(var.runner_config_ssm_parameter_tier == "Standard" && var.ssm_ttl_seconds.tokens != null)
+      error_message = "`runner_config_ssm_parameter_tier = \"Standard\"` cannot be combined with `ssm_ttl_seconds.tokens`, SSM expiration policies require the Advanced tier."
+    }
   }
 
   dynamic "vpc_config" {

@@ -29,6 +29,7 @@ describe('aws_ssm runner config store', () => {
     process.env = { ...cleanEnv };
     delete process.env.SSM_PARAMETER_STORE_TAGS;
     delete process.env.SSM_TOKEN_TTL_SECONDS;
+    delete process.env.SSM_RUNNER_CONFIG_TIER;
     process.env.SSM_TOKEN_PATH = '/runner/tokens';
   });
 
@@ -71,6 +72,28 @@ describe('aws_ssm runner config store', () => {
       tags: [],
       ttlSeconds: 3600,
     });
+  });
+
+  it.each(['Standard', 'Advanced'] as const)('passes the configured %s tier to SSM', async (tier) => {
+    process.env.SSM_RUNNER_CONFIG_TIER = tier;
+    await createAwsSsmRunnerConfigStore().create({ runnerId: 'runner-1', value: 'jit-config' });
+    expect(putParameterMock).toHaveBeenCalledWith('/runner/tokens/runner-1', 'jit-config', true, {
+      tags: [],
+      tier,
+    });
+  });
+
+  it('leaves the tier to the size-based selection when none is configured', async () => {
+    await createAwsSsmRunnerConfigStore().create({ runnerId: 'runner-1', value: 'jit-config' });
+    expect(putParameterMock.mock.calls[0][3]).not.toHaveProperty('tier', expect.anything());
+  });
+
+  it('rejects an invalid runner config tier before writing', () => {
+    process.env.SSM_RUNNER_CONFIG_TIER = 'Premium';
+    expect(() => createAwsSsmRunnerConfigStore()).toThrow(
+      'SSM_RUNNER_CONFIG_TIER must be either "Standard" or "Advanced"',
+    );
+    expect(putParameterMock).not.toHaveBeenCalled();
   });
 
   it('rejects an invalid token TTL before writing', () => {

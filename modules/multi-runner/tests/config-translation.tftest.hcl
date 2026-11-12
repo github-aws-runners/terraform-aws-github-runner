@@ -346,6 +346,7 @@ run "empty_v2_map_translates_stable_inputs" {
           ssm_ttl_seconds = {
             tokens = 3600
           }
+          runner_config_ssm_parameter_tier = "Advanced"
           runner_iam_role_managed_policy_arns = [
             "arn:aws:iam::123456789012:policy/stable-runner",
           ]
@@ -446,6 +447,7 @@ run "empty_v2_map_translates_stable_inputs" {
     condition = (
       local.normalized_config.multi_runner_config["stable"].runner.os == "linux"
       && local.effective_config.multi_runner_config["stable"].storage_provider.aws.ssm.ttl_seconds.tokens == 3600
+      && local.effective_config.multi_runner_config["stable"].storage_provider.aws.ssm.runner_config_tier == "Advanced"
       && local.normalized_config.multi_runner_config["stable"].runner.architecture == "x64"
       && local.normalized_config.multi_runner_config["stable"].runner.group_name == "stable-group"
       && local.normalized_config.multi_runner_config["stable"].runner.iam.managed_policy_arns["legacy-0"] == "arn:aws:iam::123456789012:policy/stable-runner"
@@ -502,7 +504,8 @@ run "non_empty_v2_map_is_authoritative" {
         storage_provider = {
           aws = {
             ssm = {
-              ttl_seconds = { tokens = 7200 }
+              ttl_seconds        = { tokens = 7200 }
+              runner_config_tier = "Advanced"
             }
           }
         }
@@ -530,6 +533,7 @@ run "non_empty_v2_map_is_authoritative" {
       && toset(keys(local.normalized_config.multi_runner_config)) == toset(["experimental"])
       && local.normalized_config.tags.source == "experimental"
       && local.effective_config.multi_runner_config["experimental"].storage_provider.aws.ssm.ttl_seconds.tokens == 7200
+      && local.effective_config.multi_runner_config["experimental"].storage_provider.aws.ssm.runner_config_tier == "Advanced"
       && toset(local.normalized_config.multi_runner_config["experimental"].compute_provider.aws.ec2.instance_types) == toset(["c7g.large"])
       && flatten(local.normalized_config.multi_runner_config["experimental"].orchestration_provider.webhook.matcherConfig.labelMatchers) == ["experimental"]
     )

@@ -75,6 +75,7 @@ variable "config" {
     ssm_ttl_seconds = optional(object({
       tokens = optional(number, null)
     }), {})
+    runner_config_ssm_parameter_tier     = optional(string, null)
     ssm_config_path                      = string
     ami_id_ssm_parameter_name            = string
     ami_id_ssm_parameter_read_policy_arn = string

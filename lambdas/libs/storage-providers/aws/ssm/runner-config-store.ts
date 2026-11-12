@@ -1,10 +1,11 @@
-import { putParameter } from '@aws-github-runner/aws-ssm-util';
+import { putParameter, type SsmParameterTier } from '@aws-github-runner/aws-ssm-util';
 
 import type { RunnerConfigMetadata, RunnerConfigRecord, RunnerConfigStore } from '../../core';
 import type {} from './environment';
 import { createAwsSsmStorageLogger, getErrorNames } from './logger';
 import { loadSsmParameterStoreTagsFromEnvironment } from './parameter-store-tags';
 
+import { parseSsmRunnerConfigTier } from './runner-config-tier';
 import { parseSsmTokenTtlSeconds } from './token-ttl';
 
 const logger = createAwsSsmStorageLogger('runner-config-store');
@@ -12,6 +13,7 @@ const logger = createAwsSsmStorageLogger('runner-config-store');
 export interface AwsSsmRunnerConfigStoreConfig {
   tokenPath: string;
   tokenTtlSeconds?: number;
+  parameterTier?: SsmParameterTier;
   parameterStoreTags: ReadonlyArray<Readonly<{ Key: string; Value: string }>>;
 }
 
@@ -32,6 +34,7 @@ export function createAwsSsmRunnerConfigStore(config?: AwsSsmRunnerConfigStoreCo
   return new AwsSsmRunnerConfigStore({
     tokenPath,
     tokenTtlSeconds: parseSsmTokenTtlSeconds(process.env.SSM_TOKEN_TTL_SECONDS),
+    parameterTier: parseSsmRunnerConfigTier(process.env.SSM_RUNNER_CONFIG_TIER),
     parameterStoreTags: loadSsmParameterStoreTagsFromEnvironment(),
   });
 }
@@ -51,6 +54,7 @@ class AwsSsmRunnerConfigStore implements RunnerConfigStore {
     try {
       await putParameter(parameterName, record.value, true, {
         ttlSeconds: this.config.tokenTtlSeconds,
+        tier: this.config.parameterTier,
         tags: [
           ...(options.metadata ?? []).map(({ key, value }) => ({ Key: key, Value: value })),
           ...this.config.parameterStoreTags,

@@ -702,6 +702,17 @@ variable "ssm_ttl_seconds" {
   }
 }
 
+variable "runner_config_ssm_parameter_tier" {
+  description = "Optional SSM parameter tier (`Standard` or `Advanced`) used for the parameters holding the runner registration token / JIT config written by the scale-up and pool Lambdas. When `null`, the tier is selected per parameter: `Advanced` when the value is 4000 bytes or larger or `ssm_ttl_seconds.tokens` is set, otherwise `Standard`. Forcing `Standard` makes the write fail if the value exceeds the Standard tier size limit (4 KB), and cannot be combined with `ssm_ttl_seconds.tokens` since expiration policies require the Advanced tier."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.runner_config_ssm_parameter_tier == null ? true : contains(["Standard", "Advanced"], var.runner_config_ssm_parameter_tier)
+    error_message = "`runner_config_ssm_parameter_tier` must be `null`, `Standard` or `Advanced`."
+  }
+}
+
 variable "runner_name_prefix" {
   description = "The prefix used for the GitHub runner name. The prefix will be used in the default start script to prefix the instance name when register the runner in GitHub. The value is available via an EC2 tag 'ghr:runner_name_prefix'."
   type        = string
