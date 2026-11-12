@@ -37,7 +37,7 @@ export function defineScaleUpContractTests<TType extends string>({
     '%s scale-up orchestration contract',
     (_, { provider, state }) => {
       beforeEach(() => {
-        process.env.ENABLE_ORGANIZATION_RUNNERS = 'true';
+        process.env.RUNNER_REGISTRATION_LEVEL = 'org';
         process.env.RUNNERS_MAXIMUM_COUNT = '3';
         process.env.COMPUTE_PROVIDER_TYPE = provider.type;
 

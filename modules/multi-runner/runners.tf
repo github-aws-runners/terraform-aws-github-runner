@@ -44,7 +44,9 @@ module "runners" {
   ebs_optimized                        = each.value.compute_provider.aws.ec2.ebs_optimized
   enable_on_demand_failover_for_errors = each.value.compute_provider.aws.ec2.on_demand_failover_for_errors
   scale_errors                         = each.value.compute_provider.aws.ec2.scale_errors
-  enable_organization_runners          = each.value.orchestration_provider.webhook.github.organization_runners
+  runner_registration_level            = local.runner_registration_level[each.key]
+  enterprise_slug                      = var.enterprise_slug
+  enterprise_pat_parameter             = local.enterprise_pat_parameters
   enable_ephemeral_runners             = each.value.orchestration_provider.webhook.runner.ephemeral
   enable_jit_config                    = each.value.orchestration_provider.webhook.runner.jit_config_enabled
   enable_job_queued_check              = each.value.orchestration_provider.webhook.lambda.scale.up.job_queued_check_enabled
@@ -137,7 +139,7 @@ module "runners" {
   pool_config                                = each.value.orchestration_provider.webhook.lambda.pool.config
   pool_lambda_memory_size                    = each.value.orchestration_provider.webhook.lambda.pool.memory_size
   pool_lambda_timeout                        = each.value.orchestration_provider.webhook.lambda.pool.timeout
-  pool_runner_owner                          = each.value.orchestration_provider.webhook.lambda.pool.runner_owner
+  pool_runner_owner                          = try(coalesce(each.value.orchestration_provider.webhook.lambda.pool.runner_owner, var.enterprise_slug), null)
   pool_lambda_reserved_concurrent_executions = each.value.orchestration_provider.webhook.lambda.pool.reserved_concurrent_executions
   pool_include_busy_runners                  = each.value.orchestration_provider.webhook.lambda.pool.include_busy_runners
   associate_public_ipv4_address              = each.value.compute_provider.aws.ec2.associate_public_ipv4_address

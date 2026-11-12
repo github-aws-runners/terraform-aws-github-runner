@@ -37,8 +37,10 @@ resource "terraform_data" "validate_v1" {
 
     precondition {
       condition = (
-        (var.github_app.key_base64 != null || var.github_app.key_base64_ssm != null) &&
-        (var.github_app.id != null || var.github_app.id_ssm != null) &&
+        (local.any_enterprise_runners || (
+          (var.github_app.key_base64 != null || var.github_app.key_base64_ssm != null) &&
+          (var.github_app.id != null || var.github_app.id_ssm != null)
+        )) &&
         (var.github_app.webhook_secret != null || var.github_app.webhook_secret_ssm != null) &&
         var.vpc_id != null &&
         var.subnet_ids != null &&
