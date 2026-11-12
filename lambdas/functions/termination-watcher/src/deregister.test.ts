@@ -1,7 +1,7 @@
 import { request } from '@octokit/request';
 import { Instance } from '@aws-sdk/client-ec2';
 import { createCommonStorage, type GitHubAppCredentialsStore } from '@aws-github-runner/storage-providers';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { deregisterRunner, handleDeregisterRetry, createThrottleOptions, resetAppCredentialsCache } from './deregister';
 import { Config } from './ConfigResolver';
 import type { EndpointDefaults } from '@octokit/types';
@@ -17,6 +17,16 @@ const credentialsStore = { get: mockGetCredentials } satisfies GitHubAppCredenti
 const mockCreateAppAuth = vi.fn();
 vi.mock('@octokit/auth-app', () => ({
   createAppAuth: (...args: unknown[]) => mockCreateAppAuth(...args),
+}));
+
+const mockSqsSend = vi.hoisted(() => vi.fn());
+vi.mock('@aws-sdk/client-sqs', () => ({
+  SQSClient: class {
+    send = mockSqsSend;
+  },
+  SendMessageCommand: class {
+    constructor(public input: unknown) {}
+  },
 }));
 
 const mockPaginate = {
@@ -437,14 +447,20 @@ describe('deregisterRunner exact-name lookup (ghr:runner_name_prefix present)', 
     });
   });
 
-  it('should not scan all runners when the exact name is not registered', async () => {
+  it('should scan for legacy registrations when the exact name is not registered', async () => {
     mockApps.getOrgInstallation.mockResolvedValue({ data: { id: 999 } });
     mockActions.listSelfHostedRunnersForOrg.mockResolvedValue({ data: { total_count: 0, runners: [] } });
+
+    mockPaginate.iterator.mockReturnValue(
+      (async function* () {
+        yield { data: [] };
+      })(),
+    );
 
     await deregisterRunner(prefixedOrgInstance, baseConfig);
 
     expect(mockActions.listSelfHostedRunnersForOrg).toHaveBeenCalledTimes(1);
-    expect(mockPaginate.iterator).not.toHaveBeenCalled();
+    expect(mockPaginate.iterator).toHaveBeenCalledTimes(1);
     expect(mockActions.deleteSelfHostedRunnerFromOrg).not.toHaveBeenCalled();
   });
 
@@ -453,6 +469,12 @@ describe('deregisterRunner exact-name lookup (ghr:runner_name_prefix present)', 
     mockActions.listSelfHostedRunnersForOrg.mockResolvedValue({
       data: { total_count: 1, runners: [{ id: 7, name: 'runners-x64_i-12345678901234567-other' }] },
     });
+
+    mockPaginate.iterator.mockReturnValue(
+      (async function* () {
+        yield { data: [] };
+      })(),
+    );
 
     await deregisterRunner(prefixedOrgInstance, baseConfig);
 
@@ -467,5 +489,150 @@ describe('createThrottleOptions', () => {
 
     expect(options.onRateLimit(60, endpointDefaults)).toBe(false);
     expect(options.onSecondaryRateLimit(60, endpointDefaults)).toBe(false);
+  });
+});
+
+describe('recorded runner IDs and SQS retries', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    MockOctokit.plugin.mockReturnValue(MockOctokit);
+    resetAppCredentialsCache();
+    mockedCreateCommonStorage.mockReturnValue({ githubAppCredentials: credentialsStore });
+    setupAuthMocks();
+    mockApps.getOrgInstallation.mockResolvedValue({ data: { id: 999 } });
+    mockApps.getRepoInstallation.mockResolvedValue({ data: { id: 888 } });
+    mockSqsSend.mockResolvedValue({});
+    vi.stubEnv('DEREGISTER_RETRY_QUEUE_URL', 'queue');
+  });
+  afterEach(() => vi.unstubAllEnvs());
+
+  it.each([orgInstance, repoInstance])(
+    'deletes a recorded ID despite an overridden prefix ($InstanceId)',
+    async (instance) => {
+      await deregisterRunner(
+        {
+          ...instance,
+          Tags: [
+            ...instance.Tags!,
+            { Key: 'ghr:runner_name_prefix', Value: 'wrong-' },
+            { Key: 'ghr:github_runner_id', Value: '42' },
+          ],
+        },
+        baseConfig,
+      );
+      const deletion =
+        instance === orgInstance
+          ? mockActions.deleteSelfHostedRunnerFromOrg
+          : mockActions.deleteSelfHostedRunnerFromRepo;
+      expect(deletion).toHaveBeenCalledWith(expect.objectContaining({ runner_id: 42 }));
+      expect(mockPaginate.iterator).not.toHaveBeenCalled();
+      expect(mockActions.listSelfHostedRunnersForOrg).not.toHaveBeenCalled();
+      expect(mockActions.listSelfHostedRunnersForRepo).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['', 'invalid', '0', '-1', '1.5', '9007199254740992'])(
+    'falls back for invalid recorded ID %s and a mismatched JIT prefix',
+    async (id) => {
+      mockActions.listSelfHostedRunnersForOrg.mockResolvedValue({ data: { runners: [] } });
+      mockPaginate.iterator.mockReturnValue(
+        (async function* () {
+          yield { data: [{ id: 42, name: `jit-${orgInstance.InstanceId}` }] };
+        })(),
+      );
+      await deregisterRunner(
+        {
+          ...orgInstance,
+          Tags: [
+            ...orgInstance.Tags!,
+            { Key: 'ghr:runner_name_prefix', Value: 'tag-' },
+            { Key: 'ghr:github_runner_id', Value: id },
+          ],
+        },
+        baseConfig,
+      );
+      expect(mockActions.deleteSelfHostedRunnerFromOrg).toHaveBeenCalledWith({ org: 'test-org', runner_id: 42 });
+    },
+  );
+
+  it('carries an exact-name result through busy retries without further lookups', async () => {
+    mockActions.listSelfHostedRunnersForOrg.mockResolvedValue({
+      data: { runners: [{ id: 42, name: orgInstance.InstanceId }] },
+    });
+    mockActions.deleteSelfHostedRunnerFromOrg.mockRejectedValueOnce(Object.assign(new Error('busy'), { status: 422 }));
+    await deregisterRunner(
+      { ...orgInstance, Tags: [...orgInstance.Tags!, { Key: 'ghr:runner_name_prefix', Value: '' }] },
+      baseConfig,
+    );
+    const message = JSON.parse(mockSqsSend.mock.calls[0][0].input.MessageBody);
+    expect(message).toMatchObject({ runnerId: 42, retryCount: 0 });
+    mockActions.deleteSelfHostedRunnerFromOrg.mockRejectedValueOnce(Object.assign(new Error('busy'), { status: 422 }));
+    await handleDeregisterRetry('queue', message);
+    const next = JSON.parse(mockSqsSend.mock.calls[1][0].input.MessageBody);
+    expect(next).toMatchObject({ runnerId: 42, retryCount: 1 });
+    await handleDeregisterRetry('queue', next);
+    expect(mockActions.deleteSelfHostedRunnerFromOrg).toHaveBeenCalledTimes(3);
+    expect(mockActions.listSelfHostedRunnersForOrg).toHaveBeenCalledTimes(1);
+    expect(mockPaginate.iterator).not.toHaveBeenCalled();
+  });
+
+  it.each([0, undefined])('upgrades a legacy retry with ID %s after finding a busy runner', async (runnerId) => {
+    mockPaginate.iterator.mockReturnValue(
+      (async function* () {
+        yield { data: [{ id: 55, name: repoInstance.InstanceId }] };
+      })(),
+    );
+    mockActions.deleteSelfHostedRunnerFromRepo.mockRejectedValueOnce(Object.assign(new Error('busy'), { status: 422 }));
+    await handleDeregisterRetry('queue', {
+      instanceId: repoInstance.InstanceId!,
+      owner: 'test-org/test-repo',
+      runnerType: 'Repo',
+      runnerId,
+      retryCount: 1,
+    });
+    const next = JSON.parse(mockSqsSend.mock.calls[0][0].input.MessageBody);
+    expect(next).toMatchObject({ runnerId: 55, retryCount: 2 });
+    await handleDeregisterRetry('queue', next);
+    expect(mockPaginate.iterator).toHaveBeenCalledTimes(1);
+    expect(mockActions.deleteSelfHostedRunnerFromRepo).toHaveBeenLastCalledWith({
+      owner: 'test-org',
+      repo: 'test-repo',
+      runner_id: 55,
+    });
+  });
+
+  it('treats an already removed recorded runner as success initially and on retry', async () => {
+    mockActions.deleteSelfHostedRunnerFromOrg.mockRejectedValue(Object.assign(new Error('gone'), { status: 404 }));
+    await deregisterRunner(
+      { ...orgInstance, Tags: [...orgInstance.Tags!, { Key: 'ghr:github_runner_id', Value: '42' }] },
+      baseConfig,
+    );
+    await expect(
+      handleDeregisterRetry('queue', {
+        instanceId: orgInstance.InstanceId!,
+        owner: 'test-org',
+        runnerType: 'Org',
+        runnerId: 42,
+        retryCount: 0,
+      }),
+    ).resolves.toBeUndefined();
+    expect(mockSqsSend).not.toHaveBeenCalled();
+    expect(mockPaginate.iterator).not.toHaveBeenCalled();
+  });
+
+  it.each([403, 500])('propagates retry API error %s for SQS redelivery', async (status) => {
+    const error = Object.assign(new Error('API failure'), { status });
+    mockActions.deleteSelfHostedRunnerFromOrg.mockRejectedValue(error);
+    await expect(
+      handleDeregisterRetry('queue', {
+        instanceId: orgInstance.InstanceId!,
+        owner: 'test-org',
+        runnerType: 'Org',
+        runnerId: 42,
+        retryCount: 0,
+      }),
+    ).rejects.toBe(error);
+    expect(mockSqsSend).not.toHaveBeenCalled();
+    expect(mockPaginate.iterator).not.toHaveBeenCalled();
   });
 });
