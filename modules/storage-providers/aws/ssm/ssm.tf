@@ -106,7 +106,8 @@ resource "aws_ssm_parameter" "additional_github_apps_manifest" {
 }
 
 resource "aws_ssm_parameter" "enterprise_pat" {
-  count  = var.enterprise_pat != null && var.enterprise_pat.pat != null && var.enterprise_pat.pat_ssm == null ? 1 : 0
+  # Nested conditional: `&&` does not short-circuit on Terraform < 1.6, so a null object would error.
+  count  = var.enterprise_pat == null ? 0 : (var.enterprise_pat.pat != null && var.enterprise_pat.pat_ssm == null ? 1 : 0)
   name   = "${var.path_prefix}/enterprise_pat"
   type   = "SecureString"
   value  = var.enterprise_pat.pat

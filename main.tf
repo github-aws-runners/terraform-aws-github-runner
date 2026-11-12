@@ -5,8 +5,11 @@ locals {
 
   # For enterprise runners, app id and key_base64 are not required. When not
   # provided, the parameters resolve to null and are skipped by the lambdas.
-  primary_app_id         = try(coalesce(var.github_app.id_ssm, module.ssm.parameters.github_app_id), null)
-  primary_app_key_base64 = try(coalesce(var.github_app.key_base64_ssm, module.ssm.parameters.github_app_key_base64), null)
+  # Conditionals (not coalesce) keep null-ness known at plan time; coalesce returns
+  # a wholly unknown value when the SSM parameter ARNs are not yet known.
+  primary_app_id         = var.github_app.id_ssm != null ? var.github_app.id_ssm : module.ssm.parameters.github_app_id
+  primary_app_key_base64 = var.github_app.key_base64_ssm != null ? var.github_app.key_base64_ssm : module.ssm.parameters.github_app_key_base64
+  has_primary_app        = (var.github_app.id != null || var.github_app.id_ssm != null) && (var.github_app.key_base64 != null || var.github_app.key_base64_ssm != null)
 
   github_app_parameters = {
     id             = local.primary_app_id
@@ -463,7 +466,7 @@ locals {
     tracing_config               = var.tracing_config
     metrics                      = var.metrics
     enable_runner_deregistration = var.instance_termination_watcher.enable_runner_deregistration
-    github_app_parameters = var.instance_termination_watcher.enable_runner_deregistration && local.github_app_parameters.id != null ? {
+    github_app_parameters = var.instance_termination_watcher.enable_runner_deregistration && local.has_primary_app ? {
       id         = local.github_app_parameters.id
       key_base64 = local.github_app_parameters.key_base64
     } : null
