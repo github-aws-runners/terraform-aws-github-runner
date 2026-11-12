@@ -1,5 +1,15 @@
 # Changelog
 
+## [8.1.1](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v8.1.0...v8.1.1) (2026-11-12)
+
+
+### Bug Fixes
+
+* honor boot grace before scale-down identity lookup ([#5583](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5583)) ([e7aa391](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/e7aa3910ffee994c021834c825aaac4302ff7a51))
+* preserve sensitive bootstrap boundaries in v2 provider selection ([#5588](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5588)) ([1381802](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/1381802c45fd89f7f06caa2211818c657188f4ef))
+* **runners:** Skip runner file ownership change when user_name is unset ([#5574](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5574)) ([2cf37e5](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/2cf37e5276beceb9f97dc8ecff20873f44af19bd))
+* **termination-watcher:** look up the runner by exact name instead of paginating all runners ([#5573](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5573)) ([f6fc4e6](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/f6fc4e6c6dbfcdc1d4f7e13ea8c77d4b7f88975b))
+
 ## [8.1.0](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v8.0.0...v8.1.0) (2026-10-29)
 
 
