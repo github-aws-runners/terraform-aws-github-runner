@@ -21,7 +21,9 @@ export async function metricGitHubAppRateLimit(
     if (updateMetric) {
       // Enterprise runners authenticate with a PAT and have no GitHub App ID
       const appId =
-        process.env.RUNNER_REGISTRATION_LEVEL === 'enterprise' ? 'enterprise-pat' : await getAppId(appIndex, credentialsStore);
+        process.env.RUNNER_REGISTRATION_LEVEL === 'enterprise'
+          ? 'enterprise-pat'
+          : await getAppId(appIndex, credentialsStore);
       const metric = createSingleMetric('GitHubAppRateLimitRemaining', MetricUnit.Count, remaining, {
         AppId: appId,
       });
