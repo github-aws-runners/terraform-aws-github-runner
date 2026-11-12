@@ -47,6 +47,8 @@ variable "config" {
     - `storage_provider.aws.ssm.config_path_arn`: ARN of the persistent runner configuration path.
     - `storage_provider.aws.ssm.kms_key_id`: Optional KMS key ARN used to decrypt shared parameters. Its value may be unknown until apply.
     - `storage_provider.aws.ssm.parameter_store_tags`: JSON-encoded tags applied to parameters created at runtime.
+    - `storage_provider.aws.ssm.parameter_store_max_concurrent_invocations`: Expected number of concurrent scale-up and pool Lambda invocations writing to Parameter Store, used to pace writes.
+    - `storage_provider.aws.ssm.parameter_store_max_writes_per_second`: Parameter Store write-rate limit, in writes per second, that runtime writes are paced against.
     - `observability.logs`: Shared logging level, retention, encryption, and log-class configuration.
     - `observability.tracing`: Lambda X-Ray and tracing-helper configuration.
     - `observability.metrics`: Metrics enablement, namespace, and GitHub rate-limit metric configuration.
@@ -242,6 +244,9 @@ variable "storage_provider" {
         config_path_arn      = string
         parameter_store_tags = string
         kms_key_id           = optional(string, null)
+
+        parameter_store_max_concurrent_invocations = optional(number, 1)
+        parameter_store_max_writes_per_second      = optional(number, 40)
       })
     })
     scale_up = optional(object({

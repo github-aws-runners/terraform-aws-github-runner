@@ -451,7 +451,9 @@ variable "multi_runner_config" {
           }), {})
           tags = optional(map(string), {})
           parameters = optional(object({
-            tags = optional(map(string), {})
+            tags                       = optional(map(string), {})
+            max_concurrent_invocations = optional(number, null)
+            max_writes_per_second      = optional(number, null)
           }), {})
           housekeeper = optional(object({
             schedule_expression = optional(string, null)
@@ -1277,4 +1279,16 @@ variable "parameter_store_tags" {
   description = "Map of tags that will be added to all the SSM Parameter Store parameters created by the Lambda function."
   type        = map(string)
   default     = {}
+}
+
+variable "ssm_parameter_store_max_concurrent_invocations" {
+  description = "Expected number of concurrent scale-up/pool lambda invocations writing to Parameter Store, used to pace each invocation's writes to a share of the account-wide write-rate limit. Applies to all runner configurations."
+  type        = number
+  default     = 1
+}
+
+variable "ssm_parameter_store_max_writes_per_second" {
+  description = "Parameter Store write rate to pace against, in writes/second, shared by all scale-up and pool invocations. AWS documents a PutParameter quota of 3 TPS per account and Region (10 TPS with higher throughput enabled). The default of 40 keeps the previous pacing; lower it if PutParameter calls are throttled. Applies to all runner configurations."
+  type        = number
+  default     = 40
 }
