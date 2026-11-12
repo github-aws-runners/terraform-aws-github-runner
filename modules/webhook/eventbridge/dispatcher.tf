@@ -37,7 +37,7 @@ resource "aws_lambda_function" "dispatcher" {
   memory_size       = var.config.lambda_memory_size
   timeout           = var.config.lambda_timeout
   architectures     = [var.config.lambda_architecture]
-  depends_on        = [aws_cloudwatch_log_group.dispatcher]
+  depends_on        = [aws_cloudwatch_log_group.dispatcher, aws_iam_role_policy.dispatcher_ssm]
 
   environment {
     variables = merge({
@@ -138,7 +138,7 @@ resource "aws_iam_role_policy" "dispatcher_ssm" {
   policy = templatefile("${path.module}/../policies/lambda-ssm.json", {
     resource_arns = jsonencode(
       concat(
-        [for p in var.config.ssm_parameter_runner_matcher_config : p.arn]
+        [var.config.ssm_parameter_runner_matcher_config_arn_pattern]
       )
     )
   })

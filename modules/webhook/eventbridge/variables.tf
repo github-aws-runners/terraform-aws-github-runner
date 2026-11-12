@@ -54,6 +54,7 @@ variable "config" {
       arn     = string
       version = string
     }))
-    accept_events = optional(list(string), null)
+    ssm_parameter_runner_matcher_config_arn_pattern = string
+    accept_events                                   = optional(list(string), null)
   })
 }
