@@ -87,6 +87,39 @@ describe('SSM runner config consumer', () => {
     expect(deleteParameter).toHaveBeenCalledWith('/runner/tokens/runner-123', expect.any(AbortSignal));
   });
 
+  it('keeps polling when the SDK reports a missing parameter as a generic Error', async () => {
+    // The AWS SDK falls back to a plain Error (name 'Error', message = error code)
+    // when it cannot resolve the modeled ParameterNotFound exception class.
+    const sdkNotFound = Object.assign(new Error('ParameterNotFound'), {
+      $fault: 'client',
+      $metadata: { httpStatusCode: 400 },
+      __type: 'ParameterNotFound',
+    });
+    const getParameter = vi
+      .fn<AwsSsmRunnerConfigApi['getParameter']>()
+      .mockRejectedValueOnce(sdkNotFound)
+      .mockResolvedValueOnce('encoded-jit');
+    const deleteParameter = vi.fn<AwsSsmRunnerConfigApi['deleteParameter']>().mockResolvedValue(undefined);
+    const consumer = createAwsSsmRunnerConfigConsumer(
+      { SSM_TOKEN_PATH: '/runner/tokens' },
+      {
+        api: { getParameter, deleteParameter },
+        callTimeoutMs: 100,
+        configTimeoutMs: 500,
+        pollIntervalMs: 1,
+      },
+    );
+
+    await expect(
+      consumer.consume('runner-123', {
+        deadlineMs: Date.now() + 1_000,
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toBe('encoded-jit');
+    expect(getParameter).toHaveBeenCalledTimes(2);
+    expect(loggerMock.error).not.toHaveBeenCalled();
+  });
+
   it('retries a transient delete failure without returning the value early', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
