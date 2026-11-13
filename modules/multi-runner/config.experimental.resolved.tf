@@ -443,6 +443,18 @@ locals {
         compute_provider = {
           aws = {
             ec2 = v.compute_provider.aws.ec2 == null ? null : merge(v.compute_provider.aws.ec2, {
+              ami = {
+                filter = try(v.compute_provider.aws.ec2.ami.filter, { state = ["available"] })
+                owners = try(v.compute_provider.aws.ec2.ami.owners, ["amazon"])
+                ssm_parameter = {
+                  path = coalesce(
+                    try(v.compute_provider.aws.ec2.ami.ssm_parameter.path, null),
+                    "/github-action-runners/${var.prefix}/${k}/runners/config",
+                  )
+                  arn = try(v.compute_provider.aws.ec2.ami.ssm_parameter.arn, null)
+                }
+                kms_key = try(v.compute_provider.aws.ec2.ami.kms_key, null)
+              }
               vpc_id = try(coalesce(
                 v.compute_provider.aws.ec2.vpc_id,
                 local.normalized_config.compute_provider.aws.ec2.vpc_id,

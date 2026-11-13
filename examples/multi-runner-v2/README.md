@@ -63,7 +63,7 @@ variable source in real deployments rather than committed to configuration.
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_ami"></a> [ami](#input\_ami) | Optional AMI configuration keyed by runner lane. | <pre>map(object({<br/>    filter = optional(map(list(string)), { state = ["available"] })<br/>    owners = optional(list(string), ["amazon"])<br/>    id_ssm_parameter = optional(object({<br/>      arn = string<br/>    }), null)<br/>    kms_key = optional(object({<br/>      arn = string<br/>    }), null)<br/>  }))</pre> | `{}` | no |
+| <a name="input_ami"></a> [ami](#input\_ami) | Optional AMI configuration keyed by runner lane. | <pre>map(object({<br/>    filter = optional(map(list(string)), { state = ["available"] })<br/>    owners = optional(list(string), ["amazon"])<br/>    ssm_parameter = optional(object({<br/>      path = optional(string, null)<br/>      arn  = optional(string, null)<br/>    }), null)<br/>    kms_key = optional(object({<br/>      arn = string<br/>    }), null)<br/>  }))</pre> | `{}` | no |
 | <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | AWS region to deploy to. | `string` | `"eu-west-1"` | no |
 | <a name="input_environment"></a> [environment](#input\_environment) | Environment name, used as prefix. | `string` | `null` | no |
 | <a name="input_github_app"></a> [github\_app](#input\_github\_app) | GitHub App ID and base64-encoded private key. | <pre>object({<br/>    id         = string<br/>    key_base64 = string<br/>  })</pre> | n/a | yes |

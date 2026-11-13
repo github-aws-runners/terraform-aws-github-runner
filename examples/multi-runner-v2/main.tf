@@ -156,9 +156,9 @@ module "runners" {
                 name  = ["Windows_Server-2022-English-Full-ECS_Optimized-*"]
                 state = ["available"]
               }
-              owners           = ["amazon"]
-              id_ssm_parameter = null
-              kms_key          = null
+              owners        = ["amazon"]
+              ssm_parameter = null
+              kms_key       = null
             })
           }
         }

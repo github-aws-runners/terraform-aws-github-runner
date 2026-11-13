@@ -66,11 +66,15 @@ module "subject" {
               }
               scaleErrors = []
             })
-            iam_statements = {
-              run_instances = {
-                actions   = [terraform_data.computed.output.action]
-                resources = [terraform_data.computed.output.resource]
-              }
+            iam_policy_documents = {
+              run_instances = jsonencode({
+                Version = "2012-10-17"
+                Statement = [{
+                  Effect   = "Allow"
+                  Action   = [terraform_data.computed.output.action]
+                  Resource = [terraform_data.computed.output.resource]
+                }]
+              })
             }
           }
         }
