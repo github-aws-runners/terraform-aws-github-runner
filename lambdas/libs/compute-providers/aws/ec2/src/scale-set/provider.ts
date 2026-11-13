@@ -69,7 +69,8 @@ export function createEc2ScaleSetProvider(
   };
   validateFactoryInput(normalizedInput);
   const clients = createClients(normalizedInput.configuration, dependencies, normalizedInput.credentials);
-  const runnerClient = createEc2RunnerClient(clients.ec2Client);
+  // The AMI id parameter is readable by the compute provider role only, not by the controller task role
+  const runnerClient = createEc2RunnerClient(clients.ec2Client, { ssmClient: clients.ssmClient });
   const now = dependencies.now ?? Date.now;
 
   return {
