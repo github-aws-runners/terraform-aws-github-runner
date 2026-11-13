@@ -23,7 +23,7 @@ variable "tags" {
 }
 
 variable "runner_matcher_config" {
-  description = "SQS queue to publish accepted build events based on the runner type. `computeProvider` defaults to `ec2`; EC2 is the only provider currently implemented. When exact match is disabled the webhook accepts the event if one of the workflow job labels is part of the matcher. The priority defines the order the matchers are applied. Optional `matcherConfig.enableDynamicLabels` and `matcherConfig.awsDynamicLabelsPolicy` are evaluated by the dispatcher to gate provider dynamic labels per runner. The policy supports `allowed_keys = [<key>]`, `blocked_keys = [<key>]` (cannot be used together with `allowed_keys`), and `restricted_keys = { <key> = { allowed = [globs], denied = [globs], max = number|string } }`; keys use the provider dynamic label suffix form, for example `instance-type` for `ghr-ec2-instance-type`."
+  description = "SQS queue to publish accepted build events based on the runner type. `computeProvider` defaults to `ec2`; EC2 is the only provider currently implemented. When exact match is disabled the webhook accepts the event if one of the workflow job labels is part of the matcher. The priority defines the order the matchers are applied; matchers with an exact or bidirectional label match are evaluated first, then by ascending priority. Priority must be between 0 and 999. The order is resolved here and consumed as-is by the dispatcher. Optional `matcherConfig.enableDynamicLabels` and `matcherConfig.awsDynamicLabelsPolicy` are evaluated by the dispatcher to gate provider dynamic labels per runner. The policy supports `allowed_keys = [<key>]`, `blocked_keys = [<key>]` (cannot be used together with `allowed_keys`), and `restricted_keys = { <key> = { allowed = [globs], denied = [globs], max = number|string } }`; keys use the provider dynamic label suffix form, for example `instance-type` for `ghr-ec2-instance-type`."
   type = map(object({
     arn             = string
     id              = string
@@ -46,7 +46,10 @@ variable "runner_matcher_config" {
     })
   }))
   validation {
-    condition     = try(var.runner_matcher_config.matcherConfig.priority, 999) >= 0 && try(var.runner_matcher_config.matcherConfig.priority, 999) < 1000
+    condition = alltrue([
+      for config in values(var.runner_matcher_config) :
+      config.matcherConfig.priority >= 0 && config.matcherConfig.priority < 1000
+    ])
     error_message = "The priority of the matcher must be between 0 and 999."
   }
   validation {
