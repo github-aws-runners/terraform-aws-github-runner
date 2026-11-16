@@ -36,6 +36,9 @@ locals {
       "ghr:environment"        = var.prefix
       "ghr:ssm_config_path"    = "${var.storage_provider.aws.ssm.paths.root}/${var.storage_provider.aws.ssm.paths.config}"
       "ghr:runner_name_prefix" = var.runner.name_prefix
+      # JIT and bootstrap registration both use this prefix in the v2 provider.
+      # Keep the watcher identity tag module-controlled, like the bootstrap tags.
+      "ghr:registered_runner_name_prefix" = var.runner.name_prefix
     },
   )
 

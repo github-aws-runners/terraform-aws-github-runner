@@ -324,12 +324,13 @@ run "separates_provider_runner_and_ssm_tags" {
       }
       managed_security_group_enabled = true
       tags = {
-        Name                     = "runner-name"
-        Scope                    = "runner"
-        RunnerOnly               = "runner"
-        "ghr:environment"        = "runner-override"
-        "ghr:ssm_config_path"    = "/runner/override"
-        "ghr:runner_name_prefix" = "runner-override"
+        Name                                = "runner-name"
+        Scope                               = "runner"
+        RunnerOnly                          = "runner"
+        "ghr:environment"                   = "runner-override"
+        "ghr:ssm_config_path"               = "/runner/override"
+        "ghr:runner_name_prefix"            = "runner-override"
+        "ghr:registered_runner_name_prefix" = "untrusted-override"
       }
     }
     tags = {
@@ -407,6 +408,7 @@ run "separates_provider_runner_and_ssm_tags" {
         && tag_specification.tags["ghr:environment"] == "provider-test"
         && tag_specification.tags["ghr:ssm_config_path"] == "/github-runner/provider-test/config"
         && tag_specification.tags["ghr:runner_name_prefix"] == "required-prefix"
+        && try(tag_specification.tags["ghr:registered_runner_name_prefix"], null) == "required-prefix"
       )
     ])
     error_message = "Runner resource tags must apply runner overrides while protecting mandatory bootstrap tags."
