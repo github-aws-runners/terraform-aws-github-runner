@@ -116,6 +116,7 @@ export async function createRunners(
       ...ec2CreateConfig,
       runnerType: githubRunnerConfig.runnerType,
       runnerOwner: githubRunnerConfig.runnerOwner,
+      enterpriseSlug: githubRunnerConfig.enterpriseSlug,
       numberOfRunners,
       source,
     });

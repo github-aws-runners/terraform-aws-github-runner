@@ -8,6 +8,7 @@ import { resolveComputeProviderType } from '@aws-github-runner/compute-providers
 import moment from 'moment';
 
 import {
+  createEnterprisePATClient,
   createGithubAppAuth,
   createGithubInstallationAuth,
   createOctokitClient,
@@ -41,6 +42,18 @@ function guardRequests(client: Octokit, remainingTime: () => number): void {
 async function getOrCreateOctokit(runner: RunnerInfo, remainingTime: () => number): Promise<Octokit> {
   requireTime(remainingTime);
   const { ghesApiUrl } = getGitHubEnterpriseApiUrl();
+  if (runner.type === 'Enterprise') {
+    // Enterprise runners authenticate with a PAT instead of a GitHub App.
+    const enterpriseKey = `${runner.type}:${runner.owner}`;
+    const cachedEnterpriseOctokit = githubCache.clients.get(enterpriseKey);
+    if (cachedEnterpriseOctokit) return cachedEnterpriseOctokit;
+    requireTime(remainingTime);
+    const enterpriseOctokit = await createEnterprisePATClient(ghesApiUrl);
+    guardRequests(enterpriseOctokit, remainingTime);
+    githubCache.clients.set(enterpriseKey, enterpriseOctokit);
+    return enterpriseOctokit;
+  }
+
   const scope = installationScope(ghesApiUrl, runner.owner);
   requireTime(remainingTime);
   const ghAuthPre = await createGithubAppAuth(undefined, ghesApiUrl, undefined, undefined, scope);
@@ -100,18 +113,23 @@ async function getGitHubSelfHostedRunnerState(
 ): Promise<RunnerState | null> {
   try {
     const state =
-      runner.type === 'Org'
-        ? await client.actions.getSelfHostedRunnerForOrg({
+      runner.type === 'Enterprise'
+        ? await client.request('GET /enterprises/{enterprise}/actions/runners/{runner_id}', {
             runner_id: runnerId,
-            org: runner.owner,
+            enterprise: runner.owner,
           })
-        : await client.actions.getSelfHostedRunnerForRepo({
-            runner_id: runnerId,
-            owner: runner.owner.split('/')[0],
-            repo: runner.owner.split('/')[1],
-          });
+        : runner.type === 'Org'
+          ? await client.actions.getSelfHostedRunnerForOrg({
+              runner_id: runnerId,
+              org: runner.owner,
+            })
+          : await client.actions.getSelfHostedRunnerForRepo({
+              runner_id: runnerId,
+              owner: runner.owner.split('/')[0],
+              repo: runner.owner.split('/')[1],
+            });
 
-    return state.data;
+    return state.data as RunnerState;
   } catch (error) {
     if (error instanceof RequestError && error.status === 404) {
       // Failover may select a different App for each request. Confirm absence
@@ -120,16 +138,22 @@ async function getGitHubSelfHostedRunnerState(
       for (let page = 1; ; page++) {
         requireTime(remainingTime);
         const access =
-          runner.type === 'Org'
-            ? await client.actions.listSelfHostedRunnersForOrg({ org: runner.owner, per_page: 100, page })
-            : await client.actions.listSelfHostedRunnersForRepo({
-                owner: runner.owner.split('/')[0],
-                repo: runner.owner.split('/')[1],
+          runner.type === 'Enterprise'
+            ? await client.request('GET /enterprises/{enterprise}/actions/runners', {
+                enterprise: runner.owner,
                 per_page: 100,
                 page,
-              });
+              })
+            : runner.type === 'Org'
+              ? await client.actions.listSelfHostedRunnersForOrg({ org: runner.owner, per_page: 100, page })
+              : await client.actions.listSelfHostedRunnersForRepo({
+                  owner: runner.owner.split('/')[0],
+                  repo: runner.owner.split('/')[1],
+                  per_page: 100,
+                  page,
+                });
         requireTime(remainingTime);
-        const registered = access.data.runners.find((candidate) => candidate.id === runnerId);
+        const registered = (access.data.runners as RunnerState[]).find((candidate) => candidate.id === runnerId);
         if (registered) return registered;
         if (access.data.runners.length < 100) break;
       }
@@ -182,18 +206,26 @@ async function listGitHubRunners(
     return state ? [state] : [];
   }
   if (runner.githubRunnerName !== undefined) {
-    const owner =
-      runner.type === 'Org'
-        ? { org: runner.owner }
-        : {
-            owner: runner.owner.split('/')[0],
-            repo: runner.owner.split('/')[1],
-          };
-    const method =
-      runner.type === 'Org' ? client.actions.listSelfHostedRunnersForOrg : client.actions.listSelfHostedRunnersForRepo;
-    const matches = (await client.paginate(method, { ...owner, name: runner.githubRunnerName, per_page: 100 })).filter(
-      (registered) => registered.name === runner.githubRunnerName,
-    );
+    const matches = (
+      runner.type === 'Enterprise'
+        ? ((await client.paginate('GET /enterprises/{enterprise}/actions/runners', {
+            enterprise: runner.owner,
+            name: runner.githubRunnerName,
+            per_page: 100,
+          })) as GhRunners)
+        : runner.type === 'Org'
+          ? await client.paginate(client.actions.listSelfHostedRunnersForOrg, {
+              org: runner.owner,
+              name: runner.githubRunnerName,
+              per_page: 100,
+            })
+          : await client.paginate(client.actions.listSelfHostedRunnersForRepo, {
+              owner: runner.owner.split('/')[0],
+              repo: runner.owner.split('/')[1],
+              name: runner.githubRunnerName,
+              per_page: 100,
+            })
+    ).filter((registered) => registered.name === runner.githubRunnerName);
     if (matches.length > 0) return matches;
     // Custom start scripts may register another name. A filtered miss alone
     // cannot prove that this instance has no live (possibly busy) registration.
@@ -210,13 +242,18 @@ async function listGitHubRunners(
     const cached = githubCache.runners.get(key);
     if (cached) return cached;
     const runners =
-      runner.type === 'Org'
-        ? await client.paginate(client.actions.listSelfHostedRunnersForOrg, { org: runner.owner, per_page: 100 })
-        : await client.paginate(client.actions.listSelfHostedRunnersForRepo, {
-            owner: runner.owner.split('/')[0],
-            repo: runner.owner.split('/')[1],
+      runner.type === 'Enterprise'
+        ? ((await client.paginate('GET /enterprises/{enterprise}/actions/runners', {
+            enterprise: runner.owner,
             per_page: 100,
-          });
+          })) as GhRunners)
+        : runner.type === 'Org'
+          ? await client.paginate(client.actions.listSelfHostedRunnersForOrg, { org: runner.owner, per_page: 100 })
+          : await client.paginate(client.actions.listSelfHostedRunnersForRepo, {
+              owner: runner.owner.split('/')[0],
+              repo: runner.owner.split('/')[1],
+              per_page: 100,
+            });
     requireTime(remainingTime);
     githubCache.runners.set(key, runners);
     return runners;
@@ -243,7 +280,15 @@ async function deleteGitHubRunner(
 ): Promise<{ ghRunnerId: number; status: number; success: boolean }> {
   try {
     let response;
-    if (runner.type === 'Org') {
+    if (runner.type === 'Enterprise') {
+      response = await githubInstallationClient.request(
+        'DELETE /enterprises/{enterprise}/actions/runners/{runner_id}',
+        {
+          runner_id: ghRunnerId,
+          enterprise: runner.owner,
+        },
+      );
+    } else if (runner.type === 'Org') {
       response = await githubInstallationClient.actions.deleteSelfHostedRunnerFromOrg({
         runner_id: ghRunnerId,
         org: runner.owner,

@@ -91,7 +91,8 @@ module "github-runner" {
   webhook_lambda_zip                = "lambdas-download/webhook.zip"
   runner_binaries_syncer_lambda_zip = "lambdas-download/runner-binaries-syncer.zip"
   runners_lambda_zip                = "lambdas-download/runners.zip"
-  enable_organization_runners = true
+
+  runner_registration_level = "org"
 }
 ```
 

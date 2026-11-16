@@ -23,6 +23,7 @@ vi.mock('../github/auth', () => ({
   createGithubInstallationAuth: vi.fn(),
   createOctokitClient: vi.fn(),
   getStoredInstallationId: vi.fn().mockResolvedValue(undefined),
+  createEnterprisePATClient: vi.fn(),
 }));
 
 vi.mock('../scale-runners/github-runner', () => ({
@@ -91,6 +92,7 @@ beforeEach(() => {
   process.env = { ...cleanEnv };
   process.env.RUNNERS_MAXIMUM_COUNT = '-1';
   process.env.ENVIRONMENT = 'unit-test-environment';
+  process.env.RUNNER_REGISTRATION_LEVEL = 'org';
   process.env.SSM_TOKEN_PATH = '/github-action-runners/default/runners/tokens';
   process.env.SSM_CONFIG_PATH = '/github-action-runners/default/runners/config';
   process.env.PARAMETER_GITHUB_APP_ID_NAME = 'github-app-id';

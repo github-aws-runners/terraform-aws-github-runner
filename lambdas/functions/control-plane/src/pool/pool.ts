@@ -7,6 +7,7 @@ import { createStorageProviders, type StorageProviders } from '@aws-github-runne
 import yn from 'yn';
 
 import {
+  createEnterprisePATClient,
   createGithubAppAuth,
   createGithubInstallationAuth,
   createOctokitClient,
@@ -14,6 +15,8 @@ import {
 } from '../github/auth';
 import { controlPlaneProviderRegistry } from '../control-plane-providers';
 import { getGitHubEnterpriseApiUrl } from '../scale-runners/github-runner';
+import { resolveRunnerType } from '../scale-runners/runner-config';
+import type { RunnerType } from '../scale-runners/types';
 import type { RunnerStatus } from './pool-provider';
 
 const logger = createChildLogger('pool');
@@ -39,6 +42,8 @@ export async function adjust(event: PoolEvent): Promise<void> {
   const enableJitConfig = yn(process.env.ENABLE_JIT_CONFIG, { default: ephemeral });
   const disableAutoUpdate = yn(process.env.DISABLE_RUNNER_AUTOUPDATE, { default: false });
   const runnerOwner = process.env.RUNNER_OWNER;
+  const runnerType = resolveRunnerType();
+  const enterpriseSlug = process.env.ENTERPRISE_SLUG;
   // -1 disables the maximum check, matching the scale-up lambda's semantics. Defaults to unlimited
   // when unset so the pool keeps its previous behavior on stacks that do not provide the variable.
   const maximumRunners = parseInt(process.env.RUNNERS_MAXIMUM_COUNT || '-1');
@@ -46,43 +51,61 @@ export async function adjust(event: PoolEvent): Promise<void> {
 
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
 
-  // Seed the shared client; it can select another app before each request.
-  const scope = installationScope(ghesApiUrl, runnerOwner);
-  const ghAppAuth = await createGithubAppAuth(undefined, ghesApiUrl, undefined, storage.githubAppCredentials, scope);
-  const appIdx = ghAppAuth.appIndex;
+  if (runnerType === 'Enterprise' && !enterpriseSlug) {
+    throw new Error('ENTERPRISE_SLUG must be set when RUNNER_REGISTRATION_LEVEL is enterprise.');
+  }
+  if (!runnerOwner && runnerType !== 'Enterprise') {
+    throw new Error('RUNNER_OWNER must be set for org and repo runner registration levels.');
+  }
 
-  const githubInstallationClient = await withAppFailover(
-    appIdx,
-    async (selectedIndex) => {
-      const appAuth =
-        selectedIndex === appIdx
-          ? ghAppAuth
-          : await createGithubAppAuth(undefined, ghesApiUrl, selectedIndex, storage.githubAppCredentials);
-      const installationId = await getInstallationId(appAuth.token, ghesApiUrl, runnerOwner, selectedIndex, storage);
-      const ghAuth = await createGithubInstallationAuth(
-        installationId,
-        ghesApiUrl,
-        selectedIndex,
-        storage.githubAppCredentials,
-      );
-      return createOctokitClient(ghAuth.token, ghesApiUrl, selectedIndex);
-    },
-    storage.githubAppCredentials,
-    scope,
-  );
+  const githubOwner = runnerType === 'Enterprise' ? enterpriseSlug! : runnerOwner!;
+
+  // Enterprise-level runners authenticate with a PAT instead of a GitHub App.
+  let githubInstallationClient: Octokit;
+  let appIdx: number | undefined;
+  if (runnerType === 'Enterprise') {
+    githubInstallationClient = await createEnterprisePATClient(ghesApiUrl);
+  } else {
+    // Seed the shared client; it can select another app before each request.
+    const scope = installationScope(ghesApiUrl, githubOwner);
+    const ghAppAuth = await createGithubAppAuth(undefined, ghesApiUrl, undefined, storage.githubAppCredentials, scope);
+    const seedIdx = ghAppAuth.appIndex;
+    appIdx = seedIdx;
+
+    githubInstallationClient = await withAppFailover(
+      seedIdx,
+      async (selectedIndex) => {
+        const appAuth =
+          selectedIndex === seedIdx
+            ? ghAppAuth
+            : await createGithubAppAuth(undefined, ghesApiUrl, selectedIndex, storage.githubAppCredentials);
+        const installationId = await getInstallationId(appAuth.token, ghesApiUrl, githubOwner, selectedIndex, storage);
+        const ghAuth = await createGithubInstallationAuth(
+          installationId,
+          ghesApiUrl,
+          selectedIndex,
+          storage.githubAppCredentials,
+        );
+        return createOctokitClient(ghAuth.token, ghesApiUrl, selectedIndex);
+      },
+      storage.githubAppCredentials,
+      scope,
+    );
+  }
 
   // Get statuses of runners registered in GitHub
   const runnerStatusses = await getGitHubRegisteredRunnnerStatusses(
     githubInstallationClient,
-    runnerOwner,
+    githubOwner,
     runnerNamePrefix,
+    runnerType,
   );
 
   // Look up the managed provider runners, but running does not mean idle.
   const poolRunners = await computeProvider.listRunners({
     environment,
-    runnerOwner,
-    runnerType: 'Org',
+    runnerOwner: githubOwner,
+    runnerType,
   });
 
   const numberOfRunnersInPool = computeProvider.countAvailableRunners(poolRunners, runnerStatusses, includeBusyRunners);
@@ -113,9 +136,10 @@ export async function adjust(event: PoolEvent): Promise<void> {
         ghesBaseUrl,
         runnerLabels,
         runnerGroup,
-        runnerOwner,
+        runnerOwner: githubOwner,
         runnerNamePrefix,
-        runnerType: 'Org',
+        runnerType,
+        enterpriseSlug,
         disableAutoUpdate: disableAutoUpdate,
       },
       numberOfRunners: topUp,
@@ -151,11 +175,18 @@ async function getGitHubRegisteredRunnnerStatusses(
   ghClient: Octokit,
   runnerOwner: string,
   runnerNamePrefix: string,
+  runnerType: RunnerType,
 ): Promise<Map<string, RunnerStatus>> {
-  const runners = await ghClient.paginate(ghClient.actions.listSelfHostedRunnersForOrg, {
-    org: runnerOwner,
-    per_page: 100,
-  });
+  const runners =
+    runnerType === 'Enterprise'
+      ? ((await ghClient.paginate('GET /enterprises/{enterprise}/actions/runners', {
+          enterprise: runnerOwner,
+          per_page: 100,
+        })) as { name: string; busy: boolean; status: string }[])
+      : await ghClient.paginate(ghClient.actions.listSelfHostedRunnersForOrg, {
+          org: runnerOwner,
+          per_page: 100,
+        });
   const runnerStatus = new Map<string, RunnerStatus>();
   for (const runner of runners) {
     runner.name = runnerNamePrefix ? runner.name.replace(runnerNamePrefix, '') : runner.name;

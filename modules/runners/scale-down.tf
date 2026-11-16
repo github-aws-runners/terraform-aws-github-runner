@@ -34,8 +34,9 @@ resource "aws_lambda_function" "scale_down" {
       LOG_LEVEL                                = upper(var.log_level)
       MINIMUM_RUNNING_TIME_IN_MINUTES          = coalesce(var.minimum_running_time_in_minutes, local.min_runtime_defaults[var.runner_os])
       NODE_TLS_REJECT_UNAUTHORIZED             = var.ghes_url != null && !var.ghes_ssl_verify ? 0 : 1
-      PARAMETER_GITHUB_APP_ID_NAME             = var.github_app_parameters.id.name
-      PARAMETER_GITHUB_APP_KEY_BASE64_NAME     = var.github_app_parameters.key_base64.name
+      PARAMETER_GITHUB_APP_ID_NAME             = try(var.github_app_parameters.id.name, "")
+      PARAMETER_GITHUB_APP_KEY_BASE64_NAME     = try(var.github_app_parameters.key_base64.name, "")
+      PARAMETER_ENTERPRISE_PAT_NAME            = var.enterprise_pat_parameter != null ? var.enterprise_pat_parameter.name : ""
       PARAMETER_GITHUB_APPS_MANIFEST_NAME      = var.github_app_parameters.additional_apps_manifest != null ? var.github_app_parameters.additional_apps_manifest.name : ""
       POWERTOOLS_LOGGER_LOG_EVENT              = var.log_level == "debug" ? "true" : "false"
       RUNNER_BOOT_TIME_IN_MINUTES              = var.runner_boot_time_in_minutes
@@ -108,9 +109,11 @@ resource "aws_iam_role_policy" "scale_down" {
   policy = templatefile("${path.module}/policies/lambda-scale-down.json", {
     environment = var.prefix
     github_app_parameter_arns = jsonencode(concat(
-      [var.github_app_parameters.id.arn, var.github_app_parameters.key_base64.arn],
+      var.github_app_parameters.id != null ? [var.github_app_parameters.id.arn] : [],
+      var.github_app_parameters.key_base64 != null ? [var.github_app_parameters.key_base64.arn] : [],
       var.github_app_parameters.additional_app_parameter_arns,
       var.github_app_parameters.additional_apps_manifest != null ? [var.github_app_parameters.additional_apps_manifest.arn] : [],
+      var.enterprise_pat_parameter != null ? [var.enterprise_pat_parameter.arn] : [],
     ))
     kms_key_arn = local.kms_key_arn
   })

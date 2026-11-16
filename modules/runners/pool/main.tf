@@ -42,15 +42,18 @@ resource "aws_lambda_function" "pool" {
       LAUNCH_TEMPLATE_NAME                     = var.config.runner.launch_template.name
       LOG_LEVEL                                = upper(var.config.lambda.log_level)
       NODE_TLS_REJECT_UNAUTHORIZED             = var.config.ghes.url != null && !var.config.ghes.ssl_verify ? 0 : 1
-      PARAMETER_GITHUB_APP_ID_NAME             = var.config.github_app_parameters.id.name
-      PARAMETER_GITHUB_APP_KEY_BASE64_NAME     = var.config.github_app_parameters.key_base64.name
+      PARAMETER_GITHUB_APP_ID_NAME             = try(var.config.github_app_parameters.id.name, "")
+      PARAMETER_GITHUB_APP_KEY_BASE64_NAME     = try(var.config.github_app_parameters.key_base64.name, "")
       PARAMETER_GITHUB_APPS_MANIFEST_NAME      = var.config.github_app_parameters.additional_apps_manifest != null ? var.config.github_app_parameters.additional_apps_manifest.name : ""
       POWERTOOLS_LOGGER_LOG_EVENT              = var.config.lambda.log_level == "debug" ? "true" : "false"
       RUNNER_BOOT_TIME_IN_MINUTES              = var.config.runner.boot_time_in_minutes
       RUNNER_LABELS                            = lower(join(",", var.config.runner.labels))
       RUNNER_GROUP_NAME                        = var.config.runner.group_name
       RUNNER_NAME_PREFIX                       = var.config.runner.name_prefix
-      RUNNER_OWNER                             = var.config.runner.pool_owner
+      RUNNER_OWNER                             = var.config.runner.pool_owner != null ? var.config.runner.pool_owner : (var.config.enterprise_slug != null ? var.config.enterprise_slug : "")
+      RUNNER_REGISTRATION_LEVEL                = var.config.runner_registration_level != null ? var.config.runner_registration_level : ""
+      ENTERPRISE_SLUG                          = var.config.enterprise_slug != null ? var.config.enterprise_slug : ""
+      PARAMETER_ENTERPRISE_PAT_NAME            = try(var.config.enterprise_pat_parameter.name, "")
       RUNNERS_MAXIMUM_COUNT                    = var.config.runners_maximum_count
       SSM_TOKEN_PATH                           = var.config.ssm_token_path
       SSM_CONFIG_PATH                          = var.config.ssm_config_path
@@ -108,9 +111,11 @@ resource "aws_iam_role_policy" "pool" {
     arn_ssm_parameters_path_config = var.config.arn_ssm_parameters_path_config
     arn_runner_instance_role       = var.config.runner.role.arn
     github_app_parameter_arns = jsonencode(concat(
-      [var.config.github_app_parameters.id.arn, var.config.github_app_parameters.key_base64.arn],
+      var.config.github_app_parameters.id != null ? [var.config.github_app_parameters.id.arn] : [],
+      var.config.github_app_parameters.key_base64 != null ? [var.config.github_app_parameters.key_base64.arn] : [],
       var.config.github_app_parameters.additional_app_parameter_arns,
       var.config.github_app_parameters.additional_apps_manifest != null ? [var.config.github_app_parameters.additional_apps_manifest.arn] : [],
+      var.config.enterprise_pat_parameter != null ? [var.config.enterprise_pat_parameter.arn] : [],
     ))
     kms_key_arn              = var.config.kms_key_arn
     ami_kms_key_arn          = var.config.ami_kms_key_arn

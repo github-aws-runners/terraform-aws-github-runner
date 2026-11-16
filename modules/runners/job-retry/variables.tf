@@ -5,7 +5,6 @@ variable "config" {
     `aws_partition`: Partition for the base arn if not 'aws'
     `architecture`: AWS Lambda architecture. Lambda functions using Graviton processors ('arm64') tend to have better price/performance than 'x86_64' functions.
     `environment_variables`: Environment variables for the lambda.
-    `enable_organization_runners`: Enable organization runners.
     `enable_metric`: Enable metric for the lambda. If `spot_warning` is set to true, the lambda will emit a metric when it detects a spot termination warning.
     'ghes_url': Optional GitHub Enterprise Server URL.
     'user_agent': Optional User-Agent header for GitHub API requests.
@@ -37,12 +36,17 @@ variable "config" {
     `zip`: File location of the lambda zip file.
   EOF
   type = object({
-    aws_partition               = optional(string, null)
-    architecture                = optional(string, null)
-    enable_organization_runners = bool
-    environment_variables       = optional(map(string), {})
-    ghes_url                    = optional(string, null)
-    user_agent                  = optional(string, null)
+    aws_partition             = optional(string, null)
+    architecture              = optional(string, null)
+    runner_registration_level = optional(string, null)
+    enterprise_slug           = optional(string, null)
+    enterprise_pat_parameter = optional(object({
+      name = string
+      arn  = string
+    }), null)
+    environment_variables = optional(map(string), {})
+    ghes_url              = optional(string, null)
+    user_agent            = optional(string, null)
     github_app_parameters = object({
       key_base64 = map(string)
       id         = map(string)

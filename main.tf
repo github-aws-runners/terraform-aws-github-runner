@@ -3,8 +3,13 @@ locals {
     "ghr:environment" = var.prefix
   })
 
-  primary_app_id         = coalesce(var.github_app.id_ssm, module.ssm.parameters.github_app_id)
-  primary_app_key_base64 = coalesce(var.github_app.key_base64_ssm, module.ssm.parameters.github_app_key_base64)
+  # For enterprise runners, app id and key_base64 are not required. When not
+  # provided, the parameters resolve to null and are skipped by the lambdas.
+  # Conditionals (not coalesce) keep null-ness known at plan time; coalesce returns
+  # a wholly unknown value when the SSM parameter ARNs are not yet known.
+  primary_app_id         = var.github_app.id_ssm != null ? var.github_app.id_ssm : module.ssm.parameters.github_app_id
+  primary_app_key_base64 = var.github_app.key_base64_ssm != null ? var.github_app.key_base64_ssm : module.ssm.parameters.github_app_key_base64
+  has_primary_app        = (var.github_app.id != null || var.github_app.id_ssm != null) && (var.github_app.key_base64 != null || var.github_app.key_base64_ssm != null)
 
   github_app_parameters = {
     id             = local.primary_app_id
@@ -21,6 +26,26 @@ locals {
     ])
   }
 
+  # `enable_organization_runners` is deprecated in favor of `runner_registration_level`, but is kept
+  # working for backwards compatibility. When set to `true` it takes priority over
+  # `runner_registration_level` so existing configurations continue to behave as before.
+  runner_registration_level = var.enable_organization_runners ? "org" : coalesce(
+    var.runner_registration_level,
+    "repo"
+  )
+
+  # Enterprise PAT SSM parameters
+  enterprise_pat_parameters = var.enterprise_pat != null ? {
+    name = coalesce(
+      try(var.enterprise_pat.pat_ssm.name, null),
+      try(module.ssm.parameters.enterprise_pat.name, null)
+    )
+    arn = coalesce(
+      try(var.enterprise_pat.pat_ssm.arn, null),
+      try(module.ssm.parameters.enterprise_pat.arn, null)
+    )
+  } : null
+
   default_runner_labels = distinct(concat(["self-hosted", var.runner_os, var.runner_architecture]))
   runner_labels         = (var.runner_disable_default_labels == false) ? sort(concat(local.default_runner_labels, var.runner_extra_labels)) : var.runner_extra_labels
 
@@ -31,6 +56,29 @@ resource "random_string" "random" {
   length  = 24
   special = false
   upper   = false
+}
+
+resource "terraform_data" "enterprise_validation" {
+  lifecycle {
+    precondition {
+      condition     = local.runner_registration_level != "enterprise" || var.enterprise_slug != null
+      error_message = "Variable 'enterprise_slug' is required when runner_registration_level is \"enterprise\". Example: enterprise_slug = \"my-enterprise\""
+    }
+    precondition {
+      condition     = local.runner_registration_level != "enterprise" || var.enterprise_pat != null
+      error_message = "Variable 'enterprise_pat' is required when runner_registration_level is \"enterprise\". Example: enterprise_pat = { pat = \"ghp_xxxx\" }"
+    }
+    precondition {
+      condition = (
+        local.runner_registration_level == "enterprise" ||
+        (
+          (var.github_app.key_base64 != null || var.github_app.key_base64_ssm != null) &&
+          (var.github_app.id != null || var.github_app.id_ssm != null)
+        )
+      )
+      error_message = "For org/repo runners, you must set 'key_base64' (or 'key_base64_ssm') and 'id' (or 'id_ssm') in the 'github_app' variable. These are not required when runner_registration_level is \"enterprise\"."
+    }
+  }
 }
 
 data "aws_iam_policy_document" "deny_insecure_transport" {
@@ -100,12 +148,14 @@ resource "aws_sqs_queue" "queued_builds_dlq" {
 }
 
 module "ssm" {
-  source                 = "./modules/storage-providers/aws/ssm"
-  kms_key_arn            = var.kms_key_arn
-  path_prefix            = "${local.ssm_root_path}/${var.ssm_paths.app}"
-  github_app             = var.github_app
-  additional_github_apps = var.additional_github_apps
-  tags                   = local.tags
+  source                    = "./modules/storage-providers/aws/ssm"
+  kms_key_arn               = var.kms_key_arn
+  path_prefix               = "${local.ssm_root_path}/${var.ssm_paths.app}"
+  github_app                = var.github_app
+  additional_github_apps    = var.additional_github_apps
+  enterprise_pat            = var.enterprise_pat
+  runner_registration_level = local.runner_registration_level
+  tags                      = local.tags
 }
 
 module "webhook" {
@@ -210,7 +260,9 @@ module "runners" {
 
   sqs_build_queue                      = aws_sqs_queue.queued_builds
   github_app_parameters                = local.github_app_parameters
-  enable_organization_runners          = var.enable_organization_runners
+  runner_registration_level            = local.runner_registration_level
+  enterprise_slug                      = var.enterprise_slug
+  enterprise_pat_parameter             = local.enterprise_pat_parameters
   enable_ephemeral_runners             = var.enable_ephemeral_runners
   enable_job_queued_check              = var.enable_job_queued_check
   enable_jit_config                    = var.enable_jit_config
@@ -301,7 +353,7 @@ module "runners" {
   pool_config                                = var.pool_config
   pool_lambda_memory_size                    = var.pool_lambda_memory_size
   pool_lambda_timeout                        = var.pool_lambda_timeout
-  pool_runner_owner                          = var.pool_runner_owner
+  pool_runner_owner                          = try(coalesce(var.pool_runner_owner, var.enterprise_slug), null)
   pool_lambda_reserved_concurrent_executions = var.pool_lambda_reserved_concurrent_executions
   pool_include_busy_runners                  = var.pool_include_busy_runners
 
@@ -414,7 +466,7 @@ locals {
     tracing_config               = var.tracing_config
     metrics                      = var.metrics
     enable_runner_deregistration = var.instance_termination_watcher.enable_runner_deregistration
-    github_app_parameters = var.instance_termination_watcher.enable_runner_deregistration ? {
+    github_app_parameters = var.instance_termination_watcher.enable_runner_deregistration && local.has_primary_app ? {
       id         = local.github_app_parameters.id
       key_base64 = local.github_app_parameters.key_base64
     } : null

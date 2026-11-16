@@ -173,6 +173,7 @@ function getRunnerInfo(runningInstances: DescribeInstancesResult) {
             type: i.Tags?.find((e) => e.Key === 'ghr:Type')?.Value as RunnerInfo['type'],
             repo: i.Tags?.find((e) => e.Key === 'ghr:Repo')?.Value as string,
             org: i.Tags?.find((e) => e.Key === 'ghr:Org')?.Value as string,
+            enterprise: i.Tags?.find((e) => e.Key === 'ghr:enterprise')?.Value as string,
             orphan: i.Tags?.find((e) => e.Key === 'ghr:orphan')?.Value === 'true',
             githubRunnerId: i.Tags?.find((e) => e.Key === 'ghr:github_runner_id')?.Value as string,
             bypassRemoval: i.Tags?.find((e) => e.Key === 'ghr:bypass-removal')?.Value === 'true',
@@ -598,6 +599,9 @@ async function createInstances(
     { Key: 'ghr:environment', Value: runnerParameters.environment },
     { Key: 'ghr:Type', Value: runnerParameters.runnerType },
     { Key: 'ghr:Owner', Value: runnerParameters.runnerOwner },
+    ...(runnerParameters.runnerType === 'Enterprise' && runnerParameters.enterpriseSlug
+      ? [{ Key: 'ghr:enterprise', Value: runnerParameters.enterpriseSlug }]
+      : []),
   ];
   if (runnerParameters.tracingEnabled) {
     const traceId = tracer.getRootXrayTraceId();

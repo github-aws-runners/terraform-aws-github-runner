@@ -36,7 +36,9 @@ resource "aws_lambda_function" "scale_up" {
       ENABLE_JIT_CONFIG                        = var.enable_jit_config
       ENABLE_JOB_QUEUED_CHECK                  = local.enable_job_queued_check
       ENABLE_METRIC_GITHUB_APP_RATE_LIMIT      = var.metrics.enable && var.metrics.metric.enable_github_app_rate_limit
-      ENABLE_ORGANIZATION_RUNNERS              = var.enable_organization_runners
+      RUNNER_REGISTRATION_LEVEL                = var.runner_registration_level != null ? var.runner_registration_level : ""
+      ENTERPRISE_SLUG                          = var.enterprise_slug != null ? var.enterprise_slug : ""
+      PARAMETER_ENTERPRISE_PAT_NAME            = var.enterprise_pat_parameter != null ? var.enterprise_pat_parameter.name : ""
       ENVIRONMENT                              = var.prefix
       GHES_URL                                 = var.ghes_url
       USER_AGENT                               = var.user_agent
@@ -50,8 +52,8 @@ resource "aws_lambda_function" "scale_up" {
       LOG_LEVEL                                = upper(var.log_level)
       MINIMUM_RUNNING_TIME_IN_MINUTES          = coalesce(var.minimum_running_time_in_minutes, local.min_runtime_defaults[var.runner_os])
       NODE_TLS_REJECT_UNAUTHORIZED             = var.ghes_url != null && !var.ghes_ssl_verify ? 0 : 1
-      PARAMETER_GITHUB_APP_ID_NAME             = var.github_app_parameters.id.name
-      PARAMETER_GITHUB_APP_KEY_BASE64_NAME     = var.github_app_parameters.key_base64.name
+      PARAMETER_GITHUB_APP_ID_NAME             = try(var.github_app_parameters.id.name, "")
+      PARAMETER_GITHUB_APP_KEY_BASE64_NAME     = try(var.github_app_parameters.key_base64.name, "")
       PARAMETER_GITHUB_APPS_MANIFEST_NAME      = var.github_app_parameters.additional_apps_manifest != null ? var.github_app_parameters.additional_apps_manifest.name : ""
       POWERTOOLS_LOGGER_LOG_EVENT              = var.log_level == "debug" ? "true" : "false"
       POWERTOOLS_METRICS_NAMESPACE             = var.metrics.namespace
@@ -134,10 +136,12 @@ resource "aws_iam_role_policy" "scale_up" {
     environment              = var.prefix
     sqs_arn                  = var.sqs_build_queue.arn
     github_app_parameter_arns = jsonencode(concat(
-      [var.github_app_parameters.id.arn, var.github_app_parameters.key_base64.arn],
+      var.github_app_parameters.id != null ? [var.github_app_parameters.id.arn] : [],
+      var.github_app_parameters.key_base64 != null ? [var.github_app_parameters.key_base64.arn] : [],
       var.github_app_parameters.additional_app_parameter_arns,
       var.github_app_parameters.additional_apps_manifest != null ? [var.github_app_parameters.additional_apps_manifest.arn] : [],
-      ["arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm_paths.root}/${var.ssm_paths.config}/*"]
+      ["arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm_paths.root}/${var.ssm_paths.config}/*"],
+      var.enterprise_pat_parameter != null ? [var.enterprise_pat_parameter.arn] : [],
     ))
     kms_key_arn              = local.kms_key_arn
     ami_kms_key_arn          = local.ami_kms_key_arn

@@ -32,6 +32,7 @@ export interface RunnerInputParameters {
   environment: string;
   runnerType: RunnerType;
   runnerOwner: string;
+  enterpriseSlug?: string;
   subnets: string[];
   launchTemplateName: string;
   ec2instanceCriteria: {

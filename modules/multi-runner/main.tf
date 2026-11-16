@@ -3,8 +3,10 @@ locals {
     "ghr:environment" = var.prefix
   })
 
-  primary_app_id              = coalesce(local.effective_config.github.app.id_ssm, module.ssm.parameters.github_app_id)
-  primary_app_key_base64      = coalesce(local.effective_config.github.app.key_base64_ssm, module.ssm.parameters.github_app_key_base64)
+  # For enterprise runners, app id and key_base64 are not required. When not
+  # provided, the parameters resolve to null and are skipped by the lambdas.
+  primary_app_id              = try(coalesce(local.effective_config.github.app.id_ssm, module.ssm.parameters.github_app_id), null)
+  primary_app_key_base64      = try(coalesce(local.effective_config.github.app.key_base64_ssm, module.ssm.parameters.github_app_key_base64), null)
   primary_app_installation_id = try(coalesce(local.effective_config.github.app.installation_id_ssm, module.ssm.parameters.github_app_installation_id), null)
 
   github_app_parameters = {
@@ -26,6 +28,31 @@ locals {
     local.effective_config.storage_provider.aws.ssm.paths.root,
     "/github-action-runners/${var.prefix}",
   ), "/")
+
+  enterprise_pat_parameters = var.enterprise_pat != null ? {
+    name = coalesce(
+      try(var.enterprise_pat.pat_ssm.name, null),
+      try(module.ssm.parameters.enterprise_pat.name, null)
+    )
+    arn = coalesce(
+      try(var.enterprise_pat.pat_ssm.arn, null),
+      try(module.ssm.parameters.enterprise_pat.arn, null)
+    )
+  } : null
+
+  # `enable_organization_runners` is deprecated in favor of `runner_registration_level`, but is kept
+  # working for backwards compatibility. When set to `true` it takes priority over
+  # `runner_registration_level` so existing configurations continue to behave as before.
+  runner_registration_level = {
+    for k, v in var.multi_runner_config : k => (
+      try(v.runner_config.enable_organization_runners, false) ? "org" : coalesce(try(v.runner_config.runner_registration_level, null), "repo")
+    )
+  }
+
+  # True when any configured runner registers at the enterprise level. Used to
+  # relax the shared SSM `github_app` validation, since enterprise runners
+  # authenticate with a PAT and don't require a GitHub App id/key.
+  any_enterprise_runners = anytrue([for k, level in local.runner_registration_level : level == "enterprise"])
 }
 
 resource "random_string" "random" {
