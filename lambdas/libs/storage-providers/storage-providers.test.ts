@@ -1,11 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { createStorageProviders } from './storage-providers';
 import { createAwsSsmRunnerConfigStore } from './aws/ssm/runner-config-store';
+
+import { createCommonStorage, createStorageProviders } from './storage-providers';
+import { getGitHubAppCredentialsStore } from './github-app-credentials';
+import { getRunnerConfigStore } from './runner-config';
+import { getRunnerGroupCacheStore } from './runner-group-cache';
 
 vi.mock('./aws/ssm/runner-config-store', () => ({
   createAwsSsmRunnerConfigStore: vi.fn(() => ({ create: vi.fn() })),
-  resolveMaxWritesPerSecond: vi.fn((rawValue: string | undefined) => (rawValue ? parseInt(rawValue, 10) : 40)),
 }));
 vi.mock('./aws/ssm/runner-group-cache-store', () => ({
   createAwsSsmRunnerGroupCacheStore: vi.fn(() => ({ get: vi.fn(), create: vi.fn() })),
@@ -16,6 +19,28 @@ vi.mock('./aws/ssm/runner-config-consumer', () => ({
 vi.mock('./aws/ssm/github-app-credentials-store', () => ({
   createAwsSsmGitHubAppCredentialsStore: vi.fn(() => ({ get: vi.fn() })),
 }));
+
+vi.mock('./runner-config', () => ({ getRunnerConfigStore: vi.fn(() => ({ create: vi.fn() })) }));
+vi.mock('./runner-group-cache', () => ({ getRunnerGroupCacheStore: vi.fn(() => ({ get: vi.fn(), create: vi.fn() })) }));
+vi.mock('./github-app-credentials', () => ({ getGitHubAppCredentialsStore: vi.fn(() => ({ get: vi.fn() })) }));
+
+describe('createStorageProviders with aws_dynamodb', () => {
+  it('composes the DynamoDB-backed stores without SSM paths and without a consumer', () => {
+    const storage = createStorageProviders({ RUNNER_CONFIG_STORAGE_PROVIDER: 'aws_dynamodb' });
+
+    expect(getRunnerConfigStore).toHaveBeenCalled();
+    expect(getRunnerGroupCacheStore).toHaveBeenCalled();
+    expect(getGitHubAppCredentialsStore).toHaveBeenCalled();
+    expect(storage.consumer).toBeUndefined();
+    expect(Object.keys(storage).sort()).toEqual(['githubAppCredentials', 'runnerConfig', 'runnerGroupCache']);
+  });
+
+  it('selects the DynamoDB GitHub App credentials store for common storage', () => {
+    createCommonStorage({ RUNNER_CONFIG_STORAGE_PROVIDER: 'aws_dynamodb' });
+
+    expect(getGitHubAppCredentialsStore).toHaveBeenCalled();
+  });
+});
 
 describe('createStorageProviders', () => {
   it('parses environment once and composes independent runner and common capabilities', () => {
@@ -42,21 +67,6 @@ describe('createStorageProviders', () => {
       consumer: expect.any(Object),
       githubAppCredentials: expect.any(Object),
     });
-  });
-
-  it('forwards SSM_PARAMETER_STORE_MAX_WRITES_PER_SECOND to the runner config store', () => {
-    const environment = Object.freeze({
-      RUNNER_CONFIG_STORAGE_PROVIDER: 'AWS_SSM',
-      SSM_TOKEN_PATH: '/runners/tokens',
-      SSM_CONFIG_PATH: '/runners/config',
-      SSM_PARAMETER_STORE_MAX_WRITES_PER_SECOND: '10000',
-      PARAMETER_GITHUB_APP_ID_NAME: 'app-id',
-      PARAMETER_GITHUB_APP_KEY_BASE64_NAME: 'app-key',
-    });
-
-    createStorageProviders(environment);
-
-    expect(createAwsSsmRunnerConfigStore).toHaveBeenCalledWith(expect.objectContaining({ maxWritesPerSecond: 10000 }));
   });
 
   it('rejects an invalid token TTL before creating a storage provider', () => {
