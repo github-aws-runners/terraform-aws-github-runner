@@ -7,6 +7,9 @@ import type { CommonStorage, StorageProviders } from './core';
 import { loadRunnerConfigConsumerConfigFromEnvironment } from './runner-config-consumer';
 import { loadSsmParameterStoreTagsFromEnvironment } from './aws/ssm/parameter-store-tags';
 import { resolveRunnerConfigStorageProvider, runnerConfigStorageProvider } from './provider';
+import { getGitHubAppCredentialsStore } from './github-app-credentials';
+import { getRunnerConfigStore } from './runner-config';
+import { getRunnerGroupCacheStore } from './runner-group-cache';
 
 import { parseSsmTokenTtlSeconds } from './aws/ssm/token-ttl';
 
@@ -16,6 +19,17 @@ const logger = createChildLogger('storage-providers');
 
 export function createStorageProviders(environment: Environment = process.env): StorageProviders {
   const provider = resolveRunnerConfigStorageProvider(environment.RUNNER_CONFIG_STORAGE_PROVIDER);
+  if (provider === runnerConfigStorageProvider.awsDynamodb) {
+    logger.info('Composing runner configuration storage providers', {
+      storageProvider: provider,
+      capabilities: ['runnerConfig', 'runnerGroupCache', 'githubAppCredentials'],
+    });
+    return {
+      runnerConfig: getRunnerConfigStore(),
+      runnerGroupCache: getRunnerGroupCacheStore(),
+      githubAppCredentials: getGitHubAppCredentialsStore(),
+    };
+  }
   if (provider !== runnerConfigStorageProvider.awsSsm) {
     throw new Error(`Unsupported runner config storage provider '${provider}'`);
   }
@@ -40,6 +54,12 @@ export function createStorageProviders(environment: Environment = process.env): 
 }
 
 export function createCommonStorage(environment: Environment = process.env): CommonStorage {
+  if (
+    resolveRunnerConfigStorageProvider(environment.RUNNER_CONFIG_STORAGE_PROVIDER) ===
+    runnerConfigStorageProvider.awsDynamodb
+  ) {
+    return { githubAppCredentials: getGitHubAppCredentialsStore() };
+  }
   const store = createAwsSsmGitHubAppCredentialsStore(environment);
   let credentials: ReturnType<typeof store.get> | undefined;
 
