@@ -9,6 +9,7 @@ export interface RunnerConfigMetadata {
 export interface RunnerConfigRecord {
   runnerId: string;
   value: string;
+  accessScope?: string;
 }
 
 export interface RunnerConfigStore {
