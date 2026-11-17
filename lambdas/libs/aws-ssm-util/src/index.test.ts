@@ -285,6 +285,109 @@ describe('Test getParameters (batch)', () => {
     expect(result).toEqual(new Map([['/app/good', 'value']]));
   });
 
+  it('keys the result by the requested ARN when SSM returns the plain name', async () => {
+    const arn = 'arn:aws:ssm:us-east-1:111111111111:parameter/x';
+    mockSSMClient.on(GetParametersCommand).resolves({
+      Parameters: [{ Name: '/x', ARN: arn, Value: 'v' }],
+    });
+
+    const result = await getParameters([arn]);
+
+    expect(result).toEqual(new Map([[arn, 'v']]));
+  });
+
+  it('keys a mixed list of names and ARNs by the requested strings', async () => {
+    const arn = 'arn:aws:ssm:us-east-1:111111111111:parameter/shared/id';
+    const ownArn = 'arn:aws:ssm:us-east-1:222222222222:parameter/own/key';
+    mockSSMClient.on(GetParametersCommand).resolves({
+      Parameters: [
+        { Name: '/own/key', ARN: ownArn, Value: 'value-key' },
+        { Name: '/plain', ARN: 'arn:aws:ssm:us-east-1:222222222222:parameter/plain', Value: 'value-plain' },
+        { Name: '/shared/id', ARN: arn, Value: 'value-id' },
+      ],
+    });
+
+    const result = await getParameters([arn, '/plain', ownArn]);
+
+    expect(result).toEqual(
+      new Map([
+        [arn, 'value-id'],
+        ['/plain', 'value-plain'],
+        [ownArn, 'value-key'],
+      ]),
+    );
+  });
+
+  it('omits requested parameters that are missing or listed as invalid', async () => {
+    const arn = 'arn:aws:ssm:us-east-1:111111111111:parameter/found';
+    mockSSMClient.on(GetParametersCommand).resolves({
+      Parameters: [
+        { Name: '/found', ARN: arn, Value: 'value' },
+        { Name: '/plain', ARN: 'arn:aws:ssm:us-east-1:222222222222:parameter/plain', Value: 'value-plain' },
+      ],
+      InvalidParameters: ['/invalid'],
+    });
+
+    const result = await getParameters([arn, '/plain', '/invalid', '/absent']);
+
+    expect(result).toEqual(
+      new Map([
+        [arn, 'value'],
+        ['/plain', 'value-plain'],
+      ]),
+    );
+  });
+
+  it('gives each distinct requested string its own key for duplicates and a name plus its ARN', async () => {
+    const arn = 'arn:aws:ssm:us-east-1:111111111111:parameter/dup';
+    mockSSMClient.on(GetParametersCommand).resolves({
+      Parameters: [{ Name: '/dup', ARN: arn, Value: 'value' }],
+    });
+
+    const result = await getParameters(['/dup', '/dup', arn, arn]);
+
+    expect(result).toEqual(
+      new Map([
+        ['/dup', 'value'],
+        [arn, 'value'],
+      ]),
+    );
+  });
+
+  it('keys by requested ARN across chunks regardless of response order', async () => {
+    const arnFor = (i: number) => `arn:aws:ssm:us-east-1:111111111111:parameter/app/param${i}`;
+    const names = Array.from({ length: 12 }, (_, i) => (i % 2 === 0 ? arnFor(i) : `/app/param${i}`));
+    const respond = (chunk: string[]) =>
+      chunk
+        .map((requested) => {
+          const i = Number(requested.match(/param(\d+)$/)![1]);
+          return { Name: `/app/param${i}`, ARN: arnFor(i), Value: `val-${i}` };
+        })
+        .reverse();
+
+    mockSSMClient
+      .on(GetParametersCommand, { Names: names.slice(0, 10), WithDecryption: true })
+      .resolves({ Parameters: respond(names.slice(0, 10)) })
+      .on(GetParametersCommand, { Names: names.slice(10), WithDecryption: true })
+      .resolves({ Parameters: respond(names.slice(10)) });
+
+    const result = await getParameters(names);
+
+    expect(result.size).toBe(12);
+    expect(mockSSMClient).toHaveReceivedCommandTimes(GetParametersCommand, 2);
+    names.forEach((name, i) => expect(result.get(name)).toBe(`val-${i}`));
+  });
+
+  it('omits parameters with an empty Value', async () => {
+    mockSSMClient.on(GetParametersCommand).resolves({
+      Parameters: [{ Name: '/app/empty', ARN: 'arn:aws:ssm:us-east-1:111111111111:parameter/app/empty', Value: '' }],
+    });
+
+    const result = await getParameters(['/app/empty']);
+
+    expect(result).toEqual(new Map());
+  });
+
   it('propagates errors from SSM API', async () => {
     mockSSMClient.on(GetParametersCommand).rejects(new Error('AccessDenied'));
 

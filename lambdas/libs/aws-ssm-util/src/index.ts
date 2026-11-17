@@ -57,7 +57,9 @@ export async function getParameter(parameter_name: string): Promise<string> {
  * of up to 10 names per call to comply with the AWS GetParameters API limit.
  *
  * Each successfully retrieved parameter is added to the returned {@link Map}, where:
- * - The map key is the full parameter name as stored in Parameter Store.
+ * - The map key is the requested entry exactly as passed in, either a plain parameter name or
+ *   a parameter ARN. A returned parameter matches a requested entry when the entry equals its
+ *   `Name` or its `ARN`.
  * - The map value is the decrypted string value of the parameter.
  *
  * Parameter names that are not found in Parameter Store (or that cannot be returned
@@ -69,7 +71,7 @@ export async function getParameter(parameter_name: string): Promise<string> {
  *
  * @returns A {@link Map} where each key is a parameter name and each value is the
  *   corresponding decrypted string value for that parameter. Only parameters that
- *   are successfully retrieved and have both a `Name` and a `Value` are included.
+ *   are successfully retrieved and have a non-empty `Value` are included.
  *
  * @throws Error Propagates any error thrown by the underlying AWS SDK client,
  *   such as network errors, AWS service errors (e.g., access denied, throttling),
@@ -94,8 +96,13 @@ export async function getParameters(parameter_names: string[]): Promise<Map<stri
     );
 
     for (const param of response.Parameters ?? []) {
-      if (param.Name && param.Value) {
-        result.set(param.Name, param.Value);
+      if (!param.Value) {
+        continue;
+      }
+      for (const requested of chunk) {
+        if (requested === param.Name || requested === param.ARN) {
+          result.set(requested, param.Value);
+        }
       }
     }
   }
