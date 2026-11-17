@@ -290,6 +290,7 @@ variable "config" {
       "MaxSpotInstanceCountExceeded",
       "MaxSpotFleetRequestCountExceeded",
       "InsufficientInstanceCapacity",
+      "VolumeLimitExceeded",
       "InsufficientCapacityOnHost",
     ])
     use_dedicated_host = optional(bool, false)
