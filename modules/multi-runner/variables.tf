@@ -128,6 +128,7 @@ variable "multi_runner_config" {
         "MaxSpotInstanceCountExceeded",
         "MaxSpotFleetRequestCountExceeded",
         "InsufficientInstanceCapacity",
+        "VolumeLimitExceeded",
         "InsufficientCapacityOnHost",
       ])
       enable_organization_runners                                    = optional(bool, false)
@@ -593,6 +594,7 @@ variable "multi_runner_config" {
             "MaxSpotInstanceCountExceeded",
             "MaxSpotFleetRequestCountExceeded",
             "InsufficientInstanceCapacity",
+            "VolumeLimitExceeded",
             "InsufficientCapacityOnHost",
           ])
           subnet_ids = optional(list(string), null)
