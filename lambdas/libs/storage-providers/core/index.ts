@@ -9,6 +9,7 @@ export interface RunnerConfigMetadata {
 export interface RunnerConfigRecord {
   runnerId: string;
   value: string;
+  accessScope?: string;
 }
 
 export interface RunnerConfigStore {
@@ -43,7 +44,8 @@ export interface RunnerConfigConsumer {
 export interface RunnerConfigStorage {
   runnerConfig: RunnerConfigStore;
   runnerGroupCache: RunnerGroupCacheStore;
-  consumer: RunnerConfigConsumer;
+  // Not provided by aws_dynamodb: EC2 runners consume their config in the instance bootstrap.
+  consumer?: RunnerConfigConsumer;
 }
 
 export interface CommonStorage {

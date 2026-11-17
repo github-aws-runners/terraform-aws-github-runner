@@ -32,6 +32,7 @@ export interface StartRunnerConfigOptions {
   runnerConfigStore?: import('@aws-github-runner/storage-providers').RunnerConfigStore;
   runnerGroupCacheStore?: import('@aws-github-runner/storage-providers').RunnerGroupCacheStore;
   getRunnerConfigMetadata?: (runnerId: string) => { key: string; value: string }[];
+  getRunnerConfigAccessScope?: (runnerId: string) => string | undefined;
   onJitConfigCreated?: (runnerId: string, metadata: GitHubRunnerMetadata) => Promise<void>;
 }
 

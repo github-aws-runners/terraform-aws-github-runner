@@ -2,7 +2,10 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { createAwsSsmRunnerConfigStore } from './aws/ssm/runner-config-store';
 
-import { createStorageProviders } from './storage-providers';
+import { createCommonStorage, createStorageProviders } from './storage-providers';
+import { getGitHubAppCredentialsStore } from './github-app-credentials';
+import { getRunnerConfigStore } from './runner-config';
+import { getRunnerGroupCacheStore } from './runner-group-cache';
 
 vi.mock('./aws/ssm/runner-config-store', () => ({
   createAwsSsmRunnerConfigStore: vi.fn(() => ({ create: vi.fn() })),
@@ -16,6 +19,28 @@ vi.mock('./aws/ssm/runner-config-consumer', () => ({
 vi.mock('./aws/ssm/github-app-credentials-store', () => ({
   createAwsSsmGitHubAppCredentialsStore: vi.fn(() => ({ get: vi.fn() })),
 }));
+
+vi.mock('./runner-config', () => ({ getRunnerConfigStore: vi.fn(() => ({ create: vi.fn() })) }));
+vi.mock('./runner-group-cache', () => ({ getRunnerGroupCacheStore: vi.fn(() => ({ get: vi.fn(), create: vi.fn() })) }));
+vi.mock('./github-app-credentials', () => ({ getGitHubAppCredentialsStore: vi.fn(() => ({ get: vi.fn() })) }));
+
+describe('createStorageProviders with aws_dynamodb', () => {
+  it('composes the DynamoDB-backed stores without SSM paths and without a consumer', () => {
+    const storage = createStorageProviders({ RUNNER_CONFIG_STORAGE_PROVIDER: 'aws_dynamodb' });
+
+    expect(getRunnerConfigStore).toHaveBeenCalled();
+    expect(getRunnerGroupCacheStore).toHaveBeenCalled();
+    expect(getGitHubAppCredentialsStore).toHaveBeenCalled();
+    expect(storage.consumer).toBeUndefined();
+    expect(Object.keys(storage).sort()).toEqual(['githubAppCredentials', 'runnerConfig', 'runnerGroupCache']);
+  });
+
+  it('selects the DynamoDB GitHub App credentials store for common storage', () => {
+    createCommonStorage({ RUNNER_CONFIG_STORAGE_PROVIDER: 'aws_dynamodb' });
+
+    expect(getGitHubAppCredentialsStore).toHaveBeenCalled();
+  });
+});
 
 describe('createStorageProviders', () => {
   it('parses environment once and composes independent runner and common capabilities', () => {

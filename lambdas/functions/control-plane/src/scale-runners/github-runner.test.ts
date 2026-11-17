@@ -100,4 +100,56 @@ describe('Test createJitConfig rate-limit metric on error', () => {
     expect(failedRunnerIds).toEqual(['i-1']);
     expect(mockedMetricGitHubAppRateLimit).not.toHaveBeenCalled();
   });
+
+  it('stores the one-time JIT config under the compute access scope when one is provided', async () => {
+    const create = vi.fn();
+    const client = {
+      actions: {
+        generateRunnerJitconfigForRepo: vi.fn().mockResolvedValue({
+          headers: {},
+          data: { runner: { id: 7 }, encoded_jit_config: 'encoded-jit' },
+        }),
+      },
+    } as unknown as Octokit;
+
+    const failedRunnerIds = await createStartRunnerConfig(
+      { ...githubRunnerConfig, ephemeral: true, enableJitConfig: true },
+      ['i-1'],
+      client,
+      {
+        runnerConfigStore: { create } as unknown as RunnerConfigStore,
+        runnerGroupCacheStore: { get: vi.fn().mockResolvedValue(1), create: vi.fn() },
+        getRunnerConfigAccessScope: (id) => `arn:aws:ec2:eu-west-1:123456789012:instance/${id}`,
+      },
+    );
+
+    expect(failedRunnerIds).toEqual([]);
+    expect(create).toHaveBeenCalledWith(
+      {
+        runnerId: 'i-1',
+        value: 'encoded-jit',
+        accessScope: 'arn:aws:ec2:eu-west-1:123456789012:instance/i-1',
+      },
+      expect.anything(),
+    );
+  });
+
+  it('omits the access scope when no scope provider is configured', async () => {
+    const create = vi.fn();
+    const client = {
+      actions: {
+        generateRunnerJitconfigForRepo: vi.fn().mockResolvedValue({
+          headers: {},
+          data: { runner: { id: 7 }, encoded_jit_config: 'encoded-jit' },
+        }),
+      },
+    } as unknown as Octokit;
+
+    await createStartRunnerConfig({ ...githubRunnerConfig, ephemeral: true, enableJitConfig: true }, ['i-1'], client, {
+      runnerConfigStore: { create } as unknown as RunnerConfigStore,
+      runnerGroupCacheStore: { get: vi.fn().mockResolvedValue(1), create: vi.fn() },
+    });
+
+    expect(create.mock.calls[0][0]).toEqual({ runnerId: 'i-1', value: 'encoded-jit' });
+  });
 });
