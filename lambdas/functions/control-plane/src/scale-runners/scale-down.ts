@@ -419,6 +419,12 @@ async function evaluateAndRemoveRunners(
           logger.debug(`Runner '${runner.id}' has bypass-removal tag set, skipping evaluation.`);
           continue;
         }
+        // A newly launched runner may not have received its registration yet.
+        // Defer identity verification until the provider's boot grace expires.
+        if (!hasGitHubRunnerId(runner) && !computeProvider.bootTimeExceeded(runner)) {
+          logger.debug(`Runner ${runner.id} has not yet booted.`);
+          continue;
+        }
         const ghRunners = await listGitHubRunners(runner, computeProvider, remainingTime);
         if (remainingTime() < 10000) return;
         const ghRunnersFiltered = ghRunners.filter((ghRunner) => matchesRunner(runner, ghRunner));
