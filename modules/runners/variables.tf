@@ -326,6 +326,18 @@ variable "scale_up_reserved_concurrent_executions" {
   default     = 1
 }
 
+variable "ssm_parameter_store_max_concurrent_invocations" {
+  description = "Expected number of concurrent scale-up/pool lambda invocations writing to Parameter Store, used to pace each invocation's writes to a share of the account-wide write-rate limit."
+  type        = number
+  default     = 1
+}
+
+variable "ssm_parameter_store_max_writes_per_second" {
+  description = "Parameter Store write rate to pace against, in writes/second, shared by all scale-up and pool invocations. AWS documents a PutParameter quota of 3 TPS per account and Region (10 TPS with higher throughput enabled). The default of 40 keeps the previous pacing; lower it if PutParameter calls are throttled."
+  type        = number
+  default     = 40
+}
+
 variable "lambda_scale_up_memory_size" {
   description = "Memory size limit in MB for scale-up lambda."
   type        = number
