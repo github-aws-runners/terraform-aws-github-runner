@@ -12,6 +12,12 @@ variable "github_app" {
     condition     = var.github_app.key_base64 != null || var.github_app.key_base64_ssm != null
     error_message = "Set github_app.key_base64 or github_app.key_base64_ssm."
   }
+
+  validation {
+    # can() also absorbs the error from reading arn on a null key_base64_ssm
+    condition     = var.github_app.key_base64_ssm == null || can(regex("^arn:aws[a-z-]*:ssm:[a-z0-9-]+:[0-9]{12}:parameter/", var.github_app.key_base64_ssm.arn))
+    error_message = "github_app.key_base64_ssm.arn must be an SSM parameter ARN; the script reads the region from it."
+  }
 }
 
 variable "ssm_assume_role_arn" {

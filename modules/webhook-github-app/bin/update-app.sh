@@ -7,7 +7,7 @@ function testCommand() {
   if ! command -v $1 &> /dev/null
   then
       echo "$1 could not be found"
-      exit
+      exit 1
   fi
 }
 
@@ -76,18 +76,22 @@ if [ -n "$APP_PRIVATE_KEY_SSM_ARN" ]; then
   # The region is the fourth field of arn:aws:ssm:<region>:<account>:parameter/<name>
   SSM_REGION=$(echo "$APP_PRIVATE_KEY_SSM_ARN" | cut -d: -f4)
 
+  getParameter() {
+    aws ssm get-parameter --region "$SSM_REGION" --name "$APP_PRIVATE_KEY_SSM_ARN" --with-decryption --query Parameter.Value --output text
+  }
+
   # Assumed-role credentials are scoped to the get-parameter call only
   if [ -n "$SSM_ASSUME_ROLE_ARN" ]; then
     ROLE_CREDENTIALS=$(aws sts assume-role \
+      --region "$SSM_REGION" \
       --role-arn "$SSM_ASSUME_ROLE_ARN" \
       --role-session-name webhook-github-app \
       --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' \
       --output text)
     read -r ROLE_ACCESS_KEY_ID ROLE_SECRET_ACCESS_KEY ROLE_SESSION_TOKEN <<< "$ROLE_CREDENTIALS"
-    APP_PRIVATE_KEY_BASE64=$(AWS_ACCESS_KEY_ID="$ROLE_ACCESS_KEY_ID" AWS_SECRET_ACCESS_KEY="$ROLE_SECRET_ACCESS_KEY" AWS_SESSION_TOKEN="$ROLE_SESSION_TOKEN" \
-      aws ssm get-parameter --region "$SSM_REGION" --name "$APP_PRIVATE_KEY_SSM_ARN" --with-decryption --query Parameter.Value --output text)
+    APP_PRIVATE_KEY_BASE64=$(AWS_ACCESS_KEY_ID="$ROLE_ACCESS_KEY_ID" AWS_SECRET_ACCESS_KEY="$ROLE_SECRET_ACCESS_KEY" AWS_SESSION_TOKEN="$ROLE_SESSION_TOKEN" getParameter)
   else
-    APP_PRIVATE_KEY_BASE64=$(aws ssm get-parameter --region "$SSM_REGION" --name "$APP_PRIVATE_KEY_SSM_ARN" --with-decryption --query Parameter.Value --output text)
+    APP_PRIVATE_KEY_BASE64=$(getParameter)
   fi
 fi
 

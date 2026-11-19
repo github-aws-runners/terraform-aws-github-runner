@@ -1,8 +1,13 @@
 resource "null_resource" "update_app" {
-  triggers = {
-    webhook_endpoint = var.webhook_endpoint
-    webhook_secret   = var.github_app.webhook_secret
-  }
+  # The SSM keys are added only when set, so callers using key_base64 keep their existing triggers
+  triggers = merge(
+    {
+      webhook_endpoint = var.webhook_endpoint
+      webhook_secret   = var.github_app.webhook_secret
+    },
+    var.github_app.key_base64_ssm != null ? { key_base64_ssm_arn = var.github_app.key_base64_ssm.arn } : {},
+    var.ssm_assume_role_arn != null ? { ssm_assume_role_arn = var.ssm_assume_role_arn } : {},
+  )
 
   provisioner "local-exec" {
     interpreter = ["bash", "-c"]
