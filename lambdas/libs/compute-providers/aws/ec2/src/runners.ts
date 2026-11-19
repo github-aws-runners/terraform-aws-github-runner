@@ -22,7 +22,8 @@ import { getParameter } from '@aws-github-runner/aws-ssm-util';
 import moment from 'moment';
 
 import type { RunnerInfo } from '../../../core';
-import { getDefaultBlockDeviceNameFromLaunchTemplate } from './launch-template';
+import { getDefaultBlockDeviceNameFromLaunchTemplate, getTagsFromLaunchTemplate } from './launch-template';
+import type { LaunchTemplateTags } from './launch-template';
 import type { Ec2RunnerCreateResult, Ec2RunnerFailureCode } from './runner-create-result';
 import type { Ec2ListRunnerFilters, Ec2OverrideConfig, RunnerInputParameters } from './runners.d';
 
@@ -586,23 +587,55 @@ async function getAmiIdOverride(runnerParameters: RunnerInputParameters): Promis
   }
 }
 
+// The launch template carries the tags defined in Terraform (tags, runner_ec2_tags). Launch requests that
+// specify TagSpecifications are evaluated on their own, so organization policies that check aws:RequestTag
+// (e.g. mandatory-tag SCPs) would not see the template tags. Merge them into the request; module-owned
+// ghr:* tags are applied last and win.
+async function resolveLaunchTemplateTags(
+  ec2Client: EC2Client,
+  launchTemplateName: string,
+  signal: AbortSignal | undefined,
+): Promise<LaunchTemplateTags> {
+  try {
+    return await getTagsFromLaunchTemplate(ec2Client, launchTemplateName, signal);
+  } catch (e) {
+    signal?.throwIfAborted();
+    logger.warn('Unable to read tag specifications from the launch template, only module-owned tags are sent.', {
+      launchTemplateName,
+      error: (e as Error).message,
+    });
+    return { instance: [], volume: [] };
+  }
+}
+
+function buildRunnerTags(runnerParameters: RunnerInputParameters, templateTags: Tag[]): Tag[] {
+  const tags: Record<string, string> = {};
+  for (const { Key, Value } of templateTags) {
+    if (Key !== undefined) tags[Key] = Value ?? '';
+  }
+  Object.assign(tags, {
+    'ghr:Application': 'github-action-runner',
+    'ghr:created_by': runnerParameters.source,
+    'ghr:environment': runnerParameters.environment,
+    'ghr:Type': runnerParameters.runnerType,
+    'ghr:Owner': runnerParameters.runnerOwner,
+  });
+  if (runnerParameters.tracingEnabled) {
+    const traceId = tracer.getRootXrayTraceId();
+    tags['ghr:trace_id'] = traceId!;
+  }
+  return Object.entries(tags).map(([Key, Value]) => ({ Key, Value }));
+}
+
 async function createInstances(
   runnerParameters: RunnerInputParameters,
   amiIdOverride: string | undefined,
   ec2Client: EC2Client,
   signal: AbortSignal | undefined,
 ) {
-  const tags = [
-    { Key: 'ghr:Application', Value: 'github-action-runner' },
-    { Key: 'ghr:created_by', Value: runnerParameters.source },
-    { Key: 'ghr:environment', Value: runnerParameters.environment },
-    { Key: 'ghr:Type', Value: runnerParameters.runnerType },
-    { Key: 'ghr:Owner', Value: runnerParameters.runnerOwner },
-  ];
-  if (runnerParameters.tracingEnabled) {
-    const traceId = tracer.getRootXrayTraceId();
-    tags.push({ Key: 'ghr:trace_id', Value: traceId! });
-  }
+  const templateTags = await resolveLaunchTemplateTags(ec2Client, runnerParameters.launchTemplateName, signal);
+  const instanceTags = buildRunnerTags(runnerParameters, templateTags.instance);
+  const volumeTags = buildRunnerTags(runnerParameters, templateTags.volume);
 
   const targetCapacityType = runnerParameters.ec2instanceCriteria.targetCapacityType;
   const allocationStrategy = sanitizeAllocationStrategy(
@@ -647,15 +680,15 @@ async function createInstances(
     TagSpecifications: [
       {
         ResourceType: 'instance',
-        Tags: tags,
+        Tags: instanceTags,
       },
       {
         ResourceType: 'volume',
-        Tags: tags,
+        Tags: volumeTags,
       },
       {
         ResourceType: 'fleet',
-        Tags: tags,
+        Tags: instanceTags,
       },
     ],
     Type: 'instant',
@@ -671,17 +704,9 @@ async function createInstancesWithRunInstances(
   ec2Client: EC2Client,
   signal: AbortSignal | undefined,
 ): Promise<Ec2RunnerCreateResult> {
-  const tags = [
-    { Key: 'ghr:Application', Value: 'github-action-runner' },
-    { Key: 'ghr:created_by', Value: runnerParameters.source },
-    { Key: 'ghr:environment', Value: runnerParameters.environment },
-    { Key: 'ghr:Type', Value: runnerParameters.runnerType },
-    { Key: 'ghr:Owner', Value: runnerParameters.runnerOwner },
-  ];
-  if (runnerParameters.tracingEnabled) {
-    const traceId = tracer.getRootXrayTraceId();
-    tags.push({ Key: 'ghr:trace_id', Value: traceId! });
-  }
+  const templateTags = await resolveLaunchTemplateTags(ec2Client, runnerParameters.launchTemplateName, signal);
+  const instanceTags = buildRunnerTags(runnerParameters, templateTags.instance);
+  const volumeTags = buildRunnerTags(runnerParameters, templateTags.volume);
 
   if (runnerParameters.ec2instanceCriteria.targetCapacityType === 'spot') {
     logger.warn(
@@ -706,11 +731,11 @@ async function createInstancesWithRunInstances(
       TagSpecifications: [
         {
           ResourceType: 'instance',
-          Tags: tags,
+          Tags: instanceTags,
         },
         {
           ResourceType: 'volume',
-          Tags: tags,
+          Tags: volumeTags,
         },
       ],
     });

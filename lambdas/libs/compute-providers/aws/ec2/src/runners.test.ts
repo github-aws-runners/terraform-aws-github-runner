@@ -582,6 +582,101 @@ describe('create runner', () => {
     });
   });
 
+  describe('launch template tag specifications', () => {
+    const mockLaunchTemplateTags = () =>
+      mockEC2Client.on(DescribeLaunchTemplateVersionsCommand).resolves({
+        LaunchTemplateVersions: [
+          {
+            LaunchTemplateData: {
+              TagSpecifications: [
+                {
+                  ResourceType: 'instance',
+                  Tags: [
+                    { Key: 'app', Value: 'my-app' },
+                    { Key: 'team', Value: 'my-team' },
+                  ],
+                },
+                {
+                  ResourceType: 'volume',
+                  Tags: [
+                    { Key: 'app', Value: 'my-app' },
+                    { Key: 'volume_only', Value: 'yes' },
+                  ],
+                },
+                { ResourceType: 'network-interface', Tags: [{ Key: 'eni_only', Value: 'yes' }] },
+              ],
+            },
+          },
+        ],
+      });
+
+    const fleetTags = (resourceType: string) =>
+      mockEC2Client
+        .commandCalls(CreateFleetCommand)[0]
+        .args[0].input.TagSpecifications?.find((spec) => spec.ResourceType === resourceType)?.Tags;
+
+    it('reads the default version of the launch template used for the request', async () => {
+      await ec2Operations.create(createRunnerConfig(defaultRunnerConfig));
+
+      expect(mockEC2Client).toHaveReceivedCommandWith(DescribeLaunchTemplateVersionsCommand, {
+        LaunchTemplateName: LAUNCH_TEMPLATE,
+        Versions: ['$Default'],
+      });
+    });
+
+    it('merges launch template tags into the instance, volume and fleet tags of the CreateFleet request', async () => {
+      mockLaunchTemplateTags();
+
+      await ec2Operations.create(createRunnerConfig(defaultRunnerConfig));
+
+      expect(fleetTags('instance')).toEqual(
+        expect.arrayContaining([
+          { Key: 'app', Value: 'my-app' },
+          { Key: 'team', Value: 'my-team' },
+          { Key: 'ghr:Application', Value: 'github-action-runner' },
+        ]),
+      );
+      expect(fleetTags('volume')).toEqual(
+        expect.arrayContaining([
+          { Key: 'app', Value: 'my-app' },
+          { Key: 'volume_only', Value: 'yes' },
+          { Key: 'ghr:Application', Value: 'github-action-runner' },
+        ]),
+      );
+      expect(fleetTags('volume')).not.toContainEqual({ Key: 'team', Value: 'my-team' });
+      expect(fleetTags('fleet')).toEqual(fleetTags('instance'));
+      expect(fleetTags('instance')).not.toContainEqual({ Key: 'eni_only', Value: 'yes' });
+    });
+
+    it('lets module-owned ghr tags take precedence over launch template tags', async () => {
+      mockEC2Client.on(DescribeLaunchTemplateVersionsCommand).resolves({
+        LaunchTemplateVersions: [
+          {
+            LaunchTemplateData: {
+              TagSpecifications: [{ ResourceType: 'instance', Tags: [{ Key: 'ghr:Application', Value: 'spoofed' }] }],
+            },
+          },
+        ],
+      });
+
+      await ec2Operations.create(createRunnerConfig(defaultRunnerConfig));
+
+      expect(fleetTags('instance')?.filter((tag) => tag.Key === 'ghr:Application')).toEqual([
+        { Key: 'ghr:Application', Value: 'github-action-runner' },
+      ]);
+    });
+
+    it('falls back to module-owned tags when the launch template cannot be described', async () => {
+      mockEC2Client.on(DescribeLaunchTemplateVersionsCommand).rejects(new Error('AccessDenied'));
+
+      await ec2Operations.create(createRunnerConfig(defaultRunnerConfig));
+
+      expect(mockEC2Client).toHaveReceivedCommandWith(CreateFleetCommand, {
+        ...expectedCreateFleetRequest(defaultExpectedFleetRequestValues),
+      });
+    });
+  });
+
   it('calls create fleet with source set to scale-up-lambda when source is specified', async () => {
     await ec2Operations.create(createRunnerConfig({ ...defaultRunnerConfig, source: 'scale-up-lambda' }));
 
@@ -1155,7 +1250,7 @@ describe('create runner with errors fail over to OnDemand', () => {
     expect(mockEC2Client).toHaveReceivedCommandTimes(CreateFleetCommand, 2);
 
     // first call with spot failure
-    expect(mockEC2Client).toHaveReceivedNthCommandWith(1, CreateFleetCommand, {
+    expect(mockEC2Client).toHaveReceivedNthCommandWith(2, CreateFleetCommand, {
       ...expectedCreateFleetRequest({
         ...defaultExpectedFleetRequestValues,
         totalTargetCapacity: 1,
@@ -1164,7 +1259,7 @@ describe('create runner with errors fail over to OnDemand', () => {
     });
 
     // second call with with OnDemand fallback, allocation strategy defaults to lowest-price
-    expect(mockEC2Client).toHaveReceivedNthCommandWith(2, CreateFleetCommand, {
+    expect(mockEC2Client).toHaveReceivedNthCommandWith(4, CreateFleetCommand, {
       ...expectedCreateFleetRequest({
         ...defaultExpectedFleetRequestValues,
         totalTargetCapacity: 1,
@@ -1208,7 +1303,7 @@ describe('create runner with errors fail over to OnDemand', () => {
     expect(mockEC2Client).toHaveReceivedCommandTimes(CreateFleetCommand, 2);
 
     // first call with spot failure
-    expect(mockEC2Client).toHaveReceivedNthCommandWith(1, CreateFleetCommand, {
+    expect(mockEC2Client).toHaveReceivedNthCommandWith(2, CreateFleetCommand, {
       ...expectedCreateFleetRequest({
         ...defaultExpectedFleetRequestValues,
         totalTargetCapacity: 2,
@@ -1217,7 +1312,7 @@ describe('create runner with errors fail over to OnDemand', () => {
     });
 
     // second call with with OnDemand failback, capacity is reduced by 1, allocation strategy defaults to lowest-price
-    expect(mockEC2Client).toHaveReceivedNthCommandWith(2, CreateFleetCommand, {
+    expect(mockEC2Client).toHaveReceivedNthCommandWith(4, CreateFleetCommand, {
       ...expectedCreateFleetRequest({
         ...defaultExpectedFleetRequestValues,
         totalTargetCapacity: 1,
@@ -1246,7 +1341,7 @@ describe('create runner with errors fail over to OnDemand', () => {
     expect(mockEC2Client).toHaveReceivedCommandTimes(CreateFleetCommand, 1);
 
     // first call with spot failure
-    expect(mockEC2Client).toHaveReceivedNthCommandWith(1, CreateFleetCommand, {
+    expect(mockEC2Client).toHaveReceivedNthCommandWith(2, CreateFleetCommand, {
       ...expectedCreateFleetRequest({
         ...defaultExpectedFleetRequestValues,
         totalTargetCapacity: 2,
@@ -1476,6 +1571,31 @@ describe('create runner with useDedicatedHost', () => {
     });
     expect(mockEC2Client).toHaveReceivedCommand(RunInstancesCommand);
     expect(mockEC2Client).not.toHaveReceivedCommand(CreateFleetCommand);
+  });
+
+  it('merges launch template tags into the RunInstances request', async () => {
+    mockEC2Client.on(DescribeLaunchTemplateVersionsCommand).resolves({
+      LaunchTemplateVersions: [
+        {
+          LaunchTemplateData: {
+            TagSpecifications: [
+              { ResourceType: 'instance', Tags: [{ Key: 'app', Value: 'my-app' }] },
+              { ResourceType: 'volume', Tags: [{ Key: 'volume_only', Value: 'yes' }] },
+            ],
+          },
+        },
+      ],
+    });
+
+    await ec2Operations.create(createRunnerConfig(dedicatedHostRunnerConfig));
+
+    const specs = mockEC2Client.commandCalls(RunInstancesCommand)[0].args[0].input.TagSpecifications;
+    expect(specs?.find((spec) => spec.ResourceType === 'instance')?.Tags).toEqual(
+      expect.arrayContaining([{ Key: 'app', Value: 'my-app' }]),
+    );
+    expect(specs?.find((spec) => spec.ResourceType === 'volume')?.Tags).toEqual(
+      expect.arrayContaining([{ Key: 'volume_only', Value: 'yes' }]),
+    );
   });
 
   it('uses CreateFleet when useDedicatedHost is false', async () => {
