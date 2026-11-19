@@ -1,5 +1,14 @@
 # Changelog
 
+## [8.1.2](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v8.1.1...v8.1.2) (2026-11-19)
+
+
+### Bug Fixes
+
+* **runners:** pace Parameter Store writes against the account-wide limit ([#5408](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5408)) ([e167368](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/e1673687ee7f439fae58e3fa57599f632d27b5d6))
+* **runners:** set security groups on the interfaces when network_interfaces is set ([#5561](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5561)) ([1ef888c](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/1ef888c0eabd3aa0026015fd1c3e560cc165c559))
+* **webhook:** replace matcher config chunks before deleting the old ones ([#5521](https://github.com/github-aws-runners/terraform-aws-github-runner/issues/5521)) ([fd1ef39](https://github.com/github-aws-runners/terraform-aws-github-runner/commit/fd1ef39ddb63216d054a16f1d939524ad0bf931d))
+
 ## [8.1.1](https://github.com/github-aws-runners/terraform-aws-github-runner/compare/v8.1.0...v8.1.1) (2026-11-12)
 
 
