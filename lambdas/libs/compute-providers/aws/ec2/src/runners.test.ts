@@ -23,6 +23,7 @@ import 'aws-sdk-client-mock-jest/vitest';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RunnerInfo, RunnerSource, RunnerType } from '../../../core';
+import { toControlPlaneCreateRunnerResult } from './control-plane/create-result';
 import { createEc2RunnerClient } from './runners';
 import type { Ec2OverrideConfig, RunnerInputParameters } from './runners.d';
 
@@ -1090,6 +1091,72 @@ describe('create runner with errors', () => {
     expect(mockSSMClient).not.toHaveReceivedCommand(PutParameterCommand);
   });
 
+  describe('when an SDK error lost its name in the bundled lambda', () => {
+    const unnamedSdkError = (code: string, fields: object = {}) =>
+      Object.assign(new Error(code), { $fault: 'client', $metadata: { httpStatusCode: 403 }, ...fields });
+
+    it('returns the code of a request-level CreateFleet failure that only carries it in the message', async () => {
+      mockEC2Client.on(CreateFleetCommand).rejects(unnamedSdkError('UnauthorizedOperation'));
+
+      await expect(ec2Operations.create(createRunnerConfig(defaultRunnerConfig))).resolves.toEqual({
+        instances: [],
+        failedInstanceCount: 1,
+        failureCodes: expect.arrayContaining(['aws-name:UnauthorizedOperation', 'aws-fault:client', 'aws-http:403']),
+      });
+    });
+
+    it('returns the code of a CreateFleet failure that carries it in Code with a generic message', async () => {
+      mockEC2Client
+        .on(CreateFleetCommand)
+        .rejects(
+          unnamedSdkError('You are not authorized to perform this operation.', { Code: 'UnauthorizedOperation' }),
+        );
+
+      await expect(ec2Operations.create(createRunnerConfig(defaultRunnerConfig))).resolves.toEqual({
+        instances: [],
+        failedInstanceCount: 1,
+        failureCodes: expect.arrayContaining(['aws-name:UnauthorizedOperation']),
+      });
+    });
+
+    it('does not turn an ordinary error message into a failure code', async () => {
+      mockEC2Client.on(CreateFleetCommand).rejects(unnamedSdkError('Request failed with a socket hang up'));
+
+      const result = await ec2Operations.create(createRunnerConfig(defaultRunnerConfig));
+
+      expect(result.failureCodes.filter((code) => code.startsWith('aws-name:'))).toEqual(['aws-name:Error']);
+    });
+
+    it('classifies the failure as retryable when the code is listed in scale_errors', async () => {
+      mockEC2Client.on(CreateFleetCommand).rejects(unnamedSdkError('UnauthorizedOperation'));
+
+      const result = await ec2Operations.create(createRunnerConfig(defaultRunnerConfig));
+
+      expect(toControlPlaneCreateRunnerResult(result, ['UnauthorizedOperation'])).toEqual({
+        instances: [],
+        retryableErrorCount: 1,
+        nonRetryableErrorCount: 0,
+      });
+      expect(toControlPlaneCreateRunnerResult(result, [])).toEqual({
+        instances: [],
+        retryableErrorCount: 0,
+        nonRetryableErrorCount: 1,
+      });
+    });
+
+    it('returns the failure chain when the AMI parameter is missing and the SDK error lost its name', async () => {
+      const cause = Object.assign(new Error('ParameterNotFound'), { __type: 'ParameterNotFound' });
+      mockSSMClient.on(GetParameterCommand).rejects(cause);
+
+      const result = await ec2Operations.create(
+        createRunnerConfig({ ...defaultRunnerConfig, amiIdSsmParameterName: 'missing-ami-id-param' }),
+      );
+
+      expect(result.failureCodes).toContain('aws-name:ParameterNotFound');
+      expect(mockEC2Client).not.toHaveReceivedCommand(CreateFleetCommand);
+    });
+  });
+
   it('reports a missing instance when Fleet omits Instances and Errors', async () => {
     mockEC2Client.on(CreateFleetCommand).resolvesOnce({ Instances: undefined, Errors: undefined });
     await expect(ec2Operations.create(createRunnerConfig(defaultRunnerConfig))).resolves.toEqual({
@@ -1476,6 +1543,20 @@ describe('create runner with useDedicatedHost', () => {
     });
     expect(mockEC2Client).toHaveReceivedCommand(RunInstancesCommand);
     expect(mockEC2Client).not.toHaveReceivedCommand(CreateFleetCommand);
+  });
+
+  it('returns the code of a RunInstances failure whose SDK error lost its name', async () => {
+    mockEC2Client
+      .on(RunInstancesCommand)
+      .rejects(
+        Object.assign(new Error('UnauthorizedOperation'), { $fault: 'client', $metadata: { httpStatusCode: 403 } }),
+      );
+
+    await expect(ec2Operations.create(createRunnerConfig(dedicatedHostRunnerConfig))).resolves.toEqual({
+      instances: [],
+      failedInstanceCount: 1,
+      failureCodes: expect.arrayContaining(['aws-name:UnauthorizedOperation']),
+    });
   });
 
   it('uses CreateFleet when useDedicatedHost is false', async () => {

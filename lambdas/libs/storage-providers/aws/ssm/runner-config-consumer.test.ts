@@ -87,6 +87,65 @@ describe('SSM runner config consumer', () => {
     expect(deleteParameter).toHaveBeenCalledWith('/runner/tokens/runner-123', expect.any(AbortSignal));
   });
 
+  it('keeps polling when a missing parameter arrives as an SDK error that lost its name', async () => {
+    const cause = Object.assign(new Error('ParameterNotFound'), { __type: 'ParameterNotFound' });
+    const missing = Object.assign(new Error('ParameterNotFound', { cause }), { name: 'GetParameterError' });
+    const getParameter = vi
+      .fn<AwsSsmRunnerConfigApi['getParameter']>()
+      .mockRejectedValueOnce(missing)
+      .mockResolvedValueOnce('encoded-jit');
+    const deleteParameter = vi.fn<AwsSsmRunnerConfigApi['deleteParameter']>().mockResolvedValue(undefined);
+    const consumer = createAwsSsmRunnerConfigConsumer(
+      { SSM_TOKEN_PATH: '/runner/tokens' },
+      { api: { getParameter, deleteParameter }, callTimeoutMs: 100, configTimeoutMs: 500, pollIntervalMs: 1 },
+    );
+
+    await expect(
+      consumer.consume('runner-123', { deadlineMs: Date.now() + 1_000, signal: new AbortController().signal }),
+    ).resolves.toBe('encoded-jit');
+    expect(getParameter).toHaveBeenCalledTimes(2);
+  });
+
+  it('retries a throttled delete reported by an SDK error that lost its name', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+    const throttled = Object.assign(new Error('ThrottlingException'), { __type: 'ThrottlingException' });
+    const api: AwsSsmRunnerConfigApi = {
+      getParameter: vi.fn().mockResolvedValue('encoded-jit'),
+      deleteParameter: vi.fn().mockRejectedValueOnce(throttled).mockResolvedValueOnce(undefined),
+    };
+    const consumer = createAwsSsmRunnerConfigConsumer(
+      { SSM_TOKEN_PATH: '/runner/tokens' },
+      { api, callTimeoutMs: 100, configTimeoutMs: 2_000, deleteAttempts: 2, pollIntervalMs: 1 },
+    );
+
+    const pending = consumer.consume('runner-123', {
+      deadlineMs: Date.now() + 3_000,
+      signal: new AbortController().signal,
+    });
+    await vi.runAllTimersAsync();
+
+    await expect(pending).resolves.toBe('encoded-jit');
+    expect(api.deleteParameter).toHaveBeenCalledTimes(2);
+  });
+
+  it('still fails on an unnamed access error instead of polling until the deadline', async () => {
+    const denied = Object.assign(new Error('AccessDeniedException'), { __type: 'AccessDeniedException' });
+    const api: AwsSsmRunnerConfigApi = {
+      getParameter: vi.fn().mockRejectedValue(denied),
+      deleteParameter: vi.fn(),
+    };
+    const consumer = createAwsSsmRunnerConfigConsumer(
+      { SSM_TOKEN_PATH: '/runner/tokens' },
+      { api, callTimeoutMs: 100, configTimeoutMs: 100, pollIntervalMs: 1 },
+    );
+
+    await expect(
+      consumer.consume('runner-123', { deadlineMs: Date.now() + 1_000, signal: new AbortController().signal }),
+    ).rejects.toMatchObject({ message: 'failed to read runner configuration from SSM' });
+    expect(api.getParameter).toHaveBeenCalledOnce();
+  });
+
   it('retries a transient delete failure without returning the value early', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));

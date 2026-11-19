@@ -49,6 +49,28 @@ describe('Test getParameter and putParameter', () => {
     expect(result).toBe(parameterValue);
   });
 
+  it('wraps a missing parameter in a GetParameterError that keeps the SDK error as its cause', async () => {
+    const cause = Object.assign(new Error('Parameter not found.'), { name: 'ParameterNotFound' });
+    mockSSMClient.on(GetParameterCommand).rejects(cause);
+
+    await expect(getParameter('missingParam')).rejects.toMatchObject({
+      name: 'GetParameterError',
+      message: 'Parameter not found.',
+      cause,
+    });
+  });
+
+  it('copies the message of an SDK error that lost its name into the GetParameterError', async () => {
+    const cause = Object.assign(new Error('ParameterNotFound'), { __type: 'ParameterNotFound' });
+    mockSSMClient.on(GetParameterCommand).rejects(cause);
+
+    await expect(getParameter('missingParam')).rejects.toMatchObject({
+      name: 'GetParameterError',
+      message: 'ParameterNotFound',
+      cause: { name: 'Error', message: 'ParameterNotFound', __type: 'ParameterNotFound' },
+    });
+  });
+
   it('Puts parameters and returns error on failure', async () => {
     // Arrange
     const parameterValue = 'test';
