@@ -118,7 +118,7 @@ variable "config" {
     - `license_specifications`: License Manager configurations added to the launch template.
     - `license_specifications[].license_configuration_arn`: ARN of an AWS License Manager license configuration.
     - `associate_public_ipv4_address`: Associates a public IPv4 address with runner network interfaces.
-    - `network_interfaces`: Advanced network interface configuration for the launch template. Leave empty to keep using `associate_public_ipv4_address` for a simple single-interface setup.
+    - `network_interfaces`: Advanced network interface configuration for the launch template. Leave empty to keep using `associate_public_ipv4_address` for a simple single-interface setup. When set, security groups are set on the interfaces, not on the instance. An interface without `security_groups` gets the managed security group and `additional_security_group_ids`, unless it attaches an existing `network_interface_id`.
     - `on_demand_failover_for_errors`: EC2 errors that trigger on-demand fallback after a Spot failure.
     - `scale_errors`: EC2 errors treated as retryable scale-up failures.
     - `use_dedicated_host`: Enables the dedicated-host launch path.
