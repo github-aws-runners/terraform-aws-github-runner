@@ -102,7 +102,7 @@ variable "compute_provider" {
     - `aws.ec2.license_specifications`: License Manager configurations added to the launch template.
     - `aws.ec2.license_specifications[].license_configuration_arn`: ARN of a License Manager license configuration.
     - `aws.ec2.associate_public_ipv4_address`: Associates a public IPv4 address with runner network interfaces.
-    - `aws.ec2.network_interfaces`: Advanced network interface configuration for the launch template. Leave empty to keep using `associate_public_ipv4_address` for a simple single-interface setup.
+    - `aws.ec2.network_interfaces`: Advanced network interface configuration for the launch template. Leave empty to keep using `associate_public_ipv4_address` for a simple single-interface setup. When set, security groups are set on the interfaces, not on the instance. An interface without `security_groups` gets the managed security group and `aws.ec2.additional_security_group_ids`, unless it attaches an existing `network_interface_id`.
     - `aws.ec2.on_demand_failover_for_errors`: EC2 error codes that trigger an on-demand fallback after a Spot launch failure.
     - `aws.ec2.scale_errors`: EC2 error codes treated as retryable scale-up failures.
     - `aws.ec2.use_dedicated_host`: Enables the dedicated-host launch path, required for macOS runners.
