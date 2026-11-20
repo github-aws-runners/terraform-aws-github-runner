@@ -60,6 +60,7 @@ module "pool" {
     subnet_ids                                     = var.subnet_ids
     ssm_token_path                                 = "${var.ssm_paths.root}/${var.ssm_paths.tokens}"
     ssm_ttl_seconds                                = var.ssm_ttl_seconds
+    runner_config_ssm_parameter_tier               = var.runner_config_ssm_parameter_tier
     ssm_config_path                                = "${var.ssm_paths.root}/${var.ssm_paths.config}"
     ssm_parameter_store_max_concurrent_invocations = var.ssm_parameter_store_max_concurrent_invocations
     ssm_parameter_store_max_writes_per_second      = var.ssm_parameter_store_max_writes_per_second

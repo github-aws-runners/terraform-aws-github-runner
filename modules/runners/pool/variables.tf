@@ -75,6 +75,7 @@ variable "config" {
     ssm_ttl_seconds = optional(object({
       tokens = optional(number, null)
     }), {})
+    runner_config_ssm_parameter_tier               = optional(string, null)
     ssm_config_path                                = string
     ssm_parameter_store_max_concurrent_invocations = optional(number, 1)
     ssm_parameter_store_max_writes_per_second      = optional(number, 40)

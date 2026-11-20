@@ -30,6 +30,13 @@ When upgrading the housekeeper Lambda, also apply the Terraform IAM changes gran
 Furthermore, to accommodate larger JIT configurations or other stored values, the module implements automatic tier selection for SSM parameters:
 
 - **Parameter Tiering**: If the size of a parameter's value exceeds 4KB (specifically, 4000 bytes), the module will automatically use the 'Advanced' tier for that SSM parameter. Values smaller than this threshold will use the 'Standard' tier.
+- **Overriding the tier**: Set `runner_config_ssm_parameter_tier` to `Standard` or `Advanced` to skip the size-based selection and always write the runner registration token / JIT config parameters (the parameters written by the scale-up and pool Lambdas under the token path) with that tier. Leave it unset (`null`, the default) to keep the automatic selection. Other parameters are not affected. For example, to keep all runner config parameters on the Standard tier:
+
+    ```hcl
+    runner_config_ssm_parameter_tier = "Standard"
+    ```
+
+    Forcing `Standard` makes writing a parameter fail when its value exceeds the Standard tier limit of 4 KB, which can happen for large JIT configurations, so only use it if your configurations stay below that limit. It also cannot be combined with `ssm_ttl_seconds.tokens`, because SSM expiration policies require the Advanced tier. For the experimental multi-runner configuration use `runner_config.runner_config_ssm_parameter_tier` (stable shape) or `storage_provider.aws.ssm.runner_config_tier` (v2 shape) per runner configuration.
 - **Cost Implications**: While the 'Standard' tier is generally free for a certain number of parameters and operations, the 'Advanced' tier incurs costs. These costs are typically pro-rated per hour for each parameter stored using the Advanced tier. For detailed and up-to-date pricing, please refer to the [AWS Systems Manager Pricing page](https://aws.amazon.com/systems-manager/pricing/#Parameter_Store).
 - **Housekeeping Recommendation**: The last sentence of the "AWS SSM Parameters" section already mentions that "data not deleted after a day will be deleted by a SSM housekeeper lambda." It is crucial to ensure this or a similar housekeeping mechanism is active and correctly configured, especially considering the potential costs associated with 'Advanced' tier parameters. This utility should identify and delete any orphaned parameters to help manage costs and maintain a clean SSM environment.
 
