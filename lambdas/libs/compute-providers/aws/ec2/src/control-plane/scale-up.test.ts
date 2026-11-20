@@ -24,6 +24,7 @@ const repositoryRunnerOwner = 'Codertocat/hello-world';
 const cleanEnv = process.env;
 const ec2Operations: Ec2RunnerProvisioningOperations = {
   list: mockListRunners,
+  describe: vi.fn<Ec2RunnerProvisioningOperations['describe']>(),
   create: mockCreateRunner,
   terminate: mockTerminateRunner,
   tag: mockTag,

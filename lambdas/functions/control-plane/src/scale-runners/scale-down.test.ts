@@ -59,6 +59,7 @@ const mockComputeProvider = {
   unmarkOrphan: vi.fn(),
   markIdle: vi.fn(),
   unmarkIdle: vi.fn(),
+  describe: vi.fn(),
   terminate: vi.fn(),
 } satisfies Omit<ScaleDownComputeProvider, 'type'>;
 
@@ -72,6 +73,7 @@ const mockMarkOrphan = vi.mocked(mockComputeProvider.markOrphan);
 const mockUnmarkOrphan = vi.mocked(mockComputeProvider.unmarkOrphan);
 const mockMarkIdle = vi.mocked(mockComputeProvider.markIdle);
 const mockUnmarkIdle = vi.mocked(mockComputeProvider.unmarkIdle);
+const mockDescribeRunner = vi.mocked(mockComputeProvider.describe);
 const mockTerminateRunners = vi.mocked(mockComputeProvider.terminate);
 
 const cleanEnv = process.env;
@@ -289,6 +291,7 @@ describe('Scale down runners', () => {
     delete runner.githubRunnerId;
     mockGitHubRunners([runner]);
     mockListRunners.mockResolvedValueOnce([]).mockResolvedValueOnce([runner]).mockResolvedValue([]);
+    mockDescribeRunner.mockResolvedValue(runner);
     await scaleDown();
     expect(mockOctokit.paginate).toHaveBeenCalledWith(
       expect.anything(),
@@ -327,10 +330,12 @@ describe('Scale down runners', () => {
     mockOctokit.actions.getSelfHostedRunnerForOrg.mockResolvedValue({
       data: { id: 42, name: runner.id, busy: true, status: 'offline' },
     });
-    mockedResolveCapability.mockReturnValue(() => ({
-      ...mockComputeProvider,
-      listPage: vi.fn().mockResolvedValue({ runners: [runner] }),
-    }));
+    mockedResolveCapability.mockReturnValue(() =>
+      withPagedDescribe({
+        ...mockComputeProvider,
+        listPage: vi.fn().mockResolvedValue({ runners: [runner] }),
+      }),
+    );
     await scaleDown();
     expect(mockTerminateRunners).toHaveBeenCalledWith(runner.id);
     expect(mockUnmarkOrphan).not.toHaveBeenCalled();
@@ -345,7 +350,7 @@ describe('Scale down runners', () => {
       .fn()
       .mockResolvedValueOnce({ runners: [], nextToken: 'next' })
       .mockResolvedValueOnce({ runners: [] });
-    mockedResolveCapability.mockReturnValue(() => ({ ...mockComputeProvider, listPage }));
+    mockedResolveCapability.mockReturnValue(() => withPagedDescribe({ ...mockComputeProvider, listPage }));
     await scaleDown();
     expect(strategy).toHaveBeenCalledTimes(1);
     strategy.mockRestore();
@@ -358,10 +363,12 @@ describe('Scale down runners', () => {
     const registered = { id: 42, name: 'build-worker', status: 'online', busy: true };
     mockOctokit.paginate.mockResolvedValue([registered]);
     mockOctokit.actions.getSelfHostedRunnerForOrg.mockResolvedValue({ data: registered });
-    mockedResolveCapability.mockReturnValue(() => ({
-      ...mockComputeProvider,
-      listPage: vi.fn().mockResolvedValue({ runners: [runner] }),
-    }));
+    mockedResolveCapability.mockReturnValue(() =>
+      withPagedDescribe({
+        ...mockComputeProvider,
+        listPage: vi.fn().mockResolvedValue({ runners: [runner] }),
+      }),
+    );
     await scaleDown();
     runner.orphan = true;
     await scaleDown();
@@ -399,11 +406,13 @@ describe('Scale down runners', () => {
     });
     if (!fails)
       mockTerminateRunners.mockRejectedValueOnce(new Error('termination failed')).mockResolvedValue(undefined);
-    mockedResolveCapability.mockReturnValue(() => ({
-      ...mockComputeProvider,
-      setGitHubRunnerId,
-      listPage: vi.fn(async () => ({ runners: [{ ...runner, githubRunnerId: storedId, orphan }] })),
-    }));
+    mockedResolveCapability.mockReturnValue(() =>
+      withPagedDescribe({
+        ...mockComputeProvider,
+        setGitHubRunnerId,
+        listPage: vi.fn(async () => ({ runners: [{ ...runner, githubRunnerId: storedId, orphan }] })),
+      }),
+    );
     await scaleDown();
     if (fails) {
       expect(mockOctokit.actions.deleteSelfHostedRunnerFromOrg).not.toHaveBeenCalled();
@@ -415,6 +424,28 @@ describe('Scale down runners', () => {
       expect(mockTerminateRunners).toHaveBeenCalledTimes(2);
       expect(mockOctokit.actions.deleteSelfHostedRunnerFromOrg).toHaveBeenCalledTimes(1);
     }
+  });
+
+  it('de-registers a vanished paged runner without persisting its identity on the missing instance', async () => {
+    const runner = createRunnerTestData('vm-gone', 'Org', 60, true, false, false);
+    runner.githubRunnerName = 'build-worker';
+    delete runner.githubRunnerId;
+    const registered = { id: 42, name: 'build-worker', busy: false, status: 'online' };
+    mockOctokit.paginate.mockResolvedValue([registered]);
+    mockOctokit.actions.getSelfHostedRunnerForOrg.mockResolvedValue({ data: registered });
+    const setGitHubRunnerId = vi.fn();
+    mockDescribeRunner.mockResolvedValue(undefined);
+    mockedResolveCapability.mockReturnValue(() => ({
+      ...mockComputeProvider,
+      setGitHubRunnerId,
+      listPage: vi.fn().mockResolvedValue({ runners: [runner] }),
+    }));
+
+    await scaleDown();
+
+    expect(mockOctokit.actions.deleteSelfHostedRunnerFromOrg).toHaveBeenCalledTimes(1);
+    expect(setGitHubRunnerId).not.toHaveBeenCalled();
+    expect(mockTerminateRunners).not.toHaveBeenCalled();
   });
 
   it.each(['identity', 'busy', 'persist', 'delete', 'orphan-absent', 'orphan-present'])(
@@ -446,11 +477,13 @@ describe('Scale down runners', () => {
         if (stage === 'delete') remaining = 9000;
         return { status: 204 };
       });
-      mockedResolveCapability.mockReturnValue(() => ({
-        ...mockComputeProvider,
-        setGitHubRunnerId: persist,
-        listPage: vi.fn().mockResolvedValue({ runners: [runner] }),
-      }));
+      mockedResolveCapability.mockReturnValue(() =>
+        withPagedDescribe({
+          ...mockComputeProvider,
+          setGitHubRunnerId: persist,
+          listPage: vi.fn().mockResolvedValue({ runners: [runner] }),
+        }),
+      );
       await scaleDown(() => remaining);
       expect(mockTerminateRunners).not.toHaveBeenCalled();
       expect(mockUnmarkOrphan).not.toHaveBeenCalled();
@@ -471,10 +504,12 @@ describe('Scale down runners', () => {
         remaining = 9000;
         return { token: 'token' } as never;
       });
-      mockedResolveCapability.mockReturnValue(() => ({
-        ...mockComputeProvider,
-        listPage: vi.fn().mockResolvedValue({ runners: [runner] }),
-      }));
+      mockedResolveCapability.mockReturnValue(() =>
+        withPagedDescribe({
+          ...mockComputeProvider,
+          listPage: vi.fn().mockResolvedValue({ runners: [runner] }),
+        }),
+      );
       await scaleDown(() => remaining);
       expect(mockOctokit.actions.getSelfHostedRunnerForOrg).not.toHaveBeenCalled();
       expect(mockTerminateRunners).not.toHaveBeenCalled();
@@ -522,10 +557,12 @@ describe('Scale down runners', () => {
     const runner = createRunnerTestData('untrusted-prefix', 'Org', 60, false, false, false);
     delete runner.githubRunnerName;
     delete runner.githubRunnerId;
-    mockedResolveCapability.mockReturnValue(() => ({
-      ...mockComputeProvider,
-      listPage: vi.fn().mockResolvedValue({ runners: [runner] }),
-    }));
+    mockedResolveCapability.mockReturnValue(() =>
+      withPagedDescribe({
+        ...mockComputeProvider,
+        listPage: vi.fn().mockResolvedValue({ runners: [runner] }),
+      }),
+    );
     await scaleDown();
     runner.orphan = true;
     await scaleDown();
@@ -537,10 +574,12 @@ describe('Scale down runners', () => {
   it('defers identity lookup during boot and evaluates the runner after registration', async () => {
     const runner = createRunnerTestData('booting', 'Org', 0, false, false, false);
     delete runner.githubRunnerId;
-    mockedResolveCapability.mockReturnValue(() => ({
-      ...mockComputeProvider,
-      listPage: vi.fn().mockResolvedValue({ runners: [runner] }),
-    }));
+    mockedResolveCapability.mockReturnValue(() =>
+      withPagedDescribe({
+        ...mockComputeProvider,
+        listPage: vi.fn().mockResolvedValue({ runners: [runner] }),
+      }),
+    );
 
     await scaleDown();
     expect(mockCreateClient).not.toHaveBeenCalled();
@@ -559,10 +598,12 @@ describe('Scale down runners', () => {
   it('retains an unverified runner after its boot grace expires', async () => {
     const runner = createRunnerTestData('boot-expired', 'Org', 0, false, false, false);
     delete runner.githubRunnerId;
-    mockedResolveCapability.mockReturnValue(() => ({
-      ...mockComputeProvider,
-      listPage: vi.fn().mockResolvedValue({ runners: [runner] }),
-    }));
+    mockedResolveCapability.mockReturnValue(() =>
+      withPagedDescribe({
+        ...mockComputeProvider,
+        listPage: vi.fn().mockResolvedValue({ runners: [runner] }),
+      }),
+    );
     await scaleDown();
     expect(scaleLogs.error).not.toHaveBeenCalled();
 
@@ -583,10 +624,12 @@ describe('Scale down runners', () => {
     const runner = createRunnerTestData('custom-name', 'Org', 60, true, true, false);
     delete runner.githubRunnerId;
     mockOctokit.paginate.mockResolvedValue([]);
-    mockedResolveCapability.mockReturnValue(() => ({
-      ...mockComputeProvider,
-      listPage: vi.fn().mockResolvedValue({ runners: [runner] }),
-    }));
+    mockedResolveCapability.mockReturnValue(() =>
+      withPagedDescribe({
+        ...mockComputeProvider,
+        listPage: vi.fn().mockResolvedValue({ runners: [runner] }),
+      }),
+    );
     await scaleDown();
     runner.orphan = true;
     await scaleDown();
@@ -602,10 +645,12 @@ describe('Scale down runners', () => {
     const runner = createRunnerTestData('no-identity', 'Org', 60, false, false, false);
     delete runner.githubRunnerName;
     delete runner.githubRunnerId;
-    mockedResolveCapability.mockReturnValue(() => ({
-      ...mockComputeProvider,
-      listPage: vi.fn().mockResolvedValue({ runners: [runner] }),
-    }));
+    mockedResolveCapability.mockReturnValue(() =>
+      withPagedDescribe({
+        ...mockComputeProvider,
+        listPage: vi.fn().mockResolvedValue({ runners: [runner] }),
+      }),
+    );
     await scaleDown();
     expect(mockedAppAuth).not.toHaveBeenCalled();
     expect(mockCreateClient).not.toHaveBeenCalled();
@@ -624,10 +669,12 @@ describe('Scale down runners', () => {
         request: { method: 'GET', url: 'https://api.github.com/test', headers: {} },
       }),
     );
-    mockedResolveCapability.mockReturnValue(() => ({
-      ...mockComputeProvider,
-      listPage: vi.fn().mockResolvedValue({ runners: [runner] }),
-    }));
+    mockedResolveCapability.mockReturnValue(() =>
+      withPagedDescribe({
+        ...mockComputeProvider,
+        listPage: vi.fn().mockResolvedValue({ runners: [runner] }),
+      }),
+    );
     await scaleDown();
     expect(scaleLogs.info).toHaveBeenCalledWith(`Terminating orphan runner '${runner.id}'.`);
     expect(scaleLogs.info).toHaveBeenCalledWith(
@@ -656,7 +703,7 @@ describe('Scale down runners', () => {
           expect(mockTerminateRunners).toHaveBeenCalledWith(first.id);
           throw new Error('EC2 listing unavailable');
         });
-      mockedResolveCapability.mockReturnValue(() => ({ ...mockComputeProvider, listPage }));
+      mockedResolveCapability.mockReturnValue(() => withPagedDescribe({ ...mockComputeProvider, listPage }));
       await expect(scaleDown()).rejects.toThrow('EC2 listing unavailable');
       expect(scaleLogs.info).toHaveBeenCalledWith(
         'Scale-down inventory scan finished.',
@@ -681,7 +728,7 @@ describe('Scale down runners', () => {
         .fn()
         .mockResolvedValueOnce({ runners: [first], nextToken: 'second' })
         .mockResolvedValue({ runners: [second] });
-      mockedResolveCapability.mockReturnValue(() => ({ ...mockComputeProvider, listPage }));
+      mockedResolveCapability.mockReturnValue(() => withPagedDescribe({ ...mockComputeProvider, listPage }));
       await scaleDown();
       expect(mockTerminateRunners).toHaveBeenCalledWith(second.id);
       expect(mockTerminateRunners).not.toHaveBeenCalledWith(first.id);
@@ -697,7 +744,7 @@ describe('Scale down runners', () => {
         remaining = 0;
       });
       const listPage = vi.fn().mockResolvedValue({ runners: [first, second], nextToken: 'next' });
-      mockedResolveCapability.mockReturnValue(() => ({ ...mockComputeProvider, listPage }));
+      mockedResolveCapability.mockReturnValue(() => withPagedDescribe({ ...mockComputeProvider, listPage }));
       await scaleDown(() => remaining);
       expect(scaleLogs.info).toHaveBeenCalledWith(
         expect.stringContaining('Stopping scale-down'),
@@ -722,10 +769,12 @@ describe('Scale down runners', () => {
             ? mockOctokit.actions.getSelfHostedRunnerForOrg
             : mockOctokit.actions.getSelfHostedRunnerForRepo;
         get.mockResolvedValue({ data: { id: 42, name: runner.id, busy: false, status: 'online' } });
-        mockedResolveCapability.mockReturnValue(() => ({
-          ...mockComputeProvider,
-          listPage: vi.fn().mockResolvedValue({ runners: [runner] }),
-        }));
+        mockedResolveCapability.mockReturnValue(() =>
+          withPagedDescribe({
+            ...mockComputeProvider,
+            listPage: vi.fn().mockResolvedValue({ runners: [runner] }),
+          }),
+        );
         await scaleDown();
         expect(get).toHaveBeenCalledWith(expect.objectContaining({ runner_id: 42 }));
         expect(mockOctokit.paginate).not.toHaveBeenCalled();
@@ -740,10 +789,12 @@ describe('Scale down runners', () => {
       second.githubRunnerName = second.id;
       mockGitHubRunners([second]);
       mockOctokit.paginate.mockRejectedValueOnce(new Error('GitHub unavailable'));
-      mockedResolveCapability.mockReturnValue(() => ({
-        ...mockComputeProvider,
-        listPage: vi.fn().mockResolvedValue({ runners: [first, second] }),
-      }));
+      mockedResolveCapability.mockReturnValue(() =>
+        withPagedDescribe({
+          ...mockComputeProvider,
+          listPage: vi.fn().mockResolvedValue({ runners: [first, second] }),
+        }),
+      );
       await scaleDown();
       expect(mockTerminateRunners).toHaveBeenCalledWith(second.id);
       expect(mockTerminateRunners).not.toHaveBeenCalledWith(first.id);
@@ -845,6 +896,39 @@ describe('Scale down runners', () => {
 
         expect(mockTerminateRunners).not.toHaveBeenCalled();
         checkNonTerminated(runners);
+      });
+
+      it(`Should not terminate a runner tagged bypass-removal after the cycle listed it.`, async () => {
+        const runners = [
+          createRunnerTestData('tagged-after-list', type, MINIMUM_TIME_RUNNING_IN_MINUTES + 10, true, false, false),
+        ];
+        mockGitHubRunners(runners);
+        mockProviderRunners(runners);
+        mockDescribeRunner.mockResolvedValue({ ...runners[0], bypassRemoval: true });
+
+        await scaleDown();
+
+        expect(mockOctokit.actions.deleteSelfHostedRunnerFromOrg).not.toHaveBeenCalled();
+        expect(mockOctokit.actions.deleteSelfHostedRunnerFromRepo).not.toHaveBeenCalled();
+        expect(mockTerminateRunners).not.toHaveBeenCalled();
+      });
+
+      it(`Should de-register but not terminate a runner that disappeared during the cycle.`, async () => {
+        // The compute resource is gone, so nothing can be running on it; the GitHub registration
+        // must not be left behind.
+        const runners = [createRunnerTestData('gone', type, MINIMUM_TIME_RUNNING_IN_MINUTES + 10, true, false, false)];
+        mockGitHubRunners(runners);
+        mockProviderRunners(runners);
+        mockDescribeRunner.mockResolvedValue(undefined);
+
+        await scaleDown();
+
+        const deleteRunner =
+          type === 'Org'
+            ? mockOctokit.actions.deleteSelfHostedRunnerFromOrg
+            : mockOctokit.actions.deleteSelfHostedRunnerFromRepo;
+        expect(deleteRunner).toHaveBeenCalledTimes(1);
+        expect(mockTerminateRunners).not.toHaveBeenCalled();
       });
 
       it(`Should not terminate orphaned runner with bypass-removal tag set.`, async () => {
@@ -1456,6 +1540,36 @@ describe('Scale down runners', () => {
       expect(mockTerminateRunners).not.toHaveBeenCalled();
     });
 
+    it('does not re-read the runner while the window is still open', async () => {
+      // The re-read exists to guard the termination; a runner that is not about to be
+      // terminated does not pay for it.
+      const runners = [
+        createRunnerTestData('fresh', 'Org', MINIMUM_TIME_RUNNING_IN_MINUTES + 1, true, false, false),
+        createRunnerTestData('young', 'Org', MINIMUM_TIME_RUNNING_IN_MINUTES + 1, true, false, false),
+      ];
+      runners[1].idleDetectedAt = new Date(Date.now() - (CONFIRMATION_SECONDS - 240) * 1000).toISOString();
+      mockGitHubRunners(runners);
+      mockProviderRunners(runners);
+
+      await scaleDown();
+
+      expect(mockDescribeRunner).not.toHaveBeenCalled();
+      expect(mockTerminateRunners).not.toHaveBeenCalled();
+    });
+
+    it('decides on the current marker, not the list snapshot', async () => {
+      const runners = [createRunnerTestData('idle-1', 'Org', MINIMUM_TIME_RUNNING_IN_MINUTES + 1, true, false, false)];
+      runners[0].idleDetectedAt = new Date(Date.now() - (CONFIRMATION_SECONDS + 60) * 1000).toISOString();
+      mockGitHubRunners(runners);
+      mockProviderRunners(runners);
+      mockDescribeRunner.mockResolvedValue({ ...runners[0], idleDetectedAt: undefined });
+
+      await scaleDown();
+
+      expect(mockMarkIdle).toHaveBeenCalledWith(runners[0].id, expect.any(String));
+      expect(mockTerminateRunners).not.toHaveBeenCalled();
+    });
+
     it('terminates on a single reading when the window is disabled (0)', async () => {
       process.env.SCALE_DOWN_IDLE_CONFIRMATION_SECONDS = '0';
       const runners = [createRunnerTestData('idle-1', 'Org', MINIMUM_TIME_RUNNING_IN_MINUTES + 1, true, false, true)];
@@ -1470,10 +1584,27 @@ describe('Scale down runners', () => {
   });
 });
 
+// A paged provider's describe reports what its latest page listed, as EC2 DescribeInstances would.
+function withPagedDescribe<T extends { listPage?: ScaleDownComputeProvider['listPage'] }>(provider: T): T {
+  const { listPage } = provider;
+  if (!listPage) return provider;
+  let listed: RunnerInfo[] = [];
+  return {
+    ...provider,
+    listPage: async (...args: Parameters<NonNullable<ScaleDownComputeProvider['listPage']>>) => {
+      const page = await listPage(...args);
+      listed = page.runners;
+      return page;
+    },
+    describe: async (id: string) => listed.find((runner) => runner.id === id),
+  };
+}
+
 function mockProviderRunners(runners: RunnerTestItem[]) {
   mockListRunners.mockImplementation(async (_environment, orphan) => {
     return runners.filter((runner) => !orphan || orphan === runner.orphan);
   });
+  mockDescribeRunner.mockImplementation(async (id) => runners.find((runner) => runner.id === id));
 }
 
 function checkNonTerminated(runners: RunnerTestItem[]) {
