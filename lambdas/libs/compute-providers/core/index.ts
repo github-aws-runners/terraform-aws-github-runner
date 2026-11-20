@@ -104,6 +104,7 @@ export interface ListRunnerFilters {
   runnerOwner?: string;
   environment?: string;
   orphan?: boolean;
+  createdBy?: RunnerSource;
 }
 
 export interface ScaleDownComputeProvider extends ComputeProvider {

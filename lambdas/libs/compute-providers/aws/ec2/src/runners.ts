@@ -120,6 +120,9 @@ function constructFilters(filters?: Ec2ListRunnerFilters): Ec2Filter[][] {
       ec2FiltersBase.push({ Name: `tag:ghr:Type`, Values: [filters.runnerType] });
       ec2FiltersBase.push({ Name: `tag:ghr:Owner`, Values: [filters.runnerOwner] });
     }
+    if (filters.createdBy) {
+      ec2FiltersBase.push({ Name: 'tag:ghr:created_by', Values: [filters.createdBy] });
+    }
     if (filters.orphan) {
       ec2FiltersBase.push({ Name: 'tag:ghr:orphan', Values: ['true'] });
     }
