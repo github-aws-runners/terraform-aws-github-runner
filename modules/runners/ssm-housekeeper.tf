@@ -27,7 +27,14 @@ resource "aws_lambda_function" "ssm_housekeeper" {
   tags              = merge(local.tags, var.lambda_tags)
   memory_size       = local.ssm_housekeeper.lambda_memory_size
   architectures     = [var.lambda_architecture]
-  depends_on        = [aws_cloudwatch_log_group.ssm_housekeeper]
+  # Wait for the role's permissions, so new code never starts without the grants it expects.
+  depends_on = [
+    aws_cloudwatch_log_group.ssm_housekeeper,
+    aws_iam_role_policy.ssm_housekeeper,
+    aws_iam_role_policy.ssm_housekeeper_logging,
+    aws_iam_role_policy.ssm_housekeeper_xray,
+    aws_iam_role_policy_attachment.ssm_housekeeper_vpc_execution_role,
+  ]
 
   environment {
     variables = {

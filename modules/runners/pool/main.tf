@@ -22,8 +22,16 @@ resource "aws_lambda_function" "pool" {
   timeout                        = var.config.lambda.timeout
   reserved_concurrent_executions = var.config.lambda.reserved_concurrent_executions
   memory_size                    = var.config.lambda.memory_size
-  depends_on                     = [aws_cloudwatch_log_group.pool]
-  tags                           = merge(var.config.tags, var.config.lambda_tags)
+  # Wait for the role's permissions, so new code never starts without the grants it expects.
+  depends_on = [
+    aws_cloudwatch_log_group.pool,
+    aws_iam_role_policy.pool,
+    aws_iam_role_policy.pool_logging,
+    aws_iam_role_policy.pool_xray,
+    aws_iam_role_policy_attachment.pool_vpc_execution_role,
+    aws_iam_role_policy_attachment.ami_id_ssm_parameter_read,
+  ]
+  tags = merge(var.config.tags, var.config.lambda_tags)
 
   environment {
     variables = merge({

@@ -23,7 +23,14 @@ resource "aws_lambda_function" "scale_down" {
   tags              = merge(local.tags, var.lambda_tags)
   memory_size       = var.lambda_scale_down_memory_size
   architectures     = [var.lambda_architecture]
-  depends_on        = [aws_cloudwatch_log_group.scale_down]
+  # Wait for the role's permissions, so new code never starts without the grants it expects.
+  depends_on = [
+    aws_cloudwatch_log_group.scale_down,
+    aws_iam_role_policy.scale_down,
+    aws_iam_role_policy.scale_down_logging,
+    aws_iam_role_policy.scale_down_xray,
+    aws_iam_role_policy_attachment.scale_down_vpc_execution_role,
+  ]
 
   environment {
     variables = {
