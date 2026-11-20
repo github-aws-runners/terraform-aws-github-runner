@@ -21,7 +21,12 @@ export async function publishForRunners(
 
   const checkBodySizeResult = checkBodySize(body, headers);
 
-  const { event, eventType } = readWorkflowJobEvent(headers, body);
+  const workflowJobEvent = readWorkflowJobEvent(headers, body);
+  if (!workflowJobEvent) {
+    return { statusCode: 202, body: 'Workflow job event without a workflow_job payload, ignoring.' };
+  }
+
+  const { event, eventType } = workflowJobEvent;
   logger.info(`Github event ${event.action} accepted for ${event.repository.full_name}`);
   if (checkBodySizeResult.sizeExceeded) {
     // We only warn for large event, when moving the event bridge we can only can accept events up to 256KB
@@ -44,8 +49,8 @@ export async function publishOnEventBridge(
   checkEventIsSupported(eventType, config.allowedEvents);
 
   // If workflow_job event, read the event and log relevant information for monitoring and debugging purposes.
-  if (eventType === 'workflow_job') {
-    readWorkflowJobEvent(headers, body);
+  if (eventType === 'workflow_job' && !readWorkflowJobEvent(headers, body)) {
+    return { statusCode: 202, body: 'Workflow job event without a workflow_job payload, ignoring.' };
   }
 
   const checkBodySizeResult = checkBodySize(body, headers);
@@ -137,11 +142,16 @@ function checkEventIsSupported(eventType: string, allowedEvents: string[]): void
 function readWorkflowJobEvent(
   headers: IncomingHttpHeaders,
   body: string,
-): { event: WorkflowJobEvent; eventType: string } {
+): { event: WorkflowJobEvent; eventType: string } | null {
   const eventType = headers['x-github-event'] as string;
   checkEventIsSupported(eventType, ['workflow_job']);
 
   const event = JSON.parse(body) as WorkflowJobEvent;
+  if (!event.workflow_job) {
+    logger.warn('Received workflow_job event without a workflow_job payload, ignoring.');
+    return null;
+  }
+
   logger.appendPersistentKeys({
     github: {
       repository: event.repository.full_name,

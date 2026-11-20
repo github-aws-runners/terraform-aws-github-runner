@@ -129,6 +129,19 @@ describe('handle GitHub webhook events', () => {
         statusCode: 201,
       });
     });
+
+    it('should accept without dispatching when workflow_job is null', async () => {
+      const event = JSON.stringify({ ...workFlowJobEvent, workflow_job: null });
+
+      await expect(
+        publishForRunners(
+          { 'X-Hub-Signature-256': await webhooks.sign(event), 'X-GitHub-Event': 'workflow_job' },
+          event,
+          config,
+        ),
+      ).resolves.toMatchObject({ statusCode: 202 });
+      expect(dispatch).not.toHaveBeenCalled();
+    });
   });
 
   describe('handle webhook events and forward to eventbridge', () => {
