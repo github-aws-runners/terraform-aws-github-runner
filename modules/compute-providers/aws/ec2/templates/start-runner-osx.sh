@@ -41,9 +41,15 @@ cleanup() {
 
   if [ "$agent_mode" = "ephemeral" ] || [ "$exit_code" -ne 0 ]; then
     echo "Terminating instance"
-    aws ec2 terminate-instances \
+    if ! aws ec2 terminate-instances \
       --instance-ids "$instance_id" \
-      --region "$region" || true
+      --region "$region"; then
+      # terminate-instances fails when credentials are unavailable (see #5517);
+      # the launch template sets instance_initiated_shutdown_behavior to
+      # "terminate", so shutting down ends the instance without API calls.
+      echo "WARNING: terminate-instances failed; falling back to shutdown -h now"
+      sudo shutdown -h now || true
+    fi
   fi
 }
 
@@ -76,6 +82,27 @@ echo "Retrieved INSTANCE_ID from AWS API ($instance_id)"
 
 availability_zone=$(curl -f -H "X-aws-ec2-metadata-token: $token" \
   http://169.254.169.254/latest/meta-data/placement/availability-zone)
+
+# Wait for instance profile credentials before the first AWS CLI call. On
+# prebuilt AMIs the first call can race credential availability and fail with
+# NoCredentials, leaving the instance unregistered but running (see #5517).
+echo "Waiting for instance profile credentials to become available"
+credential_wait_retries=0
+credentials_timed_out=false
+until aws sts get-caller-identity --region "$region" >/dev/null 2>&1; do
+  credential_wait_retries=$((credential_wait_retries + 1))
+  if [ "$credential_wait_retries" -ge 12 ]; then
+    credentials_timed_out=true
+    break
+  fi
+  echo "Instance profile credentials not available yet, retrying in 5 seconds ($credential_wait_retries/12)"
+  sleep 5
+done
+if [ "$credentials_timed_out" = true ]; then
+  echo "WARNING: instance profile credentials still unavailable after 60 s; continuing anyway"
+else
+  echo "Instance profile credentials available"
+fi
 
 environment=$(curl -f -H "X-aws-ec2-metadata-token: $token" \
   http://169.254.169.254/latest/meta-data/tags/instance/ghr:environment || echo "")
@@ -118,7 +145,23 @@ while [[ -z "$config" ]]; do
 done
 
 echo "Delete GH Runner token from AWS SSM"
-aws ssm delete-parameter --name "$token_path"/"$instance_id" --region "$region"
+# The token parameter may briefly refuse deletion with AccessDenied right after
+# the read (IAM propagation delay), so retry before giving up (see #5517).
+delete_retrycount=0
+while true; do
+  if aws ssm delete-parameter --name "$token_path"/"$instance_id" --region "$region" 2>/tmp/delete-parameter.err; then
+    break
+  fi
+  if grep -q "AccessDenied" /tmp/delete-parameter.err 2>/dev/null && [ "$delete_retrycount" -lt 24 ]; then
+    delete_retrycount=$((delete_retrycount + 1))
+    echo "delete-parameter access denied, retrying in 5 seconds ($delete_retrycount/24)"
+    sleep 5
+  else
+    echo "ERROR: failed to delete SSM parameter $token_path/$instance_id"
+    cat /tmp/delete-parameter.err >&2
+    exit 1
+  fi
+done
 
 if [ -z "$run_as" ]; then
   echo "No user specified, using default ec2-user account"
