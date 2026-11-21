@@ -29,7 +29,7 @@ locals {
     INCLUDE_BUSY_RUNNERS                     = var.config.include_busy_runners
   }
 
-  ssm_environment_variables = {
+  ssm_environment_variables = merge({
     PARAMETER_GITHUB_APP_ID_NAME                   = var.config.github_app_parameters.id.name
     PARAMETER_GITHUB_APP_KEY_BASE64_NAME           = var.config.github_app_parameters.key_base64.name
     PARAMETER_GITHUB_APPS_MANIFEST_NAME            = var.config.github_app_parameters.additional_apps_manifest != null ? var.config.github_app_parameters.additional_apps_manifest.name : ""
@@ -38,7 +38,9 @@ locals {
     SSM_PARAMETER_STORE_TAGS                       = var.storage_provider.aws.ssm.parameter_store_tags
     SSM_PARAMETER_STORE_MAX_CONCURRENT_INVOCATIONS = var.storage_provider.aws.ssm.parameter_store_max_concurrent_invocations
     SSM_PARAMETER_STORE_MAX_WRITES_PER_SECOND      = var.storage_provider.aws.ssm.parameter_store_max_writes_per_second
-  }
+    }, var.storage_provider.aws.ssm.token_ttl_seconds != null ? {
+    SSM_TOKEN_TTL_SECONDS = tostring(var.storage_provider.aws.ssm.token_ttl_seconds)
+  } : {})
 }
 
 resource "aws_lambda_function" "pool" {
