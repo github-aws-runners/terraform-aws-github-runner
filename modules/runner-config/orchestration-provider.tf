@@ -55,6 +55,7 @@ module "orchestration_webhook" {
         parameter_store_tags                       = local.parameter_store_tags
         parameter_store_max_concurrent_invocations = var.storage_provider.aws.ssm.parameters.max_concurrent_invocations
         parameter_store_max_writes_per_second      = var.storage_provider.aws.ssm.parameters.max_writes_per_second
+        token_ttl_seconds                          = var.storage_provider.aws.ssm.ttl_seconds.tokens
       }
     }
   }

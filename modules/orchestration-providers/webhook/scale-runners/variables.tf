@@ -49,6 +49,7 @@ variable "config" {
     - `storage_provider.aws.ssm.parameter_store_tags`: JSON-encoded tags applied to parameters created at runtime.
     - `storage_provider.aws.ssm.parameter_store_max_concurrent_invocations`: Expected number of concurrent scale-up and pool Lambda invocations writing to Parameter Store, used to pace writes.
     - `storage_provider.aws.ssm.parameter_store_max_writes_per_second`: Parameter Store write-rate limit, in writes per second, that runtime writes are paced against.
+    - `storage_provider.aws.ssm.token_ttl_seconds`: Optional TTL in seconds for registration-token and JIT-config parameters. Null leaves SSM expiration policies disabled.
     - `observability.logs`: Shared logging level, retention, encryption, and log-class configuration.
     - `observability.tracing`: Lambda X-Ray and tracing-helper configuration.
     - `observability.metrics`: Metrics enablement, namespace, and GitHub rate-limit metric configuration.
@@ -247,6 +248,7 @@ variable "storage_provider" {
 
         parameter_store_max_concurrent_invocations = optional(number, 1)
         parameter_store_max_writes_per_second      = optional(number, 40)
+        token_ttl_seconds                          = optional(number, null)
       })
     })
     scale_up = optional(object({
