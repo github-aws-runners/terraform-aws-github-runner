@@ -19,6 +19,7 @@ import {
 } from '@aws-sdk/client-ec2';
 import { createChildLogger, tracer } from '@aws-github-runner/aws-powertools-util';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
+import { GetParameterCommand, type SSMClient } from '@aws-sdk/client-ssm';
 import moment from 'moment';
 
 import type { RunnerInfo } from '../../../core';
@@ -63,7 +64,16 @@ async function runWithRequestSignal<TResult>(
   return await operation();
 }
 
-export function createEc2RunnerClient(ec2Client: EC2Client): Ec2RunnerClient {
+export interface Ec2RunnerClientOptions {
+  /**
+   * SSM client used to read the AMI id parameter. Defaults to the shared client of the runtime role. Callers
+   * running with assumed compute-provider credentials must pass a client using them, as only that role is
+   * allowed to read the parameter.
+   */
+  ssmClient?: SSMClient;
+}
+
+export function createEc2RunnerClient(ec2Client: EC2Client, options: Ec2RunnerClientOptions = {}): Ec2RunnerClient {
   return {
     forRequest: ({ signal }) => ({
       listPage: (environment, nextToken) =>
@@ -80,7 +90,7 @@ export function createEc2RunnerClient(ec2Client: EC2Client): Ec2RunnerClient {
         }),
       list: (filters) => runWithRequestSignal(signal, () => listEc2Runners(ec2Client, filters, signal)),
       create: (runnerParameters) =>
-        runWithRequestSignal(signal, () => createEc2Runner(ec2Client, runnerParameters, signal)),
+        runWithRequestSignal(signal, () => createEc2Runner(ec2Client, runnerParameters, signal, options.ssmClient)),
       terminate: (instanceId) => runWithRequestSignal(signal, () => terminateEc2Runner(ec2Client, instanceId, signal)),
       tag: (instanceId, tags) => runWithRequestSignal(signal, () => tagEc2Runner(ec2Client, instanceId, tags, signal)),
       untag: (instanceId, tags) =>
@@ -406,6 +416,7 @@ async function createEc2Runner(
   ec2Client: EC2Client,
   runnerParameters: RunnerInputParameters,
   signal: AbortSignal | undefined,
+  ssmClient?: SSMClient,
 ): Promise<Ec2RunnerCreateResult> {
   logger.debug('Runner configuration.', {
     runner: {
@@ -417,7 +428,7 @@ async function createEc2Runner(
 
   let amiIdOverride: string | undefined;
   try {
-    amiIdOverride = await getAmiIdOverride(runnerParameters);
+    amiIdOverride = await getAmiIdOverride(runnerParameters, signal, ssmClient);
   } catch (error) {
     throwIfAborted(signal, error);
     const failureCodes = requestFailureCodes(error);
@@ -452,7 +463,7 @@ async function createEc2Runner(
     return failedCreateRunnerResult(runnerParameters.numberOfRunners, failureCodes);
   }
 
-  const result = await processFleetResult(fleet, runnerParameters, ec2Client, signal);
+  const result = await processFleetResult(fleet, runnerParameters, ec2Client, signal, ssmClient);
 
   logger.info(`Created instance(s): ${result.instances.join(',')}`);
 
@@ -464,6 +475,7 @@ async function processFleetResult(
   runnerParameters: RunnerInputParameters,
   ec2Client: EC2Client,
   signal: AbortSignal | undefined,
+  ssmClient: SSMClient | undefined,
 ): Promise<Ec2RunnerCreateResult> {
   const instances: string[] = fleet.Instances?.flatMap((i) => i.InstanceIds?.flatMap((j) => j) || []) || [];
 
@@ -504,6 +516,7 @@ async function processFleetResult(
         },
       },
       signal,
+      ssmClient,
     );
     instances.push(...onDemandResult.instances);
     return {
@@ -567,13 +580,35 @@ function throwIfAborted(signal: AbortSignal | undefined, error: unknown): void {
   if (error instanceof Error && error.name === 'AbortError') throw error;
 }
 
-async function getAmiIdOverride(runnerParameters: RunnerInputParameters): Promise<string | undefined> {
+async function readAmiIdParameter(
+  name: string,
+  signal: AbortSignal | undefined,
+  ssmClient: SSMClient | undefined,
+): Promise<string> {
+  if (!ssmClient) {
+    return await getParameter(name);
+  }
+
+  const result = await ssmClient.send(new GetParameterCommand({ Name: name, WithDecryption: true }), {
+    abortSignal: signal,
+  });
+  if (!result.Parameter?.Value) {
+    throw new Error(`Parameter ${name} not found`);
+  }
+  return result.Parameter.Value;
+}
+
+async function getAmiIdOverride(
+  runnerParameters: RunnerInputParameters,
+  signal: AbortSignal | undefined,
+  ssmClient: SSMClient | undefined,
+): Promise<string | undefined> {
   if (!runnerParameters.amiIdSsmParameterName) {
     return undefined;
   }
 
   try {
-    const amiIdOverride = await getParameter(runnerParameters.amiIdSsmParameterName);
+    const amiIdOverride = await readAmiIdParameter(runnerParameters.amiIdSsmParameterName, signal, ssmClient);
     logger.debug(`AMI override SSM parameter (${runnerParameters.amiIdSsmParameterName}) set to: ${amiIdOverride}`);
     return amiIdOverride;
   } catch (e) {
