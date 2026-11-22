@@ -76,6 +76,52 @@ describe('aws_ssm runner group cache store', () => {
     await expect(createAwsSsmRunnerGroupCacheStore().get('Default')).rejects.toBe(error);
   });
 
+  describe('when the SDK error lost its name in the bundled lambda', () => {
+    const wrapped = (message: string, cause?: unknown) =>
+      Object.assign(new Error(message, { cause }), { name: 'GetParameterError' });
+
+    it.each([
+      [
+        'a wrapper whose cause only carries the code in message and __type',
+        () =>
+          wrapped('ParameterNotFound', Object.assign(new Error('ParameterNotFound'), { __type: 'ParameterNotFound' })),
+      ],
+      [
+        'a namespaced __type on the cause',
+        () =>
+          wrapped(
+            'Parameter does not exist',
+            Object.assign(new Error('Parameter does not exist'), { __type: 'com.amazonaws.ssm#ParameterNotFound' }),
+          ),
+      ],
+      ['a wrapper with the code only in its message', () => wrapped('ParameterNotFound')],
+      ['a bare Error with the code only in its message', () => new Error('ParameterNotFound')],
+    ])('treats %s as a cache miss', async (_shape, createError) => {
+      getParameterMock.mockRejectedValue(createError());
+
+      await expect(createAwsSsmRunnerGroupCacheStore().get('aws-spot')).resolves.toBeUndefined();
+      expect(loggerMock.info).toHaveBeenCalledWith(
+        'Runner group cache miss; caller will resolve the ID from GitHub',
+        expect.objectContaining({ runnerGroupName: 'aws-spot' }),
+      );
+      expect(loggerMock.error).not.toHaveBeenCalled();
+    });
+
+    it.each(['AccessDeniedException', 'ParameterVersionNotFound', 'ThrottlingException'])(
+      'still propagates an unnamed %s failure',
+      async (code) => {
+        const error = wrapped(code, Object.assign(new Error(code), { __type: code }));
+        getParameterMock.mockRejectedValue(error);
+
+        await expect(createAwsSsmRunnerGroupCacheStore().get('aws-spot')).rejects.toBe(error);
+        expect(loggerMock.error).toHaveBeenCalledWith(
+          'Runner group cache lookup failed',
+          expect.objectContaining({ runnerGroupName: 'aws-spot' }),
+        );
+      },
+    );
+  });
+
   it('rejects a non-numeric cached ID', async () => {
     getParameterMock.mockResolvedValue('not-a-number');
 
