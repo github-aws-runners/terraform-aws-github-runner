@@ -543,6 +543,11 @@ run "non_empty_v2_map_is_authoritative" {
   }
 
   assert {
+    condition     = module.runner_configs["experimental"].orchestration_provider.webhook.scale_up.lambda.environment[0].variables["SSM_TOKEN_TTL_SECONDS"] == "7200"
+    error_message = "A v2 lane token TTL must reach the scale-up Lambda environment."
+  }
+
+  assert {
     condition     = jsonencode(local.normalized_config) == jsonencode(local.v2_config)
     error_message = "A non-empty v2 runner map must select the v2 object without leaking stable flat inputs."
   }

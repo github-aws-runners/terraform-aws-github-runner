@@ -79,6 +79,11 @@ async function publishJitConfiguration(
     throw new Ec2ScaleSetValidationError('JIT configuration must be between 1 and 8192 bytes');
   }
 
+  // Parameter policies (e.g. Expiration) are only supported on the Advanced
+  // tier, so a TTL forces the tier regardless of the value size. Expiration is
+  // enforced asynchronously by SSM and only cleans up parameters left behind by
+  // instances that never read their JIT configuration.
+  const ttlSeconds = input.configuration.jitConfigTTLSeconds;
   await ssmClient.send(
     new PutParameterCommand({
       Name: jitParameterName(input.configuration, instanceId),
@@ -86,7 +91,17 @@ async function publishJitConfiguration(
       Type: 'SecureString',
       KeyId: input.configuration.ssmKmsKeyId,
       Overwrite: false,
-      Tier: valueSize >= SSM_STANDARD_TIER_THRESHOLD ? 'Advanced' : 'Standard',
+      Tier: ttlSeconds !== undefined || valueSize >= SSM_STANDARD_TIER_THRESHOLD ? 'Advanced' : 'Standard',
+      Policies:
+        ttlSeconds === undefined
+          ? undefined
+          : JSON.stringify([
+              {
+                Type: 'Expiration',
+                Version: '1.0',
+                Attributes: { Timestamp: new Date(Date.now() + ttlSeconds * 1000).toISOString() },
+              },
+            ]),
       Tags: jitParameterTags(input, instanceId),
     }),
     { abortSignal: signal },

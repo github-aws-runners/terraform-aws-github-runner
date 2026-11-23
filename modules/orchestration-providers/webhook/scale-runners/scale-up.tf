@@ -49,7 +49,9 @@ resource "aws_lambda_function" "scale_up" {
       SSM_PARAMETER_STORE_TAGS                       = var.storage_provider.aws.ssm.parameter_store_tags
       SSM_PARAMETER_STORE_MAX_CONCURRENT_INVOCATIONS = var.storage_provider.aws.ssm.parameter_store_max_concurrent_invocations
       SSM_PARAMETER_STORE_MAX_WRITES_PER_SECOND      = var.storage_provider.aws.ssm.parameter_store_max_writes_per_second
-    }, var.storage_provider.scale_up.environment_variables)
+      }, var.storage_provider.aws.ssm.token_ttl_seconds != null ? {
+      SSM_TOKEN_TTL_SECONDS = tostring(var.storage_provider.aws.ssm.token_ttl_seconds)
+    } : {}, var.storage_provider.scale_up.environment_variables)
   }
 
   dynamic "vpc_config" {

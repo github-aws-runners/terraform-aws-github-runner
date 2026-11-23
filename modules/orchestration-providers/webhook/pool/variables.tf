@@ -145,6 +145,7 @@ variable "storage_provider" {
 
         parameter_store_max_concurrent_invocations = optional(number, 1)
         parameter_store_max_writes_per_second      = optional(number, 40)
+        token_ttl_seconds                          = optional(number, null)
       })
     })
     environment_variables = optional(map(string), {})

@@ -692,3 +692,63 @@ run "job_retry_uses_common_runner_configuration_identity" {
     error_message = "Job retry must apply its configured Lambda reserved concurrency."
   }
 }
+
+run "token_ttl_defaults_to_disabled" {
+  command = plan
+
+  assert {
+    condition = (
+      !contains(keys(module.orchestration_webhook[0].scale_up.lambda.environment[0].variables), "SSM_TOKEN_TTL_SECONDS")
+      && !contains(keys(module.orchestration_webhook[0].pool.lambda.environment[0].variables), "SSM_TOKEN_TTL_SECONDS")
+    )
+    error_message = "Omitted token TTL must leave expiration disabled."
+  }
+}
+
+run "token_ttl_reaches_scale_up_and_pool" {
+  command = plan
+
+  variables {
+    storage_provider = {
+      aws = {
+        ssm = {
+          paths = {
+            root   = "/github-runner"
+            tokens = "tokens"
+            config = "config"
+          }
+          ttl_seconds = { tokens = 300 }
+        }
+      }
+    }
+  }
+
+  assert {
+    condition = (
+      module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["SSM_TOKEN_TTL_SECONDS"] == "300"
+      && module.orchestration_webhook[0].pool.lambda.environment[0].variables["SSM_TOKEN_TTL_SECONDS"] == "300"
+    )
+    error_message = "The storage-provider token TTL must reach both scale-up and pool Lambdas."
+  }
+}
+
+run "rejects_non_positive_token_ttl" {
+  command = plan
+
+  variables {
+    storage_provider = {
+      aws = {
+        ssm = {
+          paths = {
+            root   = "/github-runner"
+            tokens = "tokens"
+            config = "config"
+          }
+          ttl_seconds = { tokens = 0 }
+        }
+      }
+    }
+  }
+
+  expect_failures = [var.storage_provider]
+}
