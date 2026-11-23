@@ -361,6 +361,7 @@ variable "scale_errors" {
     "MaxSpotInstanceCountExceeded",
     "MaxSpotFleetRequestCountExceeded",
     "InsufficientInstanceCapacity",
+    "VolumeLimitExceeded",
     "InsufficientCapacityOnHost",
   ]
 }

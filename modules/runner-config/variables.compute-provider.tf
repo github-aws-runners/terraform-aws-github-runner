@@ -276,6 +276,7 @@ variable "compute_provider" {
           "MaxSpotInstanceCountExceeded",
           "MaxSpotFleetRequestCountExceeded",
           "InsufficientInstanceCapacity",
+          "VolumeLimitExceeded",
           "InsufficientCapacityOnHost",
         ])
         use_dedicated_host = optional(bool, false)
