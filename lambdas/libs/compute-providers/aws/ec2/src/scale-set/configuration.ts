@@ -18,7 +18,7 @@ export interface Ec2ScaleSetProviderConfig {
   environment: string;
   runnerNamePrefix: string;
   jitConfigParameterPath: string;
-  jitConfigTtlSeconds?: number;
+  jitConfigTTLSeconds?: number;
   subnets: string[];
   launchTemplateName: string;
   ec2instanceCriteria: RunnerInputParameters['ec2instanceCriteria'];
@@ -222,7 +222,7 @@ export function parseEc2ScaleSetProviderConfig(value: unknown): Ec2ScaleSetProvi
       'environment',
       'runnerNamePrefix',
       'jitConfigParameterPath',
-      'jitConfigTtlSeconds',
+      'jitConfigTTLSeconds',
       'subnets',
       'launchTemplateName',
       'ec2instanceCriteria',
@@ -281,7 +281,7 @@ export function parseEc2ScaleSetProviderConfig(value: unknown): Ec2ScaleSetProvi
     environment: requireString(value.environment, 'environment', /^[A-Za-z0-9][A-Za-z0-9._-]*$/, 128),
     runnerNamePrefix: requirePossiblyEmptyString(value.runnerNamePrefix, 'runnerNamePrefix', /^[A-Za-z0-9._-]*$/, 45),
     jitConfigParameterPath,
-    jitConfigTtlSeconds: optionalPositiveNumber(value.jitConfigTtlSeconds, 'jitConfigTtlSeconds'),
+    jitConfigTTLSeconds: optionalPositiveNumber(value.jitConfigTTLSeconds, 'jitConfigTTLSeconds'),
     subnets: requireStringArray(value.subnets, 'subnets', /^subnet-[0-9a-f]+$/, 32),
     launchTemplateName: requireString(value.launchTemplateName, 'launchTemplateName', /^[A-Za-z0-9()./_-]+$/, 128),
     ec2instanceCriteria: {

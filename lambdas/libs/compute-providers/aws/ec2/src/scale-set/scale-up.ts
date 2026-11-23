@@ -83,7 +83,7 @@ async function publishJitConfiguration(
   // tier, so a TTL forces the tier regardless of the value size. Expiration is
   // enforced asynchronously by SSM and only cleans up parameters left behind by
   // instances that never read their JIT configuration.
-  const ttlSeconds = input.configuration.jitConfigTtlSeconds;
+  const ttlSeconds = input.configuration.jitConfigTTLSeconds;
   await ssmClient.send(
     new PutParameterCommand({
       Name: jitParameterName(input.configuration, instanceId),

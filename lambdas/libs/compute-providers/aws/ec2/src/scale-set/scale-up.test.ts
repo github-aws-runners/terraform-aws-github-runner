@@ -90,7 +90,7 @@ describe('EC2 scale-set scale up', () => {
       ec2Mock.on(CreateFleetCommand).resolves({ Instances: [{ InstanceIds: [instanceId] }] });
 
       const result = await createTestProvider({
-        configuration: { ...config, jitConfigTtlSeconds: 3600 },
+        configuration: { ...config, jitConfigTTLSeconds: 3600 },
       }).reconcile(createRequest());
 
       expect(result.actions.launched).toBe(1);
