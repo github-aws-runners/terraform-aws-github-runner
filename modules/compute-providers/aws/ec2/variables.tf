@@ -364,6 +364,7 @@ variable "storage_provider" {
     - `aws.ssm.paths.root`: Root Parameter Store path for the runner configuration.
     - `aws.ssm.paths.tokens`: Path segment used for registration tokens and just-in-time configuration.
     - `aws.ssm.paths.config`: Path segment used for persistent runner and provider configuration.
+    - `aws.ssm.ttl_seconds.tokens`: Optional TTL in seconds for scale-set just-in-time configuration parameters. When set, the parameters use the Advanced tier with an SSM expiration policy.
     - `aws.ssm.tags`: Shared SSM tags that override module-level `tags`.
     - `aws.ssm.parameters.tags`: Parameter-specific tags that override module-level and shared SSM tags.
   EOT
@@ -375,6 +376,9 @@ variable "storage_provider" {
           tokens = string
           config = string
         })
+        ttl_seconds = optional(object({
+          tokens = optional(number, null)
+        }), {})
         tags = optional(map(string), {})
         parameters = optional(object({
           tags = optional(map(string), {})

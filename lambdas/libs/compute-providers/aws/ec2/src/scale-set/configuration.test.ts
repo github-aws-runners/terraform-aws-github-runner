@@ -12,6 +12,10 @@ describe('EC2 scale-set provider configuration', () => {
     expect(parseEc2ScaleSetProviderConfig({ ...config, runnerNamePrefix: 'r'.repeat(45) })).toMatchObject({
       runnerNamePrefix: 'r'.repeat(45),
     });
+    expect(parseEc2ScaleSetProviderConfig(config).jitConfigTtlSeconds).toBeUndefined();
+    expect(parseEc2ScaleSetProviderConfig({ ...config, jitConfigTtlSeconds: 3600 })).toMatchObject({
+      jitConfigTtlSeconds: 3600,
+    });
   });
 
   it.each([
@@ -22,6 +26,10 @@ describe('EC2 scale-set provider configuration', () => {
     [{ ...config, ssmParameterTags: [{ Key: 'aws:owner', Value: 'untrusted' }] }],
     [{ ...config, runnerNamePrefix: 'r'.repeat(46) }],
     [{ ...config, bootTimeoutMinutes: 10 }],
+    [{ ...config, jitConfigTtlSeconds: 0 }],
+    [{ ...config, jitConfigTtlSeconds: -1 }],
+    [{ ...config, jitConfigTtlSeconds: Number.NaN }],
+    [{ ...config, jitConfigTtlSeconds: '3600' }],
   ])('rejects invalid or unsupported values instead of forwarding them to AWS', (invalid) => {
     expect(() => parseEc2ScaleSetProviderConfig(invalid)).toThrow();
   });

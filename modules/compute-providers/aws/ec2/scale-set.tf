@@ -37,6 +37,9 @@ locals {
     local.ami_id_ssm_external ? {
       amiIdSsmParameterName = local.ami_id_ssm_parameter_name
     } : {},
+    var.storage_provider.aws.ssm.ttl_seconds.tokens == null ? {} : {
+      jitConfigTtlSeconds = var.storage_provider.aws.ssm.ttl_seconds.tokens
+    },
   )
 
   scale_set_owned_instance_conditions = [

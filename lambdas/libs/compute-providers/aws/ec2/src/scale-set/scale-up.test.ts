@@ -71,6 +71,45 @@ describe('EC2 scale-set scale up', () => {
     });
   });
 
+  it('publishes the JIT configuration on the Standard tier without a policy when no TTL is configured', async () => {
+    const instanceId = 'i-1234567890abcdef0';
+    ec2Mock.on(DescribeInstancesCommand).resolves({});
+    ec2Mock.on(CreateFleetCommand).resolves({ Instances: [{ InstanceIds: [instanceId] }] });
+
+    await createTestProvider().reconcile(createRequest());
+
+    expect(ssmMock).toHaveReceivedCommandWith(PutParameterCommand, { Tier: 'Standard', Policies: undefined });
+  });
+
+  it('publishes the JIT configuration on the Advanced tier with an expiration policy when a TTL is configured', async () => {
+    const instanceId = 'i-1234567890abcdef0';
+    const now = new Date('2026-01-01T00:00:00.000Z');
+    vi.useFakeTimers({ now, toFake: ['Date'] });
+    try {
+      ec2Mock.on(DescribeInstancesCommand).resolves({});
+      ec2Mock.on(CreateFleetCommand).resolves({ Instances: [{ InstanceIds: [instanceId] }] });
+
+      const result = await createTestProvider({
+        configuration: { ...config, jitConfigTtlSeconds: 3600 },
+      }).reconcile(createRequest());
+
+      expect(result.actions.launched).toBe(1);
+      expect(ssmMock).toHaveReceivedCommandWith(PutParameterCommand, {
+        Name: `${config.jitConfigParameterPath}/${instanceId}`,
+        Tier: 'Advanced',
+        Policies: JSON.stringify([
+          {
+            Type: 'Expiration',
+            Version: '1.0',
+            Attributes: { Timestamp: '2026-01-01T01:00:00.000Z' },
+          },
+        ]),
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('resolves an AMI parameter through the provider-owned SSM client', async () => {
     const instanceId = 'i-1234567890abcdef0';
     const amiIdSsmParameterName = '/github-action-runners/unit-test/ami';
