@@ -164,6 +164,9 @@ variable "storage_provider" {
     - `storage_provider.aws.ssm.housekeeper.config.tokenPath`: Parameter Store token path cleaned by the housekeeper. When omitted, the configured runner token path is used.
     - `storage_provider.aws.ssm.housekeeper.config.minimumDaysOld`: Minimum parameter age in days before deletion is allowed.
     - `storage_provider.aws.ssm.housekeeper.config.dryRun`: Reports eligible parameters without deleting them when true.
+    - `storage_provider.type`: Selected runner-config storage provider, `aws_ssm` (default) or `aws_dynamodb`.
+    - `storage_provider.scale_up`, `scale_down`, `pool`, `job_retry`: Provider-owned control-plane environment variables and IAM policy fragments, supplied by the selected storage provider.
+    - `storage_provider.runner`: Runner-side DynamoDB locators and IAM policy, required when `type` is `aws_dynamodb`.
   EOT
   type = object({
     aws = object({
@@ -203,6 +206,29 @@ variable "storage_provider" {
         }), {})
       })
     })
+    type = optional(string, "aws_ssm")
+    scale_up = optional(object({
+      environment_variables = optional(map(string), {})
+      iam_policy_json       = optional(string, null)
+    }), {})
+    scale_down = optional(object({
+      environment_variables = optional(map(string), {})
+      iam_policy_json       = optional(string, null)
+    }), {})
+    pool = optional(object({
+      environment_variables = optional(map(string), {})
+      iam_policy_json       = optional(string, null)
+    }), {})
+    job_retry = optional(object({
+      environment_variables = optional(map(string), {})
+      iam_policy_json       = optional(string, null)
+    }), {})
+    runner = optional(object({
+      config_table_name       = optional(string, null)
+      runner_state_table_name = optional(string, null)
+      scope                   = optional(string, null)
+      iam_policy_json         = optional(string, null)
+    }), {})
   })
 
 }

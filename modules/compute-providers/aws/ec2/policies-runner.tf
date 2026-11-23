@@ -4,6 +4,7 @@ data "aws_caller_identity" "current" {}
 
 locals {
   ssm_parameter_arn_prefix = "arn:${var.aws_partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter"
+  ec2_instance_arn_prefix  = "arn:${var.aws_partition}:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:instance/"
   ssm_config_arn           = "${local.ssm_parameter_arn_prefix}${var.storage_provider.aws.ssm.paths.root}/${var.storage_provider.aws.ssm.paths.config}"
   cloudwatch_config_arn    = "${local.ssm_config_arn}/cloudwatch_agent_config_runner"
 }
@@ -180,10 +181,15 @@ locals {
         policy_json = data.aws_iam_policy_document.terminate_self.json
       }
     },
-    {
+    var.storage_provider.type == "aws_ssm" ? {
       ssm_parameters = {
         name        = "runner-ssm-parameters"
         policy_json = data.aws_iam_policy_document.ssm_parameters.json
+      }
+      } : {
+      runner_config_storage = {
+        name        = "runner-config-storage"
+        policy_json = var.storage_provider.runner.iam_policy_json
       }
     },
     var.config.ssm_enabled ? {

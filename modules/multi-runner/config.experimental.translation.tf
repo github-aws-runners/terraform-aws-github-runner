@@ -63,6 +63,7 @@ locals {
 
   stable_to_v2_storage_provider = {
     aws = {
+      dynamodb = null
       ssm = {
         paths = {
           root    = "/${var.ssm_paths.root}/${var.prefix}"

@@ -5,6 +5,7 @@ import {
   type RunnerConfigStore,
   type GitHubAppCredentialsStore,
   type RunnerGroupCacheStore,
+  type RunnerConfigRecord,
 } from '@aws-github-runner/storage-providers';
 import { Octokit } from '@octokit/rest';
 
@@ -22,7 +23,18 @@ export interface StartRunnerConfigOptions {
   runnerConfigStore?: RunnerConfigStore;
   runnerGroupCacheStore?: RunnerGroupCacheStore;
   getRunnerConfigMetadata?: (runnerId: string) => RunnerConfigMetadata[];
+  // Compute identity (for EC2 the instance ARN) that alone may read a runner's one-time configuration.
+  getRunnerConfigAccessScope?: (runnerId: string) => string | undefined;
   onJitConfigCreated?: (runnerId: string, metadata: GitHubRunnerMetadata) => Promise<void>;
+}
+
+function createRunnerConfigRecord(
+  runnerId: string,
+  value: string,
+  options: StartRunnerConfigOptions,
+): RunnerConfigRecord {
+  const accessScope = options.getRunnerConfigAccessScope?.(runnerId);
+  return { runnerId, value, ...(accessScope === undefined ? {} : { accessScope }) };
 }
 
 function generateRunnerServiceConfig(githubRunnerConfig: CreateGitHubRunnerConfig, token: string) {
@@ -243,10 +255,9 @@ async function createRegistrationTokenConfig(
   });
 
   for (const runnerId of runnerIds) {
-    await runnerConfigStore.create(
-      { runnerId, value: runnerServiceConfig.join(' ') },
-      { metadata: options.getRunnerConfigMetadata?.(runnerId) },
-    );
+    await runnerConfigStore.create(createRunnerConfigRecord(runnerId, runnerServiceConfig.join(' '), options), {
+      metadata: options.getRunnerConfigMetadata?.(runnerId),
+    });
     if (isDelay) {
       // Delay to stay within the selected store's maximum write throughput.
       await delay(delayMilliseconds);
@@ -310,8 +321,10 @@ async function createJitConfig(
         instance: runnerId,
       });
       await runnerConfigStore.create(
-        { runnerId, value: runnerConfig.data.encoded_jit_config },
-        { metadata: options.getRunnerConfigMetadata?.(runnerId) },
+        createRunnerConfigRecord(runnerId, runnerConfig.data.encoded_jit_config, options),
+        {
+          metadata: options.getRunnerConfigMetadata?.(runnerId),
+        },
       );
       if (isDelay) {
         // Delay to stay within the selected store's maximum write throughput.

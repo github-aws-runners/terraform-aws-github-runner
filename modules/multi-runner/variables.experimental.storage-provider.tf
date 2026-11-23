@@ -25,7 +25,20 @@ variable "global_config_storage_provider" {
       aws.ssm.housekeeper.config.tokenPath: "Parameter path containing runner tokens to clean up."
       aws.ssm.housekeeper.config.minimumDaysOld: "Minimum age in days before an old token is eligible for cleanup."
       aws.ssm.housekeeper.config.dryRun: "Whether the SSM housekeeper reports cleanup without deleting parameters."
+      aws.dynamodb.config.kms_key_arn: "Optional customer-managed KMS key ARN for the durable configuration table."
+      aws.dynamodb.config.point_in_time_recovery_enabled: "Enables point-in-time recovery for the durable configuration table."
+      aws.dynamodb.config.deletion_protection_enabled: "Enables deletion protection for the durable configuration table."
+      aws.dynamodb.config.tags: "Tags applied to the durable configuration table."
+      aws.dynamodb.runner_state.kms_key_arn: "Optional customer-managed KMS key ARN for the runner-state table."
+      aws.dynamodb.runner_state.point_in_time_recovery_enabled: "Enables point-in-time recovery for the runner-state table."
+      aws.dynamodb.runner_state.deletion_protection_enabled: "Enables deletion protection for the runner-state table."
+      aws.dynamodb.runner_state.runner_config_ttl_seconds: "TTL in seconds for one-time registration and JIT configuration records."
+      aws.dynamodb.runner_state.runner_state_ttl_seconds: "Safety TTL in seconds for provisioning and terminating lifecycle records."
+      aws.dynamodb.runner_state.tags: "Tags applied to the runner-state table."
     }
+
+    Setting aws.dynamodb moves runner configuration, GitHub App credentials, the webhook secret and the runner matcher
+    configuration to DynamoDB. Omitting it keeps the SSM backend; aws.ssm continues to supply paths for remaining SSM resources.
   EOT
   type = object({
     aws = optional(object({
@@ -66,6 +79,22 @@ variable "global_config_storage_provider" {
           }), {})
         }), {})
       }), {})
+      dynamodb = optional(object({
+        config = optional(object({
+          kms_key_arn                    = optional(string, null)
+          point_in_time_recovery_enabled = optional(bool, true)
+          deletion_protection_enabled    = optional(bool, false)
+          tags                           = optional(map(string), {})
+        }), {})
+        runner_state = optional(object({
+          kms_key_arn                    = optional(string, null)
+          point_in_time_recovery_enabled = optional(bool, false)
+          deletion_protection_enabled    = optional(bool, false)
+          runner_config_ttl_seconds      = optional(number, 86400)
+          runner_state_ttl_seconds       = optional(number, 604800)
+          tags                           = optional(map(string), {})
+        }), {})
+      }), null)
     }), {})
   })
   default = {}

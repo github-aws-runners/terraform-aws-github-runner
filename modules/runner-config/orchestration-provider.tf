@@ -57,6 +57,10 @@ module "orchestration_webhook" {
         parameter_store_max_writes_per_second      = var.storage_provider.aws.ssm.parameters.max_writes_per_second
       }
     }
+    scale_up   = var.storage_provider.scale_up
+    scale_down = var.storage_provider.scale_down
+    pool       = var.storage_provider.pool
+    job_retry  = var.storage_provider.job_retry
   }
   observability = var.observability
 
