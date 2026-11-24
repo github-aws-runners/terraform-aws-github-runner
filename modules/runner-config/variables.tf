@@ -146,6 +146,7 @@ variable "storage_provider" {
     - `storage_provider.aws.ssm.paths.root`: Root Parameter Store path for this runner configuration.
     - `storage_provider.aws.ssm.paths.tokens`: Path segment under `paths.root` used for registration tokens and just-in-time configuration.
     - `storage_provider.aws.ssm.paths.config`: Path segment under `paths.root` used for persistent runner configuration.
+    - `storage_provider.aws.ssm.ttl_seconds.tokens`: Optional positive whole-second TTL for runtime registration-token and JIT parameters. Null leaves expiration disabled.
     - `storage_provider.aws.ssm.kms_key_id`: Optional customer-managed KMS key ARN used by control-plane IAM policies to decrypt shared GitHub App parameters. The ARN may be unknown until apply; null omits the provider-owned KMS statements. It does not select encryption for runtime-created runner parameters.
     - `storage_provider.aws.ssm.tags`: Shared tags for SSM-related resources. These override module-level `tags` and are inherited by parameter and housekeeper resources.
     - `storage_provider.aws.ssm.parameters.max_concurrent_invocations`: Expected number of concurrent scale-up and pool Lambda invocations writing to Parameter Store. Each invocation paces its writes to a share of the account-wide write-rate limit. The default is `1`.
@@ -173,6 +174,9 @@ variable "storage_provider" {
           tokens = string
           config = string
         })
+        ttl_seconds = optional(object({
+          tokens = optional(number, null)
+        }), {})
         kms_key_id = optional(string, null)
         tags       = optional(map(string), {})
         parameters = optional(object({
@@ -205,6 +209,13 @@ variable "storage_provider" {
     })
   })
 
+  validation {
+    condition = var.storage_provider.aws.ssm.ttl_seconds.tokens == null ? true : (
+      var.storage_provider.aws.ssm.ttl_seconds.tokens > 0 &&
+      floor(var.storage_provider.aws.ssm.ttl_seconds.tokens) == var.storage_provider.aws.ssm.ttl_seconds.tokens
+    )
+    error_message = "`storage_provider.aws.ssm.ttl_seconds.tokens` must be a positive whole number of seconds."
+  }
 }
 
 variable "observability" {

@@ -1,4 +1,8 @@
 locals {
+  ssm_token_environment_variables = var.storage_provider.aws.ssm.ttl_seconds.tokens != null ? {
+    SSM_TOKEN_TTL_SECONDS = tostring(var.storage_provider.aws.ssm.ttl_seconds.tokens)
+  } : {}
+
   orchestration_providers = {
     for provider_type, provider_config in var.orchestration_provider : provider_type => provider_config
     if provider_config != null
@@ -57,6 +61,8 @@ module "orchestration_webhook" {
         parameter_store_max_writes_per_second      = var.storage_provider.aws.ssm.parameters.max_writes_per_second
       }
     }
+    scale_up = { environment_variables = local.ssm_token_environment_variables }
+    pool     = { environment_variables = local.ssm_token_environment_variables }
   }
   observability = var.observability
 
