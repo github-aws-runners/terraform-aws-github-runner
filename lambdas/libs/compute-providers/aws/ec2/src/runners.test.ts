@@ -89,6 +89,33 @@ describe('list instances', () => {
     vi.clearAllMocks();
   });
 
+  it('counts existing mixed-case owner tags across pages without including another organization', async () => {
+    mockEC2Client.reset();
+    const page = (owner: string, id: string) => ({
+      InstanceId: id,
+      Tags: [
+        { Key: 'ghr:Owner', Value: owner },
+        { Key: 'ghr:Type', Value: 'Org' },
+      ],
+    });
+    mockEC2Client
+      .on(DescribeInstancesCommand)
+      .resolvesOnce({ Reservations: [{ Instances: [page('Org-A', 'one')] }], NextToken: 'next' })
+      .resolvesOnce({ Reservations: [{ Instances: [page('org-a', 'two'), page('org-b', 'other')] }] });
+    const runners = await ec2Operations.list({
+      environment: ENVIRONMENT,
+      runnerType: 'Org',
+      runnerOwner: 'org-a',
+      runnerOwnerIgnoreCase: true,
+    });
+    expect(runners.map((runner) => runner.id)).toEqual(['one', 'two']);
+    for (const call of mockEC2Client.commandCalls(DescribeInstancesCommand)) {
+      expect(call.args[0].input.Filters).toContainEqual({ Name: 'tag:ghr:environment', Values: [ENVIRONMENT] });
+      expect(call.args[0].input.Filters).toContainEqual({ Name: 'tag:ghr:Type', Values: ['Org'] });
+      expect(call.args[0].input.Filters?.some((filter) => filter.Name === 'tag:ghr:Owner')).toBe(false);
+    }
+  });
+
   it('returns a list of instances (Non JIT)', async () => {
     mockEC2Client.on(DescribeInstancesCommand).resolves(mockRunningInstances);
     const resp = await ec2Operations.list();
@@ -1855,4 +1882,17 @@ it('does not issue a cleanup page request after request cancellation', async () 
   const client = createEc2RunnerClient(new EC2Client({})).forRequest({ signal: controller.signal });
   await expect(client.listPage!('test-environment')).rejects.toThrow();
   expect(mockEC2Client).not.toHaveReceivedCommand(DescribeInstancesCommand);
+});
+
+it('counts owners across pages without retaining runner records', async () => {
+  mockEC2Client
+    .on(DescribeInstancesCommand)
+    .resolvesOnce({ ...mockRunningInstances, NextToken: 'next' })
+    .resolvesOnce(mockRunningInstances);
+  const counts = await ec2Operations.countByOwner({ environment: ENVIRONMENT, runnerType: 'Org' });
+  expect(counts.get('codertocat')).toBe(2);
+  expect(mockEC2Client.commandCalls(DescribeInstancesCommand).at(-1)?.args[0].input).toEqual({
+    Filters: expect.arrayContaining([{ Name: 'tag:ghr:Type', Values: ['Org'] }]),
+    NextToken: 'next',
+  });
 });

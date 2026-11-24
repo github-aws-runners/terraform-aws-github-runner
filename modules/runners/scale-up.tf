@@ -74,6 +74,7 @@ resource "aws_lambda_function" "scale_up" {
       SCALE_ERRORS                                   = jsonencode(var.scale_errors)
       JOB_RETRY_CONFIG                               = jsonencode(local.job_retry_config)
       USE_DEDICATED_HOST                             = var.use_dedicated_host
+      ENABLE_MULTI_ORG_RUNNERS                       = var.enable_multi_org_runners
       }, var.ssm_ttl_seconds.tokens != null ? {
       SSM_TOKEN_TTL_SECONDS = tostring(var.ssm_ttl_seconds.tokens)
     } : {})

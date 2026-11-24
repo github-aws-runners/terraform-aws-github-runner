@@ -33,6 +33,7 @@ locals {
     PARAMETER_GITHUB_APP_ID_NAME         = var.config.github.app_parameters.id.name
     PARAMETER_GITHUB_APP_KEY_BASE64_NAME = var.config.github.app_parameters.key_base64.name
     PARAMETER_GITHUB_APPS_MANIFEST_NAME  = var.config.github.app_parameters.additional_apps_manifest != null ? var.config.github.app_parameters.additional_apps_manifest.name : ""
+    ENABLE_MULTI_ORG_RUNNERS             = var.config.github.multi_org_runners
   }
 
   environment_variables = merge(

@@ -66,6 +66,7 @@ resource "aws_lambda_function" "pool" {
       SCALE_ERRORS                                   = jsonencode(var.config.runner.scale_errors)
       USE_DEDICATED_HOST                             = var.config.runner.use_dedicated_host
       INCLUDE_BUSY_RUNNERS                           = var.config.include_busy_runners
+      ENABLE_MULTI_ORG_RUNNERS                       = var.config.enable_multi_org_runners
       }, var.config.ssm_ttl_seconds.tokens != null ? {
       SSM_TOKEN_TTL_SECONDS = tostring(var.config.ssm_ttl_seconds.tokens)
     } : {})
@@ -239,9 +240,9 @@ resource "aws_scheduler_schedule" "pool" {
   target {
     arn      = aws_lambda_function.pool.arn
     role_arn = aws_iam_role.scheduler.arn
-    input = jsonencode({
+    input = jsonencode(merge({
       poolSize = each.value.size
       type     = "ec2"
-    })
+    }, var.config.enable_multi_org_runners ? { org = each.value.org } : {}))
   }
 }
