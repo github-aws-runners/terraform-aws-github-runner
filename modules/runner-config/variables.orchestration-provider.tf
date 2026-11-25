@@ -54,7 +54,7 @@ variable "orchestration_provider" {
     - `webhook.job_retry.max_attempts`: Maximum retry-check attempts before the message is no longer republished. The default is `1`.
     - `webhook.job_retry.tags`: Tags applied within job-retry resource scopes after common provider tags. The default is `{}`.
     - `webhook.job_retry.lambda.memory_size`: Memory allocated to the job-retry Lambda in MB. The default is `256`.
-    - `webhook.job_retry.lambda.reserved_concurrent_executions`: Reserved concurrency for job retry. The default is `1`; use `-1` for unreserved concurrency.
+    - `webhook.job_retry.lambda.reserved_concurrent_executions`: Reserved concurrency for job retry. The default is unreserved; set a positive value to limit concurrency or `0` to disable invocations.
     - `webhook.job_retry.lambda.timeout`: Job-retry Lambda timeout in seconds and visibility timeout for its retry queue. The default is `30`.
   EOT
   type = object({
@@ -133,7 +133,7 @@ variable "orchestration_provider" {
         tags             = optional(map(string), {})
         lambda = optional(object({
           memory_size                    = optional(number, 256)
-          reserved_concurrent_executions = optional(number, 1)
+          reserved_concurrent_executions = optional(number, null)
           timeout                        = optional(number, 30)
         }), {})
       }), {})

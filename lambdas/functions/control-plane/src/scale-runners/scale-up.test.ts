@@ -1058,7 +1058,7 @@ describe('scaleUp with GHES', () => {
 
       await scaleUpModule.scaleUp(messages);
 
-      expect(mockCreateClient).toHaveBeenCalledTimes(3); // 1 app client, 2 repo installation clients
+      expect(mockCreateClient).toHaveBeenCalledTimes(4); // App and installation clients for each owner
       expect(mockedInstallationAuth).toHaveBeenCalledWith(
         100,
         'https://github.enterprise.something/api/v3',
@@ -1487,7 +1487,7 @@ describe('scaleUp with public GH', () => {
 
       await scaleUpModule.scaleUp(messages);
 
-      expect(mockCreateClient).toHaveBeenCalledTimes(3); // 1 app client, 2 repo installation clients
+      expect(mockCreateClient).toHaveBeenCalledTimes(4); // App and installation clients for each owner
       expect(mockedInstallationAuth).toHaveBeenCalledWith(100, '', 0, expect.anything());
       expect(mockedInstallationAuth).toHaveBeenCalledWith(200, '', 0, expect.anything());
     });
@@ -1948,7 +1948,7 @@ describe('scaleUp with Github Data Residency', () => {
 
       await scaleUpModule.scaleUp(messages);
 
-      expect(mockCreateClient).toHaveBeenCalledTimes(3); // 1 app client, 2 repo installation clients
+      expect(mockCreateClient).toHaveBeenCalledTimes(4); // App and installation clients for each owner
       expect(mockedInstallationAuth).toHaveBeenCalledWith(100, '', 0, expect.anything());
       expect(mockedInstallationAuth).toHaveBeenCalledWith(200, '', 0, expect.anything());
     });
@@ -2195,6 +2195,15 @@ describe('Multi-app round-robin', () => {
     resetStorageMocks();
   });
 
+  it('selects the initial App using each installation owner scope', async () => {
+    await scaleUpModule.scaleUp([
+      { ...TEST_DATA_SINGLE, repositoryOwner: 'Owner-A' },
+      { ...TEST_DATA_SINGLE, repositoryOwner: 'Owner-B' },
+    ]);
+    const scopes = mockedAppAuth.mock.calls.filter((call) => call[2] === undefined).map((call) => call[4]);
+    expect(scopes).toEqual([JSON.stringify(['', 'owner-a']), JSON.stringify(['', 'owner-b'])]);
+  });
+
   it('passes the same appIndex to createGithubInstallationAuth when multi-app is active', async () => {
     mockedGetAppCount.mockResolvedValue(2);
     mockedAppAuth.mockResolvedValue({
@@ -2357,3 +2366,7 @@ function resetStorageMocks() {
   mockRunnerGroupCacheCreate.mockReset();
   mockRunnerGroupCacheCreate.mockResolvedValue(undefined);
 }
+
+vi.mock('../github/app-failover', () => ({
+  withAppFailover: async (index: number, create: (index: number) => Promise<unknown>) => create(index),
+}));

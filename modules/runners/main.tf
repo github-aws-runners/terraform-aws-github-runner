@@ -89,6 +89,10 @@ locals {
     var.runner_os == "osx" ? base64encode(local.user_data) :
     null
   )
+
+  launch_template_variants = var.instance_capacity_type_override_enabled ? ["default", "on_demand_override"] : ["default"]
+
+  on_demand_override_launch_template_created = contains(local.launch_template_variants, "on_demand_override")
 }
 
 data "aws_ami" "runner" {
@@ -154,19 +158,23 @@ locals {
     ena_srd_specification             = null
   }
 
+  runner_security_group_ids = compact(concat(
+    var.enable_managed_runner_security_group ? [aws_security_group.runner_sg[0].id] : [],
+    var.runner_additional_security_group_ids,
+  ))
+
   network_interfaces = length(var.network_interfaces) > 0 ? var.network_interfaces : (
     var.associate_public_ipv4_address ? [merge(local.network_interfaces_zero, {
       associate_public_ip_address = true
-      security_groups = compact(concat(
-        var.enable_managed_runner_security_group ? [aws_security_group.runner_sg[0].id] : [],
-        var.runner_additional_security_group_ids,
-      ))
+      security_groups             = local.runner_security_group_ids
     })] : []
   )
 }
 
 resource "aws_launch_template" "runner" {
-  name = "${var.prefix}-action-runner"
+  for_each = toset(local.launch_template_variants)
+
+  name = each.key == "default" ? "${var.prefix}-action-runner" : "${var.prefix}-action-runner-on-demand-override"
 
   dynamic "block_device_mappings" {
     for_each = var.block_device_mappings != null ? var.block_device_mappings : []
@@ -258,10 +266,8 @@ resource "aws_launch_template" "runner" {
   key_name                             = var.key_name
   ebs_optimized                        = var.ebs_optimized
 
-  vpc_security_group_ids = !var.associate_public_ipv4_address ? compact(concat(
-    var.enable_managed_runner_security_group ? [aws_security_group.runner_sg[0].id] : [],
-    var.runner_additional_security_group_ids,
-  )) : []
+  # EC2 rejects instance-level security groups combined with network interfaces.
+  vpc_security_group_ids = length(local.network_interfaces) == 0 ? local.runner_security_group_ids : []
 
   tag_specifications {
     resource_type = "instance"
@@ -273,7 +279,12 @@ resource "aws_launch_template" "runner" {
       {
         "ghr:runner_name_prefix" = var.runner_name_prefix
       },
-      var.runner_ec2_tags
+      var.runner_ec2_tags,
+      {
+        # JIT uses the configured prefix; config.sh uses the overridable EC2 tag.
+        # Keep this authoritative tag after user tags so cleanup can avoid scans.
+        "ghr:registered_runner_name_prefix" = var.enable_ephemeral_runners && coalesce(var.enable_jit_config, var.enable_ephemeral_runners) ? var.runner_name_prefix : lookup(var.runner_ec2_tags, "ghr:runner_name_prefix", var.runner_name_prefix)
+      }
     )
   }
 
@@ -296,7 +307,7 @@ resource "aws_launch_template" "runner" {
   # Additionally, tagging spot requests via the CreateFleetCommand in the Lambda function does not work as expected,
   # so we rely on Terraform to manage these tags only when spot is exclusively used without on-demand failover.
   dynamic "tag_specifications" {
-    for_each = var.instance_target_capacity_type == "spot" && length(var.enable_on_demand_failover_for_errors) == 0 ? [1] : [] # Include the block only if the value is "spot" and on_demand_failover_for_errors is not enabled
+    for_each = each.key == "default" && var.instance_target_capacity_type == "spot" && length(var.enable_on_demand_failover_for_errors) == 0 ? [1] : [] # Include the block only if the value is "spot" and on_demand_failover_for_errors is not enabled
     content {
       resource_type = "spot-instances-request"
       tags = merge(
@@ -353,7 +364,7 @@ resource "aws_launch_template" "runner" {
       network_interface_id         = try(network_interfaces.value.network_interface_id, null)
       primary_ipv6                 = try(network_interfaces.value.primary_ipv6, null)
       private_ip_address           = try(network_interfaces.value.private_ip_address, null)
-      security_groups              = try(network_interfaces.value.security_groups, null)
+      security_groups              = try(network_interfaces.value.security_groups, null) != null || try(network_interfaces.value.network_interface_id, null) != null ? try(network_interfaces.value.security_groups, null) : local.runner_security_group_ids
       subnet_id                    = try(network_interfaces.value.subnet_id, null)
 
       dynamic "connection_tracking_specification" {
@@ -379,6 +390,11 @@ resource "aws_launch_template" "runner" {
       }
     }
   }
+}
+
+moved {
+  from = aws_launch_template.runner
+  to   = aws_launch_template.runner["default"]
 }
 
 resource "aws_security_group" "runner_sg" {

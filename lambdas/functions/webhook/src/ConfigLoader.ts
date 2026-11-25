@@ -17,18 +17,17 @@ abstract class BaseConfig {
 
   static async load<T extends BaseConfig>(): Promise<T> {
     if (!this.instance) {
-      this.instance = new (this as unknown as { new (): T })();
-      await this.instance.loadConfig();
+      // Cache only a successful load.
+      const instance = new (this as unknown as { new (): T })();
+      await instance.loadConfig();
 
-      if (this.instance.configLoadingErrors.length > 0) {
-        logger.debug('Failed to load config', {
-          config: this.instance.logOjbect,
-          errors: this.instance.configLoadingErrors,
-        });
-        throw new Error(`Failed to load config: ${this.instance.configLoadingErrors.join(', ')}`);
+      if (instance.configLoadingErrors.length > 0) {
+        logger.error('Failed to load config', { errors: instance.configLoadingErrors });
+        throw new Error(`Failed to load config: ${instance.configLoadingErrors.join(', ')}`);
       }
 
-      logger.debug('Config loaded', { config: this.instance.logOjbect() });
+      this.instance = instance;
+      logger.debug('Config loaded', { config: instance.logOjbect() });
     } else {
       logger.debug('Config already loaded', { config: this.instance.logOjbect() });
     }

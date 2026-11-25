@@ -57,6 +57,7 @@ variable "config" {
     - `block_device_mappings[].volume_type`: EBS volume type.
     - `ebs_optimized`: Requests EBS-optimized instances.
     - `instance_target_capacity_type`: Primary capacity type, either `spot` or `on-demand`.
+    - `instance_capacity_type_override_enabled`: Allows a per-job label to override capacity type to `on-demand` at launch time. When true, an additional launch template variant without the Spot-request tag specification is created so an on-demand override never conflicts with it.
     - `instance_allocation_strategy`: EC2 Fleet allocation strategy.
     - `instance_type_priorities`: Optional numeric priorities keyed by instance type.
     - `instance_max_spot_price`: Optional maximum hourly Spot price.
@@ -117,7 +118,7 @@ variable "config" {
     - `license_specifications`: License Manager configurations added to the launch template.
     - `license_specifications[].license_configuration_arn`: ARN of an AWS License Manager license configuration.
     - `associate_public_ipv4_address`: Associates a public IPv4 address with runner network interfaces.
-    - `network_interfaces`: Advanced network interface configuration for the launch template. Leave empty to keep using `associate_public_ipv4_address` for a simple single-interface setup.
+    - `network_interfaces`: Advanced network interface configuration for the launch template. Leave empty to keep using `associate_public_ipv4_address` for a simple single-interface setup. When set, security groups are set on the interfaces, not on the instance. An interface without `security_groups` gets the managed security group and `additional_security_group_ids`, unless it attaches an existing `network_interface_id`.
     - `on_demand_failover_for_errors`: EC2 errors that trigger on-demand fallback after a Spot failure.
     - `scale_errors`: EC2 errors treated as retryable scale-up failures.
     - `use_dedicated_host`: Enables the dedicated-host launch path.
@@ -164,12 +165,13 @@ variable "config" {
       volume_size                = number
       volume_type                = optional(string, "gp3")
     })), [{ volume_size = 30 }])
-    ebs_optimized                 = optional(bool, false)
-    instance_target_capacity_type = optional(string, "spot")
-    instance_allocation_strategy  = optional(string, "lowest-price")
-    instance_type_priorities      = optional(map(number), null)
-    instance_max_spot_price       = optional(string, null)
-    instance_types                = list(string)
+    ebs_optimized                           = optional(bool, false)
+    instance_target_capacity_type           = optional(string, "spot")
+    instance_capacity_type_override_enabled = optional(bool, false)
+    instance_allocation_strategy            = optional(string, "lowest-price")
+    instance_type_priorities                = optional(map(number), null)
+    instance_max_spot_price                 = optional(string, null)
+    instance_types                          = list(string)
     user_data = optional(object({
       enabled               = optional(bool, true)
       template              = optional(string, null)

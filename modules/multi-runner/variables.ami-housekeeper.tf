@@ -42,7 +42,11 @@ variable "ami_housekeeper_lambda_schedule_expression" {
 }
 
 variable "ami_housekeeper_cleanup_config" {
-  description = "Configuration for AMI cleanup."
+  description = <<-EOT
+    Configuration for AMI cleanup.
+
+    - `launchTemplateNames`: Launch template names associated with AMIs eligible for cleanup. A runner type with dynamic labels enabled creates a second, `-on-demand-override` suffixed launch template; include both names if that type's AMIs should be eligible for cleanup.
+  EOT
   type = object({
     maxItems       = optional(number)
     minimumDaysOld = optional(number)

@@ -54,5 +54,6 @@ variable "config" {
       arn     = string
       version = string
     }))
+    ssm_parameter_runner_matcher_config_arn_pattern = string
   })
 }

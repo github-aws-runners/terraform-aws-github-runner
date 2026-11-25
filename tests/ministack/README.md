@@ -67,6 +67,9 @@ instances. MiniStack v1.5.10 propagates the Terraform launch-template tags to
 instances, allowing the scale-down Lambda to discover and remove each runner.
 The smoke test invokes scale-down for the webhook and pool-created runners and
 verifies the GitHub API calls and EC2 termination.
+Both minimum runtime and boot grace are set to zero so these immediate-cleanup
+assertions do not wait for production startup delays. Boot-grace behavior is
+covered separately by the scale-down unit tests.
 The pool schedule is configured for a far-future date because the test invokes
 the Lambda directly.
 

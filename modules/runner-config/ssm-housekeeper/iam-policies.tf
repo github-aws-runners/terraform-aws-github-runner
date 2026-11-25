@@ -39,7 +39,7 @@ data "aws_iam_policy_document" "ssm_housekeeper" {
   statement {
     effect = "Allow"
     actions = [
-      "ssm:DeleteParameter",
+      "ssm:DeleteParameters",
       "ssm:GetParametersByPath",
     ]
     resources = [var.config.cleanup.parameter_path_arn]

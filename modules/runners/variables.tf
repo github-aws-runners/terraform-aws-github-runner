@@ -129,6 +129,12 @@ variable "instance_target_capacity_type" {
   }
 }
 
+variable "instance_capacity_type_override_enabled" {
+  description = "Allows a per-job label to override capacity type to `on-demand` at launch time. When true, an additional launch template variant without the Spot-request tag specification is created so an on-demand override never conflicts with it."
+  type        = bool
+  default     = false
+}
+
 variable "instance_allocation_strategy" {
   description = "The allocation strategy for creating instances. For spot, AWS recommends `price-capacity-optimized`; for on-demand, use `lowest-price` or `prioritized`. The AWS default is `lowest-price`."
   type        = string
@@ -318,6 +324,18 @@ variable "scale_up_reserved_concurrent_executions" {
   description = "Amount of reserved concurrent executions for the scale-up lambda function. A value of 0 disables lambda from being triggered and -1 removes any concurrency limitations."
   type        = number
   default     = 1
+}
+
+variable "ssm_parameter_store_max_concurrent_invocations" {
+  description = "Expected number of concurrent scale-up/pool lambda invocations writing to Parameter Store, used to pace each invocation's writes to a share of the account-wide write-rate limit."
+  type        = number
+  default     = 1
+}
+
+variable "ssm_parameter_store_max_writes_per_second" {
+  description = "Parameter Store write rate to pace against, in writes/second, shared by all scale-up and pool invocations. AWS documents a PutParameter quota of 3 TPS per account and Region (10 TPS with higher throughput enabled). The default of 40 keeps the previous pacing; lower it if PutParameter calls are throttled."
+  type        = number
+  default     = 40
 }
 
 variable "lambda_scale_up_memory_size" {
@@ -784,7 +802,7 @@ variable "associate_public_ipv4_address" {
 }
 
 variable "network_interfaces" {
-  description = "Advanced network interface configuration for the runner launch template. See https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#network-interfaces for details. Leave unset (default) to keep using associate_public_ipv4_address for a simple single-interface setup; set this to fully control one or more interfaces."
+  description = "Advanced network interface configuration for the runner launch template. See https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/launch_template#network-interfaces for details. Leave unset (default) to keep using associate_public_ipv4_address for a simple single-interface setup; set this to fully control one or more interfaces. When set, security groups are set on the interfaces, not on the instance. An interface without `security_groups` gets the managed security group and `runner_additional_security_group_ids`, unless it attaches an existing `network_interface_id`."
   type = list(object({
     associate_carrier_ip_address = optional(bool)
     associate_public_ip_address  = optional(bool)

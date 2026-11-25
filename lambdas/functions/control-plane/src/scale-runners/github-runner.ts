@@ -7,10 +7,8 @@ import {
   type RunnerGroupCacheStore,
 } from '@aws-github-runner/storage-providers';
 import { Octokit } from '@octokit/rest';
-import type { ResponseHeaders } from '@octokit/types';
 
 import { getStoredInstallationId } from '../github/auth';
-import { metricGitHubAppRateLimit } from '../github/rate-limit';
 import { ActionRequestMessage, CreateGitHubRunnerConfig, EphemeralRunnerConfig, RunnerGroup } from './types';
 
 const logger = createChildLogger('github-runner');
@@ -127,11 +125,6 @@ export async function getInstallationId(
   return resolveInstallationId(githubAppClient, enableOrgLevel, payload);
 }
 
-// Extracts rate-limit headers off a failed request so a blocked call can still be measured.
-function getErrorHeaders(error: unknown): ResponseHeaders | undefined {
-  return (error as { response?: { headers?: ResponseHeaders } })?.response?.headers;
-}
-
 // Raised when the queued-check is asked about an event type it cannot interpret.
 // Distinct from an API failure: no amount of retrying makes a check_run event
 // answerable, so callers must not treat this as a transient fault.
@@ -142,27 +135,16 @@ export class UnsupportedEventError extends Error {
   }
 }
 
-export async function isJobQueued(
-  githubInstallationClient: Octokit,
-  payload: ActionRequestMessage,
-  appIndex?: number,
-): Promise<boolean> {
+export async function isJobQueued(githubInstallationClient: Octokit, payload: ActionRequestMessage): Promise<boolean> {
   let isQueued = false;
   if (payload.eventType === 'workflow_job') {
-    try {
-      const jobForWorkflowRun = await githubInstallationClient.actions.getJobForWorkflowRun({
-        job_id: payload.id,
-        owner: payload.repositoryOwner,
-        repo: payload.repositoryName,
-      });
-      metricGitHubAppRateLimit(jobForWorkflowRun.headers, appIndex);
-      isQueued = jobForWorkflowRun.data.status === 'queued';
-      logger.debug(`The job ${payload.id} is${isQueued ? ' ' : 'not'} queued`);
-    } catch (error) {
-      const headers = getErrorHeaders(error);
-      if (headers) metricGitHubAppRateLimit(headers, appIndex);
-      throw error;
-    }
+    const jobForWorkflowRun = await githubInstallationClient.actions.getJobForWorkflowRun({
+      job_id: payload.id,
+      owner: payload.repositoryOwner,
+      repo: payload.repositoryName,
+    });
+    isQueued = jobForWorkflowRun.data.status === 'queued';
+    logger.debug(`The job ${payload.id} is${isQueued ? ' ' : 'not'} queued`);
   } else {
     throw new UnsupportedEventError(payload.eventType);
   }
@@ -227,11 +209,16 @@ export async function createStartRunnerConfig(
   }
 }
 
-function addDelay(runnerIds: string[], runnerConfigStore: RunnerConfigStore) {
+// maxWritesPerSecond is account-wide, so the per-write delay is spread across the configured
+// number of concurrent invocations rather than sized off this invocation's batch alone.
+export function addDelay(runnerIds: string[], runnerConfigStore: RunnerConfigStore) {
   const delay = async (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
   const maxWritesPerSecond = runnerConfigStore.maxWritesPerSecond;
-  const isDelay = maxWritesPerSecond !== undefined && runnerIds.length >= maxWritesPerSecond;
-  const delayMilliseconds = maxWritesPerSecond === undefined ? 0 : 1000 / maxWritesPerSecond;
+  const isDelay = maxWritesPerSecond !== undefined && runnerIds.length > 0;
+  const configuredConcurrency = parseInt(process.env.SSM_PARAMETER_STORE_MAX_CONCURRENT_INVOCATIONS ?? '', 10);
+  const maxConcurrentInvocations = configuredConcurrency > 0 ? configuredConcurrency : 1;
+  const delayMilliseconds =
+    maxWritesPerSecond === undefined ? 0 : (1000 / maxWritesPerSecond) * maxConcurrentInvocations;
   return { isDelay, delay, delayMilliseconds };
 }
 
@@ -314,8 +301,6 @@ async function createJitConfig(
               labels: ephemeralRunnerConfig.runnerLabels,
             });
 
-      metricGitHubAppRateLimit(runnerConfig.headers, githubRunnerConfig.appIndex);
-
       await options.onJitConfigCreated?.(runnerId, {
         githubRunnerId: runnerConfig.data.runner.id.toString(),
         runnerLabels,
@@ -333,8 +318,6 @@ async function createJitConfig(
         await delay(delayMilliseconds);
       }
     } catch (error) {
-      const headers = getErrorHeaders(error);
-      if (headers) metricGitHubAppRateLimit(headers, githubRunnerConfig.appIndex);
       failedRunnerIds.push(runnerId);
       logger.warn('Failed to create JIT config for instance, continuing with remaining instances', {
         instance: runnerId,

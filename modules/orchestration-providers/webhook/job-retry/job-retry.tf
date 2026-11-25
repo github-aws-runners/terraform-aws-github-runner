@@ -135,6 +135,7 @@ resource "aws_iam_role_policy" "job_retry_xray" {
 }
 
 resource "aws_lambda_event_source_mapping" "job_retry" {
+  function_response_types            = ["ReportBatchItemFailures"]
   event_source_arn                   = aws_sqs_queue.job_retry_check_queue.arn
   function_name                      = aws_lambda_function.job_retry.arn
   batch_size                         = var.config.queue.event_source_mapping.batch_size

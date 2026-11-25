@@ -15,34 +15,28 @@
       }
     },
     {
-      "plugin": "@nx/vite/plugin",
+      "plugin": "@nx/vite/plugin"
+    },
+    {
+      "plugin": "@nx/vitest",
       "options": {
-        "targetName": "test"
+        "testTargetName": "test"
       }
     }
   ],
   "targetDefaults": {
     "build": {
-      "inputs": [
-        "{projectRoot}/src/index.ts"
-      ],
-      "dependsOn": [
-        "default",
-        "^default",
-        "^build"
-      ],
+      "inputs": ["{projectRoot}/src/index.ts"],
+      "dependsOn": ["default", "^default", "^build"],
       "executor": "@nx/workspace:run-commands",
       "cache": true
     },
     "dist": {
-      "outputs": [
-        "{projectRoot}/dist/**/*"
-      ],
-      "dependsOn": [
-        "build"
-      ],
+      "outputs": ["{projectRoot}/dist/**/*"],
+      "dependsOn": ["build"],
       "executor": "@nx/workspace:run-commands",
       "cache": true
     }
-  }
+  },
+  "analytics": false
 }

@@ -16,6 +16,31 @@ mock_provider "aws" {
       arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/ami-id"
     }
   }
+
+  mock_resource "aws_iam_policy" {
+    defaults = {
+      arn = "arn:aws:iam::123456789012:policy/mock-policy"
+    }
+  }
+
+  mock_resource "aws_lambda_function" {
+    defaults = {
+      arn = "arn:aws:lambda:eu-west-1:123456789012:function:mock-function"
+    }
+  }
+
+  mock_resource "aws_sqs_queue" {
+    defaults = {
+      arn = "arn:aws:sqs:eu-west-1:123456789012:mock-queue"
+    }
+  }
+
+  mock_resource "aws_cloudwatch_event_rule" {
+    defaults = {
+      arn = "arn:aws:events:eu-west-1:123456789012:rule/mock-event-rule"
+    }
+  }
+
 }
 
 # The runner archive is injected during packaging, so isolate the common
@@ -33,6 +58,7 @@ variables {
         vpc_id         = "vpc-12345678"
         subnet_ids     = ["subnet-12345678"]
         instance_types = ["m5.large"]
+        ssm_enabled    = true
         ami = {
           filter = { state = ["available"] }
           owners = ["amazon"]
@@ -605,11 +631,7 @@ run "rejects_empty_compute_provider" {
     compute_provider = {}
   }
 
-  plan_options {
-    target = [terraform_data.validate_config]
-  }
-
-  expect_failures = [terraform_data.validate_config]
+  expect_failures = [var.compute_provider]
 }
 
 run "rejects_empty_aws_compute_provider_namespace" {
@@ -621,11 +643,7 @@ run "rejects_empty_aws_compute_provider_namespace" {
     }
   }
 
-  plan_options {
-    target = [terraform_data.validate_config]
-  }
-
-  expect_failures = [terraform_data.validate_config]
+  expect_failures = [var.compute_provider]
 }
 
 run "job_retry_uses_common_runner_configuration_identity" {

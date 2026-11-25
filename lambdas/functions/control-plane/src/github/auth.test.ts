@@ -355,22 +355,20 @@ describe('Test rate-limit aware app selection', () => {
     expect(result.appIndex).toBe(0);
   });
 
-  it('falls back to the most budget when every app is cooling down', async () => {
+  it('rejects when every app is cooling down', async () => {
     reportAppRateLimit(0, 100);
     reportAppRateLimit(1, 5000);
     reportAppSecondaryRateLimit(0);
     reportAppSecondaryRateLimit(1);
 
-    const result = await createGithubAppAuth(undefined);
-    expect(result.appIndex).toBe(1);
+    await expect(createGithubAppAuth(undefined)).rejects.toThrow('No eligible GitHub App');
   });
 
-  it('short-circuits to the primary app in single-app deployments', async () => {
+  it('does not select an exhausted app in single-app deployments', async () => {
     mockedGetCredentials.mockResolvedValueOnce([{ appId: GITHUB_APP_ID, privateKey: 'private-key' }]);
     reportAppRateLimit(0, 0);
 
-    const result = await createGithubAppAuth(undefined);
-    expect(result.appIndex).toBe(0);
+    await expect(createGithubAppAuth(undefined)).rejects.toThrow('No eligible GitHub App');
   });
 
   it('respects an explicitly provided app index', async () => {
