@@ -1,4 +1,6 @@
+import { installationScope } from '../github/installation-scope';
 import { Octokit } from '@octokit/rest';
+import { withAppFailover } from '../github/app-failover';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import { resolveComputeProviderType } from '@aws-github-runner/compute-providers/provider-types';
 import { createStorageProviders, type StorageProviders } from '@aws-github-runner/storage-providers';
@@ -44,14 +46,30 @@ export async function adjust(event: PoolEvent): Promise<void> {
 
   const { ghesApiUrl, ghesBaseUrl } = getGitHubEnterpriseApiUrl();
 
-  // Select one GitHub App for this entire invocation so every API call draws
-  // from the same rate-limit bucket.
-  const ghAppAuth = await createGithubAppAuth(undefined, ghesApiUrl, undefined, storage.githubAppCredentials);
+  // Seed the shared client; it can select another app before each request.
+  const scope = installationScope(ghesApiUrl, runnerOwner);
+  const ghAppAuth = await createGithubAppAuth(undefined, ghesApiUrl, undefined, storage.githubAppCredentials, scope);
   const appIdx = ghAppAuth.appIndex;
 
-  const installationId = await getInstallationId(ghAppAuth.token, ghesApiUrl, runnerOwner, appIdx, storage);
-  const ghAuth = await createGithubInstallationAuth(installationId, ghesApiUrl, appIdx, storage.githubAppCredentials);
-  const githubInstallationClient = await createOctokitClient(ghAuth.token, ghesApiUrl, appIdx);
+  const githubInstallationClient = await withAppFailover(
+    appIdx,
+    async (selectedIndex) => {
+      const appAuth =
+        selectedIndex === appIdx
+          ? ghAppAuth
+          : await createGithubAppAuth(undefined, ghesApiUrl, selectedIndex, storage.githubAppCredentials);
+      const installationId = await getInstallationId(appAuth.token, ghesApiUrl, runnerOwner, selectedIndex, storage);
+      const ghAuth = await createGithubInstallationAuth(
+        installationId,
+        ghesApiUrl,
+        selectedIndex,
+        storage.githubAppCredentials,
+      );
+      return createOctokitClient(ghAuth.token, ghesApiUrl, selectedIndex);
+    },
+    storage.githubAppCredentials,
+    scope,
+  );
 
   // Get statuses of runners registered in GitHub
   const runnerStatusses = await getGitHubRegisteredRunnnerStatusses(

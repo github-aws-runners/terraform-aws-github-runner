@@ -32,7 +32,7 @@ variable "global_config_compute_provider" {
       aws.ec2.ami.housekeeper.cleanup_config.amiFilters: "AMI filters used to select AMIs for cleanup."
       aws.ec2.ami.housekeeper.cleanup_config.amiFilters.Name: "AMI filter name."
       aws.ec2.ami.housekeeper.cleanup_config.amiFilters.Values: "Values matched by the AMI filter."
-      aws.ec2.ami.housekeeper.cleanup_config.launchTemplateNames: "Launch template names associated with AMIs eligible for cleanup."
+      aws.ec2.ami.housekeeper.cleanup_config.launchTemplateNames: "Launch template names associated with AMIs eligible for cleanup. A runner type with dynamic labels enabled creates a second, '-on-demand-override' suffixed launch template; include both names if that type's AMIs should be eligible for cleanup."
       aws.ec2.ami.housekeeper.cleanup_config.ssmParameterNames: "SSM parameter names associated with AMIs eligible for cleanup."
       aws.ec2.ami.housekeeper.cleanup_config.dryRun: "Whether AMI cleanup reports changes without deleting AMIs."
       aws.ec2.ami.housekeeper.artifact.zip: "Local ZIP artifact used for the AMI housekeeper Lambda."

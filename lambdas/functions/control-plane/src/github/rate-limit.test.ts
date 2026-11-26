@@ -3,7 +3,7 @@ import { createSingleMetric } from '@aws-github-runner/aws-powertools-util';
 import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { getAppId, reportAppRateLimit } from './auth';
+import { getAppId } from './auth';
 import { metricGitHubAppRateLimit } from './rate-limit';
 
 vi.mock('./auth', () => ({
@@ -32,7 +32,7 @@ describe('metricGitHubAppRateLimit', () => {
 
     await metricGitHubAppRateLimit(headers, 1);
 
-    expect(mockedGetAppId).toHaveBeenCalledWith(1);
+    expect(mockedGetAppId).toHaveBeenCalledWith(1, undefined);
     expect(createSingleMetric).toHaveBeenCalledWith('GitHubAppRateLimitRemaining', MetricUnit.Count, 10, {
       AppId: '1234',
     });
@@ -59,13 +59,13 @@ describe('metricGitHubAppRateLimit', () => {
     await metricGitHubAppRateLimit(headers, 0);
     await metricGitHubAppRateLimit(headers, 1);
 
-    expect(mockedGetAppId).toHaveBeenNthCalledWith(1, 0);
-    expect(mockedGetAppId).toHaveBeenNthCalledWith(2, 1);
+    expect(mockedGetAppId).toHaveBeenNthCalledWith(1, 0, undefined);
+    expect(mockedGetAppId).toHaveBeenNthCalledWith(2, 1, undefined);
   });
-  it('feeds the app selector even when metrics are disabled', async () => {
+  it('leaves selection accounting to the request layer', async () => {
     process.env.ENABLE_METRIC_GITHUB_APP_RATE_LIMIT = 'false';
     await metricGitHubAppRateLimit({ 'x-ratelimit-remaining': '4200', 'x-ratelimit-limit': '5000' }, 1);
-    expect(reportAppRateLimit).toHaveBeenCalledWith(1, 4200);
+    expect(mockedGetAppId).not.toHaveBeenCalled();
     expect(createSingleMetric).not.toHaveBeenCalled();
   });
 });

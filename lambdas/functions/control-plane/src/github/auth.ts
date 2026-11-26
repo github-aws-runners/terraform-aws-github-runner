@@ -61,25 +61,42 @@ let appCredentialsPromise: Promise<GitHubAppCredential[]> | null = null;
 
 interface AppRateLimitState {
   remaining: number;
-  cooldownUntil: number;
+  resetAt?: number;
+  observedAt?: number;
 }
 
 // Last known primary rate limit remaining and secondary rate limit cooldown
-// per app index. Fed by response headers and throttling callbacks; persists
+// per app and resource. Fed by the shared request layer; persists
 // across invocations in a warm lambda so selection converges quickly.
-const appRateLimitStates = new Map<number, AppRateLimitState>();
+const appRateLimitStates = new Map<string, AppRateLimitState>();
+const appCooldowns = new Map<number, number>();
 const SECONDARY_RATE_LIMIT_COOLDOWN_MS = 60_000;
 
-export function reportAppRateLimit(appIndex: number, remaining: number): void {
-  const state = appRateLimitStates.get(appIndex) ?? { remaining, cooldownUntil: 0 };
+export function reportAppRateLimit(
+  appIndex: number,
+  remaining: number,
+  resetAt?: number,
+  resource = 'core',
+  scope = '',
+): void {
+  const state = appRateLimitStates.get(`${scope}:${appIndex}:${resource}`) ?? { remaining };
+  const exhaustionUntil = state.remaining === 0 ? (state.resetAt ?? (state.observedAt ?? 0) + 60_000) : 0;
+  if (exhaustionUntil > Date.now()) {
+    // Concurrent requests may deliver an older positive observation after exhaustion.
+    state.resetAt = Math.max(exhaustionUntil, remaining === 0 ? (resetAt ?? 0) : 0);
+    return;
+  }
   state.remaining = remaining;
-  appRateLimitStates.set(appIndex, state);
+  state.resetAt = resetAt;
+  state.observedAt = Date.now();
+  appRateLimitStates.set(`${scope}:${appIndex}:${resource}`, state);
 }
 
-export function reportAppSecondaryRateLimit(appIndex: number): void {
-  const state = appRateLimitStates.get(appIndex) ?? { remaining: 0, cooldownUntil: 0 };
-  state.cooldownUntil = Date.now() + SECONDARY_RATE_LIMIT_COOLDOWN_MS;
-  appRateLimitStates.set(appIndex, state);
+export function reportAppSecondaryRateLimit(
+  appIndex: number,
+  cooldownUntil = Date.now() + SECONDARY_RATE_LIMIT_COOLDOWN_MS,
+): void {
+  appCooldowns.set(appIndex, Math.max(appCooldowns.get(appIndex) ?? 0, cooldownUntil));
   logger.warn(`GitHub App index ${appIndex} put in secondary rate limit cooldown`);
 }
 
@@ -87,32 +104,38 @@ export function reportAppSecondaryRateLimit(appIndex: number): void {
 // apps cooling down after a secondary rate limit. Apps with no observed state
 // are assumed full. Iteration starts at a random offset so concurrent
 // cold-started lambdas do not all converge on the same app.
-async function selectAppIndex(credentialsStore?: GitHubAppCredentialsStore): Promise<number> {
+export class NoEligibleGitHubAppError extends Error {}
+
+export async function selectAppIndex(
+  credentialsStore?: GitHubAppCredentialsStore,
+  excluded = new Set<number>(),
+  resource = 'core',
+  preferredIndex?: number,
+  scope = '',
+): Promise<number> {
   const credentials = await getAppCredentials(credentialsStore);
-  if (credentials.length === 1) return 0;
+
   const now = Date.now();
-  const offset = Math.floor(Math.random() * credentials.length);
+  const offset = preferredIndex ?? Math.floor(Math.random() * credentials.length);
   let best = -1;
   let bestRemaining = -1;
   for (let n = 0; n < credentials.length; n++) {
     const i = (offset + n) % credentials.length;
-    const state = appRateLimitStates.get(i);
-    if (state && state.cooldownUntil > now) continue;
-    const remaining = state?.remaining ?? Number.MAX_SAFE_INTEGER;
+    const state = appRateLimitStates.get(`${scope}:${i}:${resource}`);
+    if (excluded.has(i) || (appCooldowns.get(i) ?? 0) > now) continue;
+    // Forget observations after their reset, or after one minute without headers.
+    const fresh = state && (state.resetAt ? state.resetAt > now : (state.observedAt ?? 0) + 60_000 > now);
+    const remaining = fresh ? state.remaining : Number.MAX_SAFE_INTEGER;
+    if (remaining === 0) continue;
     if (remaining > bestRemaining) {
       bestRemaining = remaining;
       best = i;
     }
   }
   if (best === -1) {
-    // Every app is cooling down; pick the one with the most remaining anyway.
-    for (let i = 0; i < credentials.length; i++) {
-      const remaining = appRateLimitStates.get(i)?.remaining ?? Number.MAX_SAFE_INTEGER;
-      if (remaining > bestRemaining) {
-        bestRemaining = remaining;
-        best = i;
-      }
-    }
+    throw new NoEligibleGitHubAppError(
+      'No eligible GitHub App: all apps are rate limited or have already been attempted',
+    );
   }
   // Info so the app selection distribution is observable at default log level.
   logger.info(`Selected GitHub App index ${best} with ${bestRemaining} rate limit remaining`);
@@ -140,6 +163,7 @@ export async function getAppCount(credentialsStore?: GitHubAppCredentialsStore):
 export function resetAppCredentialsCache(): void {
   appCredentialsPromise = null;
   appRateLimitStates.clear();
+  appCooldowns.clear();
 }
 
 export async function getStoredInstallationId(
@@ -170,6 +194,8 @@ export async function createOctokitClient(token: string, ghesApiUrl = '', appInd
     ...octokitOptions,
     userAgent: process.env.USER_AGENT || 'github-aws-runners',
     retry: {
+      // The shared failover layer handles throttling without sleeping in Lambda.
+      doNotRetry: [400, 401, 403, 404, 410, 422, 451, ...(appIndex === undefined ? [] : [429])],
       onRetry: (retryCount: number, error: Error, retryRequest: { method: string; url: string }) => {
         logger.warn('GitHub API request retry attempt', {
           retryCount,
@@ -187,11 +213,7 @@ export async function createOctokitClient(token: string, ghesApiUrl = '', appInd
         octokit: CoreOctokit,
         retryCount: number,
       ) => {
-        if (appIndex !== undefined) {
-          // Primary budget exhausted for this app; steer new flows elsewhere.
-          reportAppRateLimit(appIndex, 0);
-        }
-        return onRateLimit(retryAfter, options, octokit, retryCount);
+        return appIndex === undefined ? onRateLimit(retryAfter, options, octokit, retryCount) : false;
       },
       onSecondaryRateLimit: (
         retryAfter: number,
@@ -199,10 +221,7 @@ export async function createOctokitClient(token: string, ghesApiUrl = '', appInd
         octokit: CoreOctokit,
         retryCount: number,
       ) => {
-        if (appIndex !== undefined) {
-          reportAppSecondaryRateLimit(appIndex);
-        }
-        return onSecondaryRateLimit(retryAfter, options, octokit, retryCount);
+        return appIndex === undefined ? onSecondaryRateLimit(retryAfter, options, octokit, retryCount) : false;
       },
     },
   });
@@ -213,8 +232,9 @@ export async function createGithubAppAuth(
   ghesApiUrl = '',
   appIndex?: number,
   credentialsStore?: GitHubAppCredentialsStore,
+  scope = '',
 ): Promise<AppAuthentication & { appIndex: number }> {
-  const idx = appIndex ?? (await selectAppIndex(credentialsStore));
+  const idx = appIndex ?? (await selectAppIndex(credentialsStore, undefined, 'core', undefined, scope));
   const auth = await createAuth(installationId, ghesApiUrl, idx, credentialsStore);
   return { ...(await auth({ type: 'app' })), appIndex: idx };
 }

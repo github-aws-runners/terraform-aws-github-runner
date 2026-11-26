@@ -22,13 +22,14 @@ module "runners" {
   }
   ssm_ttl_seconds = each.value.storage_provider.aws.ssm.ttl_seconds
 
-  runner_os                     = each.value.runner.os
-  instance_types                = each.value.compute_provider.aws.ec2.instance_types
-  instance_target_capacity_type = each.value.compute_provider.aws.ec2.instance_target_capacity_type
-  instance_allocation_strategy  = each.value.compute_provider.aws.ec2.instance_allocation_strategy
-  instance_type_priorities      = each.value.compute_provider.aws.ec2.instance_type_priorities
-  instance_max_spot_price       = each.value.compute_provider.aws.ec2.instance_max_spot_price
-  block_device_mappings         = each.value.compute_provider.aws.ec2.block_device_mappings
+  runner_os                               = each.value.runner.os
+  instance_types                          = each.value.compute_provider.aws.ec2.instance_types
+  instance_target_capacity_type           = each.value.compute_provider.aws.ec2.instance_target_capacity_type
+  instance_capacity_type_override_enabled = try(each.value.orchestration_provider.webhook.matcherConfig.dynamic_labels_enabled, false)
+  instance_allocation_strategy            = each.value.compute_provider.aws.ec2.instance_allocation_strategy
+  instance_type_priorities                = each.value.compute_provider.aws.ec2.instance_type_priorities
+  instance_max_spot_price                 = each.value.compute_provider.aws.ec2.instance_max_spot_price
+  block_device_mappings                   = each.value.compute_provider.aws.ec2.block_device_mappings
 
   runner_architecture = each.value.runner.architecture
   ami = try(each.value.compute_provider.aws.ec2.ami == null ? null : {
@@ -97,6 +98,8 @@ module "runners" {
   runner_group_name                                              = each.value.runner.group_name
   runner_name_prefix                                             = each.value.runner.name_prefix
   parameter_store_tags                                           = each.value.storage_provider.aws.ssm.parameters.tags
+  ssm_parameter_store_max_concurrent_invocations                 = each.value.storage_provider.aws.ssm.parameters.max_concurrent_invocations
+  ssm_parameter_store_max_writes_per_second                      = each.value.storage_provider.aws.ssm.parameters.max_writes_per_second
 
   scale_up_reserved_concurrent_executions = each.value.orchestration_provider.webhook.lambda.scale.up.reserved_concurrent_executions
 

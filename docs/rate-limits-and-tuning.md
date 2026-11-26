@@ -35,6 +35,16 @@ These apply in addition to primary limits, regardless of authentication method:
 
 Some REST API endpoints have a different point cost that is not shared publicly.
 
+### Request failover and retries
+
+Control-plane GitHub requests try another eligible App when a rate limit is reached, including job checks, registration-token requests, JIT configuration, and scale-down operations. Each App is tried at most once per operation. Primary quotas are tracked separately by resource and installation owner; secondary cooldowns apply across the App.
+
+This changes single-App behavior too: the throttling plugin no longer waits inside the Lambda for quota to reset. When no App is eligible, the operation fails promptly. Scale-up and job-retry queue consumers report failed records for SQS redelivery; scheduled pool and scale-down invocations can try again on their next run.
+
+In job-retry, permanent GitHub authentication or job-status errors (400, 401, non-rate-limit 403, 404, 410, and 422) are logged and acknowledged instead of repeatedly redelivered until queue retention expires. Rate limits, network failures, server errors, and queue publication failures remain retryable.
+
+The job-retry event source enables `ReportBatchItemFailures`. Retryable authentication failures, job-status checks (including 5xx and timeouts), and queue publications return only their failed message IDs. Successfully processed records are acknowledged. A failed status check is retried before deciding whether to publish a scale-up request; it is not treated as evidence that the job is still queued. SQS remains an at-least-once service, so partial batch responses do not guarantee exactly-once processing.
+
 ### Maximum runner creation rate per App
 
 With an installation token cache (token mints ≈ 0 per runner), the per-runner API cost is:
@@ -52,7 +62,11 @@ Without a token cache, each runner also costs a `POST /app/installations/{id}/ac
 
 ### Distributing load across multiple GitHub Apps
 
-Rate limits are per App installation and cannot be raised. To scale beyond one App's budget, configure extra Apps with `additional_github_apps`. The control-plane lambdas select one App per invocation, making the effective limit N × the per-App limit. Selection prefers the App with the most rate-limit budget remaining, based on the `x-ratelimit-remaining` headers observed by the running Lambda container; Apps that hit a secondary rate limit are skipped for 60 seconds.
+Configure extra Apps with `additional_github_apps` to distribute API traffic. Scale-up, pool, scale-down, and job-retry clients select the eligible App with the highest recently observed remaining budget before each request, tracking primary resources separately once reported by GitHub. Selection state is local to a warm Lambda execution environment, not a globally synchronized quota measurement. Unknown or expired observations are explored with randomized tie-breaking; observations expire at the reported reset time, or after one minute without a reset header.
+
+Every HTTP 429 and rate-limit-specific 403 triggers bounded failover, including responses with nonzero primary quota remaining. The failed App is excluded until `Retry-After` or the primary reset deadline (with a one-second margin), defaulting to 60 seconds when neither is usable. The client resolves the replacement App's own installation and retries only the failed GitHub operation. Installation lookup and token minting use the same failover policy. Successful runner registrations and compute-provider operations are not replayed.
+
+Each App is attempted at most once per operation. If no eligible App remains, the error is returned to the caller's existing failure/retry path instead of sleeping through the Lambda timeout or ignoring cooldowns. Ordinary permission, authentication, and validation failures do not trigger app switching. Secondary limits can still affect multiple Apps; adding Apps does not guarantee linearly increasing throughput or replace concurrency control.
 
 > [!IMPORTANT]
 > Every additional App must be installed on the same organizations or repositories as the primary App. The module cannot verify this. A missing installation surfaces at runtime as installation lookup 404s on the fraction of invocations that select the misconfigured App, which is hard to trace back to the installation.
@@ -74,17 +88,39 @@ Rate limits are **disabled by default** on GitHub Enterprise Server and must be 
 | `POST /actions/runners/generate-jitconfig` | `actions_runner_registration` | 1 per instance created |
 | `GET /actions/runners` (listSelfHostedRunners) | `core` | Scale-down, pool |
 
+### Incremental scale-down API cost
+
+EC2 scale-down processes up to 100 instances per inventory page and looks up GitHub registrations individually by ID or exact name. This lets cleanup begin before the whole fleet is listed, but increases GitHub requests compared with the former owner-wide cached listing. A name lookup may itself paginate. An ID lookup returning 404 triggers a paginated owner listing to confirm absence, since failover can select another App with different access. A registration found in that listing remains subject to its current busy state; incomplete or failed verification retains the instance. Eligible removals also recheck busy state and delete the registration; authentication and orphan rechecks add requests.
+
+For a scan of N eligible instances every T minutes, identity lookups alone can approach `N × 60 / T` requests per hour. For example, 1,000 instances scanned every five minutes can require about 12,000 identity requests per hour, before removals or other scaling traffic. Retained instances may be checked again each run. Monitor App quota and throttling, choose a schedule that leaves room for scale-up/pool traffic, and configure additional Apps when appropriate.
+
+The EC2 inventory page size is 100: approximately ten `DescribeInstances` requests for 1,000 returned instances, excluding retries. These calls share EC2 API limits with other scaling operations. Page processing remains incremental, with a deadline check before new pages and runners; no scan progress is persisted.
+
 ## AWS Rate Limits
 
 ### SSM Parameter Store
 
 | Metric | Default |
 |---|---|
-| Combined throughput (Get + Put) | **40 TPS** (shared per-account per-region) |
+| `GetParameter`, `GetParameters`, `GetParametersByPath` | **40 TPS** shared (higher throughput: 10,000 / 1,000 / 100) |
+| `PutParameter` | **3 TPS** (higher throughput: 10) |
+| `DeleteParameter`, `DeleteParameters` | **3 TPS** (higher throughput: 5) |
 
-Each runner instance requires one `PutParameter` call for its JIT config. At 40 TPS shared across all operations in the account, a burst of 40+ concurrent writes will throttle.
+Limits are per account and Region. Reads and writes have separate quotas. [Source: AWS docs](https://docs.aws.amazon.com/systems-manager/latest/userguide/parameter-store-throughput.html)
 
-**Higher throughput mode** raises the ceiling:
+Each runner instance requires one `PutParameter` call for its JIT config. This is account-wide, not per-invocation or per-pool: several pools' scale-up/pool lambdas can each individually look fine while their combined writes exceed the account limit. The module paces its own writes to stay under a configured ceiling — `ssm_parameter_store_max_writes_per_second` (default `40`) — dividing the per-write delay across `ssm_parameter_store_max_concurrent_invocations` (default `1`), which should reflect how many scale-up/pool invocations across all pools can realistically run at the same time.
+
+The default of `40` is above the documented `PutParameter` quota. It keeps the pacing the module used before this setting existed, and short bursts above the quota are usually absorbed by SDK retries. If you see `ThrottlingException` or `TooManyUpdates` on `PutParameter`, lower `ssm_parameter_store_max_writes_per_second` (down to `3`, or `10` with higher throughput) or raise `ssm_parameter_store_max_concurrent_invocations`.
+
+Where to set the two values:
+
+| Module | Setting |
+| ------ | ------- |
+| Root module | `ssm_parameter_store_max_writes_per_second` and `ssm_parameter_store_max_concurrent_invocations` |
+| Multi-runner (v1 inputs) | The same two variables, applied to all runner configurations |
+| Multi-runner (v2 inputs) | `global_config_storage_provider.aws.ssm.parameters.max_writes_per_second` and `max_concurrent_invocations` for all runner configurations. A runner configuration can override either value under its own `storage_provider.aws.ssm.parameters`. |
+
+**Higher throughput mode** raises the quotas (for writes only from 3 to 10 TPS):
 
 ```bash
 aws ssm update-service-setting \
@@ -93,6 +129,8 @@ aws ssm update-service-setting \
 ```
 
 Cost: $0.05 per 10,000 API interactions beyond the standard tier.
+
+Enabling this does not change this module's pacing, which follows `ssm_parameter_store_max_writes_per_second`. Higher throughput helps mostly with reads; for writes, set the value to `10` or lower if `PutParameter` is still throttled.
 
 ### EC2 CreateFleet
 
@@ -111,7 +149,7 @@ For deployments running more than a handful of concurrent runners:
 | Running On-Demand Standard (A,C,D,H,I,M,R,T,Z) instances | **5 vCPUs** | Service Quotas console |
 | All Standard Spot Instance Requests | **5 vCPUs** | Service Quotas console |
 | EC2 CreateFleet API rate | Undocumented | AWS Support ticket |
-| SSM Parameter Store throughput | 40 TPS | `update-service-setting` (see above) |
+| SSM Parameter Store throughput | 40 TPS reads, 3 TPS writes | `update-service-setting` (see above): 10 TPS writes; pace with `ssm_parameter_store_max_writes_per_second` |
 
 **vCPU quotas are measured in vCPUs, not instance count.** Running 50× `c5.large` (2 vCPU each) requires a quota of at least 100 vCPUs.
 
@@ -131,7 +169,7 @@ For deployments running more than a handful of concurrent runners:
 | `isJobQueued` calls | 100 | 100 (same total) |
 | JIT config generation calls | 100 | 100 (same total) |
 
-Larger `batch_size` reduces CreateFleet calls (the most constrained AWS API) and Lambda invocations. Per-runner work (SSM writes, JIT config, isJobQueued) stays the same total. SSM peak TPS is lower with larger batches because writes are serialized within each Lambda rather than concurrent across many.
+Larger `batch_size` reduces CreateFleet calls (the most constrained AWS API) and Lambda invocations. Per-runner work (SSM writes, JIT config, isJobQueued) stays the same total. SSM writes are paced within each Lambda regardless of batch size (see `ssm_parameter_store_max_writes_per_second`/`ssm_parameter_store_max_concurrent_invocations` above) — batch size does not change the SSM pacing behavior, only how many Lambda invocations are running concurrently in the first place.
 
 ### Tradeoffs
 
@@ -157,7 +195,7 @@ Higher windows improve batching efficiency but add latency to job pickup.
 |---|---|---|---|
 | Small (<50 concurrent jobs) | 1–5 | 90s | Defaults work |
 | Medium (50–200) | 5–10 | 180s | Monitor SSM throttling |
-| Large (200+) | 10 | 300s | Enable SSM higher throughput, raise vCPU quotas, request CreateFleet rate increase |
+| Large (200+) | 10 | 300s | Enable SSM higher throughput, set `ssm_parameter_store_max_concurrent_invocations` to the real concurrency and lower `ssm_parameter_store_max_writes_per_second` if `PutParameter` is throttled, raise vCPU quotas, request CreateFleet rate increase |
 
 ## Monitoring
 

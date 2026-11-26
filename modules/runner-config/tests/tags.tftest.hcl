@@ -16,6 +16,31 @@ mock_provider "aws" {
       arn = "arn:aws:ssm:eu-west-1:123456789012:parameter/github-runner/config"
     }
   }
+
+  mock_resource "aws_iam_policy" {
+    defaults = {
+      arn = "arn:aws:iam::123456789012:policy/mock-policy"
+    }
+  }
+
+  mock_resource "aws_lambda_function" {
+    defaults = {
+      arn = "arn:aws:lambda:eu-west-1:123456789012:function:mock-function"
+    }
+  }
+
+  mock_resource "aws_sqs_queue" {
+    defaults = {
+      arn = "arn:aws:sqs:eu-west-1:123456789012:mock-queue"
+    }
+  }
+
+  mock_resource "aws_cloudwatch_event_rule" {
+    defaults = {
+      arn = "arn:aws:events:eu-west-1:123456789012:rule/mock-event-rule"
+    }
+  }
+
 }
 
 # The runner archive is injected during packaging, so model the common
@@ -163,6 +188,8 @@ variables {
             precedence = "ssm-parameter"
             parameter  = "yes"
           }
+          max_concurrent_invocations = 5
+          max_writes_per_second      = 500
         }
         housekeeper = {
           tags = {
@@ -187,6 +214,14 @@ variables {
 
 run "layered_component_tags" {
   command = plan
+
+  assert {
+    condition = (
+      module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["SSM_PARAMETER_STORE_MAX_CONCURRENT_INVOCATIONS"] == "5"
+      && module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["SSM_PARAMETER_STORE_MAX_WRITES_PER_SECOND"] == "500"
+    )
+    error_message = "The Parameter Store pacing settings must reach the scale-up Lambda environment."
+  }
 
   assert {
     condition     = module.orchestration_webhook[0].scale_up.lambda.environment[0].variables["LOG_LEVEL"] == "DEBUG"
