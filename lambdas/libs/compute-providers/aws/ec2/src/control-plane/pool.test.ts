@@ -1,6 +1,6 @@
 import type { Octokit } from '@octokit/rest';
 import type { CreateGitHubRunnerConfig, CreateStartRunnerConfig, RunnerInfo } from '../../../../core';
-import { bootTimeExceeded, type Ec2RunnerResourceOperations } from '../runners';
+import { bootTimeExceeded, type Ec2RunnerCreationOperations } from '../runners';
 import { createEc2PoolCapability } from './pool';
 import { createRunners, type Ec2ProviderConfig, loadEc2ProviderConfig } from './runner-creation';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -19,12 +19,13 @@ const mockCreateRunners = vi.mocked(createRunners);
 const mockLoadProviderConfig = vi.mocked(loadEc2ProviderConfig);
 
 const ec2Operations = {
-  list: vi.fn<Ec2RunnerResourceOperations['list']>(),
-  create: vi.fn<Ec2RunnerResourceOperations['create']>(),
-  terminate: vi.fn<Ec2RunnerResourceOperations['terminate']>(),
-  tag: vi.fn<Ec2RunnerResourceOperations['tag']>(),
-  untag: vi.fn<Ec2RunnerResourceOperations['untag']>(),
-} satisfies Ec2RunnerResourceOperations;
+  list: vi.fn<Ec2RunnerCreationOperations['list']>(),
+  create: vi.fn<Ec2RunnerCreationOperations['create']>(),
+  terminate: vi.fn<Ec2RunnerCreationOperations['terminate']>(),
+  tag: vi.fn<Ec2RunnerCreationOperations['tag']>(),
+  untag: vi.fn<Ec2RunnerCreationOperations['untag']>(),
+  getSubnetAvailabilityZones: vi.fn<Ec2RunnerCreationOperations['getSubnetAvailabilityZones']>(),
+} satisfies Ec2RunnerCreationOperations;
 const createStartRunnerConfig = vi.fn<CreateStartRunnerConfig>();
 const capability = createEc2PoolCapability(ec2Operations, createStartRunnerConfig);
 

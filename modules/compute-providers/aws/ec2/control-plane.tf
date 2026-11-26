@@ -25,6 +25,7 @@ data "aws_iam_policy_document" "scale_up" {
     actions = [
       "ec2:DescribeInstances",
       "ec2:DescribeLaunchTemplateVersions",
+      "ec2:DescribeSubnets",
       "ec2:DescribeTags",
       "ec2:RunInstances",
       "ec2:CreateFleet",
@@ -133,6 +134,7 @@ data "aws_iam_policy_document" "pool" {
     effect = "Allow"
     actions = [
       "ec2:DescribeInstances",
+      "ec2:DescribeSubnets",
       "ec2:DescribeTags",
       "ec2:RunInstances",
       "ec2:CreateFleet",
