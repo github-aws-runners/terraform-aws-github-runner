@@ -103,15 +103,16 @@ If we suggest changes, then:
 * Commit your changes to your branch (e.g. `my-fix-branch`).
 * Push the changes to your GitHub repository (this will update your Pull Request).
 
-If the PR gets too outdated we may ask you to rebase and force push to update the PR:
-
-```shell
-git rebase main -i
-git push origin my-fix-branch -f
-```
-
-> [!WARNING] 
-> Squashing or reverting commits and force-pushing thereafter may remove GitHub comments on code that were previously made by you or others in your commits. Avoid any form of rebasing unless necessary.
+> [!NOTE]
+> If your PR becomes outdated, we may ask you to update it by rebasing onto the latest `main` branch.
+>
+>> [!WARNING]
+>> Squashing, reverting, or force-pushing commits can remove GitHub comments tied to those commits.
+>
+>```shell
+>git rebase -i main
+>git push origin my-fix-branch --force-with-lease
+>```
 
 That's it! Thank you for your contribution!
 
