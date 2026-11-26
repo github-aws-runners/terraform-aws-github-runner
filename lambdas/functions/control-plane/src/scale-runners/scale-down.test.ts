@@ -1,6 +1,7 @@
 import type { Octokit } from '@octokit/rest';
 import { RequestError } from '@octokit/request-error';
-import moment from 'moment';
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { defaultComputeProvider } from '@aws-github-runner/compute-providers/provider-types';
 
@@ -10,6 +11,8 @@ import * as scaleDownConfig from './scale-down-config';
 import { githubCache } from './cache';
 import { newestFirstStrategy, oldestFirstStrategy, scaleDown } from './scale-down';
 import type { RunnerInfo, RunnerType, ScaleDownComputeProvider } from './types';
+
+dayjs.extend(utc);
 
 const scaleLogs = vi.hoisted(() => ({ info: vi.fn(), error: vi.fn() }));
 vi.mock('@aws-github-runner/aws-powertools-util', async (importOriginal) => {
@@ -94,25 +97,25 @@ describe('When runners are sorted', () => {
   const runners: RunnerInfo[] = [
     {
       id: '1',
-      launchTime: moment(new Date()).subtract(1, 'minute').toDate(),
+      launchTime: dayjs.utc().subtract(1, 'minute').toDate(),
       owner: 'owner',
       type: 'Org',
     },
     {
       id: '3',
-      launchTime: moment(new Date()).subtract(3, 'minute').toDate(),
+      launchTime: dayjs.utc().subtract(3, 'minute').toDate(),
       owner: 'owner',
       type: 'Org',
     },
     {
       id: '2',
-      launchTime: moment(new Date()).subtract(2, 'minute').toDate(),
+      launchTime: dayjs.utc().subtract(2, 'minute').toDate(),
       owner: 'owner',
       type: 'Org',
     },
     {
       id: '0',
-      launchTime: moment(new Date()).subtract(0, 'minute').toDate(),
+      launchTime: dayjs.utc().subtract(0, 'minute').toDate(),
       owner: 'owner',
       type: 'Org',
     },
@@ -136,7 +139,7 @@ describe('When runners are sorted', () => {
 
   it('Should sort runners with equal launch time.', () => {
     const runnersTest = [...runners];
-    const same = moment(new Date()).subtract(4, 'minute').toDate();
+    const same = dayjs.utc().subtract(4, 'minute').toDate();
     runnersTest.push({
       id: '4',
       launchTime: same,
@@ -170,7 +173,7 @@ describe('When runners are sorted', () => {
       },
       {
         id: '1',
-        launchTime: moment(new Date()).subtract(3, 'minute').toDate(),
+        launchTime: dayjs.utc().subtract(3, 'minute').toDate(),
         owner: 'owner',
         type: 'Org',
       },
@@ -210,8 +213,8 @@ describe('Scale down runners', () => {
 
     mockedResolveCapability.mockReturnValue(() => mockComputeProvider);
     mockBootTimeExceeded.mockImplementation((runner) => {
-      const launchTimePlusBootTime = moment(runner.launchTime).utc().add(MINIMUM_BOOT_TIME, 'minutes');
-      return launchTimePlusBootTime < moment(new Date()).utc();
+      const launchTimePlusBootTime = dayjs.utc(runner.launchTime).add(MINIMUM_BOOT_TIME, 'minutes');
+      return dayjs.utc().isAfter(launchTimePlusBootTime);
     });
     mockMarkOrphan.mockResolvedValue();
     mockUnmarkOrphan.mockResolvedValue();
@@ -566,7 +569,8 @@ describe('Scale down runners', () => {
     await scaleDown();
     expect(scaleLogs.error).not.toHaveBeenCalled();
 
-    runner.launchTime = moment()
+    runner.launchTime = dayjs
+      .utc()
       .subtract(MINIMUM_BOOT_TIME + 1, 'minutes')
       .toDate();
     await scaleDown();
@@ -1517,7 +1521,7 @@ function createRunnerTestData(
   return {
     id: `i-${name}-${type.toLowerCase()}`,
     githubRunnerName: `i-${name}-${type.toLowerCase()}`,
-    launchTime: moment(new Date()).subtract(minutesLaunchedAgo, 'minutes').toDate(),
+    launchTime: dayjs.utc().subtract(minutesLaunchedAgo, 'minutes').toDate(),
     type,
     owner:
       owner ??

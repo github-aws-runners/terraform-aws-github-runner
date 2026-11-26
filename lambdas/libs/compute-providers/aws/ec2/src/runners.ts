@@ -19,7 +19,8 @@ import {
 } from '@aws-sdk/client-ec2';
 import { createChildLogger, tracer } from '@aws-github-runner/aws-powertools-util';
 import { getParameter } from '@aws-github-runner/aws-ssm-util';
-import moment from 'moment';
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
 
 import type { RunnerInfo } from '../../../core';
 import { getDefaultBlockDeviceNameFromLaunchTemplate } from './launch-template';
@@ -27,6 +28,8 @@ import type { Ec2RunnerCreateResult, Ec2RunnerFailureCode } from './runner-creat
 import type { Ec2ListRunnerFilters, Ec2OverrideConfig, RunnerInputParameters } from './runners.d';
 
 const logger = createChildLogger('runners');
+
+dayjs.extend(utc);
 
 interface Ec2Filter {
   Name: string;
@@ -733,6 +736,6 @@ async function createInstancesWithRunInstances(
 // If launchTime is undefined, this will return false
 export function bootTimeExceeded(ec2Runner: { launchTime?: Date }): boolean {
   const runnerBootTimeInMinutes = process.env.RUNNER_BOOT_TIME_IN_MINUTES;
-  const launchTimePlusBootTime = moment(ec2Runner.launchTime).utc().add(runnerBootTimeInMinutes, 'minutes');
-  return launchTimePlusBootTime < moment(new Date()).utc();
+  const launchTimePlusBootTime = dayjs.utc(ec2Runner.launchTime).add(Number(runnerBootTimeInMinutes ?? 0), 'minutes');
+  return dayjs.utc().isAfter(launchTimePlusBootTime);
 }

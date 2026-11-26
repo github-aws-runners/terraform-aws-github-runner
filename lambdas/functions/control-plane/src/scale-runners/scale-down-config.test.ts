@@ -1,4 +1,6 @@
-import moment from 'moment-timezone';
+import dayjs from 'dayjs';
+import timezone from 'dayjs/plugin/timezone';
+import utc from 'dayjs/plugin/utc';
 
 import { EvictionStrategy, ScalingDownConfigList, getEvictionStrategy, getIdleRunnerCount } from './scale-down-config';
 import { describe, it, expect } from 'vitest';
@@ -6,7 +8,10 @@ import { describe, it, expect } from 'vitest';
 const DEFAULT_TIMEZONE = 'America/Los_Angeles';
 const DEFAULT_IDLE_COUNT = 1;
 const DEFAULT_EVICTION_STRATEGY: EvictionStrategy = 'oldest_first';
-const now = moment.tz(new Date(), 'America/Los_Angeles');
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+const now = dayjs.utc().tz('America/Los_Angeles');
 
 function getConfig(
   cronTabs: string[],

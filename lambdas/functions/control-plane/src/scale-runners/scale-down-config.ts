@@ -1,6 +1,7 @@
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import parser from 'cron-parser';
-import moment from 'moment';
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
 
 export type ScalingDownConfigList = ScalingDownConfig[];
 export type EvictionStrategy = 'newest_first' | 'oldest_first';
@@ -13,12 +14,14 @@ export interface ScalingDownConfig {
 
 const logger = createChildLogger('scale-down-config.ts');
 
+dayjs.extend(utc);
+
 function inPeriod(period: ScalingDownConfig): boolean {
-  const now = moment(new Date());
+  const now = dayjs.utc();
   const expr = parser.parse(period.cron, {
     tz: period.timeZone,
   });
-  const next = moment(expr.next().toDate());
+  const next = dayjs.utc(expr.next().toDate());
   return Math.abs(next.diff(now, 'seconds')) < 5; // we keep a range of 5 seconds
 }
 
