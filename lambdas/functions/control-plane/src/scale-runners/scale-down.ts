@@ -5,7 +5,8 @@ import { Endpoints } from '@octokit/types';
 import { RequestError } from '@octokit/request-error';
 import { createChildLogger } from '@aws-github-runner/aws-powertools-util';
 import { resolveComputeProviderType } from '@aws-github-runner/compute-providers/provider-types';
-import moment from 'moment';
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
 
 import {
   createGithubAppAuth,
@@ -20,6 +21,8 @@ import { getGitHubEnterpriseApiUrl } from './github-runner';
 import type { RunnerInfo, ScaleDownComputeProvider } from './types';
 
 const logger = createChildLogger('scale-down');
+
+dayjs.extend(utc);
 
 type OrgRunnerList = Endpoints['GET /orgs/{org}/actions/runners']['response']['data']['runners'];
 type RepoRunnerList = Endpoints['GET /repos/{owner}/{repo}/actions/runners']['response']['data']['runners'];
@@ -231,9 +234,8 @@ async function listGitHubRunners(
 
 function runnerMinimumTimeExceeded(runner: RunnerInfo): boolean {
   const minimumRunningTimeInMinutes = process.env.MINIMUM_RUNNING_TIME_IN_MINUTES;
-  const launchTimePlusMinimum = moment(runner.launchTime).utc().add(minimumRunningTimeInMinutes, 'minutes');
-  const now = moment(new Date()).utc();
-  return launchTimePlusMinimum < now;
+  const launchTimePlusMinimum = dayjs.utc(runner.launchTime).add(Number(minimumRunningTimeInMinutes ?? 0), 'minutes');
+  return dayjs.utc().isAfter(launchTimePlusMinimum);
 }
 
 async function deleteGitHubRunner(
