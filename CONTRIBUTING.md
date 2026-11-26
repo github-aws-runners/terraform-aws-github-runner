@@ -110,7 +110,8 @@ git rebase main -i
 git push origin my-fix-branch -f
 ```
 
-_WARNING: Squashing or reverting commits and force-pushing thereafter may remove GitHub comments on code that were previously made by you or others in your commits. Avoid any form of rebasing unless necessary.
+> [!WARNING] 
+> Squashing or reverting commits and force-pushing thereafter may remove GitHub comments on code that were previously made by you or others in your commits. Avoid any form of rebasing unless necessary.
 
 That's it! Thank you for your contribution!
 
