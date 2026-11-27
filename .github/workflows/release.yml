@@ -39,7 +39,7 @@ jobs:
         working-directory: lambdas
         run: yarn install --frozen-lockfile && yarn run test && yarn dist
       - name: Get installation token
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
         id: token
         with:
           app-id: ${{ vars.RELEASER_APP_ID }}
